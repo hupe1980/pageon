@@ -12,6 +12,7 @@ pub struct Replay {
     used: RefCell<Vec<bool>>,
     clock: Cell<usize>,
     random: Cell<usize>,
+    realtime: RefCell<crate::realtime::RtServe>,
 }
 
 /// Errors loading a recording.
@@ -43,6 +44,7 @@ impl Replay {
             used: RefCell::new(vec![false; n]),
             clock: Cell::new(0),
             random: Cell::new(0),
+            realtime: RefCell::default(),
         }
     }
 
@@ -101,6 +103,10 @@ impl Env for Replay {
             .ok_or_else(|| NetError::ReplayMiss("random value".into()))?;
         self.random.set(i + 1);
         Ok(v)
+    }
+
+    fn stream(&self, call: &crate::StreamCall) -> Result<crate::StreamReply, NetError> {
+        self.realtime.borrow_mut().call(&self.log.realtime, call)
     }
 
     fn profile(&self) -> crate::Profile {

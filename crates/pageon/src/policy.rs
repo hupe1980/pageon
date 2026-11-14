@@ -374,6 +374,19 @@ impl<E: Env> Env for Policy<E> {
         }
     }
 
+    /// Opening a connection is judged as its `GET` (a read); every frame as its `SEND` (a
+    /// write): origin sets, guard, approver and held writes apply to frames as to requests.
+    fn stream(&self, call: &pageon_env::StreamCall) -> Result<pageon_env::StreamReply, NetError> {
+        use pageon_env::StreamCall;
+        if !self.inner.recorder().is_some_and(|r| r.replaying())
+            && let StreamCall::Open { req, .. } | StreamCall::Send { req, .. } = call
+            && let Some(why) = self.judge(req)
+        {
+            return Err(NetError::Blocked(why));
+        }
+        self.inner.stream(call)
+    }
+
     fn now_ms(&self) -> Result<u64, NetError> {
         self.inner.now_ms()
     }

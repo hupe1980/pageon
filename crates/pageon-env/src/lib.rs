@@ -22,6 +22,7 @@ mod chrome_client;
 mod identity;
 mod live;
 mod profile;
+mod realtime;
 mod record;
 mod replay;
 mod steps;
@@ -31,6 +32,10 @@ use std::time::Duration;
 
 pub use addr::{is_private_host, is_public, private_host_of};
 pub use identity::Identity;
+pub use realtime::{
+    EVENTSOURCE, HANDSHAKE, MAX_MESSAGE, MAX_STREAMS, Rt, StreamCall, StreamEvent, StreamKind,
+    StreamReply, WEBSOCKET,
+};
 
 /// Writes `bytes` to `path` readable by the owner only (mode 0600 on Unix), for files that
 /// hold session data: recordings, saved state, workflows. An existing file is narrowed to
@@ -256,6 +261,19 @@ pub trait Env {
         )))
     }
 
+    /// Realtime connections (WebSocket, server-sent events). Environments without a network
+    /// have none.
+    fn stream(&self, call: &StreamCall) -> Result<StreamReply, NetError> {
+        match call {
+            StreamCall::Open { req, .. } => Err(NetError::Blocked(format!(
+                "realtime connections are not available here ({})",
+                req.url
+            ))),
+            StreamCall::Poll { .. } => Ok(StreamReply::Events(Vec::new())),
+            _ => Ok(StreamReply::Done),
+        }
+    }
+
     /// The recording that keeps this session's steps, if any.
     fn recorder(&self) -> Option<&dyn Recorder> {
         None
@@ -308,6 +326,10 @@ impl<E: Env + ?Sized> Env for Box<E> {
         (**self).file(name, origin)
     }
 
+    fn stream(&self, call: &StreamCall) -> Result<StreamReply, NetError> {
+        (**self).stream(call)
+    }
+
     fn recorder(&self) -> Option<&dyn Recorder> {
         (**self).recorder()
     }
@@ -336,6 +358,10 @@ impl<E: Env + ?Sized> Env for &E {
 
     fn file(&self, name: &str, origin: &str) -> Result<StagedFile, NetError> {
         (**self).file(name, origin)
+    }
+
+    fn stream(&self, call: &StreamCall) -> Result<StreamReply, NetError> {
+        (**self).stream(call)
     }
 
     fn recorder(&self) -> Option<&dyn Recorder> {

@@ -271,10 +271,24 @@ impl<E: Env> Sandbox<E> {
             if let (Some(b), FromContent::Env(call)) = (self.branch.as_mut(), &msg) {
                 #[allow(clippy::disallowed_methods)] // the branch deadline is wall time
                 let late = std::time::Instant::now() >= b.until;
-                let write = matches!(call, EnvCall::Fetch(req)
-                    if !matches!(req.method.as_str(), "GET" | "HEAD" | "OPTIONS"));
+                let write = match call {
+                    EnvCall::Fetch(req) => {
+                        !matches!(req.method.as_str(), "GET" | "HEAD" | "OPTIONS")
+                    }
+                    // A sent frame is a write.
+                    EnvCall::Stream(c) => matches!(**c, pageon_env::StreamCall::Send { .. }),
+                    _ => false,
+                };
                 if late || write {
-                    if let (EnvCall::Fetch(req), false) = (call, late) {
+                    let held = match call {
+                        EnvCall::Fetch(req) => Some(req),
+                        EnvCall::Stream(c) => match &**c {
+                            pageon_env::StreamCall::Send { req, .. } => Some(req),
+                            _ => None,
+                        },
+                        _ => None,
+                    };
+                    if let (Some(req), false) = (held, late) {
                         b.pending = Some(Pending {
                             method: req.method.clone(),
                             url: req.url.clone(),
@@ -640,6 +654,13 @@ impl<E: Env> Sandbox<E> {
 
     /// Drops every tab and starts a fresh session in the content process.
     pub fn clear(&mut self) -> Result<(), SandboxError> {
+        for id in std::mem::take(&mut self.jar.streams) {
+            let _ = self.env.stream(&pageon_env::StreamCall::Close {
+                id,
+                code: 1001,
+                reason: String::new(),
+            });
+        }
         self.jar.jar.clear();
         self.tabs.clear();
         self.call(Op::Clear)
@@ -945,6 +966,7 @@ fn answer<E: Env>(
                 "file \"{name}\" was not asked for by the agent (only an upload may use it)"
             )))),
         },
+        EnvCall::Stream(call) => EnvReply::Stream(stream(env, serving, jar, branch, *call)),
         EnvCall::Records => EnvReply::Flag(env.recorder().is_some()),
         EnvCall::Profile => EnvReply::Profile(env.profile()),
         EnvCall::Step(mut step) => {
@@ -962,6 +984,56 @@ fn answer<E: Env>(
     }
 }
 
+/// A realtime connection call of the content process. A lookahead branch opens nothing,
+/// receives nothing and closes nothing of the real page (its sends never get here: they are
+/// held); otherwise as for a fetch: the broker's `allow_private`, its `HttpOnly` cookies on the
+/// handshake, no labels from the content process.
+fn stream<E: Env>(
+    env: &E,
+    serving: &Serving,
+    jar: &mut BrokerJar,
+    branch: bool,
+    call: pageon_env::StreamCall,
+) -> Result<pageon_env::StreamReply, pageon_env::NetError> {
+    use pageon_env::{StreamCall, StreamReply};
+    match call {
+        StreamCall::Open { mut req, kind } => {
+            if branch {
+                return Err(pageon_env::NetError::Blocked(
+                    "a lookahead does not open realtime connections".into(),
+                ));
+            }
+            req.allow_private = serving.allow_private;
+            req.labels.retain(|l| !l.starts_with("secret:"));
+            // Cookies go along as for the http(s) URL of the handshake.
+            let http = req
+                .url
+                .replacen("wss://", "https://", 1)
+                .replacen("ws://", "http://", 1);
+            if let (Ok(u), Some(sc)) = (url::Url::parse(&http), req.cookie_scope.clone()) {
+                jar.attach(&mut req, &u, &sc);
+            }
+            let r = env.stream(&StreamCall::Open { req, kind });
+            if let Ok(StreamReply::Opened { id, .. }) = &r {
+                jar.streams.push(*id);
+            }
+            r
+        }
+        StreamCall::Send { id, mut req, text } => {
+            req.allow_private = serving.allow_private;
+            req.labels.retain(|l| !l.starts_with("secret:"));
+            env.stream(&StreamCall::Send { id, req, text })
+        }
+        StreamCall::Close { .. } if branch => Ok(StreamReply::Done),
+        StreamCall::Poll { .. } if branch => Ok(StreamReply::Events(Vec::new())),
+        StreamCall::Close { id, code, reason } => {
+            jar.streams.retain(|s| *s != id);
+            env.stream(&StreamCall::Close { id, code, reason })
+        }
+        StreamCall::Poll { now, wait_ms } => env.stream(&StreamCall::Poll { now, wait_ms }),
+    }
+}
+
 /// The `HttpOnly` cookies, kept by the broker only: the content process never sees them
 /// (P-04). Its clock is the last time the broker gave the content process (deterministic
 /// in replay).
@@ -969,6 +1041,8 @@ fn answer<E: Env>(
 pub(crate) struct BrokerJar {
     jar: pageon_net::cookie::Jar,
     now: u64,
+    /// The realtime connections the broker holds for the session (closed on a clear).
+    streams: Vec<u64>,
 }
 
 /// Whether a `Set-Cookie` line has the `HttpOnly` attribute.

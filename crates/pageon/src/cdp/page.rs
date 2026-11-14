@@ -179,6 +179,11 @@ impl<E: Env> Session<'_, E> {
         };
         let mut document_seen = false;
         for e in &out.requests {
+            // WebSockets are not requests in Chrome's Network domain (they have their own
+            // `webSocket*` events, not served yet).
+            if e.dest == Dest::WebSocket {
+                continue;
+            }
             // The navigation's own request shares the loader's id (Puppeteer ties `goto`'s
             // response to it).
             let is_doc = navigated && !document_seen && e.dest == Dest::Document;
@@ -196,7 +201,8 @@ impl<E: Env> Session<'_, E> {
                 Dest::Image => "Image",
                 Dest::Fetch => "Fetch",
                 Dest::Xhr => "XHR",
-                Dest::Robots => "Other",
+                Dest::EventSource => "EventSource",
+                Dest::Robots | Dest::WebSocket => "Other",
             };
             self.target_event(
                 ti,

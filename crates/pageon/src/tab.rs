@@ -499,15 +499,28 @@ impl fmt::Display for Outcome {
                 n => format!("{n} page errors, first (page data) {}", q(&e.message)),
             });
         }
-        if !self.requests.is_empty() {
-            let blocked = self
-                .requests
+        // Frames a page sent over WebSockets are writes of their own: counted apart.
+        let (frames, requests): (Vec<_>, Vec<_>) =
+            self.requests.iter().partition(|r| r.method == "SEND");
+        if !requests.is_empty() {
+            let blocked = requests
                 .iter()
                 .filter(|r| !matches!(r.outcome, crate::RequestOutcome::Ok))
                 .count();
-            let mut r = format!("{} request(s)", self.requests.len());
+            let mut r = format!("{} request(s)", requests.len());
             if blocked > 0 {
                 r.push_str(&format!(" ({blocked} blocked or failed)"));
+            }
+            parts.push(r);
+        }
+        if !frames.is_empty() {
+            let refused = frames
+                .iter()
+                .filter(|r| !matches!(r.outcome, crate::RequestOutcome::Ok))
+                .count();
+            let mut r = format!("{} frame(s) sent", frames.len() - refused);
+            if refused > 0 {
+                r.push_str(&format!(" ({refused} refused)"));
             }
             parts.push(r);
         }
@@ -905,7 +918,32 @@ fn disabled(doc: &Document, id: NodeId) -> bool {
         })
 }
 
+impl<E: Env> Drop for Tab<'_, E> {
+    fn drop(&mut self) {
+        self.close_streams();
+    }
+}
+
 impl<'s, E: Env> Tab<'s, E> {
+    /// Closes the realtime connections of the page's documents (it is going away).
+    fn close_streams(&self) {
+        let env = self.session.env();
+        if let Some(page) = &self.doc.page {
+            for e in page.engines.borrow().values() {
+                if let Ok(mut e) = e.try_borrow_mut()
+                    && e.has_streams()
+                {
+                    e.close_streams(env);
+                }
+            }
+        } else if let Some(live) = &self.doc.live
+            && let Ok(mut e) = live.engine.try_borrow_mut()
+            && e.has_streams()
+        {
+            e.close_streams(env);
+        }
+    }
+
     pub(crate) fn open(
         session: &'s Session<E>,
         input: &str,
@@ -2259,6 +2297,7 @@ impl<'s, E: Env> Tab<'s, E> {
                 let mut doc = *doc;
                 doc.set_images(self.images.clone());
                 out.refusal.clone_from(&doc.refusal);
+                self.close_streams();
                 self.doc = doc;
                 out.navigated = Some(url);
                 out.same_document = false;

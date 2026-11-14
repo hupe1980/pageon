@@ -57,6 +57,13 @@ With origin sets, every request is classified where it leaves:
 | `write` | Any other method to a read-write origin | Sent, or asked if an approver is configured |
 | `outside` | Anything to an origin outside the sets, or a write to a read-only origin | Refused |
 
+Realtime connections follow the same classes. Opening a `WebSocket` or an `EventSource` is a
+read; every frame a page sends over a WebSocket is a write (`SEND`), so a read-only origin can
+stream to the page but refuses its frames, the guard and the approver see each frame, and a
+frame that carries a secret leaves only for the secret's origins. A refused frame closes the
+connection (code 1008, with the reason). Connections live in the broker, never in the content
+process.
+
 `https://*.example.com` admits subdomains, and an origin needs its scheme: `--origin
 shop.example` is an error that names the fix (`https://shop.example`). The refusal is reported in the action's outcome and
 the request log, and the page sees an ordinary network error.

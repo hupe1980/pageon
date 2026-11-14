@@ -752,7 +752,35 @@ impl Engine {
     /// task limit is reached: timers due now, then script requests in issue order (sent
     /// through the session's network state and `env`, outside any task, so network time never
     /// counts against a task's time limit), then the next timer.
+    ///
+    /// Realtime connections: queued opens, frames and closes are performed in order with the
+    /// requests; while connections are open, the messages that arrived are collected whenever
+    /// nothing is due now and run one task each. When the page sent a frame, it waits up to
+    /// [`REPLY_WAIT_MS`](crate::dom::realtime::REPLY_WAIT_MS) of real time for a first reply
+    /// (no time at all in a replay).
     pub fn settle(&mut self, window_ms: f64, env: &dyn pageon_env::Env) -> Settled {
+        let start = self.shared.borrow().now;
+        let mut s = self.run_loop(window_ms, env);
+        let reply = {
+            let mut sh = self.shared.borrow_mut();
+            std::mem::take(&mut sh.streams.sent) && !sh.streams.open.is_empty()
+        };
+        if reply && !self.exhausted() {
+            let n = self.stream_poll(env, crate::dom::realtime::REPLY_WAIT_MS);
+            if n > 0 {
+                let left = (start + window_ms - self.shared.borrow().now).max(0.0);
+                let more = self.run_loop(left, env);
+                s.tasks += n + more.tasks;
+                s.pending = more.pending;
+                s.pending_requests = more.pending_requests;
+            }
+            self.shared.borrow_mut().streams.sent = false;
+        }
+        s.virtual_ms = (self.shared.borrow().now - start).max(0.0) as u64;
+        s
+    }
+
+    fn run_loop(&mut self, window_ms: f64, env: &dyn pageon_env::Env) -> Settled {
         let start = self.shared.borrow().now;
         let deadline = start + window_ms;
         let mut tasks = 0;
@@ -776,11 +804,24 @@ impl Engine {
                     .is_some_and(|(k, _)| k.0 as f64 / 1000.0 <= sh.now)
             };
             if !due_now {
+                let op = self.shared.borrow_mut().streams.ops.pop_front();
+                if let Some(op) = op {
+                    tasks += 1;
+                    self.stream_op(op, env);
+                    continue;
+                }
                 let pending = self.shared.borrow_mut().requests.pop_front();
                 if let Some(p) = pending {
                     tasks += 1;
                     self.complete(p, env);
                     continue;
+                }
+                if !self.shared.borrow().streams.open.is_empty() {
+                    let n = self.stream_poll(env, 0);
+                    if n > 0 {
+                        tasks += n;
+                        continue;
+                    }
                 }
             }
             let next = {
@@ -829,6 +870,127 @@ impl Engine {
             pending_requests: sh.requests.len(),
             virtual_ms: (sh.now - start).max(0.0) as u64,
         }
+    }
+
+    /// Performs one queued realtime operation (outside tasks; the page's events in tasks).
+    fn stream_op(&mut self, op: crate::dom::realtime::Op, env: &dyn pageon_env::Env) {
+        use crate::dom::realtime::{self as rt, Op};
+        use pageon_env::StreamCall;
+        match op {
+            Op::Open { realm, obj } => {
+                let Some(call) = self.with_cx(realm, |cx| rt::handshake(cx, obj)).flatten() else {
+                    return;
+                };
+                let reply = env.stream(&call);
+                let (id, fired) =
+                    self.guarded(|e| e.with_cx(realm, |cx| rt::opened(cx, obj, reply)).flatten());
+                self.terminated(fired, "network task");
+                if let Some(id) = id {
+                    self.shared
+                        .borrow_mut()
+                        .streams
+                        .open
+                        .insert(id, (realm, obj));
+                }
+            }
+            Op::Send {
+                realm,
+                obj,
+                bytes,
+                text,
+            } => {
+                let len = bytes.len();
+                let Some(call) = self
+                    .with_cx(realm, |cx| rt::send_call(cx, obj, bytes, text))
+                    .flatten()
+                else {
+                    return;
+                };
+                let result = env.stream(&call);
+                let (close, fired) = self.guarded(|e| {
+                    e.with_cx(realm, |cx| rt::sent(cx, obj, len, result))
+                        .flatten()
+                });
+                self.terminated(fired, "network task");
+                if let Some((id, why)) = close {
+                    self.shared.borrow_mut().streams.open.remove(&id);
+                    let reason: String = why.chars().take(60).collect();
+                    let _ = env.stream(&StreamCall::Close {
+                        id,
+                        code: 1008,
+                        reason,
+                    });
+                }
+            }
+            Op::Close {
+                realm,
+                obj,
+                code,
+                reason,
+            } => {
+                let Some(id) = self.with_cx(realm, |cx| rt::conn(cx, obj)).flatten() else {
+                    return;
+                };
+                let _ = env.stream(&StreamCall::Close { id, code, reason });
+                // An event stream ends here; a WebSocket when the server's close arrives.
+                let sse = self.realm(realm).is_some_and(|r| {
+                    matches!(
+                        r.st.borrow().slot(obj),
+                        Some(crate::realm::Slot::EventSource(_))
+                    )
+                });
+                if sse {
+                    self.shared.borrow_mut().streams.open.remove(&id);
+                }
+            }
+        }
+    }
+
+    /// Runs the messages that arrived as tasks, in arrival order (a live environment waits
+    /// up to `wait_ms` of real time for the first); the number of tasks run.
+    fn stream_poll(&mut self, env: &dyn pageon_env::Env, wait_ms: u64) -> usize {
+        use pageon_env::{StreamCall, StreamEvent, StreamReply};
+        let now = self.shared.borrow().now as u64;
+        let Ok(StreamReply::Events(events)) = env.stream(&StreamCall::Poll { now, wait_ms }) else {
+            return 0;
+        };
+        let mut n = 0;
+        for (id, ev) in events {
+            let entry = self.shared.borrow().streams.open.get(&id).copied();
+            let Some((realm, obj)) = entry else { continue };
+            if matches!(ev, StreamEvent::Closed { .. }) {
+                self.shared.borrow_mut().streams.open.remove(&id);
+            }
+            n += 1;
+            let (_, fired) = self.guarded(|e| {
+                e.with_cx(realm, |cx| crate::dom::realtime::deliver(cx, obj, ev));
+            });
+            self.terminated(fired, "message");
+            self.shared.borrow_mut().tag_errors(realm);
+        }
+        n
+    }
+
+    /// Closes every realtime connection of the page (its documents are going away).
+    pub fn close_streams(&mut self, env: &dyn pageon_env::Env) {
+        let ids: Vec<u64> = {
+            let mut sh = self.shared.borrow_mut();
+            sh.streams.ops.clear();
+            sh.streams.open.drain().map(|(id, _)| id).collect()
+        };
+        for id in ids {
+            let _ = env.stream(&pageon_env::StreamCall::Close {
+                id,
+                code: 1001,
+                reason: String::new(),
+            });
+        }
+    }
+
+    /// Whether the page holds realtime connections (or is about to open one).
+    pub fn has_streams(&self) -> bool {
+        let sh = self.shared.borrow();
+        !sh.streams.open.is_empty() || !sh.streams.ops.is_empty()
     }
 
     /// Sends one script request and runs its completion as a task.
@@ -1116,9 +1278,20 @@ impl Engine {
     }
 
     /// Lets `ms` of virtual time pass, running what falls due.
+    ///
+    /// While the page holds realtime connections, real time passes too: up to `ms`, until a
+    /// first message arrives (none in a replay, where messages come at their recorded times).
     pub fn wait(&mut self, ms: u64, env: &dyn pageon_env::Env) -> Settled {
         let target = self.shared.borrow().now + ms as f64;
-        let s = self.settle(ms as f64, env);
+        let mut s = self.settle(ms as f64, env);
+        if !self.shared.borrow().streams.open.is_empty() && !self.exhausted() {
+            let n = self.stream_poll(env, ms);
+            if n > 0 {
+                let left = (target - self.shared.borrow().now).max(0.0);
+                let more = self.settle(left, env);
+                s.tasks += n + more.tasks;
+            }
+        }
         let mut sh = self.shared.borrow_mut();
         sh.now = sh.now.max(target);
         s

@@ -26,6 +26,10 @@ pub struct Live {
     identity: Option<Identity>,
     #[cfg(feature = "chrome")]
     chrome: Option<crate::chrome_client::Chrome>,
+    /// Realtime connections (WebSocket, event streams), one thread each.
+    streams: std::cell::RefCell<crate::realtime::Streams>,
+    /// Requests go through a proxy (realtime connections do not, yet: refused).
+    proxied: bool,
 }
 
 /// Resolves names and keeps only public addresses.
@@ -90,6 +94,8 @@ impl Live {
             identity: None,
             #[cfg(feature = "chrome")]
             chrome: None,
+            streams: std::cell::RefCell::default(),
+            proxied: false,
         }
     }
 
@@ -166,6 +172,7 @@ impl Live {
             reqwest::Proxy::all(url).map_err(|e| NetError::Network(format!("proxy {url}: {e}")))?;
         self.public = client(Some(&p), true);
         self.open = client(Some(&p), false);
+        self.proxied = true;
         #[cfg(feature = "chrome")]
         if self.chrome.is_some() {
             self.chrome = Some(crate::chrome_client::Chrome::new(Some(url))?);
@@ -275,6 +282,21 @@ impl Env for Live {
             .unwrap_or(Err(NetError::Timeout(limits.timeout)))
     }
 
+    fn stream(&self, call: &crate::StreamCall) -> Result<crate::StreamReply, NetError> {
+        let mut call = call.clone();
+        if let crate::StreamCall::Open { req, .. } = &mut call {
+            if self.proxied {
+                return Err(NetError::Blocked(
+                    "realtime connections do not go through --proxy yet".into(),
+                ));
+            }
+            if let Some(sig) = self.signature(&req.url.replacen("wss://", "https://", 1)) {
+                req.headers.extend(sig);
+            }
+        }
+        self.streams.borrow_mut().call(&call, &event_stream)
+    }
+
     fn now_ms(&self) -> Result<u64, NetError> {
         Ok(SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -338,4 +360,92 @@ fn percent_decode(s: &str) -> String {
         i += 1;
     }
     String::from_utf8_lossy(&out).into_owned()
+}
+
+/// Opens an event stream: the response head now, then body chunks from a thread with its own
+/// runtime until the body ends or the receiver is gone.
+fn event_stream(
+    req: &Request,
+    events: std::sync::mpsc::Sender<crate::StreamEvent>,
+) -> Result<(u16, Vec<(String, String)>), NetError> {
+    use crate::StreamEvent;
+    if !req.allow_private
+        && let Some(host) = crate::private_host_of(&req.url)
+    {
+        return Err(NetError::Blocked(format!(
+            "{host} is on the private network"
+        )));
+    }
+    let (head_tx, head_rx) = std::sync::mpsc::channel();
+    let req = req.clone();
+    std::thread::spawn(move || {
+        let Ok(rt) = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+        else {
+            let _ = head_tx.send(Err(NetError::Network("no runtime".into())));
+            return;
+        };
+        rt.block_on(async move {
+            let c = client(None, !req.allow_private);
+            let mut rb = c.get(&req.url);
+            for (k, v) in &req.headers {
+                rb = rb.header(k, v);
+            }
+            let limits = Limits::default();
+            let resp = match tokio::time::timeout(crate::HANDSHAKE, rb.send()).await {
+                Ok(Ok(r)) => r,
+                Ok(Err(e)) => {
+                    let _ = head_tx.send(Err(classify(&e, limits)));
+                    return;
+                }
+                Err(_) => {
+                    let _ = head_tx.send(Err(NetError::Timeout(crate::HANDSHAKE)));
+                    return;
+                }
+            };
+            let headers = resp
+                .headers()
+                .iter()
+                .map(|(k, v)| {
+                    (
+                        k.as_str().to_ascii_lowercase(),
+                        String::from_utf8_lossy(v.as_bytes()).into_owned(),
+                    )
+                })
+                .collect();
+            if head_tx.send(Ok((resp.status().as_u16(), headers))).is_err() {
+                return;
+            }
+            let mut body = resp.bytes_stream();
+            let mut total = 0usize;
+            while let Some(chunk) = body.next().await {
+                let event = match chunk {
+                    Ok(b) => {
+                        total += b.len();
+                        StreamEvent::Binary(b.to_vec())
+                    }
+                    Err(_) => StreamEvent::Closed {
+                        code: 1006,
+                        reason: String::new(),
+                        clean: false,
+                    },
+                };
+                let end = matches!(event, StreamEvent::Closed { .. });
+                if events.send(event).is_err() || end {
+                    return;
+                }
+                // Event streams are long-lived; what a page buffers is bounded by the engine.
+                let _ = total;
+            }
+            let _ = events.send(StreamEvent::Closed {
+                code: 1000,
+                reason: String::new(),
+                clean: true,
+            });
+        });
+    });
+    head_rx
+        .recv_timeout(crate::HANDSHAKE)
+        .map_err(|_| NetError::Timeout(crate::HANDSHAKE))?
 }

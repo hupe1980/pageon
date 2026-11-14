@@ -97,6 +97,10 @@ impl<E: Env> Env for Files<E> {
         self.inner.fetch(req)
     }
 
+    fn stream(&self, call: &pageon_env::StreamCall) -> Result<pageon_env::StreamReply, NetError> {
+        self.inner.stream(call)
+    }
+
     fn now_ms(&self) -> Result<u64, NetError> {
         self.inner.now_ms()
     }

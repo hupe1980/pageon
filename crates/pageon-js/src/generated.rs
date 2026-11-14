@@ -130,6 +130,8 @@ pub enum Iface {
     ValidityState,
     /// `VisualViewport`.
     VisualViewport,
+    /// `WebSocket`.
+    WebSocket,
     /// `Window`.
     Window,
     /// `XMLHttpRequestEventTarget`.
@@ -146,6 +148,8 @@ pub enum Iface {
     CSSStyleSheet,
     /// `CharacterData`.
     CharacterData,
+    /// `CloseEvent`.
+    CloseEvent,
     /// `Comment`.
     Comment,
     /// `CustomEvent`.
@@ -160,6 +164,8 @@ pub enum Iface {
     DocumentType,
     /// `Element`.
     Element,
+    /// `EventSource`.
+    EventSource,
     /// `FocusEvent`.
     FocusEvent,
     /// `HTMLElement`.
@@ -328,7 +334,7 @@ pub enum Iface {
 
 impl Iface {
     /// All interfaces.
-    pub const ALL: &'static [Iface] = &[Iface::AbortController, Iface::Blob, Iface::CSSStyleDeclaration, Iface::CSSStyleProperties, Iface::CanvasRenderingContext2D, Iface::Crypto, Iface::CustomElementRegistry, Iface::CustomStateSet, Iface::DOMException, Iface::DOMImplementation, Iface::DOMRectList, Iface::DOMRectReadOnly, Iface::DOMStringMap, Iface::DOMTokenList, Iface::ElementInternals, Iface::Event, Iface::EventTarget, Iface::File, Iface::FileList, Iface::FileReader, Iface::FormData, Iface::HTMLCollection, Iface::HTMLFormControlsCollection, Iface::HTMLOptionsCollection, Iface::Headers, Iface::History, Iface::IdleDeadline, Iface::IntersectionObserver, Iface::IntersectionObserverEntry, Iface::Location, Iface::MediaQueryList, Iface::MediaQueryListEvent, Iface::MessageEvent, Iface::ModelContext, Iface::MutationObserver, Iface::MutationRecord, Iface::NamedNodeMap, Iface::Navigator, Iface::NavigatorUAData, Iface::Node, Iface::NodeFilter, Iface::NodeList, Iface::Performance, Iface::PopStateEvent, Iface::ProgressEvent, Iface::Request, Iface::ResizeObserver, Iface::ResizeObserverEntry, Iface::ResizeObserverSize, Iface::Response, Iface::Storage, Iface::StyleSheet, Iface::TextDecoder, Iface::TextEncoder, Iface::TreeWalker, Iface::UIEvent, Iface::URL, Iface::URLSearchParams, Iface::ValidityState, Iface::VisualViewport, Iface::Window, Iface::XMLHttpRequestEventTarget, Iface::XMLSerializer, Iface::console, Iface::AbortSignal, Iface::Attr, Iface::CSSStyleSheet, Iface::CharacterData, Iface::Comment, Iface::CustomEvent, Iface::DOMRect, Iface::Document, Iface::DocumentFragment, Iface::DocumentType, Iface::Element, Iface::FocusEvent, Iface::HTMLElement, Iface::HTMLEmbedElement, Iface::HTMLFieldSetElement, Iface::HTMLFontElement, Iface::HTMLFormElement, Iface::HTMLFrameElement, Iface::HTMLFrameSetElement, Iface::HTMLHRElement, Iface::HTMLHeadElement, Iface::HTMLHeadingElement, Iface::HTMLHtmlElement, Iface::HTMLIFrameElement, Iface::HTMLImageElement, Iface::HTMLInputElement, Iface::HTMLLIElement, Iface::HTMLLabelElement, Iface::HTMLLegendElement, Iface::HTMLLinkElement, Iface::HTMLMapElement, Iface::HTMLMarqueeElement, Iface::HTMLMediaElement, Iface::HTMLMenuElement, Iface::HTMLMetaElement, Iface::HTMLMeterElement, Iface::HTMLModElement, Iface::HTMLOListElement, Iface::HTMLObjectElement, Iface::HTMLOptGroupElement, Iface::HTMLOptionElement, Iface::HTMLOutputElement, Iface::HTMLParagraphElement, Iface::HTMLParamElement, Iface::HTMLPictureElement, Iface::HTMLPreElement, Iface::HTMLProgressElement, Iface::HTMLQuoteElement, Iface::HTMLScriptElement, Iface::HTMLSelectElement, Iface::HTMLSelectedContentElement, Iface::HTMLSlotElement, Iface::HTMLSourceElement, Iface::HTMLSpanElement, Iface::HTMLStyleElement, Iface::HTMLTableCaptionElement, Iface::HTMLTableCellElement, Iface::HTMLTableColElement, Iface::HTMLTableElement, Iface::HTMLTableRowElement, Iface::HTMLTableSectionElement, Iface::HTMLTemplateElement, Iface::HTMLTextAreaElement, Iface::HTMLTimeElement, Iface::HTMLTitleElement, Iface::HTMLTrackElement, Iface::HTMLUListElement, Iface::HTMLUnknownElement, Iface::HTMLVideoElement, Iface::KeyboardEvent, Iface::MouseEvent, Iface::PointerEvent, Iface::SVGElement, Iface::SVGGraphicsElement, Iface::ShadowRoot, Iface::Text, Iface::WheelEvent, Iface::XMLHttpRequest, Iface::HTMLAnchorElement, Iface::HTMLAreaElement, Iface::HTMLAudioElement, Iface::HTMLBRElement, Iface::HTMLBaseElement, Iface::HTMLBodyElement, Iface::HTMLButtonElement, Iface::HTMLCanvasElement, Iface::HTMLDListElement, Iface::HTMLDataElement, Iface::HTMLDataListElement, Iface::HTMLDetailsElement, Iface::HTMLDialogElement, Iface::HTMLDirectoryElement, Iface::HTMLDivElement];
+    pub const ALL: &'static [Iface] = &[Iface::AbortController, Iface::Blob, Iface::CSSStyleDeclaration, Iface::CSSStyleProperties, Iface::CanvasRenderingContext2D, Iface::Crypto, Iface::CustomElementRegistry, Iface::CustomStateSet, Iface::DOMException, Iface::DOMImplementation, Iface::DOMRectList, Iface::DOMRectReadOnly, Iface::DOMStringMap, Iface::DOMTokenList, Iface::ElementInternals, Iface::Event, Iface::EventTarget, Iface::File, Iface::FileList, Iface::FileReader, Iface::FormData, Iface::HTMLCollection, Iface::HTMLFormControlsCollection, Iface::HTMLOptionsCollection, Iface::Headers, Iface::History, Iface::IdleDeadline, Iface::IntersectionObserver, Iface::IntersectionObserverEntry, Iface::Location, Iface::MediaQueryList, Iface::MediaQueryListEvent, Iface::MessageEvent, Iface::ModelContext, Iface::MutationObserver, Iface::MutationRecord, Iface::NamedNodeMap, Iface::Navigator, Iface::NavigatorUAData, Iface::Node, Iface::NodeFilter, Iface::NodeList, Iface::Performance, Iface::PopStateEvent, Iface::ProgressEvent, Iface::Request, Iface::ResizeObserver, Iface::ResizeObserverEntry, Iface::ResizeObserverSize, Iface::Response, Iface::Storage, Iface::StyleSheet, Iface::TextDecoder, Iface::TextEncoder, Iface::TreeWalker, Iface::UIEvent, Iface::URL, Iface::URLSearchParams, Iface::ValidityState, Iface::VisualViewport, Iface::WebSocket, Iface::Window, Iface::XMLHttpRequestEventTarget, Iface::XMLSerializer, Iface::console, Iface::AbortSignal, Iface::Attr, Iface::CSSStyleSheet, Iface::CharacterData, Iface::CloseEvent, Iface::Comment, Iface::CustomEvent, Iface::DOMRect, Iface::Document, Iface::DocumentFragment, Iface::DocumentType, Iface::Element, Iface::EventSource, Iface::FocusEvent, Iface::HTMLElement, Iface::HTMLEmbedElement, Iface::HTMLFieldSetElement, Iface::HTMLFontElement, Iface::HTMLFormElement, Iface::HTMLFrameElement, Iface::HTMLFrameSetElement, Iface::HTMLHRElement, Iface::HTMLHeadElement, Iface::HTMLHeadingElement, Iface::HTMLHtmlElement, Iface::HTMLIFrameElement, Iface::HTMLImageElement, Iface::HTMLInputElement, Iface::HTMLLIElement, Iface::HTMLLabelElement, Iface::HTMLLegendElement, Iface::HTMLLinkElement, Iface::HTMLMapElement, Iface::HTMLMarqueeElement, Iface::HTMLMediaElement, Iface::HTMLMenuElement, Iface::HTMLMetaElement, Iface::HTMLMeterElement, Iface::HTMLModElement, Iface::HTMLOListElement, Iface::HTMLObjectElement, Iface::HTMLOptGroupElement, Iface::HTMLOptionElement, Iface::HTMLOutputElement, Iface::HTMLParagraphElement, Iface::HTMLParamElement, Iface::HTMLPictureElement, Iface::HTMLPreElement, Iface::HTMLProgressElement, Iface::HTMLQuoteElement, Iface::HTMLScriptElement, Iface::HTMLSelectElement, Iface::HTMLSelectedContentElement, Iface::HTMLSlotElement, Iface::HTMLSourceElement, Iface::HTMLSpanElement, Iface::HTMLStyleElement, Iface::HTMLTableCaptionElement, Iface::HTMLTableCellElement, Iface::HTMLTableColElement, Iface::HTMLTableElement, Iface::HTMLTableRowElement, Iface::HTMLTableSectionElement, Iface::HTMLTemplateElement, Iface::HTMLTextAreaElement, Iface::HTMLTimeElement, Iface::HTMLTitleElement, Iface::HTMLTrackElement, Iface::HTMLUListElement, Iface::HTMLUnknownElement, Iface::HTMLVideoElement, Iface::KeyboardEvent, Iface::MouseEvent, Iface::PointerEvent, Iface::SVGElement, Iface::SVGGraphicsElement, Iface::ShadowRoot, Iface::Text, Iface::WheelEvent, Iface::XMLHttpRequest, Iface::HTMLAnchorElement, Iface::HTMLAreaElement, Iface::HTMLAudioElement, Iface::HTMLBRElement, Iface::HTMLBaseElement, Iface::HTMLBodyElement, Iface::HTMLButtonElement, Iface::HTMLCanvasElement, Iface::HTMLDListElement, Iface::HTMLDataElement, Iface::HTMLDataListElement, Iface::HTMLDetailsElement, Iface::HTMLDialogElement, Iface::HTMLDirectoryElement, Iface::HTMLDivElement];
 
     /// The interface name.
     pub fn name(self) -> &'static str {
@@ -393,6 +399,7 @@ impl Iface {
             Iface::URLSearchParams => "URLSearchParams",
             Iface::ValidityState => "ValidityState",
             Iface::VisualViewport => "VisualViewport",
+            Iface::WebSocket => "WebSocket",
             Iface::Window => "Window",
             Iface::XMLHttpRequestEventTarget => "XMLHttpRequestEventTarget",
             Iface::XMLSerializer => "XMLSerializer",
@@ -401,6 +408,7 @@ impl Iface {
             Iface::Attr => "Attr",
             Iface::CSSStyleSheet => "CSSStyleSheet",
             Iface::CharacterData => "CharacterData",
+            Iface::CloseEvent => "CloseEvent",
             Iface::Comment => "Comment",
             Iface::CustomEvent => "CustomEvent",
             Iface::DOMRect => "DOMRect",
@@ -408,6 +416,7 @@ impl Iface {
             Iface::DocumentFragment => "DocumentFragment",
             Iface::DocumentType => "DocumentType",
             Iface::Element => "Element",
+            Iface::EventSource => "EventSource",
             Iface::FocusEvent => "FocusEvent",
             Iface::HTMLElement => "HTMLElement",
             Iface::HTMLEmbedElement => "HTMLEmbedElement",
@@ -556,6 +565,7 @@ impl Iface {
             Iface::URLSearchParams => None,
             Iface::ValidityState => None,
             Iface::VisualViewport => Some(Iface::EventTarget),
+            Iface::WebSocket => Some(Iface::EventTarget),
             Iface::Window => Some(Iface::EventTarget),
             Iface::XMLHttpRequestEventTarget => Some(Iface::EventTarget),
             Iface::XMLSerializer => None,
@@ -564,6 +574,7 @@ impl Iface {
             Iface::Attr => Some(Iface::Node),
             Iface::CSSStyleSheet => Some(Iface::StyleSheet),
             Iface::CharacterData => Some(Iface::Node),
+            Iface::CloseEvent => Some(Iface::Event),
             Iface::Comment => Some(Iface::CharacterData),
             Iface::CustomEvent => Some(Iface::Event),
             Iface::DOMRect => Some(Iface::DOMRectReadOnly),
@@ -571,6 +582,7 @@ impl Iface {
             Iface::DocumentFragment => Some(Iface::Node),
             Iface::DocumentType => Some(Iface::Node),
             Iface::Element => Some(Iface::Node),
+            Iface::EventSource => Some(Iface::EventTarget),
             Iface::FocusEvent => Some(Iface::UIEvent),
             Iface::HTMLElement => Some(Iface::Element),
             Iface::HTMLEmbedElement => Some(Iface::HTMLElement),
@@ -6132,6 +6144,181 @@ fn set__VisualViewport__onscrollend(scope: &mut v8::PinScope, args: v8::Function
 }
 
 #[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__WebSocket__url(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WebSocket)?;
+        let r: String = crate::dom::web_socket::get_url(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__WebSocket__readyState(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WebSocket)?;
+        let r: u16 = crate::dom::web_socket::get_ready_state(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__WebSocket__bufferedAmount(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WebSocket)?;
+        let r: u64 = crate::dom::web_socket::get_buffered_amount(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__WebSocket__onopen(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WebSocket)?;
+        let r = cv::handler_get(cx, this, "open")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__WebSocket__onopen(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WebSocket)?;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "open", v)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__WebSocket__onerror(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WebSocket)?;
+        let r = cv::handler_get(cx, this, "error")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__WebSocket__onerror(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WebSocket)?;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "error", v)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__WebSocket__onclose(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WebSocket)?;
+        let r = cv::handler_get(cx, this, "close")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__WebSocket__onclose(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WebSocket)?;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "close", v)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__WebSocket__extensions(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WebSocket)?;
+        let r: String = crate::dom::web_socket::get_extensions(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__WebSocket__protocol(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WebSocket)?;
+        let r: String = crate::dom::web_socket::get_protocol(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__WebSocket__close(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WebSocket)?;
+        let a0: Option<u16> = { let v = args.get(0); if v.is_undefined() { None } else { Some(cv::int::<u16>(cx, v)?) } };
+        let a1: Option<String> = { let v = args.get(1); if v.is_undefined() { None } else { Some(cv::string(cx, v)?) } };
+        let r: () = crate::dom::web_socket::close(cx, this, a0, a1)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__WebSocket__onmessage(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WebSocket)?;
+        let r = cv::handler_get(cx, this, "message")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__WebSocket__onmessage(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WebSocket)?;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "message", v)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__WebSocket__binaryType(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WebSocket)?;
+        let r: String = crate::dom::web_socket::get_binary_type(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__WebSocket__binaryType(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WebSocket)?;
+        let v = args.get(0);
+        let a0: String = cv::string(cx, v)?;
+        crate::dom::web_socket::set_binary_type(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__WebSocket__send(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WebSocket)?;
+        if args.length() <= 0 { return Err(cv::Error::args("WebSocket.send", 0)); }
+        let a0: Value = { let v = args.get(0); cv::value(cx, v) };
+        let r: () = crate::dom::web_socket::send(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn ctor__WebSocket(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        if args.new_target().is_undefined() { return Err(cv::Error::Type("Failed to construct 'WebSocket': Please use the 'new' operator.".into())); }
+        if args.length() <= 0 { return Err(cv::Error::args("WebSocket constructor", 0)); }
+        let a0: String = { let v = args.get(0); cv::string(cx, v)? };
+        let a1: Value = { let v = args.get(1); if v.is_undefined() { cv::empty_array(cx) } else { cv::value(cx, v) } };
+        let r: Obj = crate::dom::web_socket::constructor(cx, a0, a1)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
 fn get__Window__window(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = Obj::Window;
@@ -9322,6 +9509,45 @@ fn op__CharacterData__remove(scope: &mut v8::PinScope, args: v8::FunctionCallbac
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::CharacterData)?;
         let r: () = crate::dom::child_node::remove(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__CloseEvent__wasClean(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::CloseEvent)?;
+        let r: bool = crate::dom::close_event::get_was_clean(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__CloseEvent__code(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::CloseEvent)?;
+        let r: u16 = crate::dom::close_event::get_code(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__CloseEvent__reason(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::CloseEvent)?;
+        let r: String = crate::dom::close_event::get_reason(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn ctor__CloseEvent(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        if args.new_target().is_undefined() { return Err(cv::Error::Type("Failed to construct 'CloseEvent': Please use the 'new' operator.".into())); }
+        if args.length() <= 0 { return Err(cv::Error::args("CloseEvent constructor", 0)); }
+        let a0: String = { let v = args.get(0); cv::string(cx, v)? };
+        let a1: CloseEventInit = { let v = args.get(1); if v.is_undefined() { CloseEventInit::default() } else { dict_close_event_init(cx, v)? } };
+        let r: Obj = crate::dom::close_event::constructor(cx, a0, a1)?;
         cx.ret(r)
     });
 }
@@ -13427,6 +13653,111 @@ fn set__Element__ariaValueText(scope: &mut v8::PinScope, args: v8::FunctionCallb
         let this = cx.this(args, Iface::Element)?;
         cv::reflect_set(cx, this, "aria-valuetext", args.get(0), cv::Reflect::NullableStr)?;
         cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__EventSource__url(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::EventSource)?;
+        let r: String = crate::dom::event_source::get_url(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__EventSource__withCredentials(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::EventSource)?;
+        let r: bool = crate::dom::event_source::get_with_credentials(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__EventSource__readyState(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::EventSource)?;
+        let r: u16 = crate::dom::event_source::get_ready_state(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__EventSource__onopen(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::EventSource)?;
+        let r = cv::handler_get(cx, this, "open")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__EventSource__onopen(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::EventSource)?;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "open", v)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__EventSource__onmessage(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::EventSource)?;
+        let r = cv::handler_get(cx, this, "message")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__EventSource__onmessage(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::EventSource)?;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "message", v)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__EventSource__onerror(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::EventSource)?;
+        let r = cv::handler_get(cx, this, "error")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__EventSource__onerror(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::EventSource)?;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "error", v)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__EventSource__close(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::EventSource)?;
+        let r: () = crate::dom::event_source::close(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn ctor__EventSource(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        if args.new_target().is_undefined() { return Err(cv::Error::Type("Failed to construct 'EventSource': Please use the 'new' operator.".into())); }
+        if args.length() <= 0 { return Err(cv::Error::args("EventSource constructor", 0)); }
+        let a0: String = { let v = args.get(0); cv::string(cx, v)? };
+        let a1: EventSourceInit = { let v = args.get(1); if v.is_undefined() { EventSourceInit::default() } else { dict_event_source_init(cx, v)? } };
+        let r: Obj = crate::dom::event_source::constructor(cx, a0, a1)?;
+        cx.ret(r)
     });
 }
 
@@ -25278,6 +25609,51 @@ fn dict_check_visibility_options(cx: &mut Cx<'_, '_, '_>, v: v8::Local<'_, v8::V
     Ok(d)
 }
 
+/// The `CloseEventInit` dictionary.
+#[derive(Debug, Clone)]
+#[allow(missing_docs)]
+pub struct CloseEventInit {
+    /// `bubbles`.
+    pub bubbles: bool,
+    /// `cancelable`.
+    pub cancelable: bool,
+    /// `code`.
+    pub code: u16,
+    /// `composed`.
+    pub composed: bool,
+    /// `reason`.
+    pub reason: String,
+    /// `wasClean`.
+    pub was_clean: bool,
+}
+
+impl Default for CloseEventInit {
+    fn default() -> Self {
+        Self {
+            bubbles: false,
+            cancelable: false,
+            code: 0,
+            composed: false,
+            reason: "".to_string(),
+            was_clean: false,
+        }
+    }
+}
+
+#[allow(unused_variables, unused_mut, clippy::all)]
+fn dict_close_event_init(cx: &mut Cx<'_, '_, '_>, v: v8::Local<'_, v8::Value>) -> R<CloseEventInit> {
+    let mut d = CloseEventInit::default();
+    if v.is_null_or_undefined() { return Ok(d); }
+    let obj = cv::object(cx, v, "CloseEventInit")?;
+    { let v = cv::get(cx, obj, "bubbles")?; if !v.is_undefined() { d.bubbles = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "cancelable")?; if !v.is_undefined() { d.cancelable = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "code")?; if !v.is_undefined() { d.code = cv::int::<u16>(cx, v)?; } }
+    { let v = cv::get(cx, obj, "composed")?; if !v.is_undefined() { d.composed = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "reason")?; if !v.is_undefined() { d.reason = cv::string(cx, v)?; } }
+    { let v = cv::get(cx, obj, "wasClean")?; if !v.is_undefined() { d.was_clean = cv::boolean(cx, v); } }
+    Ok(d)
+}
+
 /// The `CustomEventInit` dictionary.
 #[derive(Debug, Clone)]
 #[allow(missing_docs)]
@@ -25395,6 +25771,31 @@ fn dict_event_listener_options(cx: &mut Cx<'_, '_, '_>, v: v8::Local<'_, v8::Val
     if v.is_null_or_undefined() { return Ok(d); }
     let obj = cv::object(cx, v, "EventListenerOptions")?;
     { let v = cv::get(cx, obj, "capture")?; if !v.is_undefined() { d.capture = cv::boolean(cx, v); } }
+    Ok(d)
+}
+
+/// The `EventSourceInit` dictionary.
+#[derive(Debug, Clone)]
+#[allow(missing_docs)]
+pub struct EventSourceInit {
+    /// `withCredentials`.
+    pub with_credentials: bool,
+}
+
+impl Default for EventSourceInit {
+    fn default() -> Self {
+        Self {
+            with_credentials: false,
+        }
+    }
+}
+
+#[allow(unused_variables, unused_mut, clippy::all)]
+fn dict_event_source_init(cx: &mut Cx<'_, '_, '_>, v: v8::Local<'_, v8::Value>) -> R<EventSourceInit> {
+    let mut d = EventSourceInit::default();
+    if v.is_null_or_undefined() { return Ok(d); }
+    let obj = cv::object(cx, v, "EventSourceInit")?;
+    { let v = cv::get(cx, obj, "withCredentials")?; if !v.is_undefined() { d.with_credentials = cv::boolean(cx, v); } }
     Ok(d)
 }
 
@@ -28025,6 +28426,31 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         crate::dom::hooks::template(scope, Iface::VisualViewport, f);
         out.push(v8::Global::new(scope, f));
     }
+    { // WebSocket
+        let f = cv::interface(scope, "WebSocket", ctor__WebSocket);
+        f.inherit(v8::Local::new(scope, &out[Iface::EventTarget as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "url", get__WebSocket__url, None);
+        cv::constant(scope, f, proto, "CONNECTING", 0 as f64);
+        cv::constant(scope, f, proto, "OPEN", 1 as f64);
+        cv::constant(scope, f, proto, "CLOSING", 2 as f64);
+        cv::constant(scope, f, proto, "CLOSED", 3 as f64);
+        cv::accessor(scope, proto, "readyState", get__WebSocket__readyState, None);
+        cv::accessor(scope, proto, "bufferedAmount", get__WebSocket__bufferedAmount, None);
+        cv::accessor(scope, proto, "onopen", get__WebSocket__onopen, Some(set__WebSocket__onopen.map_fn_to()));
+        cv::accessor(scope, proto, "onerror", get__WebSocket__onerror, Some(set__WebSocket__onerror.map_fn_to()));
+        cv::accessor(scope, proto, "onclose", get__WebSocket__onclose, Some(set__WebSocket__onclose.map_fn_to()));
+        cv::accessor(scope, proto, "extensions", get__WebSocket__extensions, None);
+        cv::accessor(scope, proto, "protocol", get__WebSocket__protocol, None);
+        cv::method(scope, proto.into(), "close", op__WebSocket__close, 0);
+        cv::accessor(scope, proto, "onmessage", get__WebSocket__onmessage, Some(set__WebSocket__onmessage.map_fn_to()));
+        cv::accessor(scope, proto, "binaryType", get__WebSocket__binaryType, Some(set__WebSocket__binaryType.map_fn_to()));
+        cv::method(scope, proto.into(), "send", op__WebSocket__send, 1);
+        crate::dom::hooks::template(scope, Iface::WebSocket, f);
+        out.push(v8::Global::new(scope, f));
+    }
     { // Window
         let f = cv::interface(scope, "Window", cv::illegal_constructor);
         f.inherit(v8::Local::new(scope, &out[Iface::EventTarget as usize]));
@@ -28300,6 +28726,18 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::method(scope, proto.into(), "replaceWith", op__CharacterData__replaceWith, 0);
         cv::method(scope, proto.into(), "remove", op__CharacterData__remove, 0);
         crate::dom::hooks::template(scope, Iface::CharacterData, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // CloseEvent
+        let f = cv::interface(scope, "CloseEvent", ctor__CloseEvent);
+        f.inherit(v8::Local::new(scope, &out[Iface::Event as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "wasClean", get__CloseEvent__wasClean, None);
+        cv::accessor(scope, proto, "code", get__CloseEvent__code, None);
+        cv::accessor(scope, proto, "reason", get__CloseEvent__reason, None);
+        crate::dom::hooks::template(scope, Iface::CloseEvent, f);
         out.push(v8::Global::new(scope, f));
     }
     { // Comment
@@ -28635,6 +29073,25 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::accessor(scope, proto, "ariaValueNow", get__Element__ariaValueNow, Some(set__Element__ariaValueNow.map_fn_to()));
         cv::accessor(scope, proto, "ariaValueText", get__Element__ariaValueText, Some(set__Element__ariaValueText.map_fn_to()));
         crate::dom::hooks::template(scope, Iface::Element, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // EventSource
+        let f = cv::interface(scope, "EventSource", ctor__EventSource);
+        f.inherit(v8::Local::new(scope, &out[Iface::EventTarget as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "url", get__EventSource__url, None);
+        cv::accessor(scope, proto, "withCredentials", get__EventSource__withCredentials, None);
+        cv::constant(scope, f, proto, "CONNECTING", 0 as f64);
+        cv::constant(scope, f, proto, "OPEN", 1 as f64);
+        cv::constant(scope, f, proto, "CLOSED", 2 as f64);
+        cv::accessor(scope, proto, "readyState", get__EventSource__readyState, None);
+        cv::accessor(scope, proto, "onopen", get__EventSource__onopen, Some(set__EventSource__onopen.map_fn_to()));
+        cv::accessor(scope, proto, "onmessage", get__EventSource__onmessage, Some(set__EventSource__onmessage.map_fn_to()));
+        cv::accessor(scope, proto, "onerror", get__EventSource__onerror, Some(set__EventSource__onerror.map_fn_to()));
+        cv::method(scope, proto.into(), "close", op__EventSource__close, 0);
+        crate::dom::hooks::template(scope, Iface::EventSource, f);
         out.push(v8::Global::new(scope, f));
     }
     { // FocusEvent
@@ -30161,6 +30618,7 @@ pub fn expose(scope: &mut v8::PinScope<'_, '_>, global: v8::Local<'_, v8::Object
     cv::expose(scope, global, &t[Iface::URLSearchParams as usize], "URLSearchParams");
     cv::expose(scope, global, &t[Iface::ValidityState as usize], "ValidityState");
     cv::expose(scope, global, &t[Iface::VisualViewport as usize], "VisualViewport");
+    cv::expose(scope, global, &t[Iface::WebSocket as usize], "WebSocket");
     cv::expose(scope, global, &t[Iface::XMLHttpRequestEventTarget as usize], "XMLHttpRequestEventTarget");
     cv::expose(scope, global, &t[Iface::XMLSerializer as usize], "XMLSerializer");
     cv::expose_namespace(scope, global, &t[Iface::console as usize], "console");
@@ -30168,6 +30626,7 @@ pub fn expose(scope: &mut v8::PinScope<'_, '_>, global: v8::Local<'_, v8::Object
     cv::expose(scope, global, &t[Iface::Attr as usize], "Attr");
     cv::expose(scope, global, &t[Iface::CSSStyleSheet as usize], "CSSStyleSheet");
     cv::expose(scope, global, &t[Iface::CharacterData as usize], "CharacterData");
+    cv::expose(scope, global, &t[Iface::CloseEvent as usize], "CloseEvent");
     cv::expose(scope, global, &t[Iface::Comment as usize], "Comment");
     cv::expose(scope, global, &t[Iface::CustomEvent as usize], "CustomEvent");
     cv::expose(scope, global, &t[Iface::DOMRect as usize], "DOMRect");
@@ -30175,6 +30634,7 @@ pub fn expose(scope: &mut v8::PinScope<'_, '_>, global: v8::Local<'_, v8::Object
     cv::expose(scope, global, &t[Iface::DocumentFragment as usize], "DocumentFragment");
     cv::expose(scope, global, &t[Iface::DocumentType as usize], "DocumentType");
     cv::expose(scope, global, &t[Iface::Element as usize], "Element");
+    cv::expose(scope, global, &t[Iface::EventSource as usize], "EventSource");
     cv::expose(scope, global, &t[Iface::FocusEvent as usize], "FocusEvent");
     cv::expose(scope, global, &t[Iface::HTMLElement as usize], "HTMLElement");
     cv::expose(scope, global, &t[Iface::HTMLEmbedElement as usize], "HTMLEmbedElement");

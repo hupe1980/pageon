@@ -521,3 +521,15 @@ members = ["Image"]
 
 [HTMLIFrameElement]
 members = ["contentWindow", "contentDocument"]
+
+[WebSocket]
+members = [
+  "constructor", "url", "readyState", "bufferedAmount", "extensions", "protocol", "close", "binaryType",
+  "send",
+]
+
+[CloseEvent]
+members = ["constructor", "wasClean", "code", "reason"]
+
+[EventSource]
+members = ["constructor", "url", "withCredentials", "readyState", "close"]

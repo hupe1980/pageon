@@ -54,6 +54,11 @@ The page runs on a virtual clock. After an action, pageon runs the page until it
 requests and microtasks done) or a time window passes, then reports how it settled. A 5-second
 spinner settles in milliseconds of wall time, deterministically.
 
+Pages with open `WebSocket` or `EventSource` connections also get real time: an action that sent
+a frame waits up to one second for the first reply, and `wait` lets real time pass (up to the
+requested time, ending early when a message arrives). The outcome counts the frames it sent
+(`1 frame(s) sent`); messages that arrive later are in the next observation.
+
 ## Outcomes
 
 ```text

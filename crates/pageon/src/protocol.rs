@@ -136,6 +136,8 @@ pub(crate) enum EnvCall {
     Step(Box<pageon_env::Step>),
     /// The identity profile of the broker's environment.
     Profile,
+    /// A realtime connection call (WebSocket, event stream).
+    Stream(Box<pageon_env::StreamCall>),
 }
 
 /// The broker's answer.
@@ -148,6 +150,7 @@ pub(crate) enum EnvReply {
     File(Result<pageon_env::StagedFile, NetError>),
     Flag(bool),
     Profile(pageon_env::Profile),
+    Stream(Result<pageon_env::StreamReply, NetError>),
 }
 
 /// Content → broker.

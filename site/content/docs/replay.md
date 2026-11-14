@@ -17,7 +17,9 @@ pageon fetch https://shop.example/login --act "type e3 ada" --act "click e5" --r
 pageon mcp --record session.json         # every tool call becomes a step
 ```
 
-A recording is readable JSON: every response, the clock and random draws, and the agent's steps
+A recording is readable JSON: every response, realtime messages (WebSocket and server-sent
+events, with the virtual time each was delivered at, and the frames the page sent), the clock
+and random draws, and the agent's steps
 (the action, its target as the agent saw it, and a hash of the page after it). Secrets and
 signatures are never written.
 
@@ -38,6 +40,10 @@ A live replay runs under your options, not the recording's: `--private-network`,
 `--identity` and `--profile` come from the command line. Recorded writes (a form post, an
 order) are held, so a replay never places an order twice by accident; the divergence names the
 held request, and `--approve` asks for each one instead.
+
+Realtime connections replay offline too: messages arrive at their recorded times, and a reply
+waits until the replayed page has sent its question. A connection still open when a reset or
+replay ends is closed: a live socket cannot be resumed.
 
 `pageon fetch URL --replay ep.json` serves a recording to any command, and `pageon cdp
 --replay` serves it to Puppeteer and Playwright: deterministic test fixtures from real sites.

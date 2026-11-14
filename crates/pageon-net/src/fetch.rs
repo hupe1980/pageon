@@ -119,7 +119,8 @@ fn accept(dest: Dest) -> &'static str {
         }
         Dest::Style => "text/css,*/*;q=0.1",
         Dest::Image => "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
-        Dest::Script | Dest::Fetch | Dest::Xhr | Dest::Robots => "*/*",
+        Dest::Script | Dest::Fetch | Dest::Xhr | Dest::Robots | Dest::WebSocket => "*/*",
+        Dest::EventSource => "text/event-stream",
     }
 }
 
@@ -130,7 +131,8 @@ fn sec_dest(dest: Dest) -> &'static str {
         Dest::Script => "script",
         Dest::Style => "style",
         Dest::Image => "image",
-        Dest::Fetch | Dest::Xhr | Dest::Robots => "empty",
+        Dest::Fetch | Dest::Xhr | Dest::Robots | Dest::EventSource => "empty",
+        Dest::WebSocket => "websocket",
     }
 }
 
@@ -862,6 +864,87 @@ fn preflight(
     }
     entries.push(entry);
     result
+}
+
+/// The handshake request of a realtime connection (see [`Net::stream_request`]).
+pub(crate) fn stream_request(
+    net: &mut Net,
+    client: &Client,
+    url: &Url,
+    dest: Dest,
+    with_credentials: bool,
+    now: u64,
+) -> Result<Request, FetchError> {
+    // Cookies, mixed content and the private network as for the http(s) URL.
+    let http = match url.scheme() {
+        "ws" => Url::parse(&url.as_str().replacen("ws://", "http://", 1)).ok(),
+        "wss" => Url::parse(&url.as_str().replacen("wss://", "https://", 1)).ok(),
+        "http" | "https" => Some(url.clone()),
+        _ => None,
+    };
+    let refuse = |net: &mut Net, reason: Block| {
+        net.log_stream(
+            "GET",
+            url.as_str(),
+            dest,
+            None,
+            Outcome::Blocked(reason.to_string()),
+        );
+        Err(FetchError::Blocked {
+            url: url.to_string(),
+            reason,
+        })
+    };
+    let Some(http) = http else {
+        let e = FetchError::Network(NetError::Network(format!(
+            "unsupported scheme {}",
+            url.scheme()
+        )));
+        return Err(e);
+    };
+    if !net.allow_private
+        && let Some(host) = private_host_of(http.as_str())
+    {
+        return refuse(
+            net,
+            Block::PrivateNetwork(format!("private network address {host}")),
+        );
+    }
+    if client.url.scheme() == "https" && http.scheme() == "http" && !site::trustworthy(&http) {
+        return refuse(net, Block::MixedContent);
+    }
+    let same_origin = client.url.origin() == http.origin();
+    let mut headers: Vec<(String, String)> = Vec::new();
+    headers.push(("origin".into(), site::origin(&client.url)));
+    if dest == Dest::EventSource {
+        headers.push(("accept".into(), "text/event-stream".into()));
+        headers.push(("cache-control".into(), "no-cache".into()));
+    }
+    let credentials = dest == Dest::WebSocket || same_origin || with_credentials;
+    let cx = Context {
+        url: &http,
+        top_site: &client.top_site,
+        same_site: client.same_site_ancestors && site::site(&http) == client.top_site,
+        top_level_safe_nav: false,
+        script: false,
+    };
+    let mut req = Request::get(url.as_str());
+    if credentials {
+        let cookies = net.jar.header(&cx, now);
+        if !cookies.is_empty() {
+            headers.push(("cookie".into(), cookies));
+        }
+        req.cookie_scope = Some(pageon_env::CookieScope {
+            top_site: client.top_site.clone(),
+            same_site: cx.same_site,
+            top_level_safe_nav: false,
+        });
+    }
+    req.headers = headers;
+    req.allow_private = net.allow_private;
+    req.labels = vec![dest.as_str().to_string()];
+    req.cause.clone_from(&net.cause);
+    Ok(req)
 }
 
 #[cfg(test)]

@@ -13,6 +13,9 @@ pub struct Cursor {
     pub clock: usize,
     /// Random draws so far.
     pub random: usize,
+    /// Realtime entries so far.
+    #[serde(default, skip_serializing_if = "is_zero_usize")]
+    pub realtime: usize,
 }
 
 /// One step of an episode: opening the page (step 0) or an action that ran.

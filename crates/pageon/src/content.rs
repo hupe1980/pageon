@@ -168,6 +168,13 @@ impl Env for BrokerEnv {
         }
     }
 
+    fn stream(&self, call: &pageon_env::StreamCall) -> Result<pageon_env::StreamReply, NetError> {
+        match self.ask(EnvCall::Stream(Box::new(call.clone())))? {
+            EnvReply::Stream(r) => r,
+            _ => unexpected(),
+        }
+    }
+
     fn now_ms(&self) -> Result<u64, NetError> {
         match self.ask(EnvCall::Now)? {
             EnvReply::Num(r) => r,

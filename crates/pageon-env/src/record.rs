@@ -125,6 +125,10 @@ pub struct Log {
     /// The agent's steps: what it did and what the page was after each step.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub steps: Vec<Step>,
+    /// Realtime connections (WebSocket, event streams): opens, messages with the virtual time
+    /// they were delivered at, and sent frames, in order.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub realtime: Vec<crate::Rt>,
     /// The recording stopped at its body limit: what came after is not in it.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub truncated: bool,
@@ -138,6 +142,7 @@ impl Log {
         l.exchanges.truncate(at.exchanges);
         l.clock.truncate(at.clock);
         l.random.truncate(at.random);
+        l.realtime.truncate(at.realtime);
         l.steps.truncate(k + 1);
         Some(l)
     }
@@ -153,6 +158,7 @@ impl Default for Log {
             clock: Vec::new(),
             random: Vec::new(),
             steps: Vec::new(),
+            realtime: Vec::new(),
             truncated: false,
         }
     }
@@ -188,6 +194,7 @@ struct Resume {
     used: Vec<bool>,
     clock: usize,
     random: usize,
+    realtime: crate::realtime::RtServe,
 }
 
 /// `Set-Cookie: sid=abc; Path=/` → `sid=pageon-redacted; Path=/`: the cookie and its scope
@@ -263,6 +270,7 @@ impl<E: Env> Recording<E> {
             used: vec![false; cut.exchanges.len()],
             clock: 0,
             random: 0,
+            realtime: crate::realtime::RtServe::default(),
         });
         *self.log.borrow_mut() = cut;
         *self.divergence.borrow_mut() = None;
@@ -351,6 +359,17 @@ impl<E: Env> Recording<E> {
                 }
             }
         };
+        for e in &mut log.realtime {
+            match e {
+                crate::Rt::Sent { text: Some(t), .. }
+                | crate::Rt::Event {
+                    event: crate::StreamEvent::Text(t),
+                    ..
+                } => clean(t),
+                crate::Rt::Open { url, .. } => clean(url),
+                _ => {}
+            }
+        }
         for ex in &mut log.exchanges {
             clean(&mut ex.url);
             for (_, h) in &mut ex.headers {
@@ -444,6 +463,85 @@ impl<E: Env> Env for Recording<E> {
         self.body_bytes.set(total);
         self.log.borrow_mut().exchanges.push(ex);
         r
+    }
+
+    fn stream(&self, call: &crate::StreamCall) -> Result<crate::StreamReply, NetError> {
+        use crate::{Rt, StreamCall, StreamReply};
+        if self.off() {
+            return self.inner.stream(call);
+        }
+        let serving = self.resume.borrow().as_ref().map(|r| r.serve);
+        match serving {
+            Some(true) => {
+                let mut guard = self.resume.borrow_mut();
+                let r = guard.as_mut().ok_or(NetError::ReplayMiss(String::new()))?;
+                let log = self.log.borrow();
+                return r.realtime.call(&log.realtime, call);
+            }
+            Some(false) => return self.inner.stream(call),
+            None => {}
+        }
+        let reply = self.inner.stream(call);
+        let mut entries = Vec::new();
+        match (call, &reply) {
+            (
+                StreamCall::Open { req, .. },
+                Ok(StreamReply::Opened {
+                    id,
+                    status,
+                    headers,
+                }),
+            ) => {
+                entries.push(Rt::Open {
+                    id: *id,
+                    url: req.url.clone(),
+                    status: *status,
+                    headers: headers.clone(),
+                    error: None,
+                });
+            }
+            (StreamCall::Send { id, req, .. }, Ok(_)) => entries.push(Rt::sent(*id, &req.body)),
+            (StreamCall::Close { id, code, .. }, Ok(_)) => entries.push(Rt::Close {
+                id: *id,
+                code: *code,
+            }),
+            (StreamCall::Poll { now, .. }, Ok(StreamReply::Events(events))) => {
+                for (id, event) in events {
+                    entries.push(Rt::Event {
+                        id: *id,
+                        at: *now,
+                        event: event.clone(),
+                    });
+                }
+            }
+            _ => {}
+        }
+        let bytes: usize = entries
+            .iter()
+            .map(|e| match e {
+                Rt::Event {
+                    event: crate::StreamEvent::Text(t),
+                    ..
+                } => t.len(),
+                Rt::Event {
+                    event: crate::StreamEvent::Binary(b),
+                    ..
+                } => b.len(),
+                Rt::Sent { text, base64, .. } => {
+                    text.as_ref().map_or(0, String::len) + base64.as_ref().map_or(0, String::len)
+                }
+                _ => 0,
+            })
+            .sum();
+        let total = self.body_bytes.get().saturating_add(bytes);
+        if total > self.body_limit.get() {
+            self.full.set(true);
+            self.log.borrow_mut().truncated = true;
+            return reply;
+        }
+        self.body_bytes.set(total);
+        self.log.borrow_mut().realtime.extend(entries);
+        reply
     }
 
     fn now_ms(&self) -> Result<u64, NetError> {
@@ -560,6 +658,7 @@ impl<E: Env> Recorder for Recording<E> {
             exchanges: log.exchanges.len(),
             clock: log.clock.len(),
             random: log.random.len(),
+            realtime: log.realtime.len(),
         };
         log.steps.push(step);
     }
@@ -644,7 +743,8 @@ mod steps_tests {
             Cursor {
                 exchanges: 1,
                 clock: 1,
-                random: 0
+                random: 0,
+                realtime: 0
             }
         );
         assert_eq!(
@@ -652,7 +752,8 @@ mod steps_tests {
             Cursor {
                 exchanges: 2,
                 clock: 1,
-                random: 1
+                random: 1,
+                realtime: 0
             }
         );
         // Old files (no steps) still load.

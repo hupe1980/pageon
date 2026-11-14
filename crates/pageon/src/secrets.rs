@@ -336,11 +336,14 @@ fn json_unescape(s: &str) -> String {
     out
 }
 
-impl<E: Env> Env for Secrets<E> {
-    fn fetch(&self, req: &Request) -> Result<Response, NetError> {
+impl<E: Env> Secrets<E> {
+    /// Refuses `req` when it carries a secret to an origin the secret is not bound to; the
+    /// request labelled with the secrets it carries (and their handles in its shown URL), or
+    /// `None` when it carries none.
+    fn checked(&self, req: &Request) -> Result<Option<Request>, NetError> {
         let carried = self.carried(req);
         if carried.is_empty() {
-            return self.inner.fetch(req);
+            return Ok(None);
         }
         // A secret leaves only for the origins it is bound to: checked here, where
         // every value handed out is known, independent of the page and of the model.
@@ -364,7 +367,34 @@ impl<E: Env> Env for Secrets<E> {
             .labels
             .extend(carried.iter().map(|(n, _)| format!("secret:{n}")));
         labelled.shown_url = Some(self.shown(&req.url));
-        self.inner.fetch(&labelled)
+        Ok(Some(labelled))
+    }
+}
+
+impl<E: Env> Env for Secrets<E> {
+    fn fetch(&self, req: &Request) -> Result<Response, NetError> {
+        match self.checked(req)? {
+            Some(labelled) => self.inner.fetch(&labelled),
+            None => self.inner.fetch(req),
+        }
+    }
+
+    /// A connection's URL and every frame are checked like a request's URL and body.
+    fn stream(&self, call: &pageon_env::StreamCall) -> Result<pageon_env::StreamReply, NetError> {
+        use pageon_env::StreamCall;
+        let labelled = match call {
+            StreamCall::Open { req, kind } => self.checked(req)?.map(|req| StreamCall::Open {
+                req,
+                kind: kind.clone(),
+            }),
+            StreamCall::Send { id, req, text } => self.checked(req)?.map(|req| StreamCall::Send {
+                id: *id,
+                req,
+                text: *text,
+            }),
+            _ => None,
+        };
+        self.inner.stream(labelled.as_ref().unwrap_or(call))
     }
 
     fn now_ms(&self) -> Result<u64, NetError> {

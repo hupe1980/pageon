@@ -69,6 +69,10 @@ pub enum Dest {
     Xhr,
     /// The site's robots.txt, fetched before its first page.
     Robots,
+    /// A WebSocket's handshake (`GET`) and frames (`SEND`).
+    WebSocket,
+    /// An `EventSource`'s stream.
+    EventSource,
 }
 
 impl Dest {
@@ -83,6 +87,8 @@ impl Dest {
             Self::Fetch => "fetch",
             Self::Xhr => "xhr",
             Self::Robots => "robots",
+            Self::WebSocket => "websocket",
+            Self::EventSource => "eventsource",
         }
     }
 }
@@ -384,6 +390,8 @@ impl fmt::Display for RequestEntry {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let status = match (&self.outcome, self.status) {
             (Outcome::Ok, Some(s)) => s.to_string(),
+            // A frame a page sent: no response of its own.
+            (Outcome::Ok, None) if self.method == "SEND" => "sent".into(),
             (Outcome::Blocked(_), _) => "blocked".into(),
             (Outcome::Cors(_), _) => "cors-blocked".into(),
             _ => "failed".into(),
@@ -442,6 +450,42 @@ impl Net {
         now: u64,
     ) -> Result<Fetched, FetchError> {
         fetch::fetch(self, env, req, now)
+    }
+
+    /// The handshake request of a realtime connection a document opens: a WebSocket
+    /// (`ws:`/`wss:`, cookies as for its `http(s):` URL, always with `Origin`) or an event
+    /// stream (`http(s):`, cookies when same-origin or `with_credentials`). The egress checks
+    /// of a fetch apply (private network, mixed content); a refusal is logged and returned.
+    pub fn stream_request(
+        &mut self,
+        client: &Client,
+        url: &Url,
+        dest: Dest,
+        with_credentials: bool,
+        now: u64,
+    ) -> Result<pageon_env::Request, FetchError> {
+        fetch::stream_request(self, client, url, dest, with_credentials, now)
+    }
+
+    /// Logs a realtime connection's handshake or a frame (`SEND`, no status).
+    pub fn log_stream(
+        &mut self,
+        method: &str,
+        url: &str,
+        dest: Dest,
+        status: Option<u16>,
+        outcome: Outcome,
+    ) {
+        self.log.push(RequestEntry {
+            method: method.into(),
+            url: url.into(),
+            dest,
+            status,
+            final_url: None,
+            outcome,
+            cookies_rejected: Vec::new(),
+            from_cache: false,
+        });
     }
 
     /// The requests logged since the last call.

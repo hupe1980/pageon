@@ -18,6 +18,7 @@ pub(crate) mod net;
 mod nodes;
 pub(crate) mod observers;
 pub(crate) mod platform;
+pub mod realtime;
 pub(crate) mod scroll;
 pub(crate) mod session;
 pub(crate) mod shadow;
@@ -83,6 +84,7 @@ pub use net::{
     abort_controller, abort_signal, body, headers, progress_event, request, response,
     xml_http_request,
 };
+pub use realtime::{close_event, event_source, web_socket};
 pub use sheets::css_style_sheet;
 pub use urls::{form_data, url, url_search_params};
 pub use validation::{html_field_set_element, html_output_element, validity_state};

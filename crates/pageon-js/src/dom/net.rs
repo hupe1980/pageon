@@ -343,7 +343,10 @@ pub(crate) fn multipart(
 }
 
 /// The bytes and content type of a body (`BodyInit`).
-fn body_init(cx: &mut Cx<'_, '_, '_>, v: v8::Local<'_, v8::Value>) -> R<(Vec<u8>, Option<String>)> {
+pub(crate) fn body_init(
+    cx: &mut Cx<'_, '_, '_>,
+    v: v8::Local<'_, v8::Value>,
+) -> R<(Vec<u8>, Option<String>)> {
     if v.is_null_or_undefined() {
         return Ok((Vec::new(), None));
     }

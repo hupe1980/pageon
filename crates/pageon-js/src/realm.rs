@@ -175,6 +175,8 @@ pub struct EventData {
     pub media: Option<(String, bool)>,
     /// `MessageEvent`: origin, lastEventId and source (data is in `detail`).
     pub message: Option<Box<(String, String, Option<crate::cv::Obj>)>>,
+    /// `CloseEvent`: wasClean, code, reason.
+    pub close: Option<Box<(bool, u16, String)>>,
 }
 
 /// Mouse and keyboard event fields.
@@ -347,6 +349,10 @@ pub enum Slot {
     Signal(crate::dom::net::SignalData),
     /// An `XMLHttpRequest`.
     Xhr(Box<crate::dom::net::XhrData>),
+    /// A `WebSocket`.
+    WebSocket(Box<crate::dom::realtime::WsData>),
+    /// An `EventSource`.
+    EventSource(Box<crate::dom::realtime::SseData>),
     /// A `URL` (and its `searchParams` object, once created).
     Url(Box<url::Url>, Option<u32>),
     /// `URLSearchParams` (and the `URL` it belongs to).
@@ -575,6 +581,8 @@ pub struct Pending {
 pub struct Shared {
     /// Script requests in issue order.
     pub requests: std::collections::VecDeque<Pending>,
+    /// Realtime connections (`WebSocket`, `EventSource`) and what documents asked of them.
+    pub streams: crate::dom::realtime::Streams,
     /// Inserted scripts and dynamic imports, run before other tasks.
     pub scripts: std::collections::VecDeque<crate::modules::ScriptJob>,
     /// Virtual time in ms since the Unix epoch.
