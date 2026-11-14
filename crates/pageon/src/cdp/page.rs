@@ -738,6 +738,31 @@ fn cookie_matches(c: &Cookie, u: &url::Url) -> bool {
     domain_ok && path_ok && (!c.secure || u.scheme() == "https")
 }
 
+/// A cookie as a CDP `Network.Cookie`.
+pub(crate) fn cookie_to_cdp(c: &Cookie) -> Json {
+    json!({
+        "name": c.name,
+        "value": c.value,
+        "domain": if c.host_only { c.domain.clone() } else { format!(".{}", c.domain) },
+        "path": c.path,
+        "expires": c.expires.map_or(-1.0, |ms| ms as f64 / 1000.0),
+        "size": c.name.len() + c.value.len(),
+        "httpOnly": c.http_only,
+        "secure": c.secure,
+        "session": c.expires.is_none(),
+        "sameSite": match c.same_site { SameSite::Strict => "Strict", SameSite::Lax => "Lax", SameSite::None => "None" },
+        "priority": "Medium",
+        "sameParty": false,
+        "sourceScheme": if c.secure { "Secure" } else { "NonSecure" },
+        "sourcePort": if c.secure { 443 } else { 80 },
+    })
+}
+
+/// Whether a cookie applies to a URL (domain, path, `Secure`).
+pub(crate) fn applies(c: &Cookie, u: &url::Url) -> bool {
+    cookie_matches(c, u)
+}
+
 /// The session's cookies as CDP `Network.Cookie`s (those that apply to `urls`, if given).
 pub(super) fn cookies_json<E: Env>(
     session: &crate::Session<E>,
@@ -748,26 +773,51 @@ pub(super) fn cookies_json<E: Env>(
     session
         .cookies()
         .into_iter()
-        .filter(|c| parsed.as_ref().is_none_or(|us| us.iter().any(|u| cookie_matches(c, u))))
-        .map(|c| {
-            json!({
-                "name": c.name,
-                "value": c.value,
-                "domain": if c.host_only { c.domain.clone() } else { format!(".{}", c.domain) },
-                "path": c.path,
-                "expires": c.expires.map_or(-1.0, |ms| ms as f64 / 1000.0),
-                "size": c.name.len() + c.value.len(),
-                "httpOnly": c.http_only,
-                "secure": c.secure,
-                "session": c.expires.is_none(),
-                "sameSite": match c.same_site { SameSite::Strict => "Strict", SameSite::Lax => "Lax", SameSite::None => "None" },
-                "priority": "Medium",
-                "sameParty": false,
-                "sourceScheme": if c.secure { "Secure" } else { "NonSecure" },
-                "sourcePort": if c.secure { 443 } else { 80 },
-            })
+        .filter(|c| {
+            parsed
+                .as_ref()
+                .is_none_or(|us| us.iter().any(|u| cookie_matches(c, u)))
         })
+        .map(|c| cookie_to_cdp(&c))
         .collect()
+}
+
+/// A CDP `Network.CookieParam` as a cookie: it needs a `url` (or the page's) or a `domain`.
+pub(crate) fn cdp_to_cookie(c: &Json, page: Option<&str>, now: u64) -> Result<Cookie, String> {
+    let s = |k: &str| c.get(k).and_then(Json::as_str).map(str::to_string);
+    let url = s("url")
+        .or_else(|| page.map(str::to_string))
+        .and_then(|u| url::Url::parse(&u).ok());
+    let (domain, host_only) = match (s("domain"), &url) {
+        (Some(d), _) => (d.trim_start_matches('.').to_ascii_lowercase(), false),
+        (None, Some(u)) => (u.host_str().unwrap_or_default().to_ascii_lowercase(), true),
+        (None, None) => return Err("a cookie needs a url or a domain".into()),
+    };
+    let secure = c
+        .get("secure")
+        .and_then(Json::as_bool)
+        .unwrap_or_else(|| url.as_ref().is_some_and(|u| u.scheme() == "https"));
+    Ok(Cookie {
+        name: s("name").unwrap_or_default(),
+        value: s("value").unwrap_or_default(),
+        domain,
+        host_only,
+        path: s("path").unwrap_or_else(|| "/".into()),
+        expires: c
+            .get("expires")
+            .and_then(Json::as_f64)
+            .filter(|e| *e > 0.0)
+            .map(|e| (e * 1000.0) as u64),
+        secure,
+        http_only: c.get("httpOnly").and_then(Json::as_bool).unwrap_or(false),
+        same_site: match s("sameSite").as_deref() {
+            Some("Strict") => SameSite::Strict,
+            Some("None") => SameSite::None,
+            _ => SameSite::Lax,
+        },
+        partition_key: None,
+        created: now,
+    })
 }
 
 /// `Network.setCookies` / `Storage.setCookies`: each cookie needs a `url` or a `domain`.
@@ -783,40 +833,7 @@ pub(super) fn set_cookies<E: Env>(
         .into_iter()
         .flatten()
     {
-        let s = |k: &str| c.get(k).and_then(Json::as_str).map(str::to_string);
-        let url = s("url")
-            .or_else(|| page.map(str::to_string))
-            .and_then(|u| url::Url::parse(&u).ok());
-        let (domain, host_only) = match (s("domain"), &url) {
-            (Some(d), _) => (d.trim_start_matches('.').to_ascii_lowercase(), false),
-            (None, Some(u)) => (u.host_str().unwrap_or_default().to_ascii_lowercase(), true),
-            (None, None) => return Err(CdpError::params("a cookie needs a url or a domain")),
-        };
-        let secure = c
-            .get("secure")
-            .and_then(Json::as_bool)
-            .unwrap_or_else(|| url.as_ref().is_some_and(|u| u.scheme() == "https"));
-        out.push(Cookie {
-            name: s("name").unwrap_or_default(),
-            value: s("value").unwrap_or_default(),
-            domain,
-            host_only,
-            path: s("path").unwrap_or_else(|| "/".into()),
-            expires: c
-                .get("expires")
-                .and_then(Json::as_f64)
-                .filter(|e| *e > 0.0)
-                .map(|e| (e * 1000.0) as u64),
-            secure,
-            http_only: c.get("httpOnly").and_then(Json::as_bool).unwrap_or(false),
-            same_site: match s("sameSite").as_deref() {
-                Some("Strict") => SameSite::Strict,
-                Some("None") => SameSite::None,
-                _ => SameSite::Lax,
-            },
-            partition_key: None,
-            created: session.now_ms(),
-        });
+        out.push(cdp_to_cookie(c, page, session.now_ms()).map_err(|e| CdpError::params(&e))?);
     }
     session.add_cookies(&out);
     Ok(json!({}))

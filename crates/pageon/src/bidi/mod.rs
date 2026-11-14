@@ -4,7 +4,7 @@
 //! to subscribers only. It runs where the CDP session runs (the caged content process by
 //! default), so virtual time, policy, vault and recording behave as for CDP.
 
-mod context;
+pub(crate) mod context;
 mod input;
 mod script;
 

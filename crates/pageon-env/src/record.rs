@@ -324,12 +324,18 @@ impl<E: Env> Recording<E> {
         &self.inner
     }
 
-    /// The log so far (redacted: secret values, and every cookie value a server set).
+    /// The log so far (redacted: secret values, and the value of every `HttpOnly` cookie a
+    /// server set).
     pub fn log(&self) -> Log {
         let mut log = self.log.borrow().clone();
         for ex in &mut log.exchanges {
             for (k, v) in &mut ex.headers {
-                if k.eq_ignore_ascii_case("set-cookie") {
+                // HttpOnly values: scripts never read them, so replays are unchanged.
+                if k.eq_ignore_ascii_case("set-cookie")
+                    && v.split(';')
+                        .skip(1)
+                        .any(|a| a.trim().eq_ignore_ascii_case("httponly"))
+                {
                     *v = redact_cookie(v);
                 }
             }
@@ -752,6 +758,9 @@ mod steps_tests {
         log.exchanges[0]
             .headers
             .push(("Set-Cookie".into(), "theme=dark".into()));
+        log.exchanges[0]
+            .headers
+            .push(("Set-Cookie".into(), "tok=abc; HTTPONLY".into()));
         let rec = Recording::new(crate::Replay::new(log));
         let _ = rec.fetch(&Request::get("https://a.test/"));
         let saved = serde_json::to_string(&rec.log()).unwrap_or_default();
@@ -760,7 +769,11 @@ mod steps_tests {
             saved.contains("sid=pageon-redacted; Path=/; HttpOnly"),
             "{saved}"
         );
-        assert!(saved.contains("theme=pageon-redacted"), "{saved}");
+        assert!(
+            saved.contains("theme=dark"),
+            "script-visible cookies stay: {saved}"
+        );
+        assert!(saved.contains("tok=pageon-redacted; HTTPONLY"), "{saved}");
     }
 
     /// SR-003: an in-memory recording stops for good past its body limit.

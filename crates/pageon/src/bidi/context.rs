@@ -398,23 +398,7 @@ impl<E: Env> Session<'_, E> {
             .as_array()
             .into_iter()
             .flatten()
-            .map(|c| {
-                let mut j = json!({
-                    "name": c["name"], "value": {"type": "string", "value": c["value"]},
-                    "domain": c["domain"], "path": c["path"], "size": c["size"],
-                    "httpOnly": c["httpOnly"], "secure": c["secure"],
-                    "sameSite": match c["sameSite"].as_str() {
-                        Some("Strict") => "strict",
-                        Some("Lax") => "lax",
-                        Some("None") => "none",
-                        _ => "default",
-                    },
-                });
-                if let Some(e) = c["expires"].as_f64().filter(|e| *e > 0.0) {
-                    j["expiry"] = json!(e as u64);
-                }
-                j
-            })
+            .map(cdp_to_bidi)
             .collect())
     }
 
@@ -491,7 +475,27 @@ impl<E: Env> Session<'_, E> {
     }
 }
 
-fn cookie_matches(c: &Json, f: &Json) -> bool {
+/// A CDP `Network.Cookie` as a BiDi `network.Cookie`.
+pub(crate) fn cdp_to_bidi(c: &Json) -> Json {
+    let mut j = json!({
+        "name": c["name"], "value": {"type": "string", "value": c["value"]},
+        "domain": c["domain"], "path": c["path"], "size": c["size"],
+        "httpOnly": c["httpOnly"], "secure": c["secure"],
+        "sameSite": match c["sameSite"].as_str() {
+            Some("Strict") => "strict",
+            Some("Lax") => "lax",
+            Some("None") => "none",
+            _ => "default",
+        },
+    });
+    if let Some(e) = c["expires"].as_f64().filter(|e| *e > 0.0) {
+        j["expiry"] = json!(e as u64);
+    }
+    j
+}
+
+/// Whether a BiDi cookie matches a `storage.CookieFilter`.
+pub(crate) fn cookie_matches(c: &Json, f: &Json) -> bool {
     let Some(f) = f.as_object() else { return true };
     let bare = |d: &Json| {
         d.as_str()

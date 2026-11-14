@@ -27,6 +27,14 @@ Seatbelt on macOS. The cage can run JavaScript and nothing else: it cannot read 
 open a socket or start a program. Its only way out is the channel to the broker, which performs
 every request on its behalf.
 
+The broker does not take the page process's word for what matters. Whether a request may reach
+the private network comes from the options the broker itself sent; a secret is handed out only
+while the agent's own `type … secret://name` runs, once; a recorded step is the broker's
+description of the command it sent. `HttpOnly` cookies — the session cookies, which scripts
+never see — live only in the broker: it adds them to requests and takes them out of
+responses, so even a compromised page process cannot read them. Saved state and the
+Puppeteer, Playwright and BiDi cookie views include them as usual.
+
 `--no-sandbox` runs pages in-process for debugging; they then run with your rights.
 
 ## Origin sets
@@ -136,8 +144,8 @@ built-ins cannot change what a client computes.
   refuses to type into a hidden field.
 - **Masked pixels.** `--mask` paints over third-party frames and text a person cannot read.
 - **No secrets.** [Secrets](@/docs/secrets.md) never appear in views, screenshots, outcomes,
-  protocol messages or recordings. Recordings keep each cookie a server set with its value
-  replaced (`sid=pageon-redacted; Path=/`), so a shared recording carries no session.
+  protocol messages or recordings. Recordings keep each `HttpOnly` cookie a server set with its
+  value replaced (`sid=pageon-redacted; Path=/`), so a shared recording carries no session.
 
 ## Known limits
 
@@ -151,8 +159,10 @@ today:
   An idle connection cannot block other clients, and only a real close command ends it.
 - **Files at rest.** Recordings and saved state hold cookies and page content. pageon writes
   them readable by you only, but does not encrypt them; keep them private.
-- **A compromised page process.** The broker still trusts some of what the page process tells
-  it. The cage is the boundary that holds.
+- **A compromised page process.** It still decides which origin a typed secret is for (the
+  secrets check at egress bounds where it can go), the SameSite context of its requests (a lie
+  sends a cookie cross-site, never reveals it), and everything a script can see. The cage is
+  the boundary that holds.
 
 Origin sets are the hard boundary. The secrets check at egress catches common encodings, not a
 page that splits, reverses or re-encodes a value before sending it to an allowed origin; keep

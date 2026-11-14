@@ -152,6 +152,12 @@ test('cookies: from the page, set, delete', async () => {
   assert.equal(await page.evaluate(() => document.cookie.includes('k=v')), true);
   await page.deleteCookie({ name: 'k' });
   assert.equal((await page.cookies()).find((c) => c.name === 'k'), undefined);
+  // An HttpOnly cookie: in the cookie views, never in the page.
+  await page.setCookie({ name: 'sid', value: 'hidden', httpOnly: true });
+  assert.equal((await page.cookies()).find((c) => c.name === 'sid')?.httpOnly, true);
+  assert.equal(await page.evaluate(() => document.cookie.includes('sid')), false);
+  await page.deleteCookie({ name: 'sid' });
+  assert.equal((await page.cookies()).find((c) => c.name === 'sid'), undefined);
 });
 
 test('setViewport is accepted', async () => {

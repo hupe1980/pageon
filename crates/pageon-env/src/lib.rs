@@ -92,6 +92,21 @@ pub struct Request {
     /// process cannot choose what the guard sees).
     #[serde(skip)]
     pub shown_url: Option<String>,
+    /// The request carries cookies, in this context (stated by the engine, which knows frames
+    /// and initiators): the broker adds the `HttpOnly` cookies it holds. `None`: no cookies.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cookie_scope: Option<CookieScope>,
+}
+
+/// The cookie context of a request (RFC 6265bis): which cookies may go along.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct CookieScope {
+    /// The top-level site (`https://example.com`).
+    pub top_site: String,
+    /// Same-site with the top-level site and every ancestor frame (`Strict`/`Lax` go along).
+    pub same_site: bool,
+    /// A top-level navigation with a safe method (`Lax` goes along).
+    pub top_level_safe_nav: bool,
 }
 
 /// The agent action behind a request.
@@ -119,6 +134,7 @@ impl Request {
             labels: Vec::new(),
             cause: None,
             shown_url: None,
+            cookie_scope: None,
         }
     }
 }

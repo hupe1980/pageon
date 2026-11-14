@@ -545,6 +545,11 @@ impl Jar {
             .join("; ")
     }
 
+    /// Keeps only the cookies `keep` says yes to.
+    pub fn retain(&mut self, keep: impl FnMut(&Cookie) -> bool) {
+        self.cookies.retain(keep);
+    }
+
     /// Removes every cookie.
     pub fn clear(&mut self) {
         self.cookies.clear();

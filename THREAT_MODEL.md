@@ -104,7 +104,7 @@ Ids are stable and never reused. The fields are:
 | P-01 | Local files through `file:` | A web page loads `file:` URLs through iframes, scripts, stylesheets or `fetch`, and a hijacked agent opens them with `browser_open`. The broker reads them; the policy exempts `file:`, even with origin sets. File contents appear in the agent's view, scripts run, and load/error events reveal which files exist. *Reproduced, then fixed:* only `file:` documents load `file:` URLs, and agents need `--allow-files`. | critical | mitigate | mitigated | crates/pageon/tests/hardening.rs::web_pages_cannot_read_local_files, ::a_redirect_cannot_lead_onto_the_disk, ::local_pages_keep_their_own_files, ::agents_need_allow_files_for_local_pages, ::cdp_navigation_to_local_files_is_refused |
 | P-02 | Private network (SSRF) | Requests to loopback, private ranges, link-local and metadata endpoints, in any address encoding, through redirects and through DNS answers. | critical | mitigate | partial | crates/pageon/tests/network.rs::us3_private_destinations_are_blocked_by_default, ::us3_blocked_loads_say_what_to_do; crates/pageon-env/tests/live.rs::private_addresses_are_refused_before_connecting; crates/pageon-env/src/addr.rs::tests::transition_and_documentation_addresses; crates/pageon/tests/hardening3.rs::transition_addresses_are_private |
 | P-03 | Engine exploit escapes the cage | Code that compromised the content process reads files, writes, connects or executes programs. | high | mitigate | mitigated | crates/pageon/tests/sandbox.rs::the_cage_holds |
-| P-04 | Compromised content process lies to the broker | The broker trusts fields the content process sends: `allow_private`, labels and cause, the origin a secret is typed into, recorded steps. The cookie jar also lives in the content process. | high | mitigate | open | — |
+| P-04 | Compromised content process lies to the broker | The broker trusts fields the content process sends: `allow_private`, labels and cause, the origin a secret is typed into, recorded steps. The cookie jar also lives in the content process. Since D071 the broker decides `allow_private` from the command it serves, releases a secret once for the handle its own type action types, records steps it describes itself, drops `secret:` labels, and keeps `HttpOnly` cookies out of the content process. | high | mitigate | mitigated | crates/pageon/src/sandbox.rs::tests::allow_private_comes_from_the_served_command, ::secrets_only_for_the_typed_handle_once, ::steps_come_from_the_served_command, ::http_only_cookies_stay_in_the_broker; crates/pageon/tests/broker.rs::http_only_sessions_work_caged_with_the_cookie_in_the_broker, ::a_caged_session_with_http_only_cookies_replays |
 | P-05 | Unapproved egress | Requests outside the origin sets, writes without approval, and first contacts the operator never saw. | critical | mitigate | partial | crates/pageon/tests/policy.rs::policy_matrix_in_process_and_caged; crates/pageon/tests/guard.rs::the_guard_sees_metadata_and_decides; crates/pageon/tests/hardening.rs::an_origin_without_a_scheme_is_a_usage_error |
 | P-06 | Secret exfiltration at egress | A page sends a vault secret to an origin it is not bound to. | high | mitigate | partial | crates/pageon/tests/guard.rs::a_secret_never_leaves_for_another_origin; crates/pageon/src/secrets.rs::secrets_are_found_in_every_encoding |
 | P-07 | Secrets reach the model or a protocol client | A secret appears in views, outcomes, screenshots, tool results, or CDP and BiDi messages. | high | mitigate | partial | crates/pageon/tests/secrets.rs::secrets_reach_the_server_and_nothing_else; crates/pageon/tests/paint.rs::secrets_never_reach_pixels; crates/pageon/tests/bidi.rs::secrets_never_reach_bidi_messages; crates/pageon/tests/hardening.rs::secrets_are_redacted_session_wide |
@@ -140,8 +140,9 @@ Ids are stable and never reused. The fields are:
   - The DNS check is tested on the resolver, not through a request.
 - **P-03** The cage allows the content process to fork (for lookahead); pageon sets no process
   or memory limit on it.
-- **P-04** The broker should take `allow_private` from its own options, release secrets only
-  for type actions it sent, record steps from the commands it sent, and keep the cookie jar.
+- **P-04** The content process still names the origin a secret is typed into (egress bounds
+  where it can go), states each request's SameSite context (a lie sends a cookie cross-site,
+  never reveals it), and holds the script-visible cookies.
 - **P-05**
   - Without an approver, writes to read-write origins are sent.
   - Origin sets and the guard are opt-in.
@@ -161,7 +162,7 @@ Ids are stable and never reused. The fields are:
     - a page logging each key event leaks the secret one character at a time.
   - The broker relays the content process's protocol output unchecked.
 - **P-08** Recordings keep base64 bodies, URL-encoded secrets and passwords typed without
-  `secret://` (cookie values are redacted since 2026-11-14, D070).
+  `secret://` (`HttpOnly` cookie values are redacted since 2026-11-14, D070/D071).
 - **P-09**
   - Outcome URLs, download names, error messages, popup URLs, image notes and WebMCP schema
     words are quoted and capped since 2026-11-14 (D065, D070).

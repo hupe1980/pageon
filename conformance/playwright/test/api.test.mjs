@@ -159,6 +159,9 @@ test('cookies: from the page, add, clear', async () => {
   assert.ok((await s.context.cookies()).some((c) => c.name === 'seen'));
   await s.context.addCookies([{ name: 'k', value: 'v', url: 'https://shop.test/' }]);
   assert.equal(await page.evaluate(() => document.cookie.includes('k=v')), true);
+  await s.context.addCookies([{ name: 'sid', value: 'hidden', url: 'https://shop.test/', httpOnly: true }]);
+  assert.equal((await s.context.cookies()).find((c) => c.name === 'sid')?.httpOnly, true);
+  assert.equal(await page.evaluate(() => document.cookie.includes('sid')), false);
   await s.context.clearCookies();
   assert.equal((await s.context.cookies()).length, 0);
 });

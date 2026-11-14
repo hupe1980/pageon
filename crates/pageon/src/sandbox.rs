@@ -100,6 +100,12 @@ pub struct Sandbox<E: Env> {
     /// While a lookahead runs: what its branch did so far, and the request it was
     /// stopped at.
     branch: Option<Branch>,
+    /// Each open tab's private-network setting (from the `open` the broker sent).
+    tabs: std::collections::HashMap<u32, bool>,
+    /// What the command being served allows.
+    serving: Serving,
+    /// The `HttpOnly` cookies.
+    jar: BrokerJar,
 }
 
 impl<E: Env> fmt::Debug for Sandbox<E> {
@@ -187,6 +193,9 @@ impl<E: Env> Sandbox<E> {
             ),
             broken: None,
             branch: None,
+            tabs: std::collections::HashMap::new(),
+            serving: Serving::default(),
+            jar: BrokerJar::default(),
         };
         match sb.receive() {
             Ok(FromContent::Hello { pageon }) if pageon == protocol::VERSION => Ok(sb),
@@ -234,6 +243,12 @@ impl<E: Env> Sandbox<E> {
         }
     }
 
+    /// Answers one `Env` call of the content process (see [`answer`]).
+    fn answer(&mut self, call: EnvCall) -> EnvReply {
+        let branch = self.branch.is_some();
+        answer(&self.env, &mut self.serving, &mut self.jar, branch, call)
+    }
+
     /// Runs one command, serving the content process's `Env` calls until it is done.
     fn call<T: DeserializeOwned>(&mut self, op: Op) -> Result<T, SandboxError> {
         if let Some(why) = &self.broken {
@@ -241,6 +256,7 @@ impl<E: Env> Sandbox<E> {
         }
         let id = self.next;
         self.next += 1;
+        self.serving = Serving::of(&op, &self.tabs);
         if let Err(e) = protocol::send(&mut self.input, &ToContent::Cmd { id, op }) {
             return Err(self.fail(e.to_string()));
         }
@@ -278,29 +294,7 @@ impl<E: Env> Sandbox<E> {
                     }
                     continue;
                 }
-                FromContent::Env(call) => match call {
-                    EnvCall::Fetch(mut req) => {
-                        // A branch's reads do not make origins known: the real first request
-                        // to an origin keeps its `first-contact` label (and the guard's look).
-                        if self.branch.is_some() {
-                            req.labels.push("lookahead".into());
-                        }
-                        EnvReply::Fetch(self.env.fetch(&req))
-                    }
-                    EnvCall::Now => EnvReply::Num(self.env.now_ms()),
-                    EnvCall::Random => EnvReply::Num(self.env.random_u64()),
-                    EnvCall::Secret { name, origin } => {
-                        EnvReply::Secret(self.env.secret(&name, &origin))
-                    }
-                    EnvCall::Records => EnvReply::Flag(self.env.recorder().is_some()),
-                    EnvCall::Profile => EnvReply::Profile(self.env.profile()),
-                    EnvCall::Step(step) => {
-                        if let Some(r) = self.env.recorder() {
-                            r.step(*step);
-                        }
-                        EnvReply::Flag(true)
-                    }
-                },
+                FromContent::Env(call) => self.answer(call),
                 FromContent::Done { id: got, value } if got == id => {
                     return serde_json::from_value(value)
                         .map_err(|e| self.fail(format!("bad result: {e}")));
@@ -381,12 +375,16 @@ impl<E: Env> Sandbox<E> {
         url: &str,
         options: LoadOptions,
     ) -> Result<(u32, Outcome), LoadError> {
+        let allow = options.allow_private_network;
         let r: Result<(u32, Outcome), LoadError> = self
             .call(Op::Open {
                 url: url.to_string(),
                 options,
             })
             .map_err(|e| LoadError::Sandbox(e.to_string()))?;
+        if let Ok((id, _)) = &r {
+            self.tabs.insert(*id, allow);
+        }
         r
     }
 
@@ -397,10 +395,87 @@ impl<E: Env> Sandbox<E> {
         message: &str,
         options: LoadOptions,
     ) -> Result<Vec<String>, SandboxError> {
-        self.call(Op::Cdp {
-            message: message.to_string(),
-            options,
-        })
+        let parsed: serde_json::Value = serde_json::from_str(message).unwrap_or_default();
+        let method = parsed["method"].as_str().unwrap_or_default().to_string();
+        let mut message = message.to_string();
+        // HttpOnly cookies are the broker's: writes are kept here, reads merged (P-04).
+        match method.as_str() {
+            "Network.setCookie" if parsed["params"]["httpOnly"] == true => {
+                if let Ok(c) =
+                    crate::cdp::page::cdp_to_cookie(&parsed["params"], None, self.jar.now)
+                {
+                    self.jar.jar.add(&[c]);
+                }
+                let mut reply =
+                    serde_json::json!({"id": parsed["id"], "result": {"success": true}});
+                if let Some(sid) = parsed.get("sessionId") {
+                    reply["sessionId"] = sid.clone();
+                }
+                return Ok(vec![reply.to_string()]);
+            }
+            "Network.setCookies" | "Storage.setCookies" => {
+                let mut p = parsed.clone();
+                if let Some(list) = p["params"]["cookies"].as_array_mut() {
+                    let now = self.jar.now;
+                    let (ours, theirs): (Vec<_>, Vec<_>) =
+                        list.drain(..).partition(|c| c["httpOnly"] == true);
+                    let kept: Vec<_> = ours
+                        .iter()
+                        .filter_map(|c| crate::cdp::page::cdp_to_cookie(c, None, now).ok())
+                        .collect();
+                    self.jar.jar.add(&kept);
+                    *list = theirs;
+                }
+                message = p.to_string();
+            }
+            "Network.deleteCookies" => {
+                let name = parsed["params"]["name"]
+                    .as_str()
+                    .unwrap_or_default()
+                    .to_string();
+                let domain = parsed["params"]["domain"]
+                    .as_str()
+                    .map(|d| d.trim_start_matches('.').to_ascii_lowercase())
+                    .or_else(|| {
+                        parsed["params"]["url"]
+                            .as_str()
+                            .and_then(|u| url::Url::parse(u).ok())
+                            .and_then(|u| u.host_str().map(str::to_ascii_lowercase))
+                    });
+                self.jar.jar.retain(|c| {
+                    !(c.name == name
+                        && domain
+                            .as_deref()
+                            .is_none_or(|d| pageon_net::cookie::domain_match(d, &c.domain)))
+                });
+            }
+            "Network.clearBrowserCookies" | "Storage.clearCookies" => self.jar.jar.clear(),
+            _ => {}
+        }
+        let mut out: Vec<String> = self.call(Op::Cdp { message, options })?;
+        if matches!(
+            method.as_str(),
+            "Network.getCookies" | "Network.getAllCookies" | "Storage.getCookies"
+        ) {
+            let urls: Option<Vec<url::Url>> = parsed["params"]["urls"].as_array().map(|a| {
+                a.iter()
+                    .filter_map(|u| u.as_str().and_then(|u| url::Url::parse(u).ok()))
+                    .collect()
+            });
+            let ours: Vec<serde_json::Value> = self
+                .jar
+                .jar
+                .all(self.jar.now)
+                .iter()
+                .filter(|c| {
+                    urls.as_ref()
+                        .is_none_or(|us| us.iter().any(|u| crate::cdp::page::applies(c, u)))
+                })
+                .map(crate::cdp::page::cookie_to_cdp)
+                .collect();
+            merge_reply(&mut out, &parsed["id"], &["result", "cookies"], ours);
+        }
+        Ok(out)
     }
 
     /// Tells the CDP session the client has been idle `elapsed_ms` (real time); returns the
@@ -415,10 +490,37 @@ impl<E: Env> Sandbox<E> {
         message: &str,
         options: LoadOptions,
     ) -> Result<Vec<String>, SandboxError> {
-        self.call(Op::Bidi {
+        let parsed: serde_json::Value = serde_json::from_str(message).unwrap_or_default();
+        let method = parsed["method"].as_str().unwrap_or_default().to_string();
+        let filter = parsed["params"]["filter"].clone();
+        // The broker's HttpOnly cookies, as BiDi cookies matching the request's filter.
+        let ours = |jar: &BrokerJar| -> Vec<(pageon_net::cookie::Cookie, serde_json::Value)> {
+            jar.jar
+                .all(jar.now)
+                .into_iter()
+                .map(|c| {
+                    let b = crate::bidi::context::cdp_to_bidi(&crate::cdp::page::cookie_to_cdp(&c));
+                    (c, b)
+                })
+                .filter(|(_, b)| {
+                    filter.is_null() || crate::bidi::context::cookie_matches(b, &filter)
+                })
+                .collect()
+        };
+        if method == "storage.deleteCookies" {
+            let gone: Vec<pageon_net::cookie::Cookie> =
+                ours(&self.jar).into_iter().map(|(c, _)| c).collect();
+            self.jar.jar.retain(|c| !gone.contains(c));
+        }
+        let mut out: Vec<String> = self.call(Op::Bidi {
             message: message.to_string(),
             options,
-        })
+        })?;
+        if method == "storage.getCookies" {
+            let list = ours(&self.jar).into_iter().map(|(_, b)| b).collect();
+            merge_reply(&mut out, &parsed["id"], &["result", "cookies"], list);
+        }
+        Ok(out)
     }
 
     /// Tells the BiDi session the client has been idle `elapsed_ms` (real time).
@@ -516,6 +618,7 @@ impl<E: Env> Sandbox<E> {
 
     /// Closes tab `id`.
     pub fn close_tab(&mut self, id: u32) {
+        self.tabs.remove(&id);
         if self.broken.is_none() {
             let _: Result<serde_json::Value, _> = self.call(Op::Close { tab: id });
         }
@@ -523,19 +626,29 @@ impl<E: Env> Sandbox<E> {
 
     /// The content process's cookies and `localStorage` (Playwright `storageState`).
     pub fn storage_state(&mut self) -> Result<StorageState, SandboxError> {
-        self.call(Op::GetState)
+        let mut state: StorageState = self.call(Op::GetState)?;
+        // The HttpOnly cookies are the broker's (the content process never had them).
+        state.cookies.retain(|c| !c.http_only);
+        state.cookies.extend(self.jar.jar.all(self.jar.now));
+        Ok(state)
     }
 
     /// Drops every tab and starts a fresh session in the content process.
     pub fn clear(&mut self) -> Result<(), SandboxError> {
+        self.jar.jar.clear();
+        self.tabs.clear();
         self.call(Op::Clear)
     }
 
     /// Adds cookies and `localStorage` to the content process's session.
     pub fn set_storage_state(&mut self, state: &StorageState) -> Result<(), SandboxError> {
-        let _: serde_json::Value = self.call(Op::SetState {
-            state: state.clone(),
-        })?;
+        // HttpOnly cookies stay in the broker; the rest goes to the content process.
+        let (ours, theirs): (Vec<_>, Vec<_>) =
+            state.cookies.iter().cloned().partition(|c| c.http_only);
+        self.jar.jar.add(&ours);
+        let mut state = state.clone();
+        state.cookies = theirs;
+        let _: serde_json::Value = self.call(Op::SetState { state })?;
         Ok(())
     }
 
@@ -664,6 +777,268 @@ pub struct Lookahead {
     pub ms: u64,
 }
 
+/// What the broker allows while it serves one command: decided from the command it sent,
+/// never from what the content process says (P-04).
+#[derive(Debug, Default)]
+struct Serving {
+    /// Requests may reach the private network.
+    allow_private: bool,
+    /// Secret handles the command types, each released once.
+    secrets: Vec<String>,
+    /// The step this command may record (action text, input), once.
+    step: Option<(String, serde_json::Value)>,
+}
+
+/// The `secret://` handle a type action types, if any.
+fn typed_secret(action: &Action) -> Option<String> {
+    match action {
+        Action::Type(_, text) => text.strip_prefix("secret://").map(str::to_string),
+        _ => None,
+    }
+}
+
+impl Serving {
+    /// What `op` allows, given each open tab's private-network setting.
+    fn of(op: &Op, tabs: &std::collections::HashMap<u32, bool>) -> Self {
+        let tab = |t: &u32| tabs.get(t).copied().unwrap_or(false);
+        match op {
+            Op::Open { url, options } => Self {
+                allow_private: options.allow_private_network,
+                step: Some((
+                    format!("open {url}"),
+                    serde_json::json!({"open": {"url": url, "options": options}}),
+                )),
+                ..Self::default()
+            },
+            Op::Act {
+                tab: t,
+                action,
+                person,
+            } => Self {
+                allow_private: tab(t),
+                secrets: typed_secret(action).into_iter().collect(),
+                step: (!person).then(|| {
+                    (
+                        action.to_string(),
+                        serde_json::to_value(action).unwrap_or_default(),
+                    )
+                }),
+            },
+            Op::Lookahead { tab: t, actions } => Self {
+                allow_private: tab(t),
+                secrets: actions.iter().filter_map(typed_secret).collect(),
+                step: None,
+            },
+            Op::Cdp { message, options } | Op::Bidi { message, options } => Self {
+                allow_private: options.allow_private_network,
+                // pageon's own action method (`Pageon.act`) may type a handle.
+                secrets: serde_json::from_str::<serde_json::Value>(message)
+                    .ok()
+                    .filter(|m| m["method"] == "Pageon.act")
+                    .and_then(|m| m["params"]["action"].as_str().map(str::to_string))
+                    .and_then(|a| a.parse::<Action>().ok())
+                    .and_then(|a| typed_secret(&a))
+                    .into_iter()
+                    .collect(),
+                step: None,
+            },
+            Op::Observe { tab: t, .. }
+            | Op::View { tab: t, .. }
+            | Op::Status { tab: t }
+            | Op::Screenshot { tab: t, .. }
+            | Op::Crop { tab: t, .. }
+            | Op::Url { tab: t }
+            | Op::Close { tab: t } => Self {
+                allow_private: tab(t),
+                ..Self::default()
+            },
+            _ => Self::default(),
+        }
+    }
+}
+
+/// Answers one `Env` call of the content process, deciding from the command being served
+/// what the content process may have (P-04): never its word for the private network,
+/// secrets, steps or `secret:` labels.
+fn answer<E: Env>(
+    env: &E,
+    serving: &mut Serving,
+    jar: &mut BrokerJar,
+    branch: bool,
+    call: EnvCall,
+) -> EnvReply {
+    match call {
+        EnvCall::Fetch(mut req) => {
+            req.allow_private = serving.allow_private;
+            req.labels.retain(|l| !l.starts_with("secret:"));
+            // A branch's reads do not make origins known: the real first request to an
+            // origin keeps its `first-contact` label (and the guard's look).
+            if branch {
+                req.labels.push("lookahead".into());
+            }
+            let url = url::Url::parse(&req.url).ok();
+            let scope = req.cookie_scope.clone();
+            if let (Some(u), Some(sc)) = (&url, &scope) {
+                jar.attach(&mut req, u, sc);
+            }
+            let mut r = env.fetch(&req);
+            if let (Ok(resp), Some(u)) = (&mut r, &url) {
+                jar.take(resp, u, scope.as_ref());
+            }
+            EnvReply::Fetch(r)
+        }
+        EnvCall::Now => {
+            let now = env.now_ms();
+            if let Ok(t) = &now {
+                jar.now = *t;
+            }
+            EnvReply::Num(now)
+        }
+        EnvCall::Random => EnvReply::Num(env.random_u64()),
+        EnvCall::Secret { name, origin } => match serving.secrets.iter().position(|n| *n == name) {
+            Some(i) => {
+                serving.secrets.remove(i);
+                EnvReply::Secret(env.secret(&name, &origin))
+            }
+            None => EnvReply::Secret(Err(pageon_env::NetError::Blocked(format!(
+                "secret://{name} was not asked for by the agent (only a type action may use it)"
+            )))),
+        },
+        EnvCall::Records => EnvReply::Flag(env.recorder().is_some()),
+        EnvCall::Profile => EnvReply::Profile(env.profile()),
+        EnvCall::Step(mut step) => {
+            // One step per agent command, described by what the broker sent; the content
+            // process supplies only what it observed.
+            if let Some((action, input)) = serving.step.take()
+                && let Some(r) = env.recorder()
+            {
+                step.action = action;
+                step.input = input;
+                r.step(*step);
+            }
+            EnvReply::Flag(true)
+        }
+    }
+}
+
+/// The `HttpOnly` cookies, kept by the broker only: the content process never sees them
+/// (P-04). Its clock is the last time the broker gave the content process (deterministic
+/// in replay).
+#[derive(Debug, Default)]
+pub(crate) struct BrokerJar {
+    jar: pageon_net::cookie::Jar,
+    now: u64,
+}
+
+/// Whether a `Set-Cookie` line has the `HttpOnly` attribute.
+fn http_only(line: &str) -> bool {
+    line.split(';')
+        .skip(1)
+        .any(|a| a.trim().eq_ignore_ascii_case("httponly"))
+}
+
+impl BrokerJar {
+    fn cx<'a>(
+        url: &'a url::Url,
+        scope: &'a pageon_env::CookieScope,
+    ) -> pageon_net::cookie::Context<'a> {
+        pageon_net::cookie::Context {
+            url,
+            top_site: &scope.top_site,
+            same_site: scope.same_site,
+            top_level_safe_nav: scope.top_level_safe_nav,
+            script: false,
+        }
+    }
+
+    /// Adds the broker's cookies for `url` to a request that carries cookies.
+    fn attach(
+        &self,
+        req: &mut pageon_env::Request,
+        url: &url::Url,
+        scope: &pageon_env::CookieScope,
+    ) {
+        let ours = self.jar.header(&Self::cx(url, scope), self.now);
+        if ours.is_empty() {
+            return;
+        }
+        match req
+            .headers
+            .iter_mut()
+            .find(|(k, _)| k.eq_ignore_ascii_case("cookie"))
+        {
+            Some((_, v)) if !v.is_empty() => {
+                v.push_str("; ");
+                v.push_str(&ours);
+            }
+            Some((_, v)) => *v = ours,
+            None => req.headers.push(("cookie".into(), ours)),
+        }
+    }
+
+    /// Takes the `HttpOnly` cookies out of a response (stored when the request carried
+    /// cookies); a plain cookie of a name the broker holds replaces the broker's copy.
+    fn take(
+        &mut self,
+        resp: &mut pageon_env::Response,
+        url: &url::Url,
+        scope: Option<&pageon_env::CookieScope>,
+    ) {
+        let now = self.now;
+        resp.headers.retain(|(k, v)| {
+            if !k.eq_ignore_ascii_case("set-cookie") {
+                return true;
+            }
+            if http_only(v) {
+                if let Some(sc) = scope {
+                    let _ = self.jar.set(v, &Self::cx(url, sc), now);
+                }
+                return false;
+            }
+            let name = v
+                .split(['=', ';'])
+                .next()
+                .unwrap_or_default()
+                .trim()
+                .to_string();
+            let host = url.host_str().unwrap_or_default().to_ascii_lowercase();
+            self.jar.retain(|c| {
+                !(c.name == name && pageon_net::cookie::domain_match(&host, &c.domain))
+            });
+            true
+        });
+    }
+}
+
+/// Appends `items` to the array at `path` of the reply with id `id` among `out`.
+fn merge_reply(
+    out: &mut [String],
+    id: &serde_json::Value,
+    path: &[&str],
+    items: Vec<serde_json::Value>,
+) {
+    if items.is_empty() {
+        return;
+    }
+    for m in out.iter_mut() {
+        let Ok(mut v) = serde_json::from_str::<serde_json::Value>(m) else {
+            continue;
+        };
+        if v["id"] != *id {
+            continue;
+        }
+        let mut at = &mut v;
+        for k in path {
+            at = &mut at[*k];
+        }
+        if let Some(a) = at.as_array_mut() {
+            a.extend(items);
+            *m = v.to_string();
+        }
+        return;
+    }
+}
+
 /// A lookahead branch in progress.
 struct Branch {
     outcomes: Vec<crate::Outcome>,
@@ -721,5 +1096,343 @@ impl fmt::Display for Lookahead {
             write!(f, "\n{o}")?;
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::cell::RefCell;
+
+    /// An environment that keeps every request it is asked for.
+    #[derive(Default)]
+    struct Seen(RefCell<Vec<pageon_env::Request>>);
+
+    impl Env for Seen {
+        fn fetch(
+            &self,
+            req: &pageon_env::Request,
+        ) -> Result<pageon_env::Response, pageon_env::NetError> {
+            self.0.borrow_mut().push(req.clone());
+            Err(pageon_env::NetError::ReplayMiss(String::new()))
+        }
+        fn now_ms(&self) -> Result<u64, pageon_env::NetError> {
+            Ok(0)
+        }
+        fn random_u64(&self) -> Result<u64, pageon_env::NetError> {
+            Ok(0)
+        }
+    }
+
+    fn act(tab: u32, a: &str, person: bool) -> Op {
+        Op::Act {
+            tab,
+            action: a.parse().unwrap_or_else(|e| panic!("{e}")),
+            person,
+        }
+    }
+
+    fn private_req() -> EnvCall {
+        let mut r = pageon_env::Request::get("http://127.0.0.1:9/admin");
+        r.allow_private = true;
+        r.labels = vec!["secret:pw".into(), "tool:x".into()];
+        EnvCall::Fetch(r)
+    }
+
+    /// SR-001, P-04: the private network is the broker's decision, per tab.
+    #[test]
+    fn allow_private_comes_from_the_served_command() {
+        let env = Seen::default();
+        let mut tabs = std::collections::HashMap::new();
+        tabs.insert(1, false);
+        tabs.insert(2, true);
+        for (op, want) in [
+            (act(1, "click e1", false), false),
+            (act(2, "click e1", false), true),
+            (
+                Op::Observe {
+                    tab: 9,
+                    full: false,
+                },
+                false,
+            ),
+            (Op::Clear, false),
+            (
+                Op::Open {
+                    url: "http://127.0.0.1/".into(),
+                    options: LoadOptions {
+                        allow_private_network: true,
+                        ..LoadOptions::default()
+                    },
+                },
+                true,
+            ),
+        ] {
+            let mut serving = Serving::of(&op, &tabs);
+            let _ = answer(
+                &env,
+                &mut serving,
+                &mut BrokerJar::default(),
+                false,
+                private_req(),
+            );
+            let seen = env
+                .0
+                .borrow_mut()
+                .pop()
+                .unwrap_or_else(|| panic!("no request"));
+            assert_eq!(seen.allow_private, want, "{op:?}");
+            assert_eq!(
+                seen.labels,
+                vec!["tool:x".to_string()],
+                "secret labels dropped"
+            );
+        }
+    }
+
+    /// SR-002, P-04: a secret only for the handle a served type action types, once.
+    #[test]
+    fn secrets_only_for_the_typed_handle_once() {
+        let env = crate::Secrets::new(Seen::default())
+            .with(
+                "pw",
+                crate::Secret::value("hunter2").origins(["https://a.test"]),
+            )
+            .with(
+                "other",
+                crate::Secret::value("x").origins(["https://a.test"]),
+            );
+        let tabs = std::collections::HashMap::new();
+        let ask = |name: &str| EnvCall::Secret {
+            name: name.into(),
+            origin: "https://a.test".into(),
+        };
+        let got = |r: EnvReply| match r {
+            EnvReply::Secret(r) => r.map_err(|e| e.to_string()),
+            other => panic!("{other:?}"),
+        };
+        for op in [
+            Op::Observe {
+                tab: 1,
+                full: false,
+            },
+            act(1, "click e1", false),
+            act(1, "type e3 \"ada\"", false),
+        ] {
+            let mut serving = Serving::of(&op, &tabs);
+            let e = got(answer(
+                &env,
+                &mut serving,
+                &mut BrokerJar::default(),
+                false,
+                ask("pw"),
+            ))
+            .unwrap_err();
+            assert!(e.contains("not asked for by the agent"), "{op:?}: {e}");
+        }
+        let mut serving = Serving::of(&act(1, "type e3 secret://pw", false), &tabs);
+        assert!(
+            got(answer(
+                &env,
+                &mut serving,
+                &mut BrokerJar::default(),
+                false,
+                ask("other")
+            ))
+            .is_err(),
+            "another name"
+        );
+        assert_eq!(
+            got(answer(
+                &env,
+                &mut serving,
+                &mut BrokerJar::default(),
+                false,
+                ask("pw")
+            ))
+            .as_deref(),
+            Ok("hunter2")
+        );
+        assert!(
+            got(answer(
+                &env,
+                &mut serving,
+                &mut BrokerJar::default(),
+                false,
+                ask("pw")
+            ))
+            .is_err(),
+            "once per action"
+        );
+        let cdp = Op::Cdp {
+            message: r#"{"id":1,"method":"Pageon.act","params":{"action":"type e3 secret://pw"}}"#
+                .into(),
+            options: LoadOptions::default(),
+        };
+        let mut serving = Serving::of(&cdp, &tabs);
+        assert!(
+            got(answer(
+                &env,
+                &mut serving,
+                &mut BrokerJar::default(),
+                false,
+                ask("pw")
+            ))
+            .is_ok()
+        );
+    }
+
+    /// SR-003, P-04: one step per recordable command, described by the broker.
+    #[test]
+    fn steps_come_from_the_served_command() {
+        let env = pageon_env::Recording::new(Seen::default());
+        let tabs = std::collections::HashMap::new();
+        let forged = || {
+            EnvCall::Step(Box::new(pageon_env::Step {
+                action: "click e666 (forged)".into(),
+                hash: "0123456789abcdef".into(),
+                ..pageon_env::Step::default()
+            }))
+        };
+        for op in [
+            Op::Observe {
+                tab: 1,
+                full: false,
+            },
+            act(1, "press Enter", true),
+        ] {
+            let mut serving = Serving::of(&op, &tabs);
+            let _ = answer(
+                &env,
+                &mut serving,
+                &mut BrokerJar::default(),
+                false,
+                forged(),
+            );
+        }
+        let mut serving = Serving::of(&act(1, "click e5", false), &tabs);
+        let _ = answer(
+            &env,
+            &mut serving,
+            &mut BrokerJar::default(),
+            false,
+            forged(),
+        );
+        let _ = answer(
+            &env,
+            &mut serving,
+            &mut BrokerJar::default(),
+            false,
+            forged(),
+        );
+        let steps = env.log().steps;
+        assert_eq!(steps.len(), 1, "{steps:#?}");
+        assert_eq!(steps[0].action, "click e5");
+        assert_eq!(steps[0].input, serde_json::json!({"Click": "e5"}));
+        assert_eq!(
+            steps[0].hash, "0123456789abcdef",
+            "what it observed is kept"
+        );
+    }
+
+    /// An environment answering every request with cookies, keeping the requests.
+    #[derive(Default)]
+    struct Sets(RefCell<Vec<pageon_env::Request>>);
+
+    impl Env for Sets {
+        fn fetch(
+            &self,
+            req: &pageon_env::Request,
+        ) -> Result<pageon_env::Response, pageon_env::NetError> {
+            self.0.borrow_mut().push(req.clone());
+            Ok(pageon_env::Response {
+                status: 200,
+                headers: vec![
+                    (
+                        "set-cookie".into(),
+                        "sid=s3cr3t; Path=/; HttpOnly; Secure".into(),
+                    ),
+                    ("set-cookie".into(), "theme=dark; Path=/".into()),
+                ],
+                body: Vec::new(),
+            })
+        }
+        fn now_ms(&self) -> Result<u64, pageon_env::NetError> {
+            Ok(1_000)
+        }
+        fn random_u64(&self) -> Result<u64, pageon_env::NetError> {
+            Ok(0)
+        }
+    }
+
+    /// SR-004, P-04: an HttpOnly cookie never reaches the content process, and goes along
+    /// with later requests that carry cookies.
+    #[test]
+    fn http_only_cookies_stay_in_the_broker() {
+        let env = Sets::default();
+        let mut jar = BrokerJar::default();
+        let mut serving = Serving::default();
+        let scope = pageon_env::CookieScope {
+            top_site: "https://a.test".into(),
+            same_site: true,
+            top_level_safe_nav: true,
+        };
+        let req = |cookie: Option<&str>, scope: Option<pageon_env::CookieScope>| {
+            let mut r = pageon_env::Request::get("https://a.test/account");
+            if let Some(c) = cookie {
+                r.headers.push(("cookie".into(), c.into()));
+            }
+            r.cookie_scope = scope;
+            EnvCall::Fetch(r)
+        };
+        let _ = answer(&env, &mut serving, &mut jar, false, EnvCall::Now);
+        let reply = answer(
+            &env,
+            &mut serving,
+            &mut jar,
+            false,
+            req(None, Some(scope.clone())),
+        );
+        let EnvReply::Fetch(Ok(resp)) = reply else {
+            panic!("{reply:?}")
+        };
+        let text = format!("{:?}", resp.headers);
+        assert!(
+            !text.contains("s3cr3t") && text.contains("theme=dark"),
+            "{text}"
+        );
+        // The next request with cookies carries the broker's sid after the page's own.
+        let _ = answer(
+            &env,
+            &mut serving,
+            &mut jar,
+            false,
+            req(Some("theme=dark"), Some(scope)),
+        );
+        let sent = env
+            .0
+            .borrow()
+            .last()
+            .cloned()
+            .unwrap_or_else(|| panic!("no request"));
+        let cookie = sent
+            .headers
+            .iter()
+            .find(|(k, _)| k == "cookie")
+            .map(|(_, v)| v.clone());
+        assert_eq!(cookie.as_deref(), Some("theme=dark; sid=s3cr3t"));
+        // A request without cookies (credentials omitted) gets none.
+        let _ = answer(&env, &mut serving, &mut jar, false, req(None, None));
+        let sent = env
+            .0
+            .borrow()
+            .last()
+            .cloned()
+            .unwrap_or_else(|| panic!("no request"));
+        assert!(
+            !sent.headers.iter().any(|(k, _)| k == "cookie"),
+            "{:?}",
+            sent.headers
+        );
     }
 }

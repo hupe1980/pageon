@@ -7,7 +7,7 @@
 //! carries messages, see `server.rs`), or in-process.
 
 mod frames;
-mod page;
+pub(crate) mod page;
 mod runtime;
 pub mod server;
 

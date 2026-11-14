@@ -442,6 +442,14 @@ impl Run<'_> {
                 labels: self.net.labels.clone(),
                 cause: self.net.cause.clone(),
                 shown_url: None,
+                cookie_scope: credentials.then(|| {
+                    let cx = cookie_cx(req, url, &top_site);
+                    pageon_env::CookieScope {
+                        top_site: top_site.clone(),
+                        same_site: cx.same_site,
+                        top_level_safe_nav: cx.top_level_safe_nav,
+                    }
+                }),
             })
             .map_err(|e| net_error(url, e))?;
         if credentials {
