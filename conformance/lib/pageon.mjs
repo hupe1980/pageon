@@ -45,16 +45,17 @@ export async function start(log, { args = [], env = {}, connect } = {}) {
     stdio: ['ignore', 'ignore', 'pipe'], env: { ...process.env, ...env },
   });
   let stderr = '';
-  const wsUrl = await new Promise((ok, fail) => {
+  // The URLs carry a per-run secret: take them as printed.
+  const [wsUrl, bidiUrl] = await new Promise((ok, fail) => {
     child.stderr.on('data', (d) => {
       stderr += d;
-      const m = /DevTools listening on (ws:\/\/\S+)/.exec(stderr);
-      if (m) ok(m[1]);
+      const cdp = /DevTools listening on (ws:\/\/\S+)/.exec(stderr);
+      const bidi = /WebDriver BiDi listening on (ws:\/\/\S+)/.exec(stderr);
+      if (cdp && bidi) ok([cdp[1], bidi[1]]);
     });
     child.on('exit', (code) => fail(new Error(`pageon cdp exited (${code}):\n${stderr}`)));
   });
   const url = `http://127.0.0.1:${new URL(wsUrl).port}`;
-  const bidiUrl = `ws://127.0.0.1:${new URL(wsUrl).port}/session`;
   const exited = new Promise((ok) => child.on('exit', (code) => ok(code)));
   const browser = connect ? await connect(wsUrl, bidiUrl) : null;
   return {

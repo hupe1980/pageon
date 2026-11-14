@@ -534,6 +534,8 @@ fn pageon_extension_observes_and_acts() {
 struct Server {
     child: Child,
     port: u16,
+    /// The printed path, with its per-run secret (`/session/<id>`).
+    path: String,
 }
 
 impl Server {
@@ -549,22 +551,19 @@ impl Server {
             .unwrap_or_else(|e| panic!("{e}"));
         let stderr = child.stderr.take().unwrap_or_else(|| panic!("stderr"));
         let mut lines = BufReader::new(stderr).lines();
-        let port = loop {
+        let (port, path) = loop {
             let line = lines
                 .next()
                 .and_then(Result::ok)
                 .unwrap_or_else(|| panic!("no BiDi line"));
             if let Some(url) = line.strip_prefix("WebDriver BiDi listening on ws://127.0.0.1:") {
-                assert!(url.ends_with("/session"), "{line}");
-                break url
-                    .split('/')
-                    .next()
-                    .and_then(|p| p.parse().ok())
-                    .unwrap_or(0);
+                let (port, path) = url.split_once('/').unwrap_or((url, ""));
+                assert!(path.starts_with("session/") && path.len() == 40, "{line}");
+                break (port.parse().unwrap_or(0), format!("/{path}"));
             }
         };
         std::thread::spawn(move || for _ in lines {});
-        Self { child, port }
+        Self { child, port, path }
     }
 
     fn http(&self, head: &str) -> String {
@@ -578,7 +577,7 @@ impl Server {
 
     fn connect(&self) -> tungstenite::WebSocket<TcpStream> {
         let s = TcpStream::connect(("127.0.0.1", self.port)).unwrap_or_else(|e| panic!("{e}"));
-        let (ws, _) = tungstenite::client(format!("ws://127.0.0.1:{}/session", self.port), s)
+        let (ws, _) = tungstenite::client(format!("ws://127.0.0.1:{}{}", self.port, self.path), s)
             .unwrap_or_else(|e| panic!("{e}"));
         ws
     }
@@ -635,8 +634,9 @@ fn the_endpoint_is_caged_and_refuses_like_cdp() {
         // Refusals while one client is connected: a second client, foreign Host and Origin.
         let upgrade = |host: &str, origin: &str| {
             s.http(&format!(
-                "GET /session HTTP/1.1\r\nHost: {host}\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n\
-                 Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n{origin}\r\n"
+                "GET {} HTTP/1.1\r\nHost: {host}\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n\
+                 Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n{origin}\r\n",
+                s.path
             ))
         };
         let foreign = upgrade("127.0.0.1", "Origin: https://evil.test\r\n");

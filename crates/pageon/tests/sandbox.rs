@@ -11,6 +11,7 @@ use pageon_env::Log;
 fn options() -> SandboxOptions {
     SandboxOptions {
         program: Some(env!("CARGO_BIN_EXE_pageon").into()),
+        ..SandboxOptions::default()
     }
 }
 

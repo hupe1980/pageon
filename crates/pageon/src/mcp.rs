@@ -358,6 +358,48 @@ fn error(id: Value, code: i64, message: &str) -> Value {
     json!({"jsonrpc": "2.0", "id": id, "error": {"code": code, "message": message}})
 }
 
+/// Longest request line read (4 MiB): a longer one is answered with an error and skipped.
+const MAX_LINE: usize = 4 << 20;
+
+/// Reads one line of at most `max` bytes into `line`: `None` at the end of input, `Some(false)`
+/// when the line was longer (the rest of it is skipped, nothing is kept).
+fn read_line_bounded(input: &mut impl BufRead, line: &mut String, max: usize) -> Option<bool> {
+    let mut bytes = Vec::new();
+    let mut over = false;
+    loop {
+        let buf = match input.fill_buf() {
+            Ok(b) => b,
+            Err(e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
+            Err(_) => return None,
+        };
+        if buf.is_empty() {
+            if bytes.is_empty() && !over {
+                return None;
+            }
+            break;
+        }
+        let (chunk, done) = match buf.iter().position(|&b| b == b'\n') {
+            Some(i) => (&buf[..=i], true),
+            None => (buf, false),
+        };
+        let n = chunk.len();
+        if !over {
+            if bytes.len() + n > max {
+                over = true;
+                bytes = Vec::new();
+            } else {
+                bytes.extend_from_slice(chunk);
+            }
+        }
+        input.consume(n);
+        if done {
+            break;
+        }
+    }
+    *line = String::from_utf8_lossy(&bytes).into_owned();
+    Some(!over)
+}
+
 fn run(b: &mut dyn Backend, mut input: impl BufRead, mut output: impl Write) {
     let mut line = String::new();
     // Whether the client shows URLs to its user itself (MCP URL-mode elicitation).
@@ -365,9 +407,16 @@ fn run(b: &mut dyn Backend, mut input: impl BufRead, mut output: impl Write) {
     let mut elicitations = 0u64;
     loop {
         line.clear();
-        match input.read_line(&mut line) {
-            Ok(0) | Err(_) => return,
-            Ok(_) => {}
+        match read_line_bounded(&mut input, &mut line, MAX_LINE) {
+            None => return,
+            Some(true) => {}
+            Some(false) => {
+                send(
+                    &mut output,
+                    &error(Value::Null, -32600, "request line over 4 MiB"),
+                );
+                continue;
+            }
         }
         if line.trim().is_empty() {
             continue;
@@ -692,11 +741,15 @@ fn reset(b: &mut dyn Backend, step: Option<u64>) -> Value {
         usize::try_from(s).unwrap_or(usize::MAX)
     });
     if k >= n {
-        return tool_error(
-            "bad_step",
-            format!("step {k} does not exist"),
-            format!("pass a step from 0 to {}", n - 1),
-        );
+        let why = if rec.truncated() {
+            format!(
+                "step {k} is not in the session's recording, which stopped at step {} (over 64 MiB of pages)",
+                n - 1
+            )
+        } else {
+            format!("step {k} does not exist")
+        };
+        return tool_error("bad_step", why, format!("pass a step from 0 to {}", n - 1));
     }
     let steps = rec.steps();
     if let Err(e) = rec.rewind(k) {
@@ -1170,4 +1223,21 @@ fn call(
         b,
         text_result(obs.clone(), json!({"outcome": last, "observation": obs})),
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// SR-007 (P-20): a request line over the limit is refused and skipped; reading goes on.
+    #[test]
+    fn long_lines_are_refused_and_skipped() {
+        let mut input = std::io::Cursor::new(format!("{}\n{{\"a\":1}}\n", "x".repeat(100)));
+        let mut line = String::new();
+        assert_eq!(read_line_bounded(&mut input, &mut line, 10), Some(false));
+        assert!(line.is_empty());
+        assert_eq!(read_line_bounded(&mut input, &mut line, 10), Some(true));
+        assert_eq!(line, "{\"a\":1}\n");
+        assert_eq!(read_line_bounded(&mut input, &mut line, 10), None);
+    }
 }

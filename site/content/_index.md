@@ -92,8 +92,9 @@ text = "`pageon cdp` is a DevTools endpoint that existing Puppeteer and Playwrig
 link = "@/docs/cdp.md"
 code = '''
 ```js
-const browser = await puppeteer.connect({ browserURL: 'http://127.0.0.1:9222' });
-const pw = await chromium.connectOverCDP('http://127.0.0.1:9222');
+// pageon cdp prints its ws:// URLs (with a per-run secret); connect to them
+const browser = await puppeteer.connect({ browserWSEndpoint: cdpUrl });
+const pw = await chromium.connectOverCDP(cdpUrl);
 ```
 '''
 

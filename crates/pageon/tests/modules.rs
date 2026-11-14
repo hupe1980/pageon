@@ -362,6 +362,7 @@ fn caged_equals_in_process_and_replays() {
                 &replay,
                 SandboxOptions {
                     program: Some(env!("CARGO_BIN_EXE_pageon").into()),
+                    ..SandboxOptions::default()
                 },
             )
             .unwrap_or_else(|e| panic!("{e}"));

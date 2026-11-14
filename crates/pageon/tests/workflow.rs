@@ -104,6 +104,7 @@ fn run_on(
             &env,
             SandboxOptions {
                 program: Some(env!("CARGO_BIN_EXE_pageon").into()),
+                ..SandboxOptions::default()
             },
         )
         .unwrap_or_else(|e| panic!("{e}"));

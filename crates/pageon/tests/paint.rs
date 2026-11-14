@@ -468,6 +468,7 @@ fn painting_is_deterministic_caged_and_in_process() {
         Replay::new(log.clone()),
         SandboxOptions {
             program: Some(env!("CARGO_BIN_EXE_pageon").into()),
+            ..SandboxOptions::default()
         },
     )
     .unwrap_or_else(|e| panic!("{e}"));

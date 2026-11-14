@@ -163,6 +163,25 @@ impl<E: Env> Secrets<E> {
 
 impl<E: Env> Secrets<E> {
     /// The secrets whose value `req` carries, with the origins each is bound to.
+    /// `url` with every value handed out replaced by its handle, raw and URL-encoded.
+    fn shown(&self, url: &str) -> String {
+        let mut out = url.to_string();
+        for (name, v) in self.resolved.borrow().iter() {
+            if v.is_empty() {
+                continue;
+            }
+            let handle = format!("secret://{name}");
+            let form: String = url::form_urlencoded::byte_serialize(v.as_bytes()).collect();
+            let pct = form.replace('+', "%20");
+            for form in [v.clone(), form, pct] {
+                if out.contains(&form) {
+                    out = out.replace(&form, &handle);
+                }
+            }
+        }
+        out
+    }
+
     fn carried(&self, req: &Request) -> Vec<(&str, &[String])> {
         let resolved = self.resolved.borrow();
         let mut out: Vec<(&str, &[String])> = Vec::new();
@@ -344,6 +363,7 @@ impl<E: Env> Env for Secrets<E> {
         labelled
             .labels
             .extend(carried.iter().map(|(n, _)| format!("secret:{n}")));
+        labelled.shown_url = Some(self.shown(&req.url));
         self.inner.fetch(&labelled)
     }
 

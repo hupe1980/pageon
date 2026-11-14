@@ -44,6 +44,7 @@ fn replay(log: &Log, caged: bool) -> Result<usize, pageon_env::Divergence> {
             &rec,
             SandboxOptions {
                 program: Some(env!("CARGO_BIN_EXE_pageon").into()),
+                ..SandboxOptions::default()
             },
         )
         .unwrap_or_else(|e| panic!("{e}"));
@@ -413,6 +414,7 @@ fn reset_is_fast() {
         &rec,
         SandboxOptions {
             program: Some(env!("CARGO_BIN_EXE_pageon").into()),
+            ..SandboxOptions::default()
         },
     )
     .unwrap_or_else(|e| panic!("{e}"));

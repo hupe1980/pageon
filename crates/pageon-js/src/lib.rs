@@ -25,7 +25,7 @@ pub use dom::webmcp::ToolInfo;
 pub use engine::{Engine, Limits, RealmConfig, ScrollOffsets, Settled};
 pub use eval::{Arg, Handle, PromiseState, Thrown};
 pub use modules::{ScriptKind, script_kind};
-pub use realm::{Dialog, NavRequest, Target};
+pub use realm::{Dialog, MAX_PER_ACTION, NavRequest, Target};
 pub use serialize::{Depth, LocalKey, LocalValue};
 
 /// What went wrong in a page's scripts.

@@ -48,7 +48,7 @@ pub mod window {
 
     fn dialog(cx: &mut Cx<'_, '_, '_>, kind: &'static str, message: String) -> bool {
         let accepted = kind == "alert" || cx.st().accept_dialogs;
-        cx.st().dialogs.push(crate::realm::Dialog {
+        cx.st().push_dialog(crate::realm::Dialog {
             kind: kind.into(),
             message,
             accepted,
@@ -89,7 +89,7 @@ pub mod window {
         if !url.trim().is_empty()
             && let Some(u) = crate::dom::resolve_url(cx, &url)
         {
-            cx.st().popups.push(u);
+            cx.st().push_popup(u);
         }
         Ok(None)
     }

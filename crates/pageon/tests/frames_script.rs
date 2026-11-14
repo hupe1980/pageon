@@ -47,6 +47,7 @@ fn sandbox<E: pageon_env::Env>(env: E) -> Sandbox<E> {
         env,
         SandboxOptions {
             program: Some(env!("CARGO_BIN_EXE_pageon").into()),
+            ..SandboxOptions::default()
         },
     )
     .unwrap_or_else(|e| panic!("{e}"))

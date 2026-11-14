@@ -453,6 +453,14 @@ pub struct State {
     pub sheets: crate::dom::sheets::Sheets,
     /// Caps already reported (one page error per kind).
     pub refused: std::collections::HashSet<&'static str>,
+    /// Dialogs beyond [`MAX_PER_ACTION`] since the last check (answered, counted, not kept).
+    pub dialogs_more: usize,
+    /// Popups beyond [`MAX_PER_ACTION`] since the last check (not opened, counted).
+    pub popups_more: usize,
+    /// Requests the document has made (`fetch`, XHR), against [`crate::dom::net::MAX_REQUESTS`].
+    pub requests_made: u32,
+    /// Modules the document has fetched, against [`crate::modules::MAX_MODULES`].
+    pub modules_loaded: u32,
     /// The element under the pointer.
     pub hovered: Option<NodeId>,
     /// Accept dialogs (`confirm` → true, `prompt` → its default) instead of dismissing them.
@@ -719,5 +727,29 @@ impl Realm {
         }
         st.layout = Some((key, l.clone()));
         l
+    }
+}
+
+/// Most dialogs, popups (and, in the tab, downloads) one action reports: the rest are
+/// answered as usual and counted (SR-007).
+pub const MAX_PER_ACTION: usize = 20;
+
+impl State {
+    /// Records a dialog (kept up to [`MAX_PER_ACTION`], then counted).
+    pub fn push_dialog(&mut self, d: Dialog) {
+        if self.dialogs.len() < MAX_PER_ACTION {
+            self.dialogs.push(d);
+        } else {
+            self.dialogs_more += 1;
+        }
+    }
+
+    /// Records a popup URL (kept up to [`MAX_PER_ACTION`], then counted).
+    pub fn push_popup(&mut self, url: String) {
+        if self.popups.len() < MAX_PER_ACTION {
+            self.popups.push(url);
+        } else {
+            self.popups_more += 1;
+        }
     }
 }

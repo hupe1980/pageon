@@ -12,16 +12,24 @@ code connects unchanged; the page still runs in pageon's sandbox, under its poli
 
 ```sh
 pageon cdp --port 9222
-# DevTools listening on ws://127.0.0.1:9222/devtools/browser/…
-# WebDriver BiDi listening on ws://127.0.0.1:9222/session
+# DevTools listening on ws://127.0.0.1:9222/devtools/browser/<secret>
+# WebDriver BiDi listening on ws://127.0.0.1:9222/session/<secret>
 ```
+
+The URLs carry a secret that changes on every run: only a client that was given the URL can
+connect, not any process on the machine. Any other path answers 404. Clients that discover the
+endpoint over HTTP (Puppeteer's `browserURL`, Playwright's `connectOverCDP('http://…')`) need
+`pageon cdp --discovery`, which serves `/json/version` and `/json/list`; use it only on a host
+without untrusted local users. `--allow-origin '*'` prints a warning: it lets any web page
+open in a browser drive pageon.
 
 ## Puppeteer
 
 ```js
 import puppeteer from 'puppeteer-core';
 
-const browser = await puppeteer.connect({ browserURL: 'http://127.0.0.1:9222' });
+// PAGEON_URL: the ws:// URL `pageon cdp` printed
+const browser = await puppeteer.connect({ browserWSEndpoint: process.env.PAGEON_URL });
 const page = await browser.newPage();
 await page.goto('https://example.com');
 await page.waitForSelector('.late');            // virtual time: a 5 s timer resolves at once
@@ -39,7 +47,7 @@ const { data } = await cdp.send('Pageon.screenshot', { marks: true });
 ```js
 import { chromium } from 'playwright';
 
-const browser = await chromium.connectOverCDP('http://127.0.0.1:9222');
+const browser = await chromium.connectOverCDP(process.env.PAGEON_URL);
 const page = await browser.contexts()[0].newPage();
 await page.goto('https://shop.example/checkout');
 await page.getByLabel('Email').fill('ann@example.com');

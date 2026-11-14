@@ -234,3 +234,51 @@ fn nobody_comes_and_it_times_out() {
         .to_string();
     assert!(TcpStream::connect(host).is_err(), "the view is closed");
 }
+
+/// SR-007 (P-12): a client that trickles its request a byte a second cannot hold the view; the
+/// person behind it is served within the request deadline (5 s).
+#[test]
+#[allow(clippy::disallowed_methods)] // wall time: the view must stay responsive
+fn a_trickling_client_cannot_hold_the_view() {
+    let session = Session::new(Replay::new(login_site()));
+    let mut tab = session
+        .open("https://shop.test/login", LoadOptions::default())
+        .unwrap_or_else(|e| panic!("{e}"));
+    let (tx, rx) = mpsc::channel::<String>();
+    let person = std::thread::spawn(move || {
+        let url = rx.recv().unwrap_or_else(|e| panic!("{e}"));
+        let host = url
+            .trim_start_matches("http://")
+            .split('/')
+            .next()
+            .unwrap_or_default()
+            .to_string();
+        // The slow client: a byte a second, for longer than the deadline.
+        let slow_host = host.clone();
+        let slow = std::thread::spawn(move || {
+            let mut s = TcpStream::connect(&slow_host).unwrap_or_else(|e| panic!("{e}"));
+            for b in b"GET / HTTP/1.1\r\nX-Slow: 1".iter() {
+                if s.write_all(&[*b]).is_err() {
+                    break;
+                }
+                std::thread::sleep(Duration::from_millis(1000));
+            }
+        });
+        std::thread::sleep(Duration::from_millis(300));
+        let started = Instant::now();
+        let (status, _, _) = http(&url, "GET", &[], "");
+        let waited = started.elapsed();
+        assert_eq!(status, 200);
+        assert!(waited < Duration::from_secs(7), "{waited:?}");
+        drop(slow);
+    });
+    let mut ready = |url: &str| {
+        let _ = tx.send(url.to_string());
+    };
+    let _ = tab
+        .takeover("slow", Duration::from_secs(8), &mut ready)
+        .unwrap_or_else(|e| panic!("{e}"));
+    person
+        .join()
+        .unwrap_or_else(|_| panic!("the person was not served in time"));
+}

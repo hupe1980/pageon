@@ -192,6 +192,10 @@ pub trait Recorder {
     fn pause(&self, paused: bool) {
         let _ = paused;
     }
+    /// Whether the recording stopped at a size limit (later steps are not in it).
+    fn truncated(&self) -> bool {
+        false
+    }
 }
 
 #[cfg(test)]

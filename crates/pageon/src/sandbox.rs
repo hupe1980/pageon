@@ -5,7 +5,7 @@
 use std::fmt;
 use std::io::BufReader;
 use std::path::PathBuf;
-use std::process::{ChildStdin, ChildStdout, Command, Stdio};
+use std::process::{ChildStdin, Command, Stdio};
 
 use pageon_env::Env;
 use procage::native::{Cage, CageOptions, Child, Grants};
@@ -18,12 +18,24 @@ use crate::{
 };
 
 /// Where the content process comes from.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct SandboxOptions {
     /// The program to start as `<program> content`; default: this binary. Binaries that are
     /// not `pageon` call [`crate::content::serve`] when started with the argument `content`,
     /// or point here at an installed `pageon`.
     pub program: Option<PathBuf>,
+    /// How long the content process may stay silent during a command (default 60 s); past
+    /// it, the content process is stopped and the sandbox reports it broken.
+    pub command_timeout: std::time::Duration,
+}
+
+impl Default for SandboxOptions {
+    fn default() -> Self {
+        Self {
+            program: None,
+            command_timeout: std::time::Duration::from_secs(60),
+        }
+    }
 }
 
 /// Why the sandbox could not start or broke.
@@ -79,13 +91,15 @@ pub struct Sandbox<E: Env> {
     env: E,
     child: Child,
     input: ChildStdin,
-    output: BufReader<ChildStdout>,
+    /// The content process's messages, read by a thread so a silent process can time out.
+    output: std::sync::mpsc::Receiver<Result<FromContent, String>>,
+    timeout: std::time::Duration,
     next: u64,
     receipt: String,
     broken: Option<String>,
     /// While a lookahead runs: what its branch did so far, and the request it was
     /// stopped at.
-    branch: Option<(Vec<crate::Outcome>, Option<Pending>)>,
+    branch: Option<Branch>,
 }
 
 impl<E: Env> fmt::Debug for Sandbox<E> {
@@ -145,11 +159,23 @@ impl<E: Env> Sandbox<E> {
         } else {
             "Landlock + seccomp"
         };
+        let (tx, rx) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let mut output = BufReader::new(output);
+            loop {
+                let msg = protocol::recv::<FromContent>(&mut output).map_err(|e| e.to_string());
+                let end = msg.is_err();
+                if tx.send(msg).is_err() || end {
+                    break;
+                }
+            }
+        });
         let mut sb = Self {
             env,
             child,
             input,
-            output: BufReader::new(output),
+            output: rx,
+            timeout: options.command_timeout,
             next: 1,
             receipt: format!(
                 "sandbox: {backend}, base v1; reads only {}; no network, no files, no programs{}",
@@ -162,7 +188,7 @@ impl<E: Env> Sandbox<E> {
             broken: None,
             branch: None,
         };
-        match protocol::recv::<FromContent>(&mut sb.output) {
+        match sb.receive() {
             Ok(FromContent::Hello { pageon }) if pageon == protocol::VERSION => Ok(sb),
             Ok(FromContent::Hello { pageon }) => Err(SandboxError::Protocol(format!(
                 "content process speaks protocol {pageon}, expected {}",
@@ -171,6 +197,11 @@ impl<E: Env> Sandbox<E> {
             Ok(_) => Err(SandboxError::Protocol("no greeting".into())),
             Err(e) => Err(SandboxError::Protocol(e.to_string())),
         }
+    }
+
+    /// Changes how long the content process may stay silent during a command.
+    pub fn set_command_timeout(&mut self, timeout: std::time::Duration) {
+        self.timeout = timeout;
     }
 
     /// How the content process is caged (one line).
@@ -189,6 +220,20 @@ impl<E: Env> Sandbox<E> {
         SandboxError::Protocol(why)
     }
 
+    /// The content process's next message, within the command timeout.
+    fn receive(&mut self) -> Result<FromContent, String> {
+        match self.output.recv_timeout(self.timeout) {
+            Ok(m) => m,
+            Err(std::sync::mpsc::RecvTimeoutError::Timeout) => Err(format!(
+                "the content process did not answer within {} s and was stopped; open a new session",
+                self.timeout.as_secs_f64()
+            )),
+            Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
+                Err("the content process exited".into())
+            }
+        }
+    }
+
     /// Runs one command, serving the content process's `Env` calls until it is done.
     fn call<T: DeserializeOwned>(&mut self, op: Op) -> Result<T, SandboxError> {
         if let Some(why) = &self.broken {
@@ -200,34 +245,48 @@ impl<E: Env> Sandbox<E> {
             return Err(self.fail(e.to_string()));
         }
         loop {
-            let msg = match protocol::recv::<FromContent>(&mut self.output) {
+            let msg = match self.receive() {
                 Ok(m) => m,
-                Err(e) => return Err(self.fail(e.to_string())),
+                Err(e) => return Err(self.fail(e)),
             };
             // A lookahead branch may read, never write: a request that may change something
-            // is held (never sent, never answered) and the branch ends.
-            if let (Some((_, pending)), FromContent::Env(EnvCall::Fetch(req))) =
-                (self.branch.as_mut(), &msg)
-                && !matches!(req.method.as_str(), "GET" | "HEAD" | "OPTIONS")
-            {
-                *pending = Some(Pending {
-                    method: req.method.clone(),
-                    url: req.url.clone(),
-                });
-                if let Err(e) = protocol::send(&mut self.input, &ToContent::Stop) {
-                    return Err(self.fail(e.to_string()));
+            // is held (never sent, never answered) and the branch ends. Past its deadline, the
+            // branch is stopped at its next request the same way.
+            if let (Some(b), FromContent::Env(call)) = (self.branch.as_mut(), &msg) {
+                #[allow(clippy::disallowed_methods)] // the branch deadline is wall time
+                let late = std::time::Instant::now() >= b.until;
+                let write = matches!(call, EnvCall::Fetch(req)
+                    if !matches!(req.method.as_str(), "GET" | "HEAD" | "OPTIONS"));
+                if late || write {
+                    if let (EnvCall::Fetch(req), false) = (call, late) {
+                        b.pending = Some(Pending {
+                            method: req.method.clone(),
+                            url: req.url.clone(),
+                        });
+                    }
+                    b.timed_out |= late;
+                    if let Err(e) = protocol::send(&mut self.input, &ToContent::Stop) {
+                        return Err(self.fail(e.to_string()));
+                    }
+                    continue;
                 }
-                continue;
             }
             let reply = match msg {
                 FromContent::Ran(o) => {
-                    if let Some((outcomes, _)) = self.branch.as_mut() {
-                        outcomes.push(*o);
+                    if let Some(b) = self.branch.as_mut() {
+                        b.outcomes.push(*o);
                     }
                     continue;
                 }
                 FromContent::Env(call) => match call {
-                    EnvCall::Fetch(req) => EnvReply::Fetch(self.env.fetch(&req)),
+                    EnvCall::Fetch(mut req) => {
+                        // A branch's reads do not make origins known: the real first request
+                        // to an origin keeps its `first-contact` label (and the guard's look).
+                        if self.branch.is_some() {
+                            req.labels.push("lookahead".into());
+                        }
+                        EnvReply::Fetch(self.env.fetch(&req))
+                    }
                     EnvCall::Now => EnvReply::Num(self.env.now_ms()),
                     EnvCall::Random => EnvReply::Num(self.env.random_u64()),
                     EnvCall::Secret { name, origin } => {
@@ -276,10 +335,19 @@ impl<E: Env> Sandbox<E> {
         if let Some(r) = self.env.recorder() {
             r.pause(true);
         }
-        self.branch = Some((Vec::new(), None));
+        self.branch = Some(Branch {
+            outcomes: Vec::new(),
+            pending: None,
+            until: start + BRANCH_DEADLINE,
+            timed_out: false,
+        });
         let r: Result<Option<Lookahead>, SandboxError> =
             self.call(Op::Lookahead { tab: id, actions });
-        let (ran, pending) = self.branch.take().unwrap_or_default();
+        let (ran, pending, timed_out) = self
+            .branch
+            .take()
+            .map(|b| (b.outcomes, b.pending, b.timed_out))
+            .unwrap_or_default();
         if let Some(rec) = self.env.recorder() {
             rec.pause(false);
         }
@@ -287,10 +355,11 @@ impl<E: Env> Sandbox<E> {
             outcomes: ran,
             ..Lookahead::default()
         });
-        if pending.is_some() {
+        if pending.is_some() || timed_out {
             la.observation = None;
         }
         la.pending = pending;
+        la.timed_out = timed_out;
         la.ms = u64::try_from(start.elapsed().as_millis()).unwrap_or(u64::MAX);
         Ok(la)
     }
@@ -588,9 +657,24 @@ pub struct Lookahead {
     /// The request the branch was stopped at: never sent.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pending: Option<Pending>,
+    /// The branch ran past its deadline (10 s) and was stopped.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub timed_out: bool,
     /// Wall time (ms).
     pub ms: u64,
 }
+
+/// A lookahead branch in progress.
+struct Branch {
+    outcomes: Vec<crate::Outcome>,
+    pending: Option<Pending>,
+    /// When it must end (wall time): past it, the branch is stopped at its next request.
+    until: std::time::Instant,
+    timed_out: bool,
+}
+
+/// How long a lookahead branch may run (wall time).
+const BRANCH_DEADLINE: std::time::Duration = std::time::Duration::from_secs(10);
 
 /// A request a lookahead held back (`POST https://shop.test/orders`).
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -629,6 +713,9 @@ impl fmt::Display for Lookahead {
                 "\npending: {} {} (held; do the action for real to send it)",
                 p.method, p.url
             )?;
+        }
+        if self.timed_out {
+            f.write_str("\ntimed out: the lookahead ran past 10 s and was stopped")?;
         }
         if let Some(o) = &self.observation {
             write!(f, "\n{o}")?;

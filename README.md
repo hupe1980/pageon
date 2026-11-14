@@ -94,15 +94,19 @@ with Browser(origins=["https://shop.example"]) as browser:
 
 ```sh
 pageon cdp --port 9222
+# DevTools listening on ws://127.0.0.1:9222/devtools/browser/<secret>
+# WebDriver BiDi listening on ws://127.0.0.1:9222/session/<secret>
 ```
 
 ```js
-const browser = await puppeteer.connect({ browserURL: 'http://127.0.0.1:9222' });
-const pw = await chromium.connectOverCDP('http://127.0.0.1:9222');
-const bidi = await puppeteer.connect({
-  browserWSEndpoint: 'ws://127.0.0.1:9222/session', protocol: 'webDriverBiDi',
-});
+const browser = await puppeteer.connect({ browserWSEndpoint: cdpUrl });   // the printed URLs
+const pw = await chromium.connectOverCDP(cdpUrl);
+const bidi = await puppeteer.connect({ browserWSEndpoint: bidiUrl, protocol: 'webDriverBiDi' });
 ```
+
+The URLs carry a per-run secret, so other local processes cannot take the browser. Clients
+that discover the endpoint over HTTP (`browserURL`, `connectOverCDP('http://…')`) need
+`pageon cdp --discovery`.
 
 **Rust**:
 

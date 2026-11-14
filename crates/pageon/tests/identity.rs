@@ -162,6 +162,7 @@ fn http_requests_carry_no_signature_and_pages_cannot_forge_one() {
                 &live,
                 SandboxOptions {
                     program: Some(env!("CARGO_BIN_EXE_pageon").into()),
+                    ..SandboxOptions::default()
                 },
             )
             .unwrap_or_else(|e| panic!("{e}"));
@@ -374,6 +375,7 @@ fn refusals_are_typed_everywhere() {
         &replay,
         SandboxOptions {
             program: Some(env!("CARGO_BIN_EXE_pageon").into()),
+            ..SandboxOptions::default()
         },
     )
     .unwrap_or_else(|e| panic!("{e}"));

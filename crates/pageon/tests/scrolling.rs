@@ -124,6 +124,7 @@ fn drive(url: &str, steps: &[&str], caged: bool) -> (Vec<String>, String) {
             &env,
             SandboxOptions {
                 program: Some(env!("CARGO_BIN_EXE_pageon").into()),
+                ..SandboxOptions::default()
             },
         )
         .unwrap_or_else(|e| panic!("{e}"));
@@ -302,6 +303,7 @@ fn scroll_sessions_replay() {
                 &again,
                 SandboxOptions {
                     program: Some(env!("CARGO_BIN_EXE_pageon").into()),
+                    ..SandboxOptions::default()
                 },
             )
             .unwrap_or_else(|e| panic!("{e}"));
@@ -367,6 +369,7 @@ fn a_lookahead_scrolls_on_the_fork_only() {
         &env,
         SandboxOptions {
             program: Some(env!("CARGO_BIN_EXE_pageon").into()),
+            ..SandboxOptions::default()
         },
     )
     .unwrap_or_else(|e| panic!("{e}"));

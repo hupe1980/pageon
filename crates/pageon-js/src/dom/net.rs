@@ -623,6 +623,28 @@ pub(crate) fn complete(
     }
 }
 
+/// Most requests one document makes (`fetch`, XHR): past it they fail as network errors and
+/// one page error says why (SR-007).
+pub const MAX_REQUESTS: u32 = 10_000;
+
+/// Counts a request of the document: whether it may be made.
+pub(crate) fn count_request(cx: &mut Cx<'_, '_, '_>) -> bool {
+    let n = {
+        let mut st = cx.st();
+        st.requests_made = st.requests_made.saturating_add(1);
+        st.requests_made
+    };
+    if n <= MAX_REQUESTS {
+        return true;
+    }
+    crate::dom::internals::refuse(
+        cx,
+        "requests",
+        format!("this document made {MAX_REQUESTS} requests; further requests fail"),
+    );
+    false
+}
+
 /// `fetch()`.
 pub(crate) fn fetch(cx: &mut Cx<'_, '_, '_>, input: Value, init: RequestInit) -> R<Value> {
     let data = match request_data(cx, &input, init) {
@@ -632,6 +654,9 @@ pub(crate) fn fetch(cx: &mut Cx<'_, '_, '_>, input: Value, init: RequestInit) ->
     if let Some(reason) = signal_aborted(cx, data.signal) {
         let r = cx.local(&reason);
         return settled(cx, Err(Error::Thrown(cx.keep(r))));
+    }
+    if !count_request(cx) {
+        return settled(cx, Err(Error::Type("Failed to fetch".into())));
     }
     let req = fetch_request(cx, &data, Dest::Fetch);
     let (resolver, p) = promise(cx)?;
@@ -1463,6 +1488,12 @@ pub mod xml_http_request {
             ))
         })?;
         let url = url.ok_or_else(illegal)?;
+        if !count_request(cx) {
+            return Err(Error::dom(
+                "NetworkError",
+                "Failed to execute 'send' on 'XMLHttpRequest': this document made too many requests.",
+            ));
+        }
         let mut bytes = Vec::new();
         if let Some(b) = &body
             && !matches!(method.as_str(), "GET" | "HEAD")

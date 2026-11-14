@@ -99,6 +99,7 @@ fn a_secret_never_leaves_for_another_origin() {
                 &vault,
                 SandboxOptions {
                     program: Some(env!("CARGO_BIN_EXE_pageon").into()),
+                    ..SandboxOptions::default()
                 },
             )
             .unwrap_or_else(|e| panic!("{e}"));
@@ -361,13 +362,19 @@ fn guarded_click(guard: CommandGuard) -> Result<pageon::Outcome, ActionError> {
     tab.act(act(&format!("click {}", find(&obs, "button", "Pay now"))))
 }
 
+/// A shell guard answering `verdict` (JSON fields after the id) to every effect, echoing its id.
+fn sh_guard(verdict: &str) -> String {
+    format!(
+        r#"while read -r l; do id=$(printf %s "$l" | sed 's/^{{"id":\([0-9]*\).*/\1/'); echo "{{\"id\":$id,{}}}"; done"#,
+        verdict.replace('"', "\\\"")
+    )
+}
+
 #[test]
 fn command_guards_speak_json_lines_and_fail_closed() {
-    let allow = CommandGuard::new(r#"while read -r l; do echo '{"verdict":"allow"}'; done"#);
+    let allow = CommandGuard::new(sh_guard(r#""verdict":"allow""#));
     assert!(guarded_click(allow).is_ok());
-    let deny = CommandGuard::new(
-        r#"while read -r l; do echo '{"verdict":"deny","reason":"no orders today"}'; done"#,
-    );
+    let deny = CommandGuard::new(sh_guard(r#""verdict":"deny","reason":"no orders today""#));
     let e = guarded_click(deny).unwrap_err();
     assert!(e.to_string().contains("guard: no orders today"), "{e}");
     let crash = CommandGuard::new("exit 1");
@@ -386,14 +393,16 @@ fn command_guards_speak_json_lines_and_fail_closed() {
     let dir = std::env::temp_dir().join(format!("pageon-guard-{}", std::process::id()));
     let _ = std::fs::remove_file(&dir);
     let tee = CommandGuard::new(format!(
-        r#"while read -r l; do echo "$l" >> {}; echo '{{"verdict":"allow"}}'; done"#,
+        r#"while read -r l; do echo "$l" >> {}; id=$(printf %s "$l" | sed 's/^{{"id":\([0-9]*\).*/\1/'); echo "{{\"id\":$id,\"verdict\":\"allow\"}}"; done"#,
         dir.display()
     ));
     guarded_click(tee).unwrap_or_else(|e| panic!("{e}"));
     let line = std::fs::read_to_string(&dir).unwrap_or_default();
     let v: serde_json::Value = serde_json::from_str(line.trim()).unwrap_or_default();
+    assert!(line.starts_with("{\"id\":"), "the id comes first: {line}");
     assert_eq!(v["method"], "POST");
     assert_eq!(v["class"], "write");
+    assert_eq!(v["cause"]["target_untrusted"], true, "{v}");
     assert_eq!(
         v["cause"]["target"]
             .as_str()
@@ -411,7 +420,7 @@ fn the_cli_takes_a_guard() {
         .unwrap_or_else(|e| panic!("{e}"))
         .args(["fetch", "https://shop.test/", "--robots", "ignore", "--replay"])
         .arg(&file)
-        .args(["--guard", r#"while read -r l; do case "$l" in *orders*) echo '{"verdict":"deny","reason":"read-only task"}';; *) echo '{"verdict":"allow"}';; esac; done"#])
+        .args(["--guard", r#"while read -r l; do id=$(printf %s "$l" | sed 's/^{"id":\([0-9]*\).*/\1/'); case "$l" in *orders*) echo "{\"id\":$id,\"verdict\":\"deny\",\"reason\":\"read-only task\"}";; *) echo "{\"id\":$id,\"verdict\":\"allow\"}";; esac; done"#])
         .args(["--act", "click e1"])
         .output()
         .unwrap_or_else(|e| panic!("{e}"));
@@ -447,4 +456,90 @@ fn the_label_check_is_cheap() {
     let per = t.elapsed().as_secs_f64() * 1000.0 / n as f64;
     println!("egress label check: {per:.4} ms per request (5 secrets, 800 B body)");
     assert!(per <= 0.1, "{per}");
+}
+
+/// SR-005 (P-18): a guard that answers twice cannot approve the next effect with its extra
+/// answer; one that forgets the id fails closed too.
+#[test]
+fn guard_verdicts_must_match_their_effect() {
+    // Answers every effect twice: the second answer arrives for the next effect.
+    let twice = CommandGuard::new(
+        r#"while read -r l; do id=$(printf %s "$l" | sed 's/^{"id":\([0-9]*\).*/\1/'); echo "{\"id\":$id,\"verdict\":\"allow\"}"; echo "{\"id\":$id,\"verdict\":\"allow\"}"; done"#,
+    );
+    let effect = |n: u32, url: &str| pageon::Effect {
+        method: "POST".into(),
+        url: url.into(),
+        origin: "https://shop.test".into(),
+        class: pageon::EffectClass::Write,
+        labels: vec![format!("n{n}")],
+        cause: None,
+    };
+    assert_eq!(
+        twice.verdict(&effect(1, "https://shop.test/a")),
+        pageon::Verdict::Allow
+    );
+    match twice.verdict(&effect(2, "https://shop.test/b")) {
+        pageon::Verdict::Deny(why) => assert!(why.contains("must echo"), "{why}"),
+        v => panic!("the stale answer approved: {v:?}"),
+    }
+    let no_id = CommandGuard::new(r#"while read -r l; do echo '{"verdict":"allow"}'; done"#);
+    match no_id.verdict(&effect(1, "https://shop.test/a")) {
+        pageon::Verdict::Deny(why) => assert!(why.contains("without \"id\""), "{why}"),
+        v => panic!("{v:?}"),
+    }
+}
+
+/// SR-005 (P-18): the guard sees a vault secret in a URL as its handle, and a page-authored
+/// target line clipped and marked.
+#[test]
+fn the_guard_sees_handles_and_clipped_page_text() {
+    const PW: &str = "hunter2 very&secret";
+    let long = "Buy ".repeat(2500);
+    let page = format!(
+        "<input id=pw type=password aria-label=Password><button onclick=\"fetch('/save?pw=' + encodeURIComponent(pw.value), {{method: 'POST'}})\">{long}</button>"
+    );
+    let log = site(vec![
+        html("https://shop.test/", &page),
+        ex(
+            "POST",
+            "https://shop.test/save?pw=hunter2%20very%26secret",
+            200,
+            &[("content-type", "text/plain")],
+            "ok",
+        ),
+    ]);
+    let seen: Rc<RefCell<Vec<pageon::Effect>>> = Rc::default();
+    let s2 = seen.clone();
+    let env = pageon::Secrets::new(Policy::new(Replay::new(log)).guard(move |e| {
+        s2.borrow_mut().push(e.clone());
+        Verdict::Allow
+    }))
+    .with(
+        "pw",
+        pageon::Secret::value(PW).origins(["https://shop.test"]),
+    );
+    let session = Session::new(&env);
+    let mut tab = session
+        .open("https://shop.test/", opts())
+        .unwrap_or_else(|e| panic!("{e}"));
+    let obs = tab.observe();
+    tab.act(act(&format!(
+        "type {} secret://pw",
+        find(&obs, "textbox", "Password")
+    )))
+    .unwrap_or_else(|e| panic!("{e}"));
+    let button = refs(&obs, "button")[0].0.clone();
+    tab.act(act(&format!("click {button}")))
+        .unwrap_or_else(|e| panic!("{e}"));
+    let seen = seen.borrow();
+    let login = seen
+        .iter()
+        .find(|e| e.url.contains("/save"))
+        .unwrap_or_else(|| panic!("{seen:#?}"));
+    assert!(login.url.contains("secret://pw"), "{}", login.url);
+    assert!(!login.url.contains("hunter2"), "{}", login.url);
+    let cause = login.cause.as_ref().unwrap_or_else(|| panic!("cause"));
+    let target = cause.target.as_deref().unwrap_or_default();
+    assert!(cause.target_untrusted);
+    assert!(target.chars().count() <= 301, "{}", target.len());
 }

@@ -40,6 +40,20 @@ pub struct Effect {
     pub cause: Option<pageon_env::Cause>,
 }
 
+/// The longest URL a guard sees (longer ones are cut, marked `…`).
+const MAX_URL: usize = 2048;
+/// The longest page-authored target line a guard sees.
+const MAX_TARGET: usize = 300;
+
+fn clip(s: &str, max: usize) -> String {
+    if s.chars().count() <= max {
+        return s.to_string();
+    }
+    let mut out: String = s.chars().take(max).collect();
+    out.push('…');
+    out
+}
+
 /// A guard's answer about an effect.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Verdict {
@@ -278,13 +292,21 @@ impl<E: Env> Policy<E> {
         if first {
             labels.push("first-contact".into());
         }
+        // What the guard and the approver see: the URL with vault secrets as handles,
+        // page-authored text clipped and marked (SR-005).
         let effect = Effect {
             method: req.method.clone(),
-            url: req.url.clone(),
+            url: clip(req.shown_url.as_deref().unwrap_or(&req.url), MAX_URL),
             origin: origin.clone(),
             class,
             labels,
-            cause: req.cause.clone(),
+            cause: req.cause.clone().map(|mut c| {
+                if let Some(t) = &c.target {
+                    c.target = Some(clip(t, MAX_TARGET));
+                    c.target_untrusted = true;
+                }
+                c
+            }),
         };
         let mut ask = false;
         if let Some(g) = &self.guard
@@ -330,8 +352,11 @@ impl<E: Env> Policy<E> {
                 None => {}
             }
         }
-        // Only an allowed request makes its origin known: a refused first contact stays one.
-        self.contacted.borrow_mut().insert(origin);
+        // Only an allowed request makes its origin known: a refused first contact stays one,
+        // and a lookahead's reads leave no trace.
+        if !req.labels.iter().any(|l| l == "lookahead") {
+            self.contacted.borrow_mut().insert(origin);
+        }
         None
     }
 }

@@ -321,7 +321,7 @@ fn follow_link(cx: &mut Cx<'_, '_, '_>, href: &str, target: Option<&str>) {
         return;
     };
     if target.is_some_and(|t| t.eq_ignore_ascii_case("_blank")) {
-        cx.st().popups.push(url.to_string());
+        cx.st().push_popup(url.to_string());
     } else {
         navigate(cx, url.as_str(), false);
     }
@@ -449,7 +449,7 @@ pub(crate) fn submit_form(
             )
         };
         if target.is_some_and(|t| t.eq_ignore_ascii_case("_blank")) {
-            cx.st().popups.push(url.to_string());
+            cx.st().push_popup(url.to_string());
             return Ok(());
         }
         cx.st().navigation = Some(NavRequest {
@@ -464,7 +464,7 @@ pub(crate) fn submit_form(
     let query = crate::dom::urls::serialize(&entries);
     url.set_query(Some(&query));
     if target.is_some_and(|t| t.eq_ignore_ascii_case("_blank")) {
-        cx.st().popups.push(url.to_string());
+        cx.st().push_popup(url.to_string());
     } else {
         cx.st().navigation = Some(NavRequest {
             url: url.to_string(),

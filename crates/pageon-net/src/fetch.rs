@@ -287,9 +287,13 @@ fn fetch_robots(
             Ok(r) => r,
             // Not in the recording: the recorded session already decided (no egress anyway).
             Err(NetError::ReplayMiss(_)) => return Ok(crate::Robots::AllowAll),
-            // Refused by the egress policy: the page's own request gets the same verdict, for
-            // its own URL.
-            Err(NetError::Blocked(_)) => return Ok(crate::Robots::AllowAll),
+            // Refused by the egress policy: the rules cannot be checked, so the page is not
+            // loaded either (fail-closed), with the policy's own reason for it.
+            Err(NetError::Blocked(m)) => {
+                entry.outcome = Outcome::Failed(m.clone());
+                entries.push(entry);
+                return Err(net_error(page, NetError::Blocked(m)));
+            }
             Err(e) => {
                 entry.outcome = Outcome::Failed(e.to_string());
                 entries.push(entry);
@@ -309,7 +313,10 @@ fn fetch_robots(
         return Ok(crate::Robots::from_status(res.status)
             .unwrap_or_else(|| crate::Robots::parse(&res.body, "pageon")));
     }
-    Ok(crate::Robots::AllowAll)
+    // A redirect chain longer than RFC 9309's five: the rules cannot be read; fail closed.
+    Ok(crate::Robots::DisallowAll(
+        "robots.txt could not be checked: more than 5 redirects".into(),
+    ))
 }
 
 fn net_error(url: &Url, e: NetError) -> FetchError {
@@ -434,6 +441,7 @@ impl Run<'_> {
                 allow_private: self.net.allow_private,
                 labels: self.net.labels.clone(),
                 cause: self.net.cause.clone(),
+                shown_url: None,
             })
             .map_err(|e| net_error(url, e))?;
         if credentials {

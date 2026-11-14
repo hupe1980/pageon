@@ -67,13 +67,22 @@ pageon writes one JSON effect per line to its stdin, for every request except re
 already contacted:
 
 ```json
-{"method": "POST", "url": "https://shop.example/orders", "origin": "https://shop.example",
- "class": "write", "labels": ["first-contact"], "cause": {"action": "click e12", "target": "button e12 \"Pay now\""}}
+{"id": 7, "method": "POST", "url": "https://shop.example/orders", "origin": "https://shop.example",
+ "class": "write", "labels": ["first-contact"],
+ "cause": {"action": "click e12", "target": "button e12 \"Pay now\"", "target_untrusted": true}}
 ```
 
-It answers one verdict per line: `{"verdict": "allow"}`, `{"verdict": "deny", "reason": "…"}` or
-`{"verdict": "ask"}` (defer to the approver). It **fails closed**: a crash, malformed output or
-no answer within 10 seconds denies, from then on.
+It answers one verdict per line, echoing the effect's `id`: `{"id": 7, "verdict": "allow"}`,
+`{"id": 7, "verdict": "deny", "reason": "…"}` or `{"id": 7, "verdict": "ask"}` (defer to the
+approver). It **fails closed**: a crash, malformed output, a verdict without the asked `id` (an
+extra or late answer can never approve another request) or no answer within 10 seconds denies,
+from then on. `id` comes first in each line, so a shell guard can read it with
+`sed 's/^{"id":\([0-9]*\).*/\1/'`.
+
+What the guard sees is clipped: URLs at 2,048 characters, with vault secrets shown as their
+`secret://name` handles; the target line (page text) at 300 characters, marked
+`target_untrusted`. A lookahead's reads do not count as contact, so the real first request to
+an origin still carries `first-contact`.
 
 Labels help guards decide: `secret:<name>` (the request carries that secret to its own origin),
 `first-contact` (no request went to this origin before), `tool:<name>` and `consequential` (a
@@ -127,7 +136,8 @@ built-ins cannot change what a client computes.
   refuses to type into a hidden field.
 - **Masked pixels.** `--mask` paints over third-party frames and text a person cannot read.
 - **No secrets.** [Secrets](@/docs/secrets.md) never appear in views, screenshots, outcomes,
-  protocol messages or recordings.
+  protocol messages or recordings. Recordings keep each cookie a server set with its value
+  replaced (`sid=pageon-redacted; Path=/`), so a shared recording carries no session.
 
 ## Known limits
 

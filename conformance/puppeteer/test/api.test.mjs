@@ -43,7 +43,7 @@ const pages = () => site([
 
 let s, page;
 before(async () => {
-  s = await start(pages(), { args: ['--secret', 'pw@https://shop.test'], env: { PAGEON_SECRET_PW: 'very-secret-pw' } });
+  s = await start(pages(), { args: ['--discovery', '--secret', 'pw@https://shop.test'], env: { PAGEON_SECRET_PW: 'very-secret-pw' } });
   page = await s.browser.newPage();
 });
 after(async () => s && s.stop());

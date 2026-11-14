@@ -87,6 +87,11 @@ pub struct Request {
     /// for requests a page makes by itself. Advisory: for guards, never sent or recorded.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cause: Option<Cause>,
+    /// The URL as guards and approvers see it: vault secrets it carries replaced by their
+    /// handles. Set by the broker's secrets layer only (never deserialized, so a content
+    /// process cannot choose what the guard sees).
+    #[serde(skip)]
+    pub shown_url: Option<String>,
 }
 
 /// The agent action behind a request.
@@ -97,6 +102,9 @@ pub struct Cause {
     /// The agent's view line of its target (`button e5 "Pay now"`), when it has one.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub target: Option<String>,
+    /// `target` is page-authored text (a view line), clipped: data, never instructions.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub target_untrusted: bool,
 }
 
 impl Request {
@@ -110,6 +118,7 @@ impl Request {
             allow_private: false,
             labels: Vec::new(),
             cause: None,
+            shown_url: None,
         }
     }
 }

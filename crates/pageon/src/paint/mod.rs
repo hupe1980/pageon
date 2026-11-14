@@ -21,8 +21,27 @@ pub use encode::image_tokens;
 
 /// Largest image side, in device pixels.
 pub const MAX_SIDE: u32 = 16_384;
+/// Largest image, in device pixels (64 megapixels, 256 MB of RGBA): taller areas are cut.
+pub const MAX_PIXELS: u64 = 64 << 20;
 /// Images fetched per paint, at most.
 const MAX_FETCHES: usize = 256;
+
+/// Cuts `area` so the image stays within [`MAX_PIXELS`] at `scale` (the height goes), with a
+/// note when it did (SR-007).
+fn within_pixels(mut area: Rect, scale: f32) -> (Rect, Option<String>) {
+    let scale2 = f64::from(scale) * f64::from(scale);
+    let pixels = f64::from(area.width) * f64::from(area.height) * scale2;
+    if pixels <= MAX_PIXELS as f64 || area.width <= 0.0 {
+        return (area, None);
+    }
+    let height = (MAX_PIXELS as f64 / (f64::from(area.width) * scale2)).floor() as f32;
+    let note = format!(
+        "capped: {}×{} px is over 64 megapixels; painted the top {}×{height}",
+        area.width, area.height, area.width
+    );
+    area.height = height;
+    (area, Some(note))
+}
 
 /// What part of the page to paint.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
@@ -471,6 +490,8 @@ impl<E: Env> Tab<'_, E> {
                 })?
             }
         };
+        let (area, capped) = within_pixels(area, o.scale);
+        notes.extend(capped);
         let (w, h) = (
             (area.width * o.scale).round() as u32,
             (area.height * o.scale).round() as u32,
@@ -794,4 +815,27 @@ fn finish(
         legend,
         provenance,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// SR-007 (P-20): a full-page paint stays within 64 megapixels.
+    #[test]
+    fn paints_stay_within_the_pixel_budget() {
+        let r = |w: f32, h: f32| Rect {
+            x: 0.0,
+            y: 0.0,
+            width: w,
+            height: h,
+        };
+        let (a, note) = within_pixels(r(16_384.0, 16_384.0), 1.0);
+        assert_eq!(a.height, 4096.0);
+        assert!(note.unwrap_or_default().contains("over 64 megapixels"));
+        let (a, _) = within_pixels(r(4096.0, 16_384.0), 2.0);
+        assert!(f64::from(a.width) * f64::from(a.height) * 4.0 <= MAX_PIXELS as f64);
+        let (a, note) = within_pixels(r(1280.0, 3000.0), 1.0);
+        assert_eq!((a.height, note), (3000.0, None));
+    }
 }

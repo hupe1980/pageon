@@ -53,6 +53,8 @@ pub struct ServerOptions {
     pub port: u16,
     /// Origins allowed to open the WebSocket (requests without `Origin` are always allowed).
     pub allow_origins: Vec<String>,
+    /// Serve `/json/version` and `/json/list` (they reveal the WebSocket URL; off by default).
+    pub discovery: bool,
 }
 
 /// A bound endpoint.
@@ -60,6 +62,16 @@ pub struct Server {
     listener: TcpListener,
     port: u16,
     options: ServerOptions,
+    /// The per-run secret in the WebSocket paths: 128 bits from the operating system, as
+    /// Chrome's browser id is a random UUID.
+    token: String,
+}
+
+/// 128 random bits from the operating system, as hex.
+fn random_token() -> std::io::Result<String> {
+    let mut b = [0u8; 16];
+    getrandom::fill(&mut b).map_err(|e| std::io::Error::other(e.to_string()))?;
+    Ok(b.iter().map(|x| format!("{x:02x}")).collect())
 }
 
 /// One parsed HTTP request head.
@@ -166,6 +178,7 @@ impl Server {
             listener,
             port,
             options,
+            token: random_token()?,
         })
     }
 
@@ -178,14 +191,13 @@ impl Server {
     pub fn ws_url(&self) -> String {
         format!(
             "ws://127.0.0.1:{}/devtools/browser/{}",
-            self.port,
-            browser_id()
+            self.port, self.token
         )
     }
 
-    /// The WebDriver BiDi WebSocket URL (`ws://127.0.0.1:<port>/session`).
+    /// The WebDriver BiDi WebSocket URL (`ws://127.0.0.1:<port>/session/<id>`).
     pub fn bidi_url(&self) -> String {
-        format!("ws://127.0.0.1:{}/session", self.port)
+        format!("ws://127.0.0.1:{}/session/{}", self.port, self.token)
     }
 
     /// Serves one client: every message goes to `handle`, with the client's protocol, which
@@ -194,11 +206,17 @@ impl Server {
         let pages: Arc<Mutex<Json>> = Arc::new(Mutex::new(json!([])));
         let busy = Arc::new(AtomicBool::new(false));
         let (tx, rx) = mpsc::channel::<(TcpStream, Proto)>();
-        refresh_pages(handle, &pages, self.port)?;
+        let ws_url = self.ws_url();
+        refresh_pages(handle, &pages, &ws_url)?;
         {
             let (pages, busy) = (pages.clone(), busy.clone());
-            let (port, allow) = (self.port, self.options.allow_origins.clone());
-            let ws_url = self.ws_url();
+            let allow = self.options.allow_origins.clone();
+            let discovery = self.options.discovery;
+            let (cdp_path, bidi_path) = (
+                format!("/devtools/browser/{}", self.token),
+                format!("/session/{}", self.token),
+            );
+            let ws_url = ws_url.clone();
             let listener = self.listener;
             std::thread::spawn(move || {
                 for stream in listener.incoming().flatten() {
@@ -224,6 +242,15 @@ impl Server {
                         .header("upgrade")
                         .is_some_and(|u| u.eq_ignore_ascii_case("websocket"));
                     if !upgrade {
+                        if !discovery && (path == "/json" || path.starts_with("/json/")) {
+                            respond(
+                                &stream,
+                                "404 Not Found",
+                                "text/plain",
+                                "discovery is off: start pageon cdp with --discovery, or connect to the printed ws:// URL\n",
+                            );
+                            continue;
+                        }
                         match (head.method.as_str(), path) {
                             ("GET", "/json/version") => {
                                 let body = json!({
@@ -257,7 +284,7 @@ impl Server {
                                 &stream,
                                 "404 Not Found",
                                 "text/plain",
-                                "pageon serves /json/version, /json/list and the browser WebSocket\n",
+                                "unknown endpoint: use the URL pageon printed at startup\n",
                             ),
                         }
                         continue;
@@ -277,19 +304,16 @@ impl Server {
                         );
                         continue;
                     }
-                    let proto = if path == format!("/devtools/browser/{}", browser_id()) {
+                    let proto = if path == cdp_path {
                         Proto::Cdp
-                    } else if path == "/session" {
+                    } else if path == bidi_path {
                         Proto::Bidi
                     } else {
                         respond(
                             &stream,
                             "404 Not Found",
                             "text/plain",
-                            &format!(
-                                "pageon serves CDP at ws://127.0.0.1:{port}/devtools/browser/{} and WebDriver BiDi at ws://127.0.0.1:{port}/session\n",
-                                browser_id()
-                            ),
+                            "unknown endpoint: use the URL pageon printed at startup\n",
                         );
                         continue;
                     };
@@ -380,7 +404,7 @@ impl Server {
                 }
             }
             if proto == Proto::Cdp {
-                refresh_pages(handle, &pages, self.port)?;
+                refresh_pages(handle, &pages, &ws_url)?;
             }
             if closing {
                 let _ = ws.close(None);
@@ -393,7 +417,11 @@ impl Server {
 }
 
 /// Updates the `/json/list` answer from the session's targets.
-fn refresh_pages(handle: &mut Handler<'_>, pages: &Mutex<Json>, port: u16) -> Result<(), String> {
+fn refresh_pages(
+    handle: &mut Handler<'_>,
+    pages: &Mutex<Json>,
+    ws_url: &str,
+) -> Result<(), String> {
     let out = handle(
         Proto::Cdp,
         Input::Message(r#"{"id":-1,"method":"Target.getTargets"}"#),
@@ -416,7 +444,7 @@ fn refresh_pages(handle: &mut Handler<'_>, pages: &Mutex<Json>, port: u16) -> Re
                 "title": t["title"],
                 "type": "page",
                 "url": t["url"],
-                "webSocketDebuggerUrl": format!("ws://127.0.0.1:{port}/devtools/browser/{}", browser_id()),
+                "webSocketDebuggerUrl": ws_url,
             })
         })
         .collect();

@@ -23,6 +23,9 @@ fn is_public_v4(ip: Ipv4Addr) -> bool {
         || (a == 192 && b == 0 && c == 0)      // IETF protocol assignments
         || (a == 192 && b == 168)              // private
         || (a == 198 && (b == 18 || b == 19))  // benchmarking
+        || (a == 192 && b == 0 && c == 2)      // documentation TEST-NET-1
+        || (a == 198 && b == 51 && c == 100)   // documentation TEST-NET-2
+        || (a == 203 && b == 0 && c == 113)    // documentation TEST-NET-3
         || a >= 224) // multicast, reserved, broadcast
 }
 
@@ -38,13 +41,23 @@ fn is_public_v6(ip: Ipv6Addr) -> bool {
         || (s[0] & 0xffc0) == 0xfec0 // site-local (deprecated) fec0::/10
         || (s[0] & 0xff00) == 0xff00 // multicast
         || (s[0] == 0x2001 && s[1] == 0x0db8) // documentation
+        || (s[0] == 0x0064 && s[1] == 0xff9b && s[2] == 0x0001) // local-use NAT64 64:ff9b:1::/48
+        || (s[0] == 0x0100 && s[1..4] == [0, 0, 0]) // discard-only 100::/64
         || s[..6] == [0, 0, 0, 0, 0, 0]) // IPv4-compatible (deprecated) and the rest of ::/96
 }
 
-/// IPv4 carried in an IPv6 address: mapped `::ffff:a.b.c.d`, NAT64 `64:ff9b::a.b.c.d`.
+/// IPv4 carried in an IPv6 address: mapped `::ffff:a.b.c.d`, NAT64 `64:ff9b::a.b.c.d`, 6to4
+/// `2002:aabb:ccdd::/48`, and Teredo `2001:0::/32` (the client address, inverted).
 fn embedded_v4(ip: Ipv6Addr) -> Option<Ipv4Addr> {
     let s = ip.segments();
-    let tail = || Ipv4Addr::new((s[6] >> 8) as u8, s[6] as u8, (s[7] >> 8) as u8, s[7] as u8);
+    let v4 = |hi: u16, lo: u16| Ipv4Addr::new((hi >> 8) as u8, hi as u8, (lo >> 8) as u8, lo as u8);
+    let tail = || v4(s[6], s[7]);
+    if s[0] == 0x2002 {
+        return Some(v4(s[1], s[2]));
+    }
+    if s[0] == 0x2001 && s[1] == 0 {
+        return Some(v4(!s[6], !s[7]));
+    }
     if s[..5] == [0, 0, 0, 0, 0] && s[5] == 0xffff {
         return Some(tail());
     }
@@ -140,6 +153,34 @@ mod tests {
         }
         for u in ["https://example.com/", "http://localhost.example.com/"] {
             assert!(private_host_of(u).is_none(), "{u} must be public");
+        }
+    }
+
+    /// SR-002 (P-02): transition forms carrying a private IPv4 address, local-use NAT64, the
+    /// discard prefix and the documentation ranges are not public; public ones stay public.
+    #[test]
+    fn transition_and_documentation_addresses() {
+        for p in [
+            "2002:7f00:1::",                        // 6to4 for 127.0.0.1
+            "2002:a00:1::1",                        // 6to4 for 10.0.0.1
+            "2001:0:4136:e378:8000:63bf:80ff:fffe", // Teredo, client 127.0.0.1
+            "2001:0:4136:e378:8000:63bf:f5ff:fffe", // Teredo, client 10.0.0.1
+            "64:ff9b:1::a00:1",                     // local-use NAT64
+            "64:ff9b:1:ffff::1",
+            "100::1", // discard-only
+            "192.0.2.1",
+            "198.51.100.7",
+            "203.0.113.9",
+        ] {
+            assert!(private(p), "{p} is not public");
+        }
+        for p in [
+            "2002:808:808::1",                      // 6to4 for 8.8.8.8
+            "2001:0:4136:e378:8000:63bf:f7f7:f7f7", // Teredo, client 8.8.8.8
+            "198.51.101.1",
+            "203.0.114.1",
+        ] {
+            assert!(!private(p), "{p} is public");
         }
     }
 }

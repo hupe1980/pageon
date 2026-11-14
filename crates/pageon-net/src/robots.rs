@@ -117,22 +117,27 @@ impl Robots {
     }
 }
 
-/// Percent-encodes non-ASCII and upper-cases existing escapes, so patterns and paths compare
-/// as octets (RFC 9309 2.2.2).
+/// Normalizes a pattern or path for comparison (RFC 9309 2.2.2): escapes of unreserved
+/// characters are decoded (`/%70rivate` is `/private`), other escapes are upper-cased, and
+/// non-ASCII is percent-encoded, so both compare as octets.
 fn normalize(s: &str) -> String {
     let b = s.as_bytes();
     let mut out = String::with_capacity(b.len());
     let mut i = 0;
     while i < b.len() {
         let c = b[i];
-        if c == b'%' && i + 2 < b.len() {
-            let hex = &s[i + 1..i + 3];
-            if u8::from_str_radix(hex, 16).is_ok() {
+        if c == b'%'
+            && let Some(hex) = s.get(i + 1..i + 3)
+            && let Ok(v) = u8::from_str_radix(hex, 16)
+        {
+            if v.is_ascii_alphanumeric() || b"-._~".contains(&v) {
+                out.push(v as char);
+            } else {
                 out.push('%');
                 out.push_str(&hex.to_ascii_uppercase());
-                i += 3;
-                continue;
             }
+            i += 3;
+            continue;
         }
         if c >= 0x80 {
             out.push_str(&format!("%{c:02X}"));
@@ -277,5 +282,29 @@ mod tests {
             r(&big).disallowed("/late").is_none(),
             "rules after 500 KiB are ignored"
         );
+    }
+
+    /// SR-004 (P-16): percent-encoded paths cannot bypass a rule, and encoded rules match.
+    #[test]
+    fn percent_escapes_of_unreserved_characters_are_decoded() {
+        let r = Robots::parse(
+            b"User-agent: *\nDisallow: /private\nDisallow: /a%2Fb\nDisallow: /%7Euser\n",
+            "pageon",
+        );
+        for p in [
+            "/private",
+            "/%70rivate",
+            "/%70%72ivate/x",
+            "/~user",
+            "/%7euser",
+        ] {
+            assert!(r.disallowed(p).is_some(), "{p}");
+        }
+        // A reserved character stays encoded: `/a%2Fb` is not `/a/b`.
+        assert!(r.disallowed("/a%2fb").is_some());
+        assert!(r.disallowed("/a/b").is_none());
+        // An escape at the very end is read too.
+        assert!(r.disallowed("/privat%65").is_some());
+        assert!(r.disallowed("/public").is_none());
     }
 }

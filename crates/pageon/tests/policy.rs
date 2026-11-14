@@ -78,6 +78,7 @@ fn policy_matrix_in_process_and_caged() {
                     &env,
                     SandboxOptions {
                         program: Some(env!("CARGO_BIN_EXE_pageon").into()),
+                        ..SandboxOptions::default()
                     },
                 )
                 .unwrap_or_else(|e| panic!("{e}"));

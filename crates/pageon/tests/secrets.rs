@@ -145,6 +145,7 @@ fn secrets_cross_the_cage_by_handle() {
         &env,
         SandboxOptions {
             program: Some(env!("CARGO_BIN_EXE_pageon").into()),
+            ..SandboxOptions::default()
         },
     )
     .unwrap_or_else(|e| panic!("{e}"));

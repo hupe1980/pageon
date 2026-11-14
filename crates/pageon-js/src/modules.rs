@@ -6,6 +6,9 @@
 //! state and the caller's `Env`, so policy, recording and replay apply), resolution, and the
 //! hooks. Fetches are synchronous, so a graph is complete before it is instantiated.
 
+/// Most modules one document fetches, over all its graphs and dynamic imports (SR-007).
+pub const MAX_MODULES: u32 = 2_000;
+
 use pageon_dom::NodeId;
 use pageon_net::{Credentials, Dest, FetchRequest, Mode};
 use url::Url;
@@ -532,6 +535,25 @@ impl Engine {
         env: &dyn pageon_env::Env,
     ) -> Result<Body, String> {
         let r = self.realm(realm).cloned().ok_or("the document is gone")?;
+        if module {
+            let first_over = {
+                let mut st = r.st.borrow_mut();
+                st.modules_loaded = st.modules_loaded.saturating_add(1);
+                st.modules_loaded > MAX_MODULES && st.refused.insert("modules")
+            };
+            if first_over {
+                r.shared.borrow_mut().error(
+                    PageErrorKind::Load,
+                    format!("this document has loaded {MAX_MODULES} modules; no more are loaded"),
+                    url.as_str(),
+                );
+            }
+            if r.st.borrow().modules_loaded > MAX_MODULES {
+                return Err(format!(
+                    "this document has loaded {MAX_MODULES} modules; no more are loaded"
+                ));
+            }
+        }
         let (net, client) = {
             let st = r.st.borrow();
             (st.net.clone(), st.client.clone())
@@ -705,10 +727,10 @@ impl Engine {
                 continue;
             }
             fetched += 1;
-            if fetched > 2_000 {
+            if fetched > MAX_MODULES {
                 return Err((
                     PageErrorKind::Load,
-                    "the module graph has more than 2,000 modules".into(),
+                    format!("the module graph has more than {MAX_MODULES} modules"),
                     root.to_string(),
                 ));
             }

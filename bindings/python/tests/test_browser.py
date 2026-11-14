@@ -234,9 +234,12 @@ def test_lookahead_sees_without_doing(shop: Path) -> None:
 
 
 def test_guard_and_mask(shop: Path) -> None:
+    # A guard echoes each effect's id (the first field of the line) with its verdict.
     deny_posts = (
-        'while read -r l; do case "$l" in *\'"method":"POST"\'*) '
-        'echo \'{"verdict":"deny","reason":"read-only task"}\';; *) echo \'{"verdict":"allow"}\';; esac; done'
+        "while read -r l; do id=$(printf %s \"$l\" | sed 's/^{\"id\":\\([0-9]*\\).*/\\1/'); "
+        'case "$l" in *\'"method":"POST"\'*) '
+        'echo "{\\"id\\":$id,\\"verdict\\":\\"deny\\",\\"reason\\":\\"read-only task\\"}";; '
+        '*) echo "{\\"id\\":$id,\\"verdict\\":\\"allow\\"}";; esac; done'
     )
     with Browser(replay=shop, guard=deny_posts, binary=BIN) as browser:
         tab = browser.open("https://shop.test/login")

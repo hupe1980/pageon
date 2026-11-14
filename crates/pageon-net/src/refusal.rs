@@ -44,6 +44,9 @@ pub struct Refusal {
     /// Seconds to wait before retrying, when the site said.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub retry_after: Option<u64>,
+    /// The site asked for longer than [`MAX_RETRY_AFTER`]; `retry_after` is the cap.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub retry_capped: bool,
     /// The signal (`cf-mitigated: challenge`, `unavailable for legal reasons`, …); empty when
     /// the status says it all.
     pub detail: String,
@@ -67,6 +70,9 @@ impl fmt::Display for Refusal {
         f.write_str(")")?;
         if let Some(s) = self.retry_after {
             write!(f, ", retry after {s} s")?;
+            if self.retry_capped {
+                f.write_str(" (capped)")?;
+            }
         }
         Ok(())
     }
@@ -114,13 +120,16 @@ pub fn classify(
     let body_has = |s: &str| text.contains(s);
     let server = h("server").unwrap_or_default().to_ascii_lowercase();
     let cloudflare = has("cf-ray") || server == "cloudflare";
-    let retry_after = h("retry-after").and_then(|v| retry_after(v, h("date"), now_ms));
+    let asked = h("retry-after").and_then(|v| retry_after(v, h("date"), now_ms));
+    let retry_capped = asked.is_some_and(|s| s > MAX_RETRY_AFTER);
+    let retry_after = asked.map(|s| s.min(MAX_RETRY_AFTER));
     let r = |kind, vendor: Option<&str>, detail: String| {
         Some(Refusal {
             kind,
             vendor: vendor.map(str::to_string),
             status,
             retry_after,
+            retry_capped,
             detail,
         })
     };
@@ -191,6 +200,9 @@ pub fn classify(
         _ => None,
     }
 }
+
+/// The longest wait a refusal asks for (one hour): a site cannot park the agent for days.
+pub const MAX_RETRY_AFTER: u64 = 3600;
 
 /// `Retry-After` in seconds: delta-seconds, or an HTTP-date against `Date` (or now).
 fn retry_after(v: &str, date: Option<&str>, now_ms: u64) -> Option<u64> {
@@ -388,5 +400,19 @@ mod tests {
             "challenge by cloudflare (HTTP 403, cf-mitigated: challenge)"
         );
         assert!(r.guidance().contains("does not solve"));
+    }
+
+    /// SR-004 (P-16): a site cannot park the agent for days.
+    #[test]
+    fn retry_after_is_capped_at_an_hour() {
+        let r = c(429, &[("retry-after", "604800")], "").unwrap_or_else(|| panic!("refusal"));
+        assert_eq!(r.retry_after, Some(MAX_RETRY_AFTER));
+        assert!(r.retry_capped);
+        assert!(
+            r.to_string().ends_with("retry after 3600 s (capped)"),
+            "{r}"
+        );
+        let r = c(429, &[("retry-after", "120")], "").unwrap_or_else(|| panic!("refusal"));
+        assert_eq!((r.retry_after, r.retry_capped), (Some(120), false));
     }
 }

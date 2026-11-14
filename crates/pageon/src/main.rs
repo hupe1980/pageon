@@ -144,6 +144,11 @@ enum Command {
         /// send an Origin, Node clients do not.
         #[arg(long, value_name = "ORIGIN")]
         allow_origin: Vec<String>,
+        /// Serve `/json/version` and `/json/list` for clients that discover the WebSocket URL
+        /// over HTTP (Playwright's `connectOverCDP('http://…')`). Any local process can then
+        /// read the URL; prefer connecting to the printed `ws://` URL.
+        #[arg(long)]
+        discovery: bool,
         #[command(flatten)]
         session: SessionArgs,
     },
@@ -543,6 +548,10 @@ fn guarded<T>(
     (r, vault.values())
 }
 
+/// Most response-body bytes an in-memory session recording keeps (MCP's resets); past that it
+/// stops, and resets reach only the steps before.
+const KEEP_LIMIT: usize = 64 << 20;
+
 /// Runs `job` over the session's environment stack: secrets around the policy around the
 /// network (live, recorded or replayed). A recording is saved afterwards, with every secret
 /// value handed out redacted.
@@ -565,7 +574,8 @@ fn with_env<T>(
             ExitCode::from(3)
         })?;
         if keep {
-            return guarded(&Recording::new(env), s, secrets, approve, false, job).0;
+            let rec = Recording::new(env).with_body_limit(KEEP_LIMIT);
+            return guarded(&rec, s, secrets, approve, false, job).0;
         }
         return guarded(&env, s, secrets, approve, false, job).0;
     }
@@ -576,7 +586,8 @@ fn with_env<T>(
     let live = live_env(s, limits)?;
     let Some(path) = &s.record else {
         if keep {
-            return guarded(&Recording::new(live), s, secrets, approve, false, job).0;
+            let rec = Recording::new(live).with_body_limit(KEEP_LIMIT);
+            return guarded(&rec, s, secrets, approve, false, job).0;
         }
         return guarded(&live, s, secrets, approve, false, job).0;
     };
@@ -1170,7 +1181,12 @@ fn mcp(s: &SessionArgs) -> ExitCode {
     }
 }
 
-fn cdp(port: u16, allow_origins: Vec<String>, s: &SessionArgs) -> ExitCode {
+fn cdp(port: u16, allow_origins: Vec<String>, discovery: bool, s: &SessionArgs) -> ExitCode {
+    if allow_origins.iter().any(|o| o == "*") {
+        eprintln!(
+            "warning: --allow-origin '*' lets any web page you open in a browser drive pageon"
+        );
+    }
     let mut prepared = match prepare(s) {
         Ok(p) => p,
         Err(code) => return code,
@@ -1181,6 +1197,7 @@ fn cdp(port: u16, allow_origins: Vec<String>, s: &SessionArgs) -> ExitCode {
         let server = pageon::cdp::server::Server::bind(pageon::cdp::server::ServerOptions {
             port,
             allow_origins,
+            discovery,
         })
         .map_err(|e| {
             eprintln!(
@@ -1272,8 +1289,9 @@ fn main() -> ExitCode {
         Command::Cdp {
             port,
             allow_origin,
+            discovery,
             session,
-        } => return cdp(port, allow_origin, &session),
+        } => return cdp(port, allow_origin, discovery, &session),
         Command::Fetch {
             target,
             dump,

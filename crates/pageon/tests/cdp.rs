@@ -374,6 +374,8 @@ fn sessions_are_deterministic() {
 struct Server {
     child: Child,
     port: u16,
+    /// The printed CDP WebSocket URL.
+    ws: String,
 }
 
 impl Server {
@@ -389,21 +391,23 @@ impl Server {
             .unwrap_or_else(|e| panic!("{e}"));
         let stderr = child.stderr.take().unwrap_or_else(|| panic!("stderr"));
         let mut lines = BufReader::new(stderr).lines();
-        let port = loop {
+        let (port, ws) = loop {
             let line = lines
                 .next()
                 .and_then(Result::ok)
                 .unwrap_or_else(|| panic!("no DevTools line"));
-            if let Some(url) = line.strip_prefix("DevTools listening on ws://127.0.0.1:") {
-                break url
+            if let Some(url) = line.strip_prefix("DevTools listening on ") {
+                let port = url
+                    .trim_start_matches("ws://127.0.0.1:")
                     .split('/')
                     .next()
                     .and_then(|p| p.parse().ok())
                     .unwrap_or(0);
+                break (port, url.to_string());
             }
         };
         std::thread::spawn(move || for _ in lines {});
-        Self { child, port }
+        Self { child, port, ws }
     }
 
     fn http(&self, head: &str) -> String {
@@ -426,7 +430,7 @@ impl Drop for Server {
 #[test]
 fn idle_connections_and_quoted_commands_cannot_stop_the_endpoint() {
     let rec = file("cdp-idle", &site(vec![html("https://a.test/", "<p>a</p>")]));
-    let s = Server::start(&rec, &["--no-sandbox"]);
+    let s = Server::start(&rec, &["--no-sandbox", "--discovery"]);
     // A connection that never sends its head does not block the next client.
     let _idle = TcpStream::connect(("127.0.0.1", s.port)).unwrap_or_else(|e| panic!("{e}"));
     let mut c = TcpStream::connect(("127.0.0.1", s.port)).unwrap_or_else(|e| panic!("{e}"));
@@ -475,7 +479,7 @@ fn the_endpoint_refuses_foreign_hosts_and_origins() {
         "cdp-endpoint",
         &site(vec![html("https://a.test/", "<p>a</p>")]),
     );
-    for extra in [&[][..], &["--no-sandbox"][..]] {
+    for extra in [&["--discovery"][..], &["--no-sandbox", "--discovery"][..]] {
         let s = Server::start(&rec, extra);
         let version = s.http("GET /json/version HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n");
         assert!(version.starts_with("HTTP/1.1 200"), "{version}");
@@ -1139,4 +1143,61 @@ fn history_api_navigations_stay_in_the_document() {
     );
     let h = c.page("Page.getNavigationHistory", json!({}));
     assert_eq!(h["result"]["currentIndex"], 2, "{h}");
+}
+
+/// SR-001 (P-11): only the printed URL, with its per-run secret, reaches the browser;
+/// discovery over HTTP is opt-in.
+#[test]
+fn the_endpoint_answers_only_its_printed_url() {
+    let rec = file(
+        "cdp-token",
+        &site(vec![html("https://a.test/", "<p>a</p>")]),
+    );
+    let s = Server::start(&rec, &["--no-sandbox"]);
+    let id = s.ws.rsplit('/').next().unwrap_or_default().to_string();
+    assert_eq!(id.len(), 32, "128 random bits: {}", s.ws);
+    assert_ne!(id, pageon::cdp::server::browser_id());
+    for path in ["/json/version", "/json/list", "/json"] {
+        let r = s.http(&format!("GET {path} HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n"));
+        assert!(r.starts_with("HTTP/1.1 404"), "{path}: {r}");
+        assert!(r.contains("--discovery"), "{r}");
+    }
+    let guesses = [
+        "/devtools/browser/".to_string(),
+        format!("/devtools/browser/{}", pageon::cdp::server::browser_id()),
+        "/session".to_string(),
+        format!("/session/{}", "0".repeat(32)),
+    ];
+    for path in &guesses {
+        let r = s.http(&format!(
+            "GET {path} HTTP/1.1\r\nHost: 127.0.0.1\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n"
+        ));
+        assert!(r.starts_with("HTTP/1.1 404"), "{path}: {r}");
+    }
+    let tcp = TcpStream::connect(("127.0.0.1", s.port)).unwrap_or_else(|e| panic!("{e}"));
+    let (mut ws, _) = tungstenite::client(s.ws.as_str(), tcp).unwrap_or_else(|e| panic!("{e}"));
+    ws.send(tungstenite::Message::text(
+        json!({"id": 1, "method": "Browser.getVersion"}).to_string(),
+    ))
+    .unwrap_or_else(|e| panic!("{e}"));
+    let reply = loop {
+        if let Ok(tungstenite::Message::Text(t)) = ws.read() {
+            let v: Value = serde_json::from_str(&t).unwrap_or_else(|e| panic!("{e}"));
+            if v["id"] == 1 {
+                break v;
+            }
+        }
+    };
+    assert!(reply["result"]["product"].is_string(), "{reply}");
+}
+
+#[test]
+fn allowing_every_origin_warns() {
+    let out = Command::new(env!("CARGO_BIN_EXE_pageon"))
+        .args(["cdp", "--port", "1", "--allow-origin", "*"])
+        .stdin(Stdio::null())
+        .output()
+        .unwrap_or_else(|e| panic!("{e}"));
+    let err = String::from_utf8_lossy(&out.stderr);
+    assert!(err.contains("warning: --allow-origin '*'"), "{err}");
 }

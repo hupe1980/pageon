@@ -318,6 +318,10 @@ impl Engine {
                 blocked: Vec::new(),
                 sheets: Default::default(),
                 refused: Default::default(),
+                dialogs_more: 0,
+                popups_more: 0,
+                requests_made: 0,
+                modules_loaded: 0,
                 hovered: None,
                 accept_dialogs: cfg.accept_dialogs,
                 observers: Vec::new(),
@@ -1139,6 +1143,17 @@ impl Engine {
         self.realm(realm)
             .map(|r| std::mem::take(&mut r.st.borrow_mut().blocked))
             .unwrap_or_default()
+    }
+
+    /// Dialogs and popups beyond the per-action cap in a realm since the last call.
+    pub fn take_dropped(&mut self, realm: usize) -> (usize, usize) {
+        self.realm(realm).map_or((0, 0), |r| {
+            let mut st = r.st.borrow_mut();
+            (
+                std::mem::take(&mut st.dialogs_more),
+                std::mem::take(&mut st.popups_more),
+            )
+        })
     }
 
     /// Whether script changed an iframe in a realm since the last call (frames must be loaded).

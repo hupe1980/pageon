@@ -165,6 +165,7 @@ fn tools_are_called_as_actions() {
                 &replay,
                 SandboxOptions {
                     program: Some(env!("CARGO_BIN_EXE_pageon").into()),
+                    ..SandboxOptions::default()
                 },
             )
             .unwrap_or_else(|e| panic!("{e}"))
@@ -206,7 +207,7 @@ fn tools_are_called_as_actions() {
         );
         assert!(
             out.to_string()
-                .contains("result (page data) \"{\\\"flights\\\""),
+                .contains("result from \"https://air.test\" (page data) \"{\\\"flights\\\""),
             "{out}"
         );
         assert!(
@@ -349,6 +350,7 @@ fn tool_calls_record_replay_compile_and_look_ahead() {
         &replay,
         SandboxOptions {
             program: Some(env!("CARGO_BIN_EXE_pageon").into()),
+            ..SandboxOptions::default()
         },
     )
     .unwrap_or_else(|e| panic!("{e}"));

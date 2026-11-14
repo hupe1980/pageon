@@ -58,14 +58,28 @@ test('connectOverCDP: one default context, version, pages', async () => {
   assert.ok(s.context.pages().includes(page));
 });
 
-test('connect by browserURL (http)', async () => {
+test('connect by browserURL (http), with --discovery', async () => {
+  const t = await start(site([html('https://a.test/', '<title>A</title>')]), { connect: false, args: ['--discovery'] });
+  try {
+    const b = await chromium.connectOverCDP(t.url);
+    const p = await b.contexts()[0].newPage();
+    await p.goto('https://a.test/');
+    assert.equal(await p.title(), 'A');
+    await b.close();
+  } finally {
+    await t.stop();
+  }
+});
+
+test('without --discovery the endpoint is not discoverable over HTTP', async () => {
   const t = await start(site([html('https://a.test/', '<title>A</title>')]), { connect: false });
-  const b = await chromium.connectOverCDP(t.url);
-  const p = await b.contexts()[0].newPage();
-  await p.goto('https://a.test/');
-  assert.equal(await p.title(), 'A');
-  await b.close();
-  await t.stop();
+  try {
+    const r = await fetch(`${t.url}/json/version`);
+    assert.equal(r.status, 404);
+    assert.match(await r.text(), /--discovery/);
+  } finally {
+    await t.stop();
+  }
 });
 
 test('goto returns the response; title, url, content', async () => {

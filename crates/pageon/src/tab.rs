@@ -347,6 +347,9 @@ pub struct Outcome {
     /// What a page tool returned, as JSON text: page data, cut at 32 KB.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tool_result: Option<String>,
+    /// The origin of the document whose tool answered.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_origin: Option<String>,
     /// The called tool declared itself consequential.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub consequential: bool,
@@ -360,6 +363,15 @@ pub struct Outcome {
     /// Invalid fields beyond those listed.
     #[serde(default, skip_serializing_if = "is_zero")]
     pub invalid_more: usize,
+    /// Dialogs beyond the 20 listed (answered by the dialog policy all the same).
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub dialogs_more: usize,
+    /// Popups beyond the 20 listed (not opened).
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub popups_more: usize,
+    /// Downloads beyond the 20 listed (dropped).
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub downloads_more: usize,
 }
 
 fn is_zero(n: &usize) -> bool {
@@ -430,8 +442,14 @@ impl fmt::Display for Outcome {
             }
             parts.push(line);
         }
+        if self.dialogs_more > 0 {
+            parts.push(format!("and {} more dialogs", self.dialogs_more));
+        }
         for p in &self.popups {
             parts.push(format!("popup {}", q(p)));
+        }
+        if self.popups_more > 0 {
+            parts.push(format!("and {} more popups", self.popups_more));
         }
         for d in &self.downloads {
             parts.push(format!(
@@ -440,6 +458,9 @@ impl fmt::Display for Outcome {
                 q(&d.content_type),
                 d.bytes.len()
             ));
+        }
+        if self.downloads_more > 0 {
+            parts.push(format!("and {} more downloads", self.downloads_more));
         }
         if let Some(e) = self.errors.first() {
             parts.push(match self.errors.len() {
@@ -463,8 +484,13 @@ impl fmt::Display for Outcome {
             parts.push("consequential tool".into());
         }
         if let Some(r) = &self.tool_result {
+            let from = self
+                .tool_origin
+                .as_deref()
+                .map(|o| format!(" from {}", q(o)))
+                .unwrap_or_default();
             parts.push(format!(
-                "result (page data) {}",
+                "result{from} (page data) {}",
                 pageon_agent::quote::quote(r)
             ));
         }
@@ -1148,6 +1174,7 @@ impl<'s, E: Env> Tab<'s, E> {
                     self.redact(action.to_string())
                 },
                 target: target.as_ref().map(|(line, _)| line.clone()),
+                target_untrusted: false,
             });
         }
         let mut out = Outcome {
@@ -1637,6 +1664,7 @@ impl<'s, E: Env> Tab<'s, E> {
             }
         }
         out.consequential = tool.consequential;
+        out.tool_origin = Some(tool.origin.clone());
         let live = self.live(frame)?;
         let errors = self.frame_errors(frame);
         let called = live.engine.borrow_mut().call_tool(live.realm, name, input);
@@ -1891,6 +1919,9 @@ impl<'s, E: Env> Tab<'s, E> {
     ) -> Result<(), ActionError> {
         let (nav, dialogs, popups) = live.engine.borrow_mut().take_requests(live.realm);
         let blocked = live.engine.borrow_mut().take_blocked(live.realm);
+        let (dialogs_more, popups_more) = live.engine.borrow_mut().take_dropped(live.realm);
+        out.dialogs_more += dialogs_more;
+        out.popups_more += popups_more;
         out.dialogs.extend(dialogs);
         out.popups.extend(popups);
         refresh(&mut self.doc);
@@ -2029,8 +2060,12 @@ impl<'s, E: Env> Tab<'s, E> {
                 self.apply_history(out);
             }
             Loaded::Download(d) => {
-                out.downloads.push(d.clone());
-                self.downloads.push(d);
+                if out.downloads.len() < pageon_js::MAX_PER_ACTION {
+                    out.downloads.push(d.clone());
+                    self.downloads.push(d);
+                } else {
+                    out.downloads_more += 1;
+                }
             }
         }
         Ok(())
@@ -2188,6 +2223,20 @@ fn page_text(s: &str) -> String {
 }
 
 /// A tool's parameters from its `inputSchema`: `from: string, date?: string`.
+/// A schema name or type as the agent sees it: a plain identifier as is, anything else quoted
+/// and clipped (page data cannot pass as view syntax).
+fn schema_word(s: &str) -> String {
+    let plain = !s.is_empty()
+        && s.len() <= 40
+        && s.chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-');
+    if plain {
+        s.to_string()
+    } else {
+        pageon_agent::quote::quote(&pageon_agent::quote::clip(s, 40))
+    }
+}
+
 fn params(schema: Option<&str>) -> String {
     let Some(v) = schema.and_then(|s| serde_json::from_str::<serde_json::Value>(s).ok()) else {
         return String::new();
@@ -2216,7 +2265,7 @@ fn params(schema: Option<&str>) -> String {
         .map(|k| {
             let ty = props[k]["type"].as_str().unwrap_or("any");
             let opt = if required.contains(&k) { "" } else { "?" };
-            format!("{}{opt}: {ty}", pageon_agent::quote::clip(k, 40))
+            format!("{}{opt}: {}", schema_word(k), schema_word(ty))
         })
         .collect::<Vec<_>>()
         .join(", ")

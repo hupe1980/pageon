@@ -133,11 +133,41 @@ impl Request {
     }
 }
 
+/// How long a request may take to arrive, and a response to be written: a slow client cannot
+/// hold the view (it is served one connection at a time).
+const IO_DEADLINE: Duration = Duration::from_secs(5);
+
+/// A socket read under one deadline for the whole request, however the bytes trickle in.
+struct Deadline<'a> {
+    stream: &'a TcpStream,
+    until: Instant,
+}
+
+impl std::io::Read for Deadline<'_> {
+    #[allow(clippy::disallowed_methods)] // a socket deadline is real time
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        let left = self.until.saturating_duration_since(Instant::now());
+        if left.is_zero() {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::TimedOut,
+                "the request took too long to arrive",
+            ));
+        }
+        self.stream.set_read_timeout(Some(left))?;
+        std::io::Read::read(&mut self.stream, buf)
+    }
+}
+
+#[allow(clippy::disallowed_methods)] // a socket deadline is real time
 fn read_request(stream: &TcpStream) -> Result<Request, String> {
     stream
-        .set_read_timeout(Some(Duration::from_secs(2)))
+        .set_write_timeout(Some(IO_DEADLINE))
         .map_err(|e| e.to_string())?;
-    let mut r = BufReader::new(stream.take(64 * 1024));
+    let deadline = Deadline {
+        stream,
+        until: Instant::now() + IO_DEADLINE,
+    };
+    let mut r = BufReader::new(deadline.take(64 * 1024));
     let mut line = String::new();
     r.read_line(&mut line).map_err(|e| e.to_string())?;
     let mut parts = line.split_whitespace();

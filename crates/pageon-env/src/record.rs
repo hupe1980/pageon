@@ -125,6 +125,9 @@ pub struct Log {
     /// The agent's steps: what it did and what the page was after each step.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub steps: Vec<Step>,
+    /// The recording stopped at its body limit: what came after is not in it.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub truncated: bool,
 }
 
 impl Log {
@@ -150,6 +153,7 @@ impl Default for Log {
             clock: Vec::new(),
             random: Vec::new(),
             steps: Vec::new(),
+            truncated: false,
         }
     }
 }
@@ -167,6 +171,11 @@ pub struct Recording<E: Env> {
     divergence: RefCell<Option<Divergence>>,
     /// While a lookahead runs: pass everything through, keep nothing.
     paused: std::cell::Cell<bool>,
+    /// Most bytes of response bodies to keep (`usize::MAX`: no limit).
+    body_limit: std::cell::Cell<usize>,
+    body_bytes: std::cell::Cell<usize>,
+    /// Over the body limit: nothing more is kept, for good (unlike `paused`).
+    full: std::cell::Cell<bool>,
 }
 
 /// Re-running recorded steps.
@@ -179,6 +188,18 @@ struct Resume {
     used: Vec<bool>,
     clock: usize,
     random: usize,
+}
+
+/// `Set-Cookie: sid=abc; Path=/` → `sid=pageon-redacted; Path=/`: the cookie and its scope
+/// stay (a replayed page still has it), the value does not reach the disk.
+fn redact_cookie(v: &str) -> String {
+    let (pair, attrs) = v.split_once(';').map_or((v, ""), |(p, a)| (p, a));
+    let name = pair.split_once('=').map_or(pair, |(n, _)| n).trim();
+    if attrs.is_empty() {
+        format!("{name}=pageon-redacted")
+    } else {
+        format!("{name}=pageon-redacted;{attrs}")
+    }
 }
 
 impl<E: Env> Recording<E> {
@@ -196,7 +217,27 @@ impl<E: Env> Recording<E> {
             resume: RefCell::new(None),
             paused: std::cell::Cell::new(false),
             divergence: RefCell::new(None),
+            body_limit: std::cell::Cell::new(usize::MAX),
+            body_bytes: std::cell::Cell::new(0),
+            full: std::cell::Cell::new(false),
         }
+    }
+
+    /// Keeps at most `bytes` of response bodies; past that, the recording stops for good
+    /// (steps and exchanges after it are not kept) and [`Log::truncated`] is set.
+    pub fn with_body_limit(self, bytes: usize) -> Self {
+        self.body_limit.set(bytes);
+        self
+    }
+
+    /// Whether the recording stopped at its body limit.
+    pub fn truncated(&self) -> bool {
+        self.full.get()
+    }
+
+    /// Nothing is kept now (a lookahead, or over the body limit).
+    fn off(&self) -> bool {
+        self.paused.get() || self.full.get()
     }
 
     /// Resumes `log`: its steps `0..=upto` are re-run and checked, served from the log when
@@ -283,9 +324,16 @@ impl<E: Env> Recording<E> {
         &self.inner
     }
 
-    /// The log so far (redacted).
+    /// The log so far (redacted: secret values, and every cookie value a server set).
     pub fn log(&self) -> Log {
         let mut log = self.log.borrow().clone();
+        for ex in &mut log.exchanges {
+            for (k, v) in &mut ex.headers {
+                if k.eq_ignore_ascii_case("set-cookie") {
+                    *v = redact_cookie(v);
+                }
+            }
+        }
         let values = self.redact.borrow();
         if values.is_empty() {
             return log;
@@ -321,7 +369,7 @@ impl<E: Env> Recording<E> {
 
 impl<E: Env> Env for Recording<E> {
     fn fetch(&self, req: &Request) -> Result<Response, NetError> {
-        if self.paused.get() {
+        if self.off() {
             return self.inner.fetch(req);
         }
         let serving = self.resume.borrow().as_ref().map(|r| r.serve);
@@ -379,12 +427,21 @@ impl<E: Env> Env for Recording<E> {
                 }
             }
         };
+        let bytes = ex.body.as_ref().map_or(0, String::len)
+            + ex.body_base64.as_ref().map_or(0, String::len);
+        let total = self.body_bytes.get().saturating_add(bytes);
+        if total > self.body_limit.get() {
+            self.full.set(true);
+            self.log.borrow_mut().truncated = true;
+            return r;
+        }
+        self.body_bytes.set(total);
         self.log.borrow_mut().exchanges.push(ex);
         r
     }
 
     fn now_ms(&self) -> Result<u64, NetError> {
-        if self.paused.get() {
+        if self.off() {
             return self.inner.now_ms();
         }
         if let Some(r) = self.resume.borrow_mut().as_mut() {
@@ -402,7 +459,7 @@ impl<E: Env> Env for Recording<E> {
     }
 
     fn random_u64(&self) -> Result<u64, NetError> {
-        if self.paused.get() {
+        if self.off() {
             return self.inner.random_u64();
         }
         if let Some(r) = self.resume.borrow_mut().as_mut() {
@@ -438,8 +495,12 @@ impl<E: Env> Recorder for Recording<E> {
         self.paused.set(paused);
     }
 
+    fn truncated(&self) -> bool {
+        self.full.get()
+    }
+
     fn step(&self, mut step: Step) {
-        if self.paused.get() {
+        if self.off() {
             return;
         }
         let mut resume = self.resume.borrow_mut();
@@ -677,5 +738,40 @@ mod steps_tests {
         r.cancel();
         assert!(!r.replaying());
         assert_eq!(r.len(), 1);
+    }
+
+    /// SR-003 (P-08): cookie values a server set do not reach a saved recording; the cookie,
+    /// its name and attributes do.
+    #[test]
+    fn cookie_values_are_not_recorded() {
+        let mut log = site();
+        log.exchanges[0].headers.push((
+            "set-cookie".into(),
+            "sid=s3cr3t-session; Path=/; HttpOnly".into(),
+        ));
+        log.exchanges[0]
+            .headers
+            .push(("Set-Cookie".into(), "theme=dark".into()));
+        let rec = Recording::new(crate::Replay::new(log));
+        let _ = rec.fetch(&Request::get("https://a.test/"));
+        let saved = serde_json::to_string(&rec.log()).unwrap_or_default();
+        assert!(!saved.contains("s3cr3t-session"), "{saved}");
+        assert!(
+            saved.contains("sid=pageon-redacted; Path=/; HttpOnly"),
+            "{saved}"
+        );
+        assert!(saved.contains("theme=pageon-redacted"), "{saved}");
+    }
+
+    /// SR-003: an in-memory recording stops for good past its body limit.
+    #[test]
+    fn a_body_limit_stops_the_recording() {
+        let rec = Recording::new(crate::Replay::new(site())).with_body_limit(2);
+        let _ = rec.fetch(&Request::get("https://a.test/"));
+        assert!(rec.truncated());
+        rec.pause(false);
+        let _ = rec.fetch(&Request::get("https://a.test/2"));
+        let log = rec.log();
+        assert!(log.truncated && log.exchanges.is_empty(), "{log:?}");
     }
 }

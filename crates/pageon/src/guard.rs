@@ -1,8 +1,9 @@
 //! A guard as a program: any command — a script, a local model, a remote critic —
-//! decides about effects. pageon writes one JSON [`Effect`] per line to its stdin and reads one
-//! JSON verdict per line from its stdout: `{"verdict": "allow"}`, `{"verdict": "deny", "reason":
-//! "…"}` or `{"verdict": "ask"}`. It fails closed: a crash, malformed output or no answer within
-//! the timeout denies, from then on.
+//! decides about effects. pageon writes one JSON [`Effect`] per line to its stdin, with an `id`
+//! first (`{"id":7,"method":…}`), and reads one JSON verdict per line from its stdout, echoing
+//! it: `{"id": 7, "verdict": "allow"}`, `{"id": 7, "verdict": "deny", "reason": "…"}` or
+//! `{"id": 7, "verdict": "ask"}`. It fails closed: a crash, malformed output, a verdict for
+//! another effect (or without its id) or no answer within the timeout denies, from then on.
 
 use std::cell::RefCell;
 use std::io::{BufRead as _, BufReader, Write as _};
@@ -37,6 +38,8 @@ pub struct CommandGuard {
     command: String,
     timeout: Duration,
     state: RefCell<State>,
+    /// The id of the next effect asked about.
+    next: std::cell::Cell<u64>,
 }
 
 impl std::fmt::Debug for CommandGuard {
@@ -49,6 +52,8 @@ impl std::fmt::Debug for CommandGuard {
 
 #[derive(serde::Deserialize)]
 struct Answer {
+    #[serde(default)]
+    id: Option<u64>,
     verdict: String,
     #[serde(default)]
     reason: Option<String>,
@@ -66,6 +71,7 @@ impl CommandGuard {
             command: command.into(),
             timeout,
             state: RefCell::new(State::Idle),
+            next: std::cell::Cell::new(1),
         }
     }
 
@@ -108,7 +114,11 @@ impl CommandGuard {
         let State::Running { stdin, lines, .. } = &mut *state else {
             return Err("the guard is not running".into());
         };
-        let line = serde_json::to_string(effect).map_err(|e| e.to_string())?;
+        let id = self.next.get();
+        self.next.set(id + 1);
+        // `id` first, so a one-line shell guard can pick it out.
+        let body = serde_json::to_string(effect).map_err(|e| e.to_string())?;
+        let line = format!("{{\"id\":{id},{}", body.strip_prefix('{').unwrap_or(&body));
         writeln!(stdin, "{line}")
             .and_then(|()| stdin.flush())
             .map_err(|e| format!("the guard stopped reading ({e})"))?;
@@ -121,6 +131,20 @@ impl CommandGuard {
         };
         let a: Answer = serde_json::from_str(answer.trim())
             .map_err(|e| format!("not a verdict ({e}): {answer:?}"))?;
+        // A verdict for another effect (an extra or late answer) must never approve this one.
+        match a.id {
+            Some(got) if got == id => {}
+            Some(got) => {
+                return Err(format!(
+                    "answer for effect {got} while effect {id} was asked (the guard must echo \"id\")"
+                ));
+            }
+            None => {
+                return Err(format!(
+                    "a verdict without \"id\" (effect {id} was asked; the guard must echo it)"
+                ));
+            }
+        }
         match a.verdict.as_str() {
             "allow" => Ok(Verdict::Allow),
             "ask" => Ok(Verdict::Ask),
