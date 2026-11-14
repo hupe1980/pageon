@@ -76,6 +76,7 @@ pageon fetch https://example.com --screenshot page.png --marks # pixels with the
 ```sh
 claude mcp add pageon -- pageon mcp
 claude mcp add shop -- pageon mcp --origin https://shop.example --secret shop@https://shop.example
+pageon mcp --http 8931   # Streamable HTTP (MCP 2026-07-28) at the printed URL
 ```
 
 **Python**:

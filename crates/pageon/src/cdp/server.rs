@@ -153,7 +153,7 @@ fn respond(mut stream: &TcpStream, status: &str, content_type: &str, body: &str)
     let _ = stream.flush();
 }
 
-fn loopback_host(host: Option<&str>) -> bool {
+pub(crate) fn loopback_host(host: Option<&str>) -> bool {
     let Some(h) = host else { return false };
     let name = if let Some(rest) = h.strip_prefix('[') {
         rest.split(']')

@@ -550,7 +550,10 @@ fn preload_scripts_run_before_the_page() {
         "script.evaluate",
         json!({"expression": "typeof window.helper", "target": {"context": t, "sandbox": "helpers"}, "awaitPromise": false}),
     );
-    assert_eq!(r["result"]["value"], "undefined", "scoped to the first tab: {r}");
+    assert_eq!(
+        r["result"]["value"], "undefined",
+        "scoped to the first tab: {r}"
+    );
     // Removed, it stops; unknown ids are named.
     b.ok("script.removePreloadScript", json!({"script": main}));
     b.ok(

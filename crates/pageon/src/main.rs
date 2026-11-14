@@ -96,25 +96,37 @@ enum Command {
         #[command(flatten)]
         session: SessionArgs,
     },
-    /// Serve a sandboxed browser to an agent over MCP (stdio).
+    /// Serve a sandboxed browser to an agent over MCP (stdio, or Streamable HTTP with --http).
     ///
     /// Add it to an agent host:
     ///   Claude Code:     claude mcp add pageon -- pageon mcp
     ///   Claude Desktop, Cursor (mcpServers in their JSON config):
     ///     "pageon": { "command": "pageon", "args": ["mcp"] }
+    ///   Over HTTP:       pageon mcp --http 8931, then add the printed URL
+    ///
+    /// Protocol: MCP 2026-07-28 (no handshake) and 2024-11-05 … 2025-11-25 (initialize).
     ///
     /// Tools:
     ///   read     browser_open, browser_observe, browser_view, browser_screenshot
-    ///   act      browser_click, browser_type, browser_press, browser_select, browser_hover,
+    ///   act      browser_click, browser_type, browser_upload, browser_press, browser_select, browser_hover,
     ///            browser_scroll, browser_wait, browser_back, browser_forward, browser_call_tool
     ///   explore  browser_lookahead (try actions on a fork; the page is unchanged, writes are held),
     ///            browser_reset (back to any step, exactly, sending nothing again)
     ///   reuse    browser_workflow_save, browser_workflow_run
     ///   people   browser_takeover (a live view for a person: CAPTCHAs, second factors)
     ///
-    /// Every reply ends with its step number. Logs go to stderr; stdout carries the protocol.
+    /// Every reply ends with its step number. Logs go to stderr; over stdio, stdout carries the
+    /// protocol.
     #[command(verbatim_doc_comment)]
     Mcp {
+        /// Serve MCP 2026-07-28 over Streamable HTTP on 127.0.0.1 instead of stdio, at the
+        /// printed URL (it holds a per-run token); no value or 0 picks a free port.
+        #[arg(long, value_name = "PORT", num_args = 0..=1, default_missing_value = "0")]
+        http: Option<u16>,
+        /// With --http: allow calls from a web origin (repeatable; `*` for any). Browsers send
+        /// an Origin, other clients do not.
+        #[arg(long, value_name = "ORIGIN", requires = "http")]
+        allow_origin: Vec<String>,
         #[command(flatten)]
         session: SessionArgs,
     },
@@ -1186,7 +1198,18 @@ fn workflow(command: WorkflowCommand) -> ExitCode {
     }
 }
 
-fn mcp(s: &SessionArgs) -> ExitCode {
+fn mcp(http: Option<u16>, allow_origins: Vec<String>, s: &SessionArgs) -> ExitCode {
+    if http.is_some() && s.save_state.is_some() {
+        eprintln!(
+            "error: --save-state needs pageon mcp over stdio (the HTTP server runs until it is stopped)\n  drop --http, or drop --save-state"
+        );
+        return ExitCode::from(2);
+    }
+    if allow_origins.iter().any(|o| o == "*") {
+        eprintln!(
+            "warning: --allow-origin '*' lets any web page you open in a browser drive pageon"
+        );
+    }
     let mut prepared = match prepare(s) {
         Ok(p) => p,
         Err(code) => return code,
@@ -1199,6 +1222,10 @@ fn mcp(s: &SessionArgs) -> ExitCode {
             load: prepared.options,
             budget: Budget::o200k(s.budget),
             state: prepared.state.clone(),
+            http: http.map(|port| pageon::mcp::HttpOptions {
+                port,
+                allow_origins: allow_origins.clone(),
+            }),
             ..pageon::mcp::McpOptions::default()
         };
         let stdin = std::io::stdin();
@@ -1311,7 +1338,11 @@ fn main() -> ExitCode {
         Command::Content { probe } => return content(probe),
         Command::Identity { command } => return identity(command),
         Command::Workflow { command } => return workflow(command),
-        Command::Mcp { session } => return mcp(&session),
+        Command::Mcp {
+            http,
+            allow_origin,
+            session,
+        } => return mcp(http, allow_origin, &session),
         Command::Replay {
             file,
             to,

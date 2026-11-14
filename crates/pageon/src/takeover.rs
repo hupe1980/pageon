@@ -42,60 +42,89 @@ pub struct Takeover {
 /// Longest takeover.
 pub const MAX_TIMEOUT: Duration = Duration::from_secs(3600);
 
-fn token() -> Result<String, String> {
+/// 128 random bits as hex.
+pub(crate) fn token() -> Result<String, String> {
     let mut b = [0u8; 16];
     getrandom::fill(&mut b).map_err(|e| format!("no randomness for the token: {e}"))?;
     Ok(b.iter().map(|x| format!("{x:02x}")).collect())
 }
 
 /// Serves the live view until Done or `timeout`. `ready` gets the URL as soon as it listens.
-// A person works in wall-clock time; the page's own clock (virtual, through `Env`) is not
-// involved.
-#[allow(clippy::disallowed_methods)]
 pub fn serve(
     reason: &str,
     timeout: Duration,
     driver: &mut dyn Driver,
     ready: &mut dyn FnMut(&str),
 ) -> Result<Takeover, String> {
-    let listener =
-        TcpListener::bind(("127.0.0.1", 0)).map_err(|e| format!("cannot listen: {e}"))?;
-    listener.set_nonblocking(true).map_err(|e| e.to_string())?;
-    let port = listener.local_addr().map_err(|e| e.to_string())?.port();
-    let token = token()?;
-    let url = format!("http://127.0.0.1:{port}/t/{token}");
-    ready(&url);
-    let mut view = View {
-        port,
-        path: format!("/t/{token}"),
-        reason: reason.to_string(),
-        viewer: None,
-        inputs: 0,
-        done: false,
-    };
-    let deadline = Instant::now() + timeout.min(MAX_TIMEOUT);
-    loop {
-        match listener.accept() {
-            Ok((stream, _)) => {
-                // A broken request only affects its own connection.
-                let _ = view.handle(stream, driver);
-                if view.done {
-                    return Ok(Takeover {
-                        ended: Ended::Done,
-                        inputs: view.inputs,
-                    });
+    let live = Live::start(reason)?;
+    ready(live.url());
+    live.wait(timeout, driver)
+}
+
+/// A live view that listens but is not yet served: a person's browser waits until
+/// [`Live::wait`] runs (for a client that first shows the URL to its user).
+pub struct Live {
+    listener: TcpListener,
+    url: String,
+    view: View,
+}
+
+impl Live {
+    /// Listens on a free loopback port with a fresh token.
+    pub fn start(reason: &str) -> Result<Self, String> {
+        let listener =
+            TcpListener::bind(("127.0.0.1", 0)).map_err(|e| format!("cannot listen: {e}"))?;
+        listener.set_nonblocking(true).map_err(|e| e.to_string())?;
+        let port = listener.local_addr().map_err(|e| e.to_string())?.port();
+        let token = token()?;
+        Ok(Self {
+            listener,
+            url: format!("http://127.0.0.1:{port}/t/{token}"),
+            view: View {
+                port,
+                path: format!("/t/{token}"),
+                reason: reason.to_string(),
+                viewer: None,
+                inputs: 0,
+                done: false,
+            },
+        })
+    }
+
+    /// The URL for the person.
+    pub fn url(&self) -> &str {
+        &self.url
+    }
+
+    /// Serves the view until Done or `timeout`.
+    // A person works in wall-clock time; the page's own clock (virtual, through `Env`) is not
+    // involved.
+    #[allow(clippy::disallowed_methods)]
+    pub fn wait(mut self, timeout: Duration, driver: &mut dyn Driver) -> Result<Takeover, String> {
+        let deadline = Instant::now() + timeout.min(MAX_TIMEOUT);
+        loop {
+            match self.listener.accept() {
+                Ok((stream, _)) => {
+                    // A broken request only affects its own connection.
+                    let _ = self.view.handle(stream, driver);
+                    if self.view.done {
+                        return Ok(Takeover {
+                            ended: Ended::Done,
+                            inputs: self.view.inputs,
+                        });
+                    }
                 }
-            }
-            Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                if Instant::now() >= deadline {
-                    return Ok(Takeover {
-                        ended: Ended::TimedOut,
-                        inputs: view.inputs,
-                    });
+                Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                    if Instant::now() >= deadline {
+                        return Ok(Takeover {
+                            ended: Ended::TimedOut,
+                            inputs: self.view.inputs,
+                        });
+                    }
+                    std::thread::sleep(Duration::from_millis(5));
                 }
-                std::thread::sleep(Duration::from_millis(5));
+                Err(e) => return Err(format!("the live view failed: {e}")),
             }
-            Err(e) => return Err(format!("the live view failed: {e}")),
         }
     }
 }

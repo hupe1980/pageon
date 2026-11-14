@@ -1,9 +1,17 @@
-//! A Model Context Protocol server over stdio: JSON-RPC 2.0, one message per line,
-//! with browser tools on one current tab. Pages run in the sandbox by default.
+//! A Model Context Protocol server over stdio (JSON-RPC 2.0, one message per line) or
+//! Streamable HTTP, with browser tools on one current tab. Pages run in the sandbox by default.
+//!
+//! Both protocol eras are served: the `initialize` handshake revisions (2024-11-05 …
+//! 2025-11-25) and 2026-07-28, whose requests each carry their version and capabilities in
+//! `_meta` (HTTP serves 2026-07-28 only).
 //!
 //! The server is synchronous, like the engine: a request is read, served, answered.
 
+mod http;
+
 use std::io::{BufRead, Write};
+
+pub use http::HttpOptions;
 
 use pageon_env::Env;
 use serde_json::{Value, json};
@@ -292,6 +300,8 @@ pub struct McpOptions {
     pub budget: Budget,
     /// Cookies and `localStorage` to start with.
     pub state: Option<StorageState>,
+    /// Serve Streamable HTTP instead of stdio (until the process ends).
+    pub http: Option<HttpOptions>,
 }
 
 impl Default for McpOptions {
@@ -302,6 +312,7 @@ impl Default for McpOptions {
             load: LoadOptions::default(),
             budget: Budget::o200k(4000),
             state: None,
+            http: None,
         }
     }
 }
@@ -327,7 +338,10 @@ pub fn serve<E: Env>(
             budget: options.budget,
             state: options.state.clone(),
         };
-        run(&mut b, input, output);
+        match &options.http {
+            Some(h) => http::serve(&mut b, h)?,
+            None => run(&mut b, input, output),
+        }
         b.tab = None;
         b.state()
     } else {
@@ -342,7 +356,10 @@ pub fn serve<E: Env>(
             budget: options.budget,
             state: options.state.clone(),
         };
-        run(&mut b, input, output);
+        match &options.http {
+            Some(h) => http::serve(&mut b, h)?,
+            None => run(&mut b, input, output),
+        }
         b.tab = None;
         b.state()
     }
@@ -401,10 +418,8 @@ fn read_line_bounded(input: &mut impl BufRead, line: &mut String, max: usize) ->
 }
 
 fn run(b: &mut dyn Backend, mut input: impl BufRead, mut output: impl Write) {
+    let mut server = Server::new(false);
     let mut line = String::new();
-    // Whether the client shows URLs to its user itself (MCP URL-mode elicitation).
-    let mut url_elicitation = false;
-    let mut elicitations = 0u64;
     loop {
         line.clear();
         match read_line_bounded(&mut input, &mut line, MAX_LINE) {
@@ -431,24 +446,122 @@ fn run(b: &mut dyn Backend, mut input: impl BufRead, mut output: impl Write) {
                 continue;
             }
         };
-        let Some(id) = msg.get("id").cloned() else {
-            continue; // a notification: nothing to answer
-        };
-        // A response to one of our requests (elicitation): never answered.
+        let reply = server.handle(b, &msg, &mut |n| send(&mut output, &n));
+        if let Some(r) = reply {
+            send(&mut output, &r);
+        }
+    }
+}
+
+/// The newest revision: stateless requests, each with its version and capabilities in `_meta`.
+const MODERN: &str = "2026-07-28";
+const META_VERSION: &str = "io.modelcontextprotocol/protocolVersion";
+const META_CAPS: &str = "io.modelcontextprotocol/clientCapabilities";
+const META_SERVER: &str = "io.modelcontextprotocol/serverInfo";
+/// How long clients may cache the tool list and discovery: it never changes while we run.
+const TTL_MS: u64 = 3_600_000;
+
+fn server_info() -> Value {
+    json!({"name": "pageon", "title": "pageon", "version": env!("CARGO_PKG_VERSION")})
+}
+
+/// A takeover waiting for the client to show its URL (a multi-round-trip request).
+struct Pending {
+    /// The `requestState` the retry must carry: a random id of this view.
+    state: String,
+    live: crate::takeover::Live,
+    secs: u64,
+    message: String,
+}
+
+/// The protocol state shared by the transports: both eras, one browser.
+struct Server {
+    /// Serve 2026-07-28 only (Streamable HTTP).
+    modern_only: bool,
+    /// Legacy: the client initialized with URL-mode elicitation (2025-11-25).
+    url_elicitation: bool,
+    elicitations: u64,
+    pending: Option<Pending>,
+}
+
+impl Server {
+    fn new(modern_only: bool) -> Self {
+        Self {
+            modern_only,
+            url_elicitation: false,
+            elicitations: 0,
+            pending: None,
+        }
+    }
+
+    /// The versions this transport serves, newest first.
+    fn supported(&self) -> Vec<&'static str> {
+        let mut v = vec![MODERN];
+        if !self.modern_only {
+            v.extend_from_slice(VERSIONS);
+        }
+        v
+    }
+
+    /// Answers one message: `None` for notifications and responses. `notify` sends what goes
+    /// out before the reply (progress, legacy elicitation requests).
+    fn handle(
+        &mut self,
+        b: &mut dyn Backend,
+        msg: &Value,
+        notify: &mut dyn FnMut(Value),
+    ) -> Option<Value> {
+        let id = msg.get("id").cloned()?; // a notification: nothing to answer
+        // A response to one of our requests (legacy elicitation): never answered.
         if msg.get("method").is_none()
             && (msg.get("result").is_some() || msg.get("error").is_some())
         {
-            continue;
+            return None;
         }
         let Some(method) = msg.get("method").and_then(Value::as_str) else {
-            send(
-                &mut output,
-                &error(id, -32600, "invalid request: no method"),
-            );
-            continue;
+            return Some(error(id, -32600, "invalid request: no method"));
         };
         let params = msg.get("params").cloned().unwrap_or(Value::Null);
-        let reply = match method {
+        let version = params
+            .get("_meta")
+            .and_then(|m| m.get(META_VERSION))
+            .map(|v| v.as_str().unwrap_or_default().to_string());
+        let reply = match version {
+            Some(v) => self.modern(b, method, &params, &v, notify),
+            None if self.modern_only => Err(self.legacy_refused(method, &params)),
+            None => self
+                .legacy(b, method, &params, notify)
+                .map_err(|(c, m)| json!({"code": c, "message": m})),
+        };
+        Some(match reply {
+            Ok(result) => json!({"jsonrpc": "2.0", "id": id, "result": result}),
+            Err(e) => json!({"jsonrpc": "2.0", "id": id, "error": e}),
+        })
+    }
+
+    /// A transport that serves 2026-07-28 only refuses the handshake and requests without
+    /// `_meta`, naming the version it serves.
+    fn legacy_refused(&self, method: &str, params: &Value) -> Value {
+        if method == "initialize" {
+            let asked = params
+                .get("protocolVersion")
+                .cloned()
+                .unwrap_or(Value::Null);
+            return json!({"code": -32022, "message": format!("Unsupported protocol version: this endpoint serves MCP {MODERN} (no initialize; send the version in _meta), or use pageon mcp over stdio"),
+                "data": {"supported": self.supported(), "requested": asked}});
+        }
+        json!({"code": -32602, "message": format!("missing params._meta[\"{META_VERSION}\"]: this endpoint serves MCP {MODERN}")})
+    }
+
+    /// The `initialize` handshake revisions (2024-11-05 … 2025-11-25), unchanged.
+    fn legacy(
+        &mut self,
+        b: &mut dyn Backend,
+        method: &str,
+        params: &Value,
+        notify: &mut dyn FnMut(Value),
+    ) -> Reply {
+        match method {
             "initialize" => {
                 let asked = params
                     .get("protocolVersion")
@@ -458,38 +571,160 @@ fn run(b: &mut dyn Backend, mut input: impl BufRead, mut output: impl Write) {
                     .iter()
                     .find(|v| **v == asked)
                     .unwrap_or(&VERSIONS[0]);
-                url_elicitation = *version == "2025-11-25"
+                self.url_elicitation = *version == "2025-11-25"
                     && params
                         .pointer("/capabilities/elicitation/url")
                         .is_some_and(Value::is_object);
                 Ok(json!({
                     "protocolVersion": version,
                     "capabilities": {"tools": {"listChanged": false}},
-                    "serverInfo": {"name": "pageon", "title": "pageon", "version": env!("CARGO_PKG_VERSION")},
+                    "serverInfo": server_info(),
                     "instructions": INSTRUCTIONS,
                 }))
             }
             "ping" => Ok(json!({})),
             "tools/list" => Ok(json!({"tools": tools()})),
             "tools/call" => {
-                let elicit = url_elicitation.then(|| {
-                    elicitations += 1;
-                    format!("takeover-{elicitations}")
+                self.pending = None;
+                let elicit = self.url_elicitation.then(|| {
+                    self.elicitations += 1;
+                    format!("takeover-{}", self.elicitations)
                 });
-                call(b, &params, elicit.as_deref(), &mut |n| {
-                    send(&mut output, &n)
-                })
+                call(b, params, elicit.as_deref(), notify)
             }
             _ => Err((-32601, format!("method not found: {method}"))),
-        };
-        send(
-            &mut output,
-            &match reply {
-                Ok(result) => json!({"jsonrpc": "2.0", "id": id, "result": result}),
-                Err((code, message)) => error(id, code, &message),
-            },
-        );
+        }
     }
+
+    /// One 2026-07-28 request: validated on its own, answered with `resultType` and
+    /// `serverInfo`.
+    fn modern(
+        &mut self,
+        b: &mut dyn Backend,
+        method: &str,
+        params: &Value,
+        version: &str,
+        notify: &mut dyn FnMut(Value),
+    ) -> Result<Value, Value> {
+        if version != MODERN {
+            let hint = if VERSIONS.contains(&version) && !self.modern_only {
+                format!(" ({version} starts with initialize, without _meta)")
+            } else {
+                String::new()
+            };
+            return Err(
+                json!({"code": -32022, "message": format!("Unsupported protocol version{hint}"),
+                "data": {"supported": self.supported(), "requested": version}}),
+            );
+        }
+        let Some(caps) = params
+            .get("_meta")
+            .and_then(|m| m.get(META_CAPS))
+            .filter(|c| c.is_object())
+        else {
+            return Err(
+                json!({"code": -32602, "message": format!("missing params._meta[\"{META_CAPS}\"] (send {{}} for none)")}),
+            );
+        };
+        let url_elicitation = caps
+            .pointer("/elicitation/url")
+            .is_some_and(Value::is_object);
+        let mut result = match method {
+            "server/discover" => json!({
+                "supportedVersions": self.supported(),
+                "capabilities": {"tools": {}},
+                "instructions": INSTRUCTIONS,
+                "ttlMs": TTL_MS,
+                "cacheScope": "public",
+            }),
+            "tools/list" => json!({"tools": tools(), "ttlMs": TTL_MS, "cacheScope": "public"}),
+            "tools/call" => {
+                let name = params.get("name").and_then(Value::as_str);
+                let r = if name == Some("browser_takeover") && url_elicitation {
+                    self.takeover_rounds(b, params)
+                } else {
+                    self.pending = None;
+                    call(b, params, None, notify)
+                };
+                r.map_err(|(c, m)| json!({"code": c, "message": m}))?
+            }
+            _ => {
+                return Err(
+                    json!({"code": -32601, "message": format!("method not found: {method}")}),
+                );
+            }
+        };
+        if result.get("resultType").is_none() {
+            result["resultType"] = json!("complete");
+        }
+        result["_meta"] = json!({META_SERVER: server_info()});
+        Ok(result)
+    }
+
+    /// `browser_takeover` as a multi-round-trip request: the first call starts the live view
+    /// and asks the client to show its URL; the retry with the same `requestState` waits for
+    /// the person (accept) or closes the view (decline, cancel). Any other state starts anew.
+    fn takeover_rounds(&mut self, b: &mut dyn Backend, params: &Value) -> Reply {
+        let state = params.get("requestState").and_then(Value::as_str);
+        if let Some(p) = self.pending.take()
+            && state == Some(p.state.as_str())
+        {
+            return match params
+                .pointer("/inputResponses/takeover/action")
+                .and_then(Value::as_str)
+            {
+                Some("accept") => {
+                    let r = p
+                        .live
+                        .wait(std::time::Duration::from_secs(p.secs), &mut Drive(b));
+                    Ok(takeover_done(b, r, p.secs))
+                }
+                Some(_) => Ok(tool_error(
+                    "declined",
+                    "the person declined to take over".into(),
+                    "continue without them, or call browser_takeover again with a clearer reason"
+                        .into(),
+                )),
+                None => {
+                    // No answer yet: ask again for the same view.
+                    let r = input_required(&p);
+                    self.pending = Some(p);
+                    Ok(r)
+                }
+            };
+        }
+        let args = params.get("arguments").cloned().unwrap_or(json!({}));
+        let (reason, secs) = match takeover_args(b, &args) {
+            Ok(x) => x,
+            Err(r) => return r,
+        };
+        let live = crate::takeover::Live::start(&reason)
+            .map_err(|e| (-32603, format!("browser_takeover: {e}")))?;
+        let why = pageon_agent::quote::quote(&pageon_agent::quote::clip(&reason, 200));
+        eprintln!("takeover: open {} (reason {why})", live.url());
+        let p = Pending {
+            state: crate::takeover::token().map_err(|e| (-32603, e))?,
+            live,
+            secs,
+            message: takeover_message(&why),
+        };
+        let r = input_required(&p);
+        self.pending = Some(p);
+        Ok(r)
+    }
+}
+
+/// The interim result that asks the client to show the takeover URL to its user.
+fn input_required(p: &Pending) -> Value {
+    json!({
+        "resultType": "input_required",
+        "inputRequests": {"takeover": {"method": "elicitation/create", "params": {
+            "mode": "url",
+            "url": p.live.url(),
+            "message": p.message,
+        }}},
+        "requestState": p.state,
+    })
 }
 
 fn tool(
@@ -821,6 +1056,64 @@ fn tool_error(kind: &str, message: String, guidance: String) -> Value {
     })
 }
 
+/// `browser_takeover`'s reason and timeout, or the reply when it cannot run.
+fn takeover_args(b: &dyn Backend, args: &Value) -> Result<(String, u64), Reply> {
+    let reason = args
+        .get("reason")
+        .and_then(Value::as_str)
+        .map(str::to_string)
+        .ok_or_else(|| {
+            Err((
+                -32602,
+                "browser_takeover: missing string argument \"reason\"".to_string(),
+            ))
+        })?;
+    let secs = args
+        .get("timeout_s")
+        .and_then(Value::as_u64)
+        .unwrap_or(600)
+        .clamp(1, crate::takeover::MAX_TIMEOUT.as_secs());
+    if !b.has_tab() {
+        return Err(Ok(tool_error(
+            "no_page",
+            no_page(),
+            "call browser_open with a URL".into(),
+        )));
+    }
+    Ok((reason, secs))
+}
+
+/// The tool result of a finished takeover.
+fn takeover_done(
+    b: &mut dyn Backend,
+    r: Result<crate::takeover::Takeover, String>,
+    secs: u64,
+) -> Value {
+    match r {
+        Ok(t) if t.ended == crate::takeover::Ended::Done => {
+            let obs = b.observe(false).unwrap_or_else(|e| e);
+            let text = format!(
+                "ok takeover: the person handed the page back after {} inputs\n\n{obs}",
+                t.inputs
+            );
+            text_result(text, json!({"takeover": t, "observation": obs}))
+        }
+        Ok(_) => tool_error(
+            "timeout",
+            format!("nobody took over within {secs} s"),
+            "ask the user to open the URL from the progress message or the server log, then call browser_takeover again".into(),
+        ),
+        Err(e) => tool_error("engine", e, "try again".into()),
+    }
+}
+
+/// What the person reads beside the URL (the agent's reason, quoted as unverified).
+fn takeover_message(why: &str) -> String {
+    format!(
+        "The agent asks for your help. Its words, unverified: {why}. Open the link, help on the page, then press Done."
+    )
+}
+
 type Reply = Result<Value, (i64, String)>;
 
 /// One tool call. `elicit` is an elicitation id when the client takes URLs for its user
@@ -909,19 +1202,10 @@ fn call(
             });
         }
         "browser_takeover" => {
-            let reason = s("reason")?;
-            let secs = args
-                .get("timeout_s")
-                .and_then(Value::as_u64)
-                .unwrap_or(600)
-                .clamp(1, crate::takeover::MAX_TIMEOUT.as_secs());
-            if !b.has_tab() {
-                return Ok(tool_error(
-                    "no_page",
-                    no_page(),
-                    "call browser_open with a URL".into(),
-                ));
-            }
+            let (reason, secs) = match takeover_args(b, &args) {
+                Ok(x) => x,
+                Err(r) => return r,
+            };
             let progress = params
                 .get("_meta")
                 .and_then(|m| m.get("progressToken"))
@@ -940,7 +1224,7 @@ fn call(
                             "mode": "url",
                             "elicitationId": eid,
                             "url": url,
-                            "message": format!("The agent asks for your help. Its words, unverified: {why}. Open the link, help on the page, then press Done."),
+                            "message": takeover_message(&why),
                         }}),
                     );
                 }
@@ -973,22 +1257,7 @@ fn call(
                     "params": {"elicitationId": eid}}),
                 );
             }
-            return Ok(match r {
-                Ok(t) if t.ended == crate::takeover::Ended::Done => {
-                    let obs = b.observe(false).unwrap_or_else(|e| e);
-                    let text = format!(
-                        "ok takeover: the person handed the page back after {} inputs\n\n{obs}",
-                        t.inputs
-                    );
-                    text_result(text, json!({"takeover": t, "observation": obs}))
-                }
-                Ok(_) => tool_error(
-                    "timeout",
-                    format!("nobody took over within {secs} s"),
-                    "ask the user to open the URL from the progress message or the server log, then call browser_takeover again".into(),
-                ),
-                Err(e) => tool_error("engine", e, "try again".into()),
-            });
+            return Ok(takeover_done(b, r, secs));
         }
         "browser_reset" => {
             return Ok(reset(b, args.get("step").and_then(Value::as_u64)));

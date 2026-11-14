@@ -839,3 +839,519 @@ fn the_live_view_url_goes_to_the_person_never_to_the_model() {
     let pong = s.request("ping", json!({}));
     assert_eq!(pong["result"], json!({}), "{pong}");
 }
+
+/// `_meta` of a 2026-07-28 request.
+fn modern(caps: Value) -> Value {
+    json!({
+        "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+        "io.modelcontextprotocol/clientCapabilities": caps,
+        "io.modelcontextprotocol/clientInfo": {"name": "test", "version": "0"},
+    })
+}
+
+/// A 2026-07-28 tool call (no handshake): the whole reply.
+fn modern_call(s: &mut Server, caps: &Value, tool: &str, args: Value, extra: Value) -> Value {
+    let mut params = json!({"name": tool, "arguments": args, "_meta": modern(caps.clone())});
+    if let (Some(p), Some(e)) = (params.as_object_mut(), extra.as_object()) {
+        for (k, v) in e {
+            p.insert(k.clone(), v.clone());
+        }
+    }
+    s.request("tools/call", params)
+}
+
+#[test]
+fn modern_requests_need_no_handshake() {
+    let rec = shop();
+    let mut s = Server::start(&rec, &[], &[]);
+    let d = s.request("server/discover", json!({"_meta": modern(json!({}))}));
+    let r = &d["result"];
+    assert_eq!(r["resultType"], "complete", "{d}");
+    assert_eq!(r["supportedVersions"][0], "2026-07-28");
+    assert!(
+        r["supportedVersions"]
+            .as_array()
+            .is_some_and(|v| v.iter().any(|x| x == "2025-11-25"))
+    );
+    assert_eq!(r["capabilities"], json!({"tools": {}}));
+    assert_eq!(r["cacheScope"], "public");
+    assert!(r["ttlMs"].as_u64().is_some_and(|t| t > 0));
+    assert!(
+        r["instructions"]
+            .as_str()
+            .is_some_and(|i| i.contains("browser_open"))
+    );
+    assert_eq!(
+        r["_meta"]["io.modelcontextprotocol/serverInfo"]["name"],
+        "pageon"
+    );
+    let l = s.request("tools/list", json!({"_meta": modern(json!({}))}));
+    assert_eq!(l["result"]["resultType"], "complete");
+    assert_eq!(l["result"]["cacheScope"], "public");
+    assert!(
+        l["result"]["tools"]
+            .as_array()
+            .is_some_and(|t| t.len() > 10)
+    );
+    let o = modern_call(
+        &mut s,
+        &json!({}),
+        "browser_open",
+        json!({"url": "https://shop.test/"}),
+        json!({}),
+    );
+    assert_eq!(o["result"]["resultType"], "complete", "{o}");
+    assert!(text(&o["result"]).contains("Shop"), "{o}");
+    assert_eq!(o["result"]["structuredContent"]["step"], 0);
+    // Refusals: an unknown version names what is served; 2025 revisions need initialize.
+    let mut meta = modern(json!({}));
+    meta["io.modelcontextprotocol/protocolVersion"] = json!("1900-01-01");
+    let e = s.request("tools/list", json!({"_meta": meta}));
+    assert_eq!(e["error"]["code"], -32022, "{e}");
+    assert_eq!(e["error"]["data"]["requested"], "1900-01-01");
+    assert_eq!(e["error"]["data"]["supported"][0], "2026-07-28");
+    meta["io.modelcontextprotocol/protocolVersion"] = json!("2025-11-25");
+    let e = s.request("tools/list", json!({"_meta": meta}));
+    assert_eq!(e["error"]["code"], -32022, "{e}");
+    assert!(
+        e["error"]["message"]
+            .as_str()
+            .is_some_and(|m| m.contains("initialize")),
+        "{e}"
+    );
+    let e = s.request(
+        "tools/list",
+        json!({"_meta": {"io.modelcontextprotocol/protocolVersion": "2026-07-28"}}),
+    );
+    assert_eq!(e["error"]["code"], -32602, "{e}");
+    let e = s.request("ping", json!({"_meta": modern(json!({}))}));
+    assert_eq!(e["error"]["code"], -32601, "{e}");
+    // The handshake era still works in the same process.
+    let i = s.init("2025-11-25");
+    assert_eq!(i["result"]["protocolVersion"], "2025-11-25", "{i}");
+    assert!(i["result"].get("resultType").is_none(), "{i}");
+}
+
+/// The person opens the live view and presses Done.
+fn person_done(url: &str) {
+    let (status, head) = view(url, "GET", None);
+    assert_eq!(status, 200);
+    let cookie = head
+        .lines()
+        .find_map(|l| l.strip_prefix("Set-Cookie: "))
+        .and_then(|c| c.split(';').next())
+        .unwrap_or_default()
+        .to_string();
+    assert_eq!(view(&format!("{url}/done"), "POST", Some(&cookie)).0, 204);
+}
+
+#[test]
+fn the_takeover_is_a_multi_round_trip_request() {
+    let rec = shop();
+    let mut s = Server::start(&rec, &[], &[]);
+    let caps = json!({"elicitation": {"url": {}}});
+    modern_call(
+        &mut s,
+        &caps,
+        "browser_open",
+        json!({"url": "https://shop.test/"}),
+        json!({}),
+    );
+    let args = json!({"reason": "a second factor", "timeout_s": 30});
+    let first = modern_call(&mut s, &caps, "browser_takeover", args.clone(), json!({}));
+    let r = &first["result"];
+    assert_eq!(r["resultType"], "input_required", "{first}");
+    assert!(r.get("content").is_none(), "no tool result yet: {first}");
+    let ask = &r["inputRequests"]["takeover"];
+    assert_eq!(ask["method"], "elicitation/create");
+    assert_eq!(ask["params"]["mode"], "url");
+    assert!(ask["params"].get("elicitationId").is_none());
+    let url = ask["params"]["url"]
+        .as_str()
+        .unwrap_or_default()
+        .to_string();
+    assert!(url.starts_with("http://127.0.0.1:"), "{url}");
+    let state = r["requestState"].clone();
+    // A retry without an answer asks again for the same view.
+    let again = modern_call(
+        &mut s,
+        &caps,
+        "browser_takeover",
+        args.clone(),
+        json!({"requestState": state}),
+    );
+    assert_eq!(again["result"]["requestState"], state, "{again}");
+    // Accept: the retry waits for the person.
+    let id = 77;
+    s.send(
+        &json!({"jsonrpc": "2.0", "id": id, "method": "tools/call", "params": {
+        "name": "browser_takeover", "arguments": args, "_meta": modern(caps.clone()),
+        "inputResponses": {"takeover": {"action": "accept"}}, "requestState": state}}),
+    );
+    person_done(&url);
+    let done = s.recv();
+    assert_eq!(done["id"], id, "{done}");
+    assert!(text(&done["result"]).starts_with("ok takeover"), "{done}");
+    assert_eq!(done["result"]["resultType"], "complete");
+    assert!(!done.to_string().contains(&url), "the URL leaked: {done}");
+    // Decline closes the view.
+    let second = modern_call(&mut s, &caps, "browser_takeover", args.clone(), json!({}));
+    let state = second["result"]["requestState"].clone();
+    let declined = modern_call(
+        &mut s,
+        &caps,
+        "browser_takeover",
+        args.clone(),
+        json!({"inputResponses": {"takeover": {"action": "decline"}}, "requestState": state}),
+    );
+    assert_eq!(declined["result"]["isError"], true, "{declined}");
+    assert_eq!(
+        declined["result"]["structuredContent"]["error"]["kind"],
+        "declined"
+    );
+    // Another call closes a pending view; a stale state starts a new one.
+    let third = modern_call(&mut s, &caps, "browser_takeover", args.clone(), json!({}));
+    let url3 = third["result"]["inputRequests"]["takeover"]["params"]["url"]
+        .as_str()
+        .unwrap_or_default()
+        .to_string();
+    let stale = third["result"]["requestState"].clone();
+    modern_call(&mut s, &caps, "browser_observe", json!({}), json!({}));
+    let host = url3
+        .trim_start_matches("http://")
+        .split('/')
+        .next()
+        .unwrap_or_default()
+        .to_string();
+    assert!(
+        std::net::TcpStream::connect(&host).is_err(),
+        "the view closed"
+    );
+    let fresh = modern_call(
+        &mut s,
+        &caps,
+        "browser_takeover",
+        args,
+        json!({"inputResponses": {"takeover": {"action": "accept"}}, "requestState": stale}),
+    );
+    assert_eq!(fresh["result"]["resultType"], "input_required", "{fresh}");
+    assert_ne!(fresh["result"]["requestState"], stale);
+}
+
+#[test]
+fn modern_clients_without_url_elicitation_get_the_url_out_of_band() {
+    let rec = shop();
+    let mut s = Server::start(&rec, &[], &[]);
+    modern_call(
+        &mut s,
+        &json!({}),
+        "browser_open",
+        json!({"url": "https://shop.test/"}),
+        json!({}),
+    );
+    let mut meta = modern(json!({}));
+    meta["progressToken"] = json!("p1");
+    s.send(&json!({"jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": {
+        "name": "browser_takeover", "arguments": {"reason": "captcha", "timeout_s": 30}, "_meta": meta}}));
+    let p = s.recv();
+    assert_eq!(p["method"], "notifications/progress", "{p}");
+    let url = p["params"]["_meta"]["url"]
+        .as_str()
+        .unwrap_or_default()
+        .to_string();
+    person_done(&url);
+    let done = s.recv();
+    assert_eq!(done["id"], 5);
+    assert_eq!(done["result"]["resultType"], "complete");
+    assert!(!done.to_string().contains(&url), "the URL leaked: {done}");
+}
+
+/// `pageon mcp --http 0`: the child and its printed endpoint URL.
+fn http_server(rec: &std::path::Path, extra: &[&str]) -> (Child, String) {
+    let mut child = Command::new(env!("CARGO_BIN_EXE_pageon"))
+        .args(["mcp", "--http", "0", "--replay"])
+        .arg(rec)
+        .args(extra)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap_or_else(|e| panic!("{e}"));
+    let mut err = BufReader::new(child.stderr.take().unwrap_or_else(|| panic!("stderr")));
+    let url = loop {
+        let mut line = String::new();
+        if err.read_line(&mut line).unwrap_or(0) == 0 {
+            panic!("no endpoint line");
+        }
+        if let Some(u) = line.trim().strip_prefix("MCP endpoint: ") {
+            break u.to_string();
+        }
+    };
+    // Keep draining stderr so the child never blocks on it.
+    std::thread::spawn(move || {
+        let mut sink = String::new();
+        while err.read_line(&mut sink).unwrap_or(0) > 0 {
+            sink.clear();
+        }
+    });
+    (child, url)
+}
+
+/// One raw HTTP exchange: (status, head, body). `headers` are extra header lines.
+fn post(
+    url: &str,
+    method: &str,
+    headers: &[(&str, &str)],
+    body: Option<&str>,
+) -> (u16, String, String) {
+    use std::io::Read as _;
+    let rest = url.trim_start_matches("http://");
+    let (host, path) = rest
+        .split_once('/')
+        .map_or((rest, "/".to_string()), |(h, p)| (h, format!("/{p}")));
+    let mut s = std::net::TcpStream::connect(host).unwrap_or_else(|e| panic!("{e}"));
+    let mut req = format!("{method} {path} HTTP/1.1\r\n");
+    if !headers.iter().any(|(k, _)| k.eq_ignore_ascii_case("host")) {
+        req.push_str(&format!("Host: {host}\r\n"));
+    }
+    for (k, v) in headers {
+        req.push_str(&format!("{k}: {v}\r\n"));
+    }
+    if let Some(b) = body {
+        req.push_str(&format!(
+            "Content-Type: application/json\r\nContent-Length: {}\r\n",
+            b.len()
+        ));
+    }
+    req.push_str("\r\n");
+    req.push_str(body.unwrap_or_default());
+    s.write_all(req.as_bytes())
+        .unwrap_or_else(|e| panic!("{e}"));
+    let mut out = Vec::new();
+    s.read_to_end(&mut out).unwrap_or_else(|e| panic!("{e}"));
+    let text = String::from_utf8_lossy(&out).to_string();
+    let (head, body) = text
+        .split_once("\r\n\r\n")
+        .map_or((text.clone(), String::new()), |(h, b)| {
+            (h.to_string(), b.to_string())
+        });
+    let status = head
+        .split_whitespace()
+        .nth(1)
+        .and_then(|c| c.parse().ok())
+        .unwrap_or(0);
+    (status, head, body)
+}
+
+/// A modern request over HTTP with matching headers.
+fn rpc(url: &str, id: i64, method: &str, mut params: Value) -> (u16, String, String) {
+    params["_meta"] = modern(json!({}));
+    let name = params["name"].as_str().unwrap_or_default().to_string();
+    let body = json!({"jsonrpc": "2.0", "id": id, "method": method, "params": params}).to_string();
+    let mut h = vec![
+        ("MCP-Protocol-Version", "2026-07-28"),
+        ("Mcp-Method", method),
+        ("Accept", "application/json, text/event-stream"),
+    ];
+    if method == "tools/call" {
+        h.push(("Mcp-Name", name.as_str()));
+    }
+    post(url, "POST", &h, Some(&body))
+}
+
+#[test]
+fn streamable_http_serves_2026_and_refuses_the_rest() {
+    let rec = shop();
+    let (mut child, url) = http_server(&rec, &[]);
+    assert!(
+        url.starts_with("http://127.0.0.1:") && url.contains("/mcp/"),
+        "{url}"
+    );
+    let (st, head, body) = rpc(&url, 1, "server/discover", json!({}));
+    assert_eq!(st, 200, "{head}\n{body}");
+    assert!(head.contains("Content-Type: application/json"), "{head}");
+    let d: Value = serde_json::from_str(&body).unwrap_or_else(|e| panic!("{e}: {body}"));
+    assert_eq!(
+        d["result"]["supportedVersions"],
+        json!(["2026-07-28"]),
+        "{d}"
+    );
+    let (st, _, body) = rpc(
+        &url,
+        2,
+        "tools/call",
+        json!({"name": "browser_open", "arguments": {"url": "https://shop.test/"}}),
+    );
+    assert_eq!(st, 200, "{body}");
+    assert!(body.contains("Shop"), "{body}");
+    // Header and body disagree.
+    let call = json!({"jsonrpc": "2.0", "id": 3, "method": "tools/list", "params": {"_meta": modern(json!({}))}}).to_string();
+    let (st, _, body) = post(
+        &url,
+        "POST",
+        &[
+            ("MCP-Protocol-Version", "2026-07-28"),
+            ("Mcp-Method", "tools/call"),
+        ],
+        Some(&call),
+    );
+    assert_eq!(st, 400);
+    assert!(body.contains("-32020"), "{body}");
+    let (st, _, body) = post(&url, "POST", &[("Mcp-Method", "tools/list")], Some(&call));
+    assert_eq!((st, body.contains("-32020")), (400, true), "{body}");
+    // A base64-encoded header value matches its decoded body value.
+    let obs = json!({"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "browser_observe", "arguments": {}, "_meta": modern(json!({}))}}).to_string();
+    let (st, _, body) = post(
+        &url,
+        "POST",
+        &[
+            ("MCP-Protocol-Version", "2026-07-28"),
+            ("Mcp-Method", "tools/call"),
+            ("Mcp-Name", "=?base64?YnJvd3Nlcl9vYnNlcnZl?="),
+        ],
+        Some(&obs),
+    );
+    assert_eq!(st, 200, "{body}");
+    // The handshake era is for stdio.
+    let init = json!({"jsonrpc": "2.0", "id": 5, "method": "initialize", "params": {"protocolVersion": "2025-11-25", "capabilities": {}, "clientInfo": {"name": "t", "version": "0"}}}).to_string();
+    let (st, _, body) = post(&url, "POST", &[("Mcp-Method", "initialize")], Some(&init));
+    assert_eq!(st, 400);
+    let e: Value = serde_json::from_str(&body).unwrap_or_default();
+    assert_eq!(e["error"]["code"], -32022, "{body}");
+    assert_eq!(e["error"]["data"]["supported"], json!(["2026-07-28"]));
+    let (st, _, body) = rpc(&url, 6, "resources/list", json!({}));
+    assert_eq!((st, body.contains("-32601")), (404, true), "{body}");
+    // Notifications are accepted without a body.
+    let n =
+        json!({"jsonrpc": "2.0", "method": "notifications/cancelled", "params": {"requestId": 1}})
+            .to_string();
+    assert_eq!(
+        post(
+            &url,
+            "POST",
+            &[("Mcp-Method", "notifications/cancelled")],
+            Some(&n)
+        )
+        .0,
+        202
+    );
+    // Transport refusals.
+    let token_less = url
+        .rsplit_once('/')
+        .map(|(a, _)| format!("{a}/wrong"))
+        .unwrap_or_default();
+    assert_eq!(rpc(&token_less, 7, "server/discover", json!({})).0, 404);
+    assert_eq!(post(&url, "GET", &[], None).0, 405);
+    assert_eq!(post(&url, "DELETE", &[], None).0, 405);
+    let d = json!({"jsonrpc": "2.0", "id": 8, "method": "server/discover", "params": {"_meta": modern(json!({}))}}).to_string();
+    let hdr = [
+        ("MCP-Protocol-Version", "2026-07-28"),
+        ("Mcp-Method", "server/discover"),
+    ];
+    assert_eq!(
+        post(
+            &url,
+            "POST",
+            &[hdr[0], hdr[1], ("Origin", "https://evil.example")],
+            Some(&d)
+        )
+        .0,
+        403
+    );
+    assert_eq!(
+        post(
+            &url,
+            "POST",
+            &[hdr[0], hdr[1], ("Host", "evil.example")],
+            Some(&d)
+        )
+        .0,
+        400
+    );
+    assert_eq!(post(&url, "POST", &hdr, None).0, 411);
+    let (st, _, _) = post(
+        &url,
+        "POST",
+        &[hdr[0], hdr[1], ("Content-Length", "99999999")],
+        None,
+    );
+    assert_eq!(st, 413);
+    // A client that sends nothing is dropped after the deadline; the next one is served.
+    let host = url
+        .trim_start_matches("http://")
+        .split('/')
+        .next()
+        .unwrap_or_default()
+        .to_string();
+    let idle = std::net::TcpStream::connect(&host).unwrap_or_else(|e| panic!("{e}"));
+    #[allow(clippy::disallowed_methods)] // a network deadline is real time
+    let t = std::time::Instant::now();
+    assert_eq!(rpc(&url, 9, "server/discover", json!({})).0, 200);
+    assert!(
+        t.elapsed() < std::time::Duration::from_secs(4),
+        "{:?}",
+        t.elapsed()
+    );
+    drop(idle);
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
+#[test]
+fn http_streams_progress_for_a_takeover() {
+    let rec = shop();
+    let (mut child, url) = http_server(&rec, &["--allow-origin", "https://ops.example"]);
+    rpc(
+        &url,
+        1,
+        "tools/call",
+        json!({"name": "browser_open", "arguments": {"url": "https://shop.test/"}}),
+    );
+    let mut meta = modern(json!({}));
+    meta["progressToken"] = json!("p");
+    let body = json!({"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "browser_takeover", "arguments": {"reason": "captcha", "timeout_s": 30}, "_meta": meta}}).to_string();
+    let rest = url.trim_start_matches("http://");
+    let (host, path) = rest
+        .split_once('/')
+        .map_or((rest, String::new()), |(h, p)| (h, format!("/{p}")));
+    let mut s = std::net::TcpStream::connect(host).unwrap_or_else(|e| panic!("{e}"));
+    write!(s, "POST {path} HTTP/1.1\r\nHost: {host}\r\nOrigin: https://ops.example\r\nMCP-Protocol-Version: 2026-07-28\r\nMcp-Method: tools/call\r\nMcp-Name: browser_takeover\r\nContent-Length: {}\r\n\r\n{body}", body.len()).unwrap_or_else(|e| panic!("{e}"));
+    let mut r = BufReader::new(s);
+    let mut events = Vec::new();
+    let mut line = String::new();
+    let mut head = String::new();
+    while r.read_line(&mut line).unwrap_or(0) > 0 {
+        if line == "\r\n" {
+            break;
+        }
+        head.push_str(&line);
+        line.clear();
+    }
+    assert!(head.contains("text/event-stream"), "{head}");
+    let mut person = None;
+    loop {
+        line.clear();
+        if r.read_line(&mut line).unwrap_or(0) == 0 {
+            break;
+        }
+        if let Some(d) = line.trim().strip_prefix("data: ") {
+            let m: Value = serde_json::from_str(d).unwrap_or_else(|e| panic!("{e}: {d}"));
+            if m["method"] == "notifications/progress" && person.is_none() {
+                let u = m["params"]["_meta"]["url"]
+                    .as_str()
+                    .unwrap_or_default()
+                    .to_string();
+                person = Some(std::thread::spawn(move || person_done(&u)));
+            }
+            events.push(m);
+        }
+    }
+    if let Some(p) = person {
+        p.join().unwrap_or_else(|_| panic!("person"));
+    }
+    let last = events.last().cloned().unwrap_or_default();
+    assert_eq!(last["id"], 2, "{events:?}");
+    assert!(text(&last["result"]).starts_with("ok takeover"), "{last}");
+    let _ = child.kill();
+    let _ = child.wait();
+}

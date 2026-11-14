@@ -7,9 +7,13 @@ group = "Interfaces"
 nav = "MCP server"
 +++
 
-`pageon mcp` is an MCP server over stdio. Pages run in the sandbox, and every option of the CLI
-applies: origins, secrets, guard, recording. Local `file:` pages are off unless you pass
-`--allow-files`.
+`pageon mcp` is an MCP server over stdio, or over Streamable HTTP with `--http`. Pages run in
+the sandbox, and every option of the CLI applies: origins, secrets, guard, recording. Local
+`file:` pages are off unless you pass `--allow-files`.
+
+It speaks MCP `2026-07-28`, where every request carries its own version and capabilities and
+`server/discover` replaces the handshake, and the `initialize` revisions from `2024-11-05` to
+`2025-11-25`, in the same process. Clients pick by what they send; nothing to configure.
 
 ## Add it to your host
 
@@ -31,6 +35,19 @@ Claude Desktop, Cursor and other hosts take the same command in their JSON confi
   }
 }
 ```
+
+### Over HTTP
+
+```sh
+pageon mcp --http 8931 --origin https://shop.example
+# MCP endpoint: http://127.0.0.1:8931/mcp/3f9c…   (on stderr)
+claude mcp add --transport http pageon http://127.0.0.1:8931/mcp/3f9c…
+```
+
+The endpoint serves `2026-07-28` on 127.0.0.1 only, at a path with a per-run token: keep the
+printed URL private. Requests from web pages (with an `Origin`) are refused unless
+`--allow-origin` names them. Replies are JSON, or a short event stream when a call sends
+progress. Clients on older revisions use stdio. `--save-state` needs stdio.
 
 ## Tools
 
@@ -78,9 +95,12 @@ loopback URL and returns when the person presses Done. What the person types sta
 is not shown to the agent or recorded as a step. pageon never solves CAPTCHAs itself.
 
 The URL goes to the person, never to the model: a client that supports MCP URL elicitation
-(protocol `2025-11-25`) shows the link to its user; other clients get it in the progress
-notification's `_meta.url`, and the operator on stderr. Tool results never contain it, so a
-hijacked model cannot hand the live view to a page.
+shows the link to its user (on `2026-07-28` as a multi-round-trip request: the call returns
+`input_required`, and the client retries once its user has the link; declining closes the view);
+other clients get it in the progress notification's `_meta.url`, and the operator on stderr.
+Tool results never contain it, so a hijacked model cannot hand the live view to a page. While a
+person has the page, the agent's other calls wait; a call made before the person starts closes
+the view.
 
 ## Page tools (WebMCP)
 
