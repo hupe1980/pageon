@@ -168,7 +168,7 @@ const GLOBAL_ATTRS: &[&str] = &[
 
 /// The first valid, non-abstract role token of a `role` attribute, with synonyms mapped.
 pub(crate) fn explicit(dom: &Dom, ix: &Index<'_>, id: NodeId) -> Option<&'static str> {
-    let v = dom.get(id)?.attr("role")?;
+    let v = dom.aria(id, "role")?;
     v.split_ascii_whitespace().find_map(|t| {
         let t = t.to_ascii_lowercase();
         let t = match t.as_str() {
@@ -233,7 +233,10 @@ fn has_global(dom: &Dom, id: NodeId) -> bool {
 /// an author name; used where HTML-AAM makes the role depend on having a name.
 fn author_named(dom: &Dom, ix: &Index<'_>, id: NodeId, title_counts: bool) -> bool {
     let Some(n) = dom.get(id) else { return false };
-    if n.attr("aria-label").is_some_and(|v| !v.trim().is_empty()) {
+    if dom
+        .aria(id, "aria-label")
+        .is_some_and(|v| !v.trim().is_empty())
+    {
         return true;
     }
     if let Some(ids) = n.attr("aria-labelledby")

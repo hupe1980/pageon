@@ -222,20 +222,24 @@ pub(crate) fn activate(cx: &mut Cx<'_, '_, '_>, el: NodeId) -> R<()> {
                         return Ok(());
                     }
                 }
-                "button" if attr(cx, c, "disabled").is_none() => {
+                "button" if !pageon_dom::forms::disabled(&cx.dom(), c) => {
                     let ty = attr(cx, c, "type").map(|t| t.to_ascii_lowercase());
-                    if matches!(ty.as_deref(), None | Some("submit"))
-                        && let Some(form) = form_of(cx, c)
-                    {
-                        return submit_form(cx, form, Some(c), true);
+                    match (ty.as_deref(), form_of(cx, c)) {
+                        (None | Some("submit"), Some(form)) => {
+                            return submit_form(cx, form, Some(c), true);
+                        }
+                        (Some("reset"), Some(form)) => return reset_form(cx, form),
+                        _ => {}
                     }
                     return Ok(());
                 }
-                "input" if attr(cx, c, "disabled").is_none() => {
-                    if matches!(input_type(cx, c).as_str(), "submit" | "image")
-                        && let Some(form) = form_of(cx, c)
-                    {
-                        return submit_form(cx, form, Some(c), true);
+                "input" if !pageon_dom::forms::disabled(&cx.dom(), c) => {
+                    match (input_type(cx, c).as_str(), form_of(cx, c)) {
+                        ("submit" | "image", Some(form)) => {
+                            return submit_form(cx, form, Some(c), true);
+                        }
+                        ("reset", Some(form)) => return reset_form(cx, form),
+                        _ => {}
                     }
                     return Ok(());
                 }
@@ -300,21 +304,7 @@ fn label_control(cx: &Cx<'_, '_, '_>, label: NodeId) -> Option<NodeId> {
 
 /// The form owner of a control (`form` attribute, or the nearest ancestor form).
 pub(crate) fn form_of(cx: &Cx<'_, '_, '_>, el: NodeId) -> Option<NodeId> {
-    let dom = cx.dom();
-    if let Some(id) = dom.get(el)?.attr("form") {
-        return dom.traverse(dom.root()).find_map(|e| match e {
-            Edge::Enter(n)
-                if dom
-                    .get(n)
-                    .is_some_and(|x| x.is_html("form") && x.attr("id") == Some(id)) =>
-            {
-                Some(n)
-            }
-            _ => None,
-        });
-    }
-    dom.ancestors(el)
-        .find(|&a| dom.get(a).is_some_and(|x| x.is_html("form")))
+    pageon_dom::forms::owner(&cx.dom(), el)
 }
 
 fn base_url(cx: &Cx<'_, '_, '_>) -> Option<url::Url> {
@@ -408,6 +398,13 @@ pub(crate) fn submit_form(
     submitter: Option<NodeId>,
     event: bool,
 ) -> R<()> {
+    // Interactive validation (HTML): unless `novalidate` or the submitter's `formnovalidate`.
+    let validate = event
+        && attr(cx, form, "novalidate").is_none()
+        && submitter.is_none_or(|s| attr(cx, s, "formnovalidate").is_none());
+    if validate && !crate::dom::validation::interactive(cx, form)? {
+        return Ok(());
+    }
     if event && !fire(cx, Target::Node(form), "submit", true, true)? {
         return Ok(());
     }
@@ -476,6 +473,54 @@ pub(crate) fn submit_form(
             content_type: None,
             replace: false,
         });
+    }
+    Ok(())
+}
+
+/// Resets a form (HTML): fires `reset` (cancelable); then each control returns to its default
+/// value, checkedness and selectedness, user validity is cleared, and form-associated custom
+/// elements get `formResetCallback`.
+pub(crate) fn reset_form(cx: &mut Cx<'_, '_, '_>, form: NodeId) -> R<()> {
+    if !fire(cx, Target::Node(form), "reset", true, true)? {
+        return Ok(());
+    }
+    let controls = pageon_dom::forms::listed(&cx.dom(), form);
+    for c in controls {
+        let (select, face) = {
+            let dom = cx.dom();
+            (
+                dom.get(c).is_some_and(|n| n.is_html("select")),
+                pageon_dom::forms::is_form_associated(&dom, c),
+            )
+        };
+        {
+            let mut dom = cx.dom_mut();
+            let st = dom.control_mut(c);
+            st.value = None;
+            st.checked = None;
+            st.all_selected = false;
+            st.user_edited = false;
+            st.user_validity = false;
+        }
+        if select {
+            let options: Vec<NodeId> = {
+                let dom = cx.dom();
+                dom.traverse(c)
+                    .filter_map(|e| match e {
+                        Edge::Enter(o) if dom.get(o).is_some_and(|n| n.is_html("option")) => {
+                            Some(o)
+                        }
+                        _ => None,
+                    })
+                    .collect()
+            };
+            for o in options {
+                cx.dom_mut().control_mut(o).selected = None;
+            }
+        }
+        if face {
+            crate::dom::custom_elements::form_reset(cx, c)?;
+        }
     }
     Ok(())
 }
@@ -615,6 +660,12 @@ fn take_selection(cx: &mut Cx<'_, '_, '_>, el: NodeId) -> bool {
 }
 
 fn input_event(cx: &mut Cx<'_, '_, '_>, el: NodeId, ty: &str, cancelable: bool) -> R<bool> {
+    // A user edit (`tooLong`/`tooShort` apply) and a committed change (`:user-invalid`).
+    match ty {
+        "input" => cx.dom_mut().control_mut(el).user_edited = true,
+        "change" => cx.dom_mut().control_mut(el).user_validity = true,
+        _ => {}
+    }
     let data = EventData {
         ty: ty.into(),
         bubbles: true,

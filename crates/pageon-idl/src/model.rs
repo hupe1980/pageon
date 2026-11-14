@@ -69,6 +69,8 @@ pub struct Ext {
     pub reflect_default: Option<String>,
     /// `[ReflectNonNegative]`.
     pub reflect_non_negative: bool,
+    /// An `ObservableArray<T>` attribute (the getter returns a JavaScript value).
+    pub observable: bool,
     /// `[PutForwards=name]`.
     pub put_forwards: Option<String>,
     /// `[LegacyNullToEmptyString]`.
@@ -147,6 +149,12 @@ pub enum Member {
     /// `iterable<K, V>`: `entries`, `keys`, `values`, `forEach` and `@@iterator` over a
     /// hand-written `pairs`.
     Iterable,
+    /// `setlike<T>`: `size`, `has`, the iteration methods and, unless read-only, `add`,
+    /// `delete` and `clear`, over hand-written `set_*` functions and `pairs`.
+    Setlike {
+        /// `readonly setlike`.
+        readonly: bool,
+    },
 }
 
 impl Member {
@@ -158,6 +166,7 @@ impl Member {
             }
             Member::Ctor { .. } => "constructor",
             Member::Iterable => "iterable",
+            Member::Setlike { .. } => "setlike",
         }
     }
 }
@@ -218,9 +227,20 @@ pub struct Model {
 
 /// Rewrites syntax newer than weedle2's grammar into equivalent forms it parses.
 pub fn normalize(text: &str) -> String {
-    let mut s = text
-        .replace("Exposed=*", "Exposed=Any")
-        .replace("ObservableArray<", "sequence<");
+    let mut s = text.replace("Exposed=*", "Exposed=Any");
+    // `ObservableArray<T>` attributes parse as sequences marked `[PageonObservable]`: their
+    // getters return the page's own array (hand-written), their setters take a sequence.
+    while let Some(i) = s.find("attribute ObservableArray<") {
+        let head = s[..i].trim_end();
+        let marked = if head.ends_with(']') {
+            let open = head.rfind('[').unwrap_or(0);
+            format!("{}[PageonObservable, {}", &s[..open], &s[open + 1..i])
+        } else {
+            format!("{}[PageonObservable] ", &s[..i])
+        };
+        let rest = s[i..].replacen("ObservableArray<", "sequence<", 1);
+        s = marked + &rest;
+    }
     // Float literals in extended attributes, e.g. `ReflectDefault=1.0` → `ReflectDefault=1`.
     while let Some(i) = s.find("ReflectDefault=") {
         let start = i + "ReflectDefault=".len();
@@ -253,6 +273,7 @@ fn ext(list: &Option<ExtendedAttributeList<'_>>) -> Ext {
                 "ReflectURL" => e.reflect_url = true,
                 "ReflectSetter" => e.reflect_setter = true,
                 "ReflectNonNegative" => e.reflect_non_negative = true,
+                "PageonObservable" => e.observable = true,
                 "LegacyNullToEmptyString" => e.null_to_empty = true,
                 "Global" => e.global = true,
                 "LegacyUnforgeable" => e.unforgeable = true,
@@ -287,7 +308,7 @@ fn ext(list: &Option<ExtendedAttributeList<'_>>) -> Ext {
         }
     }
     // `[Reflect]` with `ReflectURL` only: the URL flag implies reflection.
-    if e.reflect_url && e.reflect.is_none() {
+    if (e.reflect_url || e.reflect_non_negative) && e.reflect.is_none() {
         e.reflect = Some(String::new());
     }
     e
@@ -526,6 +547,9 @@ fn iface_members(owner: &str, members: &[InterfaceMember<'_>]) -> Vec<Owned> {
                 }
             }
             InterfaceMember::Iterable(_) => Member::Iterable,
+            InterfaceMember::Setlike(s) => Member::Setlike {
+                readonly: s.readonly.is_some(),
+            },
             InterfaceMember::Stringifier(_) => Member::Op {
                 name: "toString".into(),
                 args: Vec::new(),

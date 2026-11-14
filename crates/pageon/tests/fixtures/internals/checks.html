@@ -1,0 +1,161 @@
+<!doctype html><title>Element internals checks</title>
+<!-- Checks derived from the web-platform-tests (html/semantics/forms/constraints,
+     custom-elements/form-associated, custom-elements/state, css/cssom/CSSStyleSheet-constructable),
+     with Chrome's results as expectations. -->
+<form id=f action=/never>
+  <input id=req name=req required>
+  <input id=email type=email>
+  <input id=url type=url>
+  <input id=pat pattern="[0-9]{3}">
+  <input id=num type=number min=1 max=10 step=2>
+  <input id=dis required disabled>
+  <input id=hid type=hidden required>
+  <input id=ro required readonly>
+  <datalist><input id=dl required></datalist>
+  <input id=cb type=checkbox required>
+  <input type=radio name=r id=r1 required><input type=radio name=r id=r2>
+  <select id=sel required><option value="">Pick</option><option>A</option></select>
+  <textarea id=ta minlength=5>abc</textarea>
+  <button id=sub>Go</button>
+  <button id=btn type=button>B</button>
+  <fieldset id=fs><input id=infs required></fieldset>
+  <output id=out1></output>
+</form>
+<input id=outside form=f name=outside>
+<form id=g novalidate><input id=greq required><button id=gsub>Go</button></form>
+<form id=h><x-field id=fa name=fa></x-field></form>
+<form id=k></form>
+<p id=out></p>
+<script>
+const R = [];
+const t = (name, f) => { try { R.push([name, f() === true]); } catch (e) { R.push([name + ': ' + e, false]); } };
+const throws = (f, name) => { try { f(); return false; } catch (e) { return e.name === name; } };
+const $ = (id) => document.getElementById(id);
+
+// ----- constraint validation -----
+t('willValidate on a text input', () => $('req').willValidate);
+t('disabled is barred', () => !$('dis').willValidate);
+t('hidden is barred', () => !$('hid').willValidate);
+t('readonly is barred', () => !$('ro').willValidate);
+t('inside datalist is barred', () => !$('dl').willValidate);
+t('fieldset and output never validate', () => !$('fs').willValidate && !$('out1').willValidate);
+t('a type=button button is barred, a submit button is not', () => !$('btn').willValidate && $('sub').willValidate);
+t('required empty is valueMissing', () => $('req').validity.valueMissing && !$('req').validity.valid);
+t('validity is [SameObject]', () => $('req').validity === $('req').validity);
+t('ValidityState interface', () => $('req').validity instanceof ValidityState && typeof ValidityState === 'function');
+t('validationMessage', () => $('req').validationMessage === 'Please fill out this field.');
+t('validationMessage of a barred control is empty', () => $('dis').validationMessage === '');
+t('validity is live', () => { $('req').value = 'x'; const ok = $('req').validity.valid; $('req').value = ''; return ok && !$('req').validity.valid; });
+t('setCustomValidity sets customError', () => { $('email').setCustomValidity('Nope'); const v = $('email').validity; const ok = v.customError && !v.valid && $('email').validationMessage === 'Nope'; $('email').setCustomValidity(''); return ok && $('email').validity.valid; });
+t('checkValidity fires a cancelable, non-bubbling invalid', () => { let ev; $('req').addEventListener('invalid', (e) => { ev = e; }, {once: true}); const r = $('req').checkValidity(); return r === false && ev && ev.type === 'invalid' && ev.cancelable && !ev.bubbles; });
+t('checkValidity of a valid control fires nothing', () => { let n = 0; $('email').addEventListener('invalid', () => n++, {once: true}); return $('email').checkValidity() && n === 0; });
+t('email typeMismatch', () => { $('email').value = 'nope'; const ok = $('email').validity.typeMismatch; $('email').value = 'a@b.c'; return ok && $('email').validity.valid; });
+t('url typeMismatch', () => { $('url').value = 'nope'; const ok = $('url').validity.typeMismatch; $('url').value = ''; return ok; });
+t('pattern is anchored', () => { $('pat').value = '1234'; const ok = $('pat').validity.patternMismatch; $('pat').value = '123'; return ok && $('pat').validity.valid; });
+t('rangeUnderflow', () => { $('num').value = '0'; return $('num').validity.rangeUnderflow; });
+t('rangeOverflow', () => { $('num').value = '11'; return $('num').validity.rangeOverflow; });
+t('stepMismatch from min', () => { $('num').value = '4'; const ok = $('num').validity.stepMismatch; $('num').value = '5'; const ok2 = $('num').validity.valid; $('num').value = ''; return ok && ok2; });
+t('range message', () => { $('num').value = '11'; const m = $('num').validationMessage; $('num').value = ''; return m === 'Value must be less than or equal to 10.'; });
+t('tooShort only after a user edit', () => !$('ta').validity.tooShort);
+t('select placeholder is valueMissing', () => $('sel').validity.valueMissing && $('sel').validationMessage === 'Please select an item in the list.');
+t('select with a value is valid', () => { $('sel').value = 'A'; const ok = $('sel').validity.valid; $('sel').selectedIndex = 0; return ok; });
+t('required checkbox', () => $('cb').validity.valueMissing && $('cb').validationMessage === 'Please check this box if you want to proceed.');
+t('radio group: required on one covers all', () => $('r2').validity.valueMissing);
+t('radio group: one checked satisfies all', () => { $('r2').checked = true; const ok = $('r1').validity.valid; $('r2').checked = false; return ok; });
+t(':invalid and :valid', () => $('req').matches(':invalid') && !$('req').matches(':valid') && $('email').matches(':valid'));
+t('barred controls match neither', () => !$('dis').matches(':invalid') && !$('dis').matches(':valid'));
+t('form:invalid and fieldset:invalid', () => $('f').matches(':invalid') && $('fs').matches(':invalid') && $('g').matches(':invalid'));
+t(':user-invalid only after interaction', () => !$('req').matches(':user-invalid') && !document.querySelector(':user-invalid'));
+t(':required and :optional', () => $('req').matches(':required') && $('email').matches(':optional') && !$('sub').matches(':optional'));
+t('querySelectorAll(:invalid) in tree order', () => [...$('f').querySelectorAll('input:invalid')].map(e => e.id).join() === 'req,cb,r1,r2,infs');
+t('form.checkValidity fires at each invalid control in order', () => { const seen = []; const l = (e) => seen.push(e.target.id); $('f').addEventListener('invalid', l, true); const r = $('f').checkValidity(); $('f').removeEventListener('invalid', l, true); return r === false && seen.join() === 'req,cb,r1,r2,sel,infs'; });
+t('requestSubmit of an invalid form fires no submit', () => { let n = 0; $('f').addEventListener('submit', (e) => { n++; e.preventDefault(); }, {once: true}); $('f').requestSubmit(); return n === 0; });
+t('requestSubmit with novalidate submits', () => { let n = 0; $('g').addEventListener('submit', (e) => { n++; e.preventDefault(); }, {once: true}); $('g').requestSubmit(); return n === 1; });
+t('reportValidity focuses the first invalid control', () => { const r = $('f').reportValidity(); return r === false && document.activeElement === $('req'); });
+t('reportValidity sets user validity', () => $('req').matches(':user-invalid') && !$('email').matches(':user-invalid'));
+t('form attribute owner', () => $('outside').form === $('f') && [...$('f').elements].includes($('outside')));
+t('form.elements in tree order with fieldsets', () => { const ids = [...$('f').elements].map(e => e.id); return ids[0] === 'req' && ids.includes('fs') && ids.includes('out1') && ids.at(-1) === 'outside'; });
+t('maxLength reflects -1 by default', () => $('req').maxLength === -1 && $('ta').minLength === 5);
+t('maxLength rejects negatives', () => throws(() => { $('req').maxLength = -2; }, 'IndexSizeError'));
+t('noValidate reflects', () => $('g').noValidate && !$('f').noValidate);
+t('formNoValidate reflects', () => !$('sub').formNoValidate);
+t('reset restores values and fires reset', () => { let n = 0; $('f').addEventListener('reset', () => n++, {once: true}); $('req').value = 'typed'; $('f').reset(); return n === 1 && $('req').value === '' && !$('req').matches(':user-invalid'); });
+t('a cancelled reset changes nothing', () => { $('req').value = 'kept'; $('f').addEventListener('reset', (e) => e.preventDefault(), {once: true}); $('f').reset(); const ok = $('req').value === 'kept'; $('req').value = ''; return ok; });
+t('fieldset and output type', () => $('fs').type === 'fieldset' && $('out1').type === 'output');
+t('oninvalid handler attribute', () => { let n = 0; $('cb').oninvalid = () => n++; $('cb').checkValidity(); $('cb').oninvalid = null; return n === 1; });
+
+// ----- form-associated custom elements -----
+let resets = 0, disabled = [], owners = [];
+class XField extends HTMLElement {
+  static formAssociated = true;
+  constructor() { super(); this.i = this.attachInternals(); }
+  formResetCallback() { resets++; }
+  formDisabledCallback(d) { disabled.push(d); }
+  formAssociatedCallback(f) { owners.push(f ? f.id : null); }
+}
+class XPlain extends HTMLElement { constructor() { super(); this.i = this.attachInternals(); } }
+class XNoInternals extends HTMLElement { static disabledFeatures = ['internals']; }
+customElements.define('x-field', XField);
+customElements.define('x-plain', XPlain);
+customElements.define('x-none', XNoInternals);
+const fa = $('fa');
+t('attachInternals on a built-in element throws', () => throws(() => document.createElement('div').attachInternals(), 'NotSupportedError'));
+t('attachInternals twice throws', () => throws(() => fa.attachInternals(), 'NotSupportedError'));
+t('disabledFeatures internals throws', () => throws(() => document.createElement('x-none').attachInternals(), 'NotSupportedError'));
+t('ElementInternals interface', () => fa.i instanceof ElementInternals);
+t('internals.form', () => fa.i.form === $('h'));
+t('form of a non-form-associated element throws', () => throws(() => document.createElement('x-plain').i.form, 'NotSupportedError'));
+t('formAssociatedCallback at upgrade', () => owners.join() === 'h');
+t('form.elements lists form-associated elements', () => [...$('h').elements].includes(fa) && $('h').elements.length === 1);
+t('setFormValue(string) submits under the name', () => { fa.i.setFormValue('v1'); return new FormData($('h')).get('fa') === 'v1'; });
+t('setFormValue(FormData) submits its entries', () => { const d = new FormData(); d.append('a', '1'); d.append('b', '2'); fa.i.setFormValue(d); const got = [...new FormData($('h')).entries()].map(e => e.join('=')).join('&'); return got === 'a=1&b=2'; });
+t('setFormValue(null) submits nothing', () => { fa.i.setFormValue(null); return [...new FormData($('h')).keys()].length === 0; });
+t('willValidate of a form-associated element', () => fa.i.willValidate);
+t('setValidity flags and message', () => { fa.i.setValidity({valueMissing: true}, 'Fill me'); return fa.i.validity.valueMissing && !fa.i.validity.valid && fa.i.validationMessage === 'Fill me'; });
+t('form-associated :invalid and form.checkValidity', () => fa.matches(':invalid') && !$('h').checkValidity());
+t('setValidity without a message throws', () => throws(() => fa.i.setValidity({customError: true}), 'TypeError'));
+t('setValidity anchor outside throws', () => throws(() => fa.i.setValidity({valueMissing: true}, 'm', document.body), 'NotFoundError'));
+t('setValidity({}) clears', () => { fa.i.setValidity({}); return fa.i.validity.valid && fa.i.validationMessage === '' && fa.matches(':valid'); });
+t('formResetCallback on reset', () => { $('h').reset(); return resets === 1; });
+t('formDisabledCallback on disabled', () => { fa.setAttribute('disabled', ''); const r = disabled.join(); fa.removeAttribute('disabled'); return r === 'true' && disabled.join() === 'true,false'; });
+t('disabled form-associated elements are barred', () => { fa.setAttribute('disabled', ''); const ok = !fa.i.willValidate && fa.matches(':disabled'); fa.removeAttribute('disabled'); return ok; });
+t('formAssociatedCallback on moving forms', () => { $('k').append(fa); return owners.join() === 'h,k' && fa.i.form === $('k'); });
+t('labels of a form-associated element', () => { const l = document.createElement('label'); l.append(fa); $('k').append(l); return fa.i.labels.length === 1 && fa.i.labels[0] === l; });
+t('internals.shadowRoot', () => { const r = fa.attachShadow({mode: 'closed'}); return fa.i.shadowRoot === r; });
+t('default role does not reflect', () => { fa.i.role = 'checkbox'; return fa.i.role === 'checkbox' && fa.getAttribute('role') === null; });
+t('default aria round trip', () => { fa.i.ariaLabel = 'Agree'; fa.i.ariaChecked = null; return fa.i.ariaLabel === 'Agree' && fa.i.ariaChecked === null; });
+t('Element.ariaLabel reflects the attribute', () => { const d = document.createElement('div'); d.ariaLabel = 'x'; return d.getAttribute('aria-label') === 'x' && d.role === null; });
+
+// ----- custom states -----
+const st = fa.i.states;
+t('CustomStateSet interface and [SameObject]', () => st instanceof CustomStateSet && fa.i.states === st);
+t('add, has, size', () => st.add('checked') === st && st.has('checked') && st.size === 1);
+t(':state() matches', () => fa.matches(':state(checked)') && document.querySelector(':state(checked)') === fa);
+t('iteration in insertion order', () => { st.add('b'); st.add('a'); st.add('b'); return [...st].join() === 'checked,b,a' && [...st.values()].join() === [...st.keys()].join(); });
+t('entries and forEach', () => { const e = [...st.entries()][0]; let n = 0; st.forEach((v, k, s) => { if (v === k && s === st) n++; }); return e[0] === 'checked' && e[1] === 'checked' && n === 3; });
+t('delete and clear', () => st.delete('checked') && !st.delete('nope') && !fa.matches(':state(checked)') && (st.clear(), st.size === 0));
+
+// ----- constructable stylesheets -----
+const sheet = new CSSStyleSheet();
+t('CSSStyleSheet constructor', () => sheet instanceof CSSStyleSheet && sheet instanceof StyleSheet);
+t('insertRule returns the index', () => sheet.insertRule('p { color: red }') === 0 && sheet.insertRule('a { color: blue }', 1) === 1);
+t('insertRule past the end throws', () => throws(() => sheet.insertRule('b {}', 5), 'IndexSizeError'));
+t('insertRule of @import throws', () => throws(() => sheet.insertRule('@import url(x.css);'), 'SyntaxError'));
+t('deleteRule out of range throws', () => { sheet.deleteRule(1); return throws(() => sheet.deleteRule(3), 'IndexSizeError'); });
+t('adoptedStyleSheets keeps its array', () => { const a = document.adoptedStyleSheets; a.push(sheet); return document.adoptedStyleSheets === a && a.length === 1; });
+t('assigning replaces the array', () => { document.adoptedStyleSheets = [sheet, sheet]; const a = document.adoptedStyleSheets; return Array.isArray(a) && a.length === 2; });
+t('assigning a non-sheet throws', () => throws(() => { document.adoptedStyleSheets = [{}]; }, 'TypeError'));
+t('shadow roots adopt too', () => { const host = document.createElement('div'); const r = host.attachShadow({mode: 'open'}); r.adoptedStyleSheets = [sheet]; return r.adoptedStyleSheets[0] === sheet; });
+
+(async () => {
+  try {
+    const s2 = new CSSStyleSheet();
+    const r = await s2.replace('@import url(x.css); p { color: green }');
+    R.push(['replace resolves to the sheet', r === s2]);
+  } catch (e) {
+    R.push(['replace: ' + e, false]);
+  }
+  document.adoptedStyleSheets = [];
+  $('out').textContent = JSON.stringify(R);
+})();
+</script>

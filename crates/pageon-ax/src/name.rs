@@ -210,7 +210,12 @@ impl Namer<'_> {
         let role = (self.role)(id);
         let embedded = cx.recursion && EMBEDDED.contains(&role);
         // 2C: aria-label (an embedded control in recursion uses its value instead).
-        if !embedded && let Some(l) = n.attr("aria-label").filter(|l| !l.trim().is_empty()) {
+        if !embedded
+            && let Some(l) = self
+                .dom
+                .aria(id, "aria-label")
+                .filter(|l| !l.trim().is_empty())
+        {
             return l.to_string();
         }
         // 2E: an embedded control inside another name contributes its value.

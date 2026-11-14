@@ -1,0 +1,17 @@
+<!doctype html><title>Sign up</title>
+<style>
+  .err { display: none; color: red }
+  input:user-invalid + .err { display: block }
+</style>
+<form method=post action=/welcome>
+  <label for=email>Email</label> <input id=email name=email type=email required><span class=err>Your email is needed</span>
+  <label for=pw>Password</label> <input id=pw name=pw type=password minlength=8 required><span class=err>At least 8 characters</span>
+  <label>Age <input name=age type=number min=18 value=30></label>
+  <button>Sign up</button>
+</form>
+<p id=log></p>
+<script>
+  document.querySelector('form').addEventListener('invalid', (e) => {
+    log.textContent += e.target.name + ' ';
+  }, true);
+</script>

@@ -131,9 +131,9 @@ setTimeout(() => {
   setTimeout(() => {
     check('scripts in shadow trees run', window.ranInShadow === true);
     // Absent, so libraries detect it.
-    check('no attachInternals', !('attachInternals' in HTMLElement.prototype));
-    check('no adoptedStyleSheets', !('adoptedStyleSheets' in Document.prototype) && !('adoptedStyleSheets' in ShadowRoot.prototype));
-    check('no constructable stylesheets', throws(() => new CSSStyleSheet(), 'TypeError') || typeof CSSStyleSheet === 'undefined');
+    check('attachInternals', 'attachInternals' in HTMLElement.prototype);
+    check('adoptedStyleSheets', ('adoptedStyleSheets' in Document.prototype) && ('adoptedStyleSheets' in ShadowRoot.prototype));
+    check('constructable stylesheets', new CSSStyleSheet() instanceof CSSStyleSheet);
     customElements.whenDefined('my-counter').then((c) => {
       check('whenDefined', c === MyCounter);
       $('out').textContent = JSON.stringify(results);

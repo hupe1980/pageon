@@ -727,6 +727,11 @@ pub mod element_css_inline_style {
 pub mod html_element {
     use super::*;
 
+    /// `attachInternals()`.
+    pub fn attach_internals(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<Obj> {
+        crate::dom::internals::attach(cx, this.node()?)
+    }
+
     pub fn get_inner_text(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<String> {
         Ok(cx.dom().text(this.node()?))
     }

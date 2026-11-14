@@ -350,37 +350,40 @@ pub(crate) fn form_entries(
     form: NodeId,
     submitter: Option<NodeId>,
 ) -> R<Vec<(String, String)>> {
-    let controls: Vec<NodeId> = {
-        let dom = cx.dom();
-        dom.traverse(form)
-            .filter_map(|e| match e {
-                Edge::Enter(id)
-                    if dom.get(id).is_some_and(|n| {
-                        n.is_html("input")
-                            || n.is_html("select")
-                            || n.is_html("textarea")
-                            || n.is_html("button")
-                    }) =>
-                {
-                    Some(id)
-                }
-                _ => None,
-            })
-            .collect()
-    };
+    let controls: Vec<NodeId> = pageon_dom::forms::listed(&cx.dom(), form);
     let mut out = Vec::new();
     for id in controls {
-        let (tag, name, ty, disabled) = {
+        let (tag, name, ty, disabled, face) = {
             let dom = cx.dom();
             let Some(n) = dom.get(id) else { continue };
             (
                 n.local_name().unwrap_or_default().to_string(),
                 n.attr("name").unwrap_or_default().to_string(),
                 n.attr("type").unwrap_or_default().to_ascii_lowercase(),
-                n.attr("disabled").is_some(),
+                pageon_dom::forms::disabled(&dom, id),
+                pageon_dom::forms::is_form_associated(&dom, id),
             )
         };
-        if name.is_empty() || disabled {
+        if disabled {
+            continue;
+        }
+        // A form-associated custom element: the entries `setFormValue` gave.
+        if face {
+            let value = cx
+                .dom()
+                .internals(id)
+                .map(|i| i.value.clone())
+                .unwrap_or_default();
+            for (k, v) in value {
+                match k {
+                    Some(k) => out.push((k, v)),
+                    None if !name.is_empty() => out.push((name.clone(), v)),
+                    None => {}
+                }
+            }
+            continue;
+        }
+        if name.is_empty() {
             continue;
         }
         let obj = Obj::Node(id);

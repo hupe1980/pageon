@@ -80,11 +80,11 @@ the process.
 
 These are absent, and reported when a page needs them:
 - `document.write`;
-- `ElementInternals` (form-associated custom elements), constructable stylesheets
-  (`adoptedStyleSheets`) and customized built-ins (`is=`);
+- customized built-ins (`is=`), `formStateRestoreCallback`, file values in `setFormValue`, and
+  stylesheet options and `cssRules` of constructed stylesheets;
 - `MessageChannel`, `BroadcastChannel` and `document.domain`; iframes a script inserts after
   the page has loaded stay unloaded, and frames are not navigated by script;
-- form validation (`checkValidity`, `validity`);
+- value sanitization of number and date fields (an unparsable value is `badInput`, as typed);
 - `Blob`, `File`, `FileReader`, streams;
 - `WebSocket`, `EventSource`, `IndexedDB`;
 - Selection and `Range`, the Navigation API, `crypto.subtle`;

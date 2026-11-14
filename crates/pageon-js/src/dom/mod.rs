@@ -11,6 +11,7 @@ mod events;
 mod globals;
 mod html;
 pub(crate) mod input;
+pub(crate) mod internals;
 pub(crate) mod intersection;
 pub(crate) mod net;
 mod nodes;
@@ -19,8 +20,10 @@ pub(crate) mod platform;
 pub(crate) mod scroll;
 pub(crate) mod session;
 pub(crate) mod shadow;
+pub(crate) mod sheets;
 pub(crate) mod traversal;
 pub(crate) mod urls;
+pub(crate) mod validation;
 pub(crate) mod webmcp;
 mod webstorage;
 mod xml;
@@ -73,11 +76,14 @@ pub use shadow::{html_slot_element, shadow_root, slottable};
 pub use traversal::tree_walker;
 pub use xml::xml_serializer;
 
+pub use internals::{aria_mixin, custom_state_set, element_internals};
 pub use net::{
     abort_controller, abort_signal, body, headers, progress_event, request, response,
     xml_http_request,
 };
+pub use sheets::css_style_sheet;
 pub use urls::{form_data, url, url_search_params};
+pub use validation::{html_field_set_element, html_output_element, validity_state};
 pub use webmcp::model_context;
 pub use webstorage::{storage, window_local_storage, window_session_storage};
 
@@ -553,15 +559,9 @@ pub(crate) fn collect(dom: &Dom, c: &Coll) -> Vec<NodeId> {
             .into_iter()
             .filter(|&n| html(n, "option"))
             .collect(),
-        Coll::FormElements(form) => descendants(*form)
+        Coll::FormElements(form) => pageon_dom::forms::listed(dom, *form)
             .into_iter()
-            .filter(|&n| {
-                [
-                    "button", "fieldset", "input", "object", "output", "select", "textarea",
-                ]
-                .iter()
-                .any(|t| html(n, t))
-            })
+            .filter(|&n| !html(n, "input") || pageon_dom::forms::input_type(dom, n) != "image")
             .collect(),
         Coll::Doc(which) => descendants(dom.root())
             .into_iter()

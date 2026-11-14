@@ -235,6 +235,14 @@ impl RefTable {
         r
     }
 
+    /// The ref of an element in a frame if it already has one (any navigation).
+    pub fn find(&self, frame_id: &str, backend_id: i64) -> Option<u32> {
+        self.by_key
+            .iter()
+            .find(|(k, _)| k.backend_id == backend_id && k.frame_id == frame_id)
+            .map(|(_, &r)| r)
+    }
+
     /// The ref of an element if it already has one.
     pub fn get(&self, key: &NodeKey) -> Option<u32> {
         self.by_key.get(key).copied()

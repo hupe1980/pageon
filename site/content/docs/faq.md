@@ -20,9 +20,9 @@ Server-rendered sites and forms, script-heavy pages (the MiniWoB++ suite runs it
 code), and apps bundled by Vite, esbuild or webpack are tested: pageon runs classic and module
 scripts, import maps, dynamic imports, script loaders, `fetch` and XHR, cookies and storage,
 scrolling (infinite feeds, lazy sections, in-page links), and web components (Shadow DOM,
-declarative shadow roots, custom elements; Lit runs as is). Pages that need form-associated
-custom elements (`ElementInternals`), constructable stylesheets, workers or canvas readback do
-not work fully yet. `pageon fetch URL --dump errors`
+declarative shadow roots, custom elements, form-associated custom elements, adopted
+stylesheets; Lit runs as is), and forms validate as in Chrome. Pages that need workers or
+canvas readback do not work fully yet. `pageon fetch URL --dump errors`
 shows what a page tried and failed to use.
 
 ## Does pageon get past bot detection?

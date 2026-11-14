@@ -75,7 +75,7 @@ members = ["previousElementSibling", "nextElementSibling"]
 members = ["before", "after", "replaceWith", "remove"]
 
 [DocumentOrShadowRoot]
-members = ["activeElement"]
+members = ["activeElement", "adoptedStyleSheets"]
 
 [Document]
 members = [
@@ -138,7 +138,7 @@ members = ["constructor"]
 
 [HTMLElement]
 members = [
-  "constructor", "innerText", "click", "hidden", "offsetParent", "offsetTop", "offsetLeft", "offsetWidth", "offsetHeight",
+  "constructor", "innerText", "click", "hidden", "attachInternals", "offsetParent", "offsetTop", "offsetLeft", "offsetWidth", "offsetHeight",
 ]
 
 [HTMLOrSVGOrMathMLElement]
@@ -148,22 +148,36 @@ members = ["dataset", "tabIndex", "focus", "blur"]
 members = ["style"]
 
 [HTMLInputElement]
-members = ["value", "checked", "defaultValue", "type", "select", "form", "labels"]
+members = ["value", "checked", "defaultValue", "type", "select", "form", "labels", "willValidate", "validity", "validationMessage", "checkValidity", "reportValidity", "setCustomValidity"]
 
 [HTMLTextAreaElement]
-members = ["value", "defaultValue", "type", "select", "textLength"]
+members = ["value", "defaultValue", "type", "select", "textLength", "form", "willValidate", "validity", "validationMessage", "checkValidity", "reportValidity", "setCustomValidity"]
 
 [HTMLSelectElement]
-members = ["value", "selectedIndex", "options", "length", "type", "item"]
+members = ["value", "selectedIndex", "options", "length", "type", "item", "form", "willValidate", "validity", "validationMessage", "checkValidity", "reportValidity", "setCustomValidity"]
 
 [HTMLOptionElement]
 members = ["value", "text", "selected", "index", "label", "Option"]
 
 [HTMLButtonElement]
-members = ["type", "form"]
+members = ["type", "form", "willValidate", "validity", "validationMessage", "checkValidity", "reportValidity", "setCustomValidity"]
+
+[HTMLFieldSetElement]
+members = ["type", "form", "willValidate", "validity", "validationMessage", "checkValidity", "reportValidity", "setCustomValidity"]
+
+[HTMLOutputElement]
+members = ["type", "form", "willValidate", "validity", "validationMessage", "checkValidity", "reportValidity", "setCustomValidity"]
+
+[ValidityState]
+members = [
+  "valueMissing", "typeMismatch", "patternMismatch", "tooLong", "tooShort", "rangeUnderflow",
+  "rangeOverflow", "stepMismatch", "badInput", "customError", "valid",
+]
 
 [HTMLFormElement]
-members = ["elements", "length", "submit", "requestSubmit"]
+members = [
+  "elements", "length", "submit", "requestSubmit", "reset", "checkValidity", "reportValidity",
+]
 
 [HTMLDialogElement]
 members = ["returnValue", "show", "showModal", "close"]
@@ -386,13 +400,32 @@ members = [
 [XMLSerializer]
 members = ["constructor", "serializeToString"]
 
-# Interface objects only (`instanceof`): stylesheets are not constructible, and
-# `adoptedStyleSheets` is absent, so libraries fall back to `<style>` elements.
+# Constructable stylesheets for `adoptedStyleSheets` (sheets of `<style>` and `<link>` are not
+# exposed: `sheet` is absent).
 [StyleSheet]
 members = []
 
 [CSSStyleSheet]
-members = []
+members = ["constructor", "insertRule", "deleteRule", "replace", "replaceSync"]
+
+# Form-associated custom elements. The ARIA properties are default semantics (on elements they
+# reflect attributes, generated).
+[ElementInternals]
+members = [
+  "shadowRoot", "setFormValue", "form", "setValidity", "willValidate", "validity",
+  "validationMessage", "checkValidity", "reportValidity", "labels", "states",
+  "role", "ariaAtomic", "ariaAutoComplete", "ariaBrailleLabel", "ariaBrailleRoleDescription",
+  "ariaBusy", "ariaChecked", "ariaColCount", "ariaColIndex", "ariaColIndexText", "ariaColSpan",
+  "ariaCurrent", "ariaDescription", "ariaDisabled", "ariaExpanded", "ariaHasPopup", "ariaHidden",
+  "ariaInvalid", "ariaKeyShortcuts", "ariaLabel", "ariaLevel", "ariaLive", "ariaModal",
+  "ariaMultiLine", "ariaMultiSelectable", "ariaOrientation", "ariaPlaceholder", "ariaPosInSet",
+  "ariaPressed", "ariaReadOnly", "ariaRelevant", "ariaRequired", "ariaRoleDescription",
+  "ariaRowCount", "ariaRowIndex", "ariaRowIndexText", "ariaRowSpan", "ariaSelected", "ariaSetSize",
+  "ariaSort", "ariaValueMax", "ariaValueMin", "ariaValueNow", "ariaValueText",
+]
+
+[CustomStateSet]
+members = ["setlike"]
 
 [ShadowRoot]
 members = [

@@ -41,8 +41,7 @@ fn is(dom: &Dom, id: NodeId, local: &str) -> bool {
 }
 
 fn aria_true(dom: &Dom, id: NodeId, attr: &str) -> bool {
-    dom.get(id)
-        .and_then(|n| n.attr(attr))
+    dom.aria(id, attr)
         .is_some_and(|v| v.trim().eq_ignore_ascii_case("true"))
 }
 
@@ -136,8 +135,8 @@ pub(crate) fn states(dom: &Dom, id: NodeId, role: &str) -> States {
     );
     if checkable {
         s.checked = Some(
-            match n
-                .attr("aria-checked")
+            match dom
+                .aria(id, "aria-checked")
                 .map(|v| v.trim().to_ascii_lowercase())
             {
                 Some(v) if v == "true" => Checked::True,
@@ -155,9 +154,11 @@ pub(crate) fn states(dom: &Dom, id: NodeId, role: &str) -> States {
             },
         );
     }
-    s.disabled = natively_disabled(dom, id) || aria_true(dom, id, "aria-disabled");
-    s.expanded = match n
-        .attr("aria-expanded")
+    s.disabled = natively_disabled(dom, id)
+        || (pageon_dom::forms::is_form_associated(dom, id) && pageon_dom::forms::disabled(dom, id))
+        || aria_true(dom, id, "aria-disabled");
+    s.expanded = match dom
+        .aria(id, "aria-expanded")
         .map(|v| v.trim().to_ascii_lowercase())
     {
         Some(v) if v == "true" => Some(true),
@@ -177,17 +178,18 @@ pub(crate) fn states(dom: &Dom, id: NodeId, role: &str) -> States {
     s.required = aria_true(dom, id, "aria-required")
         || (["input", "select", "textarea"].iter().any(|t| n.is_html(t))
             && n.attr("required").is_some());
-    s.invalid = n
-        .attr("aria-invalid")
+    s.invalid = dom
+        .aria(id, "aria-invalid")
         .map(|v| v.trim().to_ascii_lowercase())
-        .is_some_and(|v| !v.is_empty() && v != "false");
+        .is_some_and(|v| !v.is_empty() && v != "false")
+        || pageon_dom::forms::user_invalid(dom, id);
     if role == "heading" {
         let native = n
             .local_name()
             .and_then(|l| l.strip_prefix('h'))
             .and_then(|d| d.parse::<u8>().ok());
-        let aria = n
-            .attr("aria-level")
+        let aria = dom
+            .aria(id, "aria-level")
             .and_then(|v| v.trim().parse::<u8>().ok())
             .filter(|&l| l > 0);
         s.level = aria.or(native).or(Some(2));
@@ -228,9 +230,9 @@ pub(crate) fn value(dom: &Dom, id: NodeId, role: &str) -> Option<String> {
         "combobox" | "listbox" if n.is_html("select") => selected_options(dom, id)
             .first()
             .map(|&o| crate::name::normalize(&crate::text_content(dom, o))),
-        "slider" | "spinbutton" | "progressbar" | "meter" | "scrollbar" => n
-            .attr("aria-valuetext")
-            .or_else(|| n.attr("aria-valuenow"))
+        "slider" | "spinbutton" | "progressbar" | "meter" | "scrollbar" => dom
+            .aria(id, "aria-valuetext")
+            .or_else(|| dom.aria(id, "aria-valuenow"))
             .or_else(|| n.attr("value"))
             .map(str::to_string),
         _ => None,

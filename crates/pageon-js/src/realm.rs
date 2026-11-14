@@ -259,6 +259,14 @@ pub enum Slot {
     Event(Box<EventData>),
     /// `classList` and other `DOMTokenList`s: element and attribute.
     TokenList(NodeId, &'static str),
+    /// An element's `ValidityState`.
+    Validity(NodeId),
+    /// A custom element's `ElementInternals`.
+    Internals(NodeId),
+    /// A custom element's `CustomStateSet`.
+    States(NodeId),
+    /// A constructed `CSSStyleSheet` (index into the realm's sheets).
+    Sheet(u32),
     /// `element.style`.
     Style(NodeId),
     /// `getComputedStyle(element)`.
@@ -438,6 +446,13 @@ pub struct State {
     pub dialogs: Vec<Dialog>,
     /// Popup URLs (`window.open`, `target=_blank`) since the last check.
     pub popups: Vec<String>,
+    /// Controls whose validation blocked a submission (or failed `reportValidity()`) since the
+    /// last check.
+    pub blocked: Vec<crate::dom::validation::Blocked>,
+    /// Constructed stylesheets and the trees adopting them.
+    pub sheets: crate::dom::sheets::Sheets,
+    /// Caps already reported (one page error per kind).
+    pub refused: std::collections::HashSet<&'static str>,
     /// The element under the pointer.
     pub hovered: Option<NodeId>,
     /// Accept dialogs (`confirm` → true, `prompt` → its default) instead of dismissing them.

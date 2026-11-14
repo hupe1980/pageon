@@ -67,8 +67,22 @@ An outcome reports what actually happened, not what was attempted:
 - dialogs the page opened (answered by the dialog policy), popups, downloads;
 - requests made, and requests held or blocked by the policy;
 - new script errors;
+- a form the page refused to submit, with each invalid field's ref, name and reason;
 - a tool's result, for tool calls;
 - how settling ended.
+
+Forms validate as in Chrome: a required field left empty, an email without `@` or a number out
+of range blocks the submission, and the outcome says which fields and why (at most five):
+
+```text
+ok click e9 · not submitted: e3 "Email" (Please fill out this field.), e5 "Password" (Please lengthen this text to 8 characters or more (you are currently using 5 characters).) · settled idle after 0 ms
+```
+
+Messages a page sets itself (`setCustomValidity`, a component's `setValidity`) are marked
+`(page data)` and quoted, like other page text. From then on the next observation marks those
+fields `invalid` and shows error text the page reveals with CSS; a form the agent has not
+touched shows no errors. Component libraries' form controls (form-associated custom elements)
+take part like native ones.
 
 `back` and `forward` move through the tab's history like a browser's buttons: within a
 single-page app they stay in the page (the app gets `popstate`), elsewhere they load the page

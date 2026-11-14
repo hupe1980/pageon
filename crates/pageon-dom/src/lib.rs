@@ -16,6 +16,7 @@
 mod dom;
 mod dump;
 pub mod encoding;
+pub mod forms;
 mod parser;
 mod serialize;
 mod shadow;

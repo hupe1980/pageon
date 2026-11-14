@@ -525,7 +525,11 @@ impl Gen<'_> {
             ) => {
                 let getter = format!("get__{prefix}");
                 let setter = format!("set__{prefix}");
-                let rt = self.ret_ty(ty, &ctx);
+                let rt = if ext.observable {
+                    "Value".to_string()
+                } else {
+                    self.ret_ty(ty, &ctx)
+                };
                 let content = ext
                     .reflect
                     .clone()
@@ -735,6 +739,61 @@ impl Gen<'_> {
                 .cloned();
             for m in iface.members.clone() {
                 let how = self.how(iface, &m);
+                if let Member::Setlike { readonly } = m.member {
+                    if how == Impl::Hand && seen.insert("setlike".into()) {
+                        let this = self.this_code(iface);
+                        let owner = snake(&m.owner);
+                        for kind in ["Entries", "Values"] {
+                            let body = format!(
+                                "        {this}\n        let p = crate::dom::{owner}::pairs(cx, this)?;\n        let r = cv::iterator(cx, p, cv::Iter::{kind})?;\n        cx.ret(r)\n"
+                            );
+                            self.callback(&format!("iter_{kind}__{i}"), &body);
+                        }
+                        let body = format!(
+                            "        {this}\n        let p = crate::dom::{owner}::pairs(cx, this)?;\n        cv::for_each(cx, args, p)?;\n        cx.ret(())\n"
+                        );
+                        self.callback(&format!("iter_forEach__{i}"), &body);
+                        let body = format!(
+                            "        {this}\n        let r = crate::dom::{owner}::set_size(cx, this)?;\n        cx.ret(r)\n"
+                        );
+                        self.callback(&format!("set_size__{i}"), &body);
+                        let mut ops = vec![(
+                            "has",
+                            "let r = crate::dom::OWNER::set_has(cx, this, v)?;\n        cx.ret(r)",
+                        )];
+                        if !readonly {
+                            ops.push((
+                                "add",
+                                "crate::dom::OWNER::set_add(cx, this, v)?;\n        cx.ret(this)",
+                            ));
+                            ops.push(("delete", "let r = crate::dom::OWNER::set_delete(cx, this, v)?;\n        cx.ret(r)"));
+                        }
+                        for (name, call) in &ops {
+                            let call = call.replace("OWNER", &owner);
+                            let body = format!(
+                                "        {this}\n        let v = cv::string(cx, args.get(0))?;\n        {call}\n"
+                            );
+                            self.callback(&format!("set_{name}__{i}"), &body);
+                        }
+                        if !readonly {
+                            let body = format!(
+                                "        {this}\n        crate::dom::{owner}::set_clear(cx, this)?;\n        cx.ret(())\n"
+                            );
+                            self.callback(&format!("set_clear__{i}"), &body);
+                        }
+                        let _ = writeln!(
+                            props,
+                            "        cv::setlike(scope, proto, iter_Entries__{i}, iter_Values__{i}, iter_forEach__{i}, set_size__{i}, set_has__{i});"
+                        );
+                        if !readonly {
+                            let _ = writeln!(
+                                props,
+                                "        cv::method(scope, proto.into(), \"add\", set_add__{i}, 1);\n        cv::method(scope, proto.into(), \"delete\", set_delete__{i}, 1);\n        cv::method(scope, proto.into(), \"clear\", set_clear__{i}, 0);"
+                            );
+                        }
+                    }
+                    continue;
+                }
                 if matches!(m.member, Member::Iterable) {
                     if how == Impl::Hand && seen.insert("iterable".into()) {
                         let this = self.this_code(iface);
@@ -978,6 +1037,7 @@ fn reflect_kind(t: &Ty, ext: &Ext) -> String {
         Ty::Str => "cv::Reflect::Str".into(),
         Ty::Nullable(_) => "cv::Reflect::NullableStr".into(),
         Ty::Bool => "cv::Reflect::Bool".into(),
+        Ty::Int(_, true) if ext.reflect_non_negative => "cv::Reflect::NonNegative".into(),
         Ty::Int(_, false) => format!("cv::Reflect::Unsigned({default})"),
         Ty::Int(..) => format!("cv::Reflect::Long({default})"),
         Ty::Float(_) => format!("cv::Reflect::Double({default} as f64)"),

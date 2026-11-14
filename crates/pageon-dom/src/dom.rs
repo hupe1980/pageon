@@ -277,6 +277,10 @@ pub struct Dom {
     pub(crate) shadow: std::collections::HashMap<NodeId, NodeId>,
     /// In a composed tree: each shadow-tree node's original shadow root.
     pub(crate) scopes: std::collections::HashMap<NodeId, NodeId>,
+    /// `ElementInternals` of custom elements (see [`crate::forms`]).
+    pub(crate) internals: std::collections::HashMap<NodeId, crate::forms::Internals>,
+    /// Adopted stylesheets of the document or a shadow root: CSS texts in order.
+    pub(crate) adopted: std::collections::HashMap<NodeId, Vec<String>>,
 }
 
 /// A change to the tree, logged for `MutationObserver` while [`Dom::set_observing`] is on.
@@ -326,6 +330,13 @@ pub struct ControlState {
     pub selected: Option<bool>,
     /// The whole value is selected (`select()`): the next keystroke replaces it.
     pub all_selected: bool,
+    /// The custom validity message (`setCustomValidity`); empty or `None`: no custom error.
+    pub custom_error: Option<String>,
+    /// The value was last changed by a user action (`tooLong`/`tooShort` apply only then).
+    pub user_edited: bool,
+    /// HTML's user validity: the user changed the control, or a submission was blocked
+    /// (`:user-invalid`).
+    pub user_validity: bool,
 }
 
 impl Default for Dom {
@@ -350,6 +361,8 @@ impl Dom {
             mutations: Vec::new(),
             shadow: std::collections::HashMap::new(),
             scopes: std::collections::HashMap::new(),
+            internals: std::collections::HashMap::new(),
+            adopted: std::collections::HashMap::new(),
         };
         dom.root = dom.create(NodeData::Document);
         dom

@@ -202,6 +202,8 @@ pub enum Reflect {
     Bool,
     /// `long` with a default.
     Long(i64),
+    /// `long` limited to non-negative numbers (`maxLength`): -1 when absent or negative.
+    NonNegative,
     /// `unsigned long` with a default.
     Unsigned(u64),
     /// `double` with a default.
@@ -709,6 +711,30 @@ pub fn iterable(
     proto.set(sym.into(), f.into());
 }
 
+/// Installs a set-like's `size`, `has`, `entries`, `keys` and `values` (the same function),
+/// `forEach` and `@@iterator` (`values`) on a prototype.
+pub fn setlike(
+    scope: &mut v8::PinScope<'_, '_, ()>,
+    proto: v8::Local<'_, v8::ObjectTemplate>,
+    entries: impl v8::MapFnTo<v8::FunctionCallback>,
+    values: impl v8::MapFnTo<v8::FunctionCallback> + Copy,
+    for_each: impl v8::MapFnTo<v8::FunctionCallback>,
+    size: impl v8::MapFnTo<v8::FunctionCallback>,
+    has: impl v8::MapFnTo<v8::FunctionCallback>,
+) {
+    method(scope, proto.into(), "entries", entries, 0);
+    let f = v8::FunctionTemplate::new(scope, values);
+    for name in ["keys", "values"] {
+        let n = v8::String::new(scope, name).unwrap_or_else(|| v8::String::empty(scope));
+        proto.set(n.into(), f.into());
+    }
+    let sym = v8::Symbol::get_iterator(scope);
+    proto.set(sym.into(), f.into());
+    method(scope, proto.into(), "forEach", for_each, 1);
+    method(scope, proto.into(), "has", has, 1);
+    accessor(scope, proto, "size", size, None);
+}
+
 /// Adds an accessor property.
 pub fn accessor(
     scope: &mut v8::PinScope<'_, '_, ()>,
@@ -984,6 +1010,12 @@ pub fn reflect_get(cx: &mut Cx<'_, '_, '_>, this: Obj, name: &str, kind: Reflect
             None => String::new(),
         }),
         Reflect::Long(d) => Out::Num(value.and_then(|v| parse_int(&v)).unwrap_or(d) as f64),
+        Reflect::NonNegative => Out::Num(
+            value
+                .and_then(|v| parse_int(&v))
+                .filter(|n| (0..=i64::from(i32::MAX)).contains(n))
+                .unwrap_or(-1) as f64,
+        ),
         Reflect::Unsigned(d) => Out::Num(
             value
                 .and_then(|v| parse_int(&v))
@@ -1043,6 +1075,16 @@ pub fn reflect_set(
                 .map_err(|e| Error::dom("NotFoundError", e.to_string()));
         }
         Reflect::Long(_) => int::<i32>(cx, v)?.to_string(),
+        Reflect::NonNegative => {
+            let n = int::<i32>(cx, v)?;
+            if n < 0 {
+                return Err(Error::dom(
+                    "IndexSizeError",
+                    format!("The value provided ({n}) is not non-negative."),
+                ));
+            }
+            n.to_string()
+        }
         Reflect::Unsigned(_) => {
             let n = int::<u32>(cx, v)?;
             if n > i32::MAX as u32 {

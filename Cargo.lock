@@ -2257,9 +2257,11 @@ name = "pageon-dom"
 version = "0.0.1"
 dependencies = [
  "encoding_rs",
+ "fancy-regex",
  "html5ever",
  "insta",
  "markup5ever_rcdom",
+ "url",
 ]
 
 [[package]]
@@ -2624,6 +2626,8 @@ dependencies = [
 [[package]]
 name = "procage"
 version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b264b675bce0bab059f84809cd8f9cc661309187f3ca0ada64a2d0da99196dd0"
 dependencies = [
  "libc",
  "procage-policy",
@@ -2635,6 +2639,8 @@ dependencies = [
 [[package]]
 name = "procage-policy"
 version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b3e969559f41312ca22aaf30733d65d1141b05e0f153ea15f8af18b6db03420a"
 dependencies = [
  "serde",
 ]

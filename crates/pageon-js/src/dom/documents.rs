@@ -533,6 +533,14 @@ pub mod document {
 pub mod document_or_shadow_root {
     use super::*;
 
+    pub fn get_adopted_style_sheets(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<crate::cv::Value> {
+        crate::dom::sheets::get_adopted(cx, this.node()?)
+    }
+
+    pub fn set_adopted_style_sheets(cx: &mut Cx<'_, '_, '_>, this: Obj, v: Vec<Obj>) -> R<()> {
+        crate::dom::sheets::set_adopted(cx, this.node()?, v)
+    }
+
     /// The focused element, retargeted: the host for focus inside a shadow tree; on a shadow
     /// root, the focused element in its tree (or a host within it).
     pub fn get_active_element(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<Option<Obj>> {

@@ -315,6 +315,9 @@ impl Engine {
                 navigation: None,
                 dialogs: Vec::new(),
                 popups: Vec::new(),
+                blocked: Vec::new(),
+                sheets: Default::default(),
+                refused: Default::default(),
                 hovered: None,
                 accept_dialogs: cfg.accept_dialogs,
                 observers: Vec::new(),
@@ -1130,6 +1133,14 @@ impl Engine {
         })
     }
 
+    /// The controls whose validation blocked a submission (or failed `reportValidity()`) in a
+    /// realm since the last call.
+    pub fn take_blocked(&mut self, realm: usize) -> Vec<crate::dom::validation::Blocked> {
+        self.realm(realm)
+            .map(|r| std::mem::take(&mut r.st.borrow_mut().blocked))
+            .unwrap_or_default()
+    }
+
     /// Whether script changed an iframe in a realm since the last call (frames must be loaded).
     pub fn take_frames_changed(&mut self, realm: usize) -> bool {
         self.realm(realm)
@@ -1215,6 +1226,7 @@ pub fn page_error(
 /// Notifies mutation observers until no callback queues more records (bounded), with a
 /// microtask checkpoint after each round.
 fn notify_observers(cx: &mut Cx<'_, '_, '_>) {
+    crate::dom::sheets::sync(cx);
     let mut resize_pass = 0;
     for _ in 0..100 {
         let _ = crate::dom::custom_elements::react(cx);

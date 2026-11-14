@@ -20,6 +20,7 @@ mod serialize;
 
 pub use dom::scroll::{Amount, Scroller, Wheeled};
 pub use dom::session::{HistoryOp, State as SavedState};
+pub use dom::validation::Blocked;
 pub use dom::webmcp::ToolInfo;
 pub use engine::{Engine, Limits, RealmConfig, ScrollOffsets, Settled};
 pub use eval::{Arg, Handle, PromiseState, Thrown};

@@ -1,0 +1,59 @@
+<!doctype html><title>Newsletter</title>
+<script>
+class TextField extends HTMLElement {
+  static formAssociated = true;
+  #i; #input;
+  constructor() {
+    super();
+    this.#i = this.attachInternals();
+    const root = this.attachShadow({mode: 'open', delegatesFocus: true});
+    root.innerHTML = '<input>';
+    this.#input = root.querySelector('input');
+    this.#input.setAttribute('aria-label', this.getAttribute('label'));
+    this.#input.addEventListener('input', () => this.#sync());
+    this.#sync();
+  }
+  #sync() {
+    const v = this.#input.value;
+    this.#i.setFormValue(v);
+    if (this.hasAttribute('required') && !v) this.#i.setValidity({valueMissing: true}, 'Enter your email', this.#input);
+    else this.#i.setValidity({});
+  }
+  formResetCallback() { this.#input.value = ''; this.#sync(); }
+  formDisabledCallback(d) { this.#input.disabled = d; log.textContent += 'disabled:' + d + ' '; }
+  formAssociatedCallback(f) { log.textContent += 'form:' + (f ? f.id : null) + ' '; }
+}
+class Switch extends HTMLElement {
+  static formAssociated = true;
+  #i;
+  constructor() {
+    super();
+    this.#i = this.attachInternals();
+    this.#i.role = 'switch';
+    this.#i.ariaChecked = 'false';
+    this.#i.ariaLabel = this.getAttribute('label');
+    this.tabIndex = 0;
+    const root = this.attachShadow({mode: 'open'});
+    root.innerHTML = '<style>:host { display: inline-block; width: 40px; height: 20px } .knob { display: block; width: 10px; height: 10px } :host(:state(checked)) .knob { width: 30px }</style><span class=knob></span>';
+    this.addEventListener('click', () => this.toggle());
+  }
+  toggle() {
+    const on = !this.#i.states.has('checked');
+    if (on) this.#i.states.add('checked'); else this.#i.states.delete('checked');
+    this.#i.ariaChecked = String(on);
+    this.#i.setFormValue(on ? 'on' : null);
+  }
+  get checked() { return this.#i.states.has('checked'); }
+  formResetCallback() { if (this.checked) this.toggle(); }
+}
+customElements.define('x-text-field', TextField);
+customElements.define('x-switch', Switch);
+</script>
+<form id=signup action=/sub>
+  <fieldset id=group>
+    <x-text-field name=email label=Email required></x-text-field>
+    <x-switch name=news label=Newsletter></x-switch>
+  </fieldset>
+  <button>Subscribe</button>
+</form>
+<p id=log></p>

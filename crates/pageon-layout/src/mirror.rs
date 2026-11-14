@@ -96,6 +96,111 @@ pub(crate) struct ImageUse {
     pub(crate) applied: usize,
 }
 
+/// A stylesheet's text for the mirror: pseudo-classes rewritten to markers (`pseudo`), and
+/// selectors scoped to their tree (pages with shadow trees).
+fn sheet_css<'a>(
+    css: &'a str,
+    pseudo: bool,
+    scope: Option<crate::scope::Scope>,
+) -> std::borrow::Cow<'a, str> {
+    let css: std::borrow::Cow<'a, str> = match pseudo.then(|| crate::scope::pseudo(css)).flatten() {
+        Some(r) => r.into(),
+        None => css.into(),
+    };
+    match scope {
+        Some(s) => crate::scope::rewrite(&css, s).into(),
+        None => css,
+    }
+}
+
+/// Whether any stylesheet of the document uses a pseudo-class the mirror marks.
+fn uses_pseudo(dom: &Dom, stylesheets: &[Stylesheet]) -> bool {
+    stylesheets
+        .iter()
+        .any(|s| crate::scope::uses_pseudo(&s.css))
+        || dom.traverse(dom.root()).any(|e| match e {
+            Edge::Enter(id) => match dom.get(id).map(|n| &n.data) {
+                Some(NodeData::Text(t)) => {
+                    dom.parent(id)
+                        .and_then(|p| dom.get(p))
+                        .is_some_and(|p| p.is_html("style"))
+                        && crate::scope::uses_pseudo(t)
+                }
+                _ => false,
+            },
+            Edge::Leave(_) => false,
+        })
+        || adopted(dom, None)
+            .iter()
+            .any(|(_, css)| crate::scope::uses_pseudo(css))
+}
+
+/// The adopted stylesheets to apply, in cascade order: the document's, then each connected
+/// shadow tree's, with their scope.
+fn adopted(
+    dom: &Dom,
+    composed: Option<&pageon_dom::Composed>,
+) -> Vec<(Option<crate::scope::Scope>, String)> {
+    if !dom.has_adopted() {
+        return Vec::new();
+    }
+    let mut out: Vec<(Option<crate::scope::Scope>, String)> = dom
+        .adopted(dom.root())
+        .iter()
+        .map(|c| (composed.map(|_| crate::scope::Scope::Document), c.clone()))
+        .collect();
+    if let Some(c) = composed {
+        // Connected shadow trees only (a removed host's tree has no ordinal).
+        let mut roots: Vec<(u32, NodeId)> = dom
+            .adopted_roots()
+            .filter_map(|r| c.roots.get(&r).map(|&n| (n, r)))
+            .collect();
+        roots.sort_unstable();
+        for (n, root) in roots {
+            for css in dom.adopted(root) {
+                out.push((Some(crate::scope::Scope::Shadow(n)), css.clone()));
+            }
+        }
+    }
+    out
+}
+
+/// Mirror-only markers for the pseudo-classes rewritten by [`crate::scope::pseudo`].
+fn markers(dom: &Dom, id: NodeId, attrs: &mut Vec<blitz_dom::Attribute>) {
+    use pageon_dom::forms;
+    let Some(n) = dom.get(id) else { return };
+    let invalid = if n.is_html("form") || n.is_html("fieldset") {
+        Some(forms::has_invalid(dom, id))
+    } else if forms::barred(dom, id) {
+        None
+    } else {
+        Some(!forms::validity(dom, id).valid())
+    };
+    if let Some(invalid) = invalid {
+        attrs.push(attr(
+            if invalid {
+                "pageon-invalid"
+            } else {
+                "pageon-valid"
+            },
+            String::new(),
+        ));
+        if dom.control(id).is_some_and(|c| c.user_validity) && !n.is_html("form") {
+            attrs.push(attr(
+                if invalid {
+                    "pageon-user-invalid"
+                } else {
+                    "pageon-user-valid"
+                },
+                String::new(),
+            ));
+        }
+    }
+    if let Some(i) = dom.internals(id).filter(|i| !i.states.is_empty()) {
+        attrs.push(attr("pageon-state", i.states.join(" ")));
+    }
+}
+
 fn attr(name: &str, value: String) -> blitz_dom::Attribute {
     blitz_dom::Attribute {
         name: html5ever::QualName::new(None, html5ever::ns!(), html5ever::LocalName::from(name)),
@@ -184,6 +289,9 @@ pub(crate) fn build(
     composed: Option<&pageon_dom::Composed>,
 ) -> (BaseDocument, Map, Option<ImageUse>) {
     let (modals, images, secrets) = (opts.modals, opts.images, opts.redact);
+    // Pseudo-classes Blitz does not match (`:invalid`, `:state()`) are rewritten to mirror-only
+    // markers, only when a sheet uses them.
+    let pseudo = uses_pseudo(dom, stylesheets);
     let mut shown: Vec<NodeId> = Vec::new();
     // Subtrees replaced by the control's state (a textarea's value) or hidden (text in a
     // closed `<details>`): their nodes are not mirrored.
@@ -276,6 +384,9 @@ pub(crate) fn build(
                                         }
                                     }
                                 }
+                                if pseudo {
+                                    markers(dom, id, &mut attrs);
+                                }
                                 // Modal dialogs live in the top layer: a mirror-only marker the
                                 // UA sheet positions (never visible to the page).
                                 if modals.contains(&id) {
@@ -300,17 +411,18 @@ pub(crate) fn build(
                             }
                             NodeData::Text(t) => {
                                 // A `<style>`'s rules, scoped to its tree.
-                                let style = composed.and_then(|c| {
-                                    let p = dom.parent(id)?;
-                                    dom.get(p).filter(|n| n.is_html("style"))?;
-                                    Some(match c.scope_of.get(&p) {
-                                        Some(&n) => crate::scope::Scope::Shadow(n),
-                                        None => crate::scope::Scope::Document,
-                                    })
-                                });
+                                let style = dom
+                                    .parent(id)
+                                    .filter(|&p| dom.get(p).is_some_and(|n| n.is_html("style")));
                                 Some(match style {
-                                    Some(s) => m.create_text_node(&crate::scope::rewrite(t, s)),
-                                    None => m.create_text_node(&redact(t, secrets)),
+                                    Some(p) if pseudo || composed.is_some() => {
+                                        let scope = composed.map(|c| match c.scope_of.get(&p) {
+                                            Some(&n) => crate::scope::Scope::Shadow(n),
+                                            None => crate::scope::Scope::Document,
+                                        });
+                                        m.create_text_node(&sheet_css(t, pseudo, scope))
+                                    }
+                                    _ => m.create_text_node(&redact(t, secrets)),
                                 })
                             }
                             NodeData::Comment(t) => Some(m.create_comment_node(t)),
@@ -352,16 +464,33 @@ pub(crate) fn build(
                 }
             }
         }
+        // Adopted stylesheets: after every sheet of the document, scoped to their tree.
+        if dom.has_adopted() {
+            let html = dom
+                .children(dom.root())
+                .find(|&c| dom.get(c).is_some_and(|n| n.is_html("html")))
+                .and_then(|h| map.blitz(h));
+            if let Some(html) = html {
+                for (scope, css) in adopted(dom, composed) {
+                    let el = m.create_element(
+                        html5ever::QualName::new(
+                            None,
+                            html5ever::ns!(html),
+                            html5ever::LocalName::from("style"),
+                        ),
+                        Vec::new(),
+                    );
+                    let t = m.create_text_node(&sheet_css(&css, pseudo, scope));
+                    m.append_children(el, &[t]);
+                    m.append_children(html, &[el]);
+                }
+            }
+        }
     }
     for sheet in stylesheets {
         if let Some(b) = map.blitz(sheet.link) {
-            let css = match composed {
-                Some(_) => std::borrow::Cow::Owned(crate::scope::rewrite(
-                    &sheet.css,
-                    crate::scope::Scope::Document,
-                )),
-                None => std::borrow::Cow::Borrowed(sheet.css.as_str()),
-            };
+            let scope = composed.map(|_| crate::scope::Scope::Document);
+            let css = sheet_css(&sheet.css, pseudo, scope);
             let s = doc.make_stylesheet(&css, Origin::Author);
             doc.add_stylesheet_for_node(s, b);
         }

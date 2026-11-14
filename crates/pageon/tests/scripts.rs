@@ -196,7 +196,7 @@ fn markup_scripts_never_run_and_selectors_validate() {
 fn missing_apis_are_absent_not_stubbed() {
     let doc = load(
         "<div id=out></div><script>document.getElementById('out').textContent = [typeof WebSocket, typeof document.write,\
-         typeof HTMLElement.prototype.attachInternals, typeof indexedDB, typeof Blob, 'getContext' in document.createElement('canvas')].join(',');</script>",
+         typeof MessageChannel, typeof indexedDB, typeof Blob, 'getContext' in document.createElement('canvas')].join(',');</script>",
     );
     assert_eq!(
         text(&doc, "out"),

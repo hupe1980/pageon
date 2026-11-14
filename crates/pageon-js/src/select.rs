@@ -74,6 +74,9 @@ impl<'a> El<'a> {
     }
 
     fn disabled(&self) -> bool {
+        if pageon_dom::forms::is_form_associated(self.dom, self.id) {
+            return pageon_dom::forms::disabled(self.dom, self.id);
+        }
         let form = [
             "button", "input", "select", "textarea", "optgroup", "option", "fieldset",
         ]
@@ -213,10 +216,36 @@ impl selectors::Element for El<'_> {
                 .cx
                 .focused
                 .is_some_and(|f| self.dom.is_inclusive_ancestor(self.id, f)),
-            NonTSPseudoClass::Required => self.attr("required").is_some(),
+            NonTSPseudoClass::Required => {
+                (self.is("input") || self.is("select") || self.is("textarea"))
+                    && self.attr("required").is_some()
+            }
             NonTSPseudoClass::Optional => {
                 (self.is("input") || self.is("select") || self.is("textarea"))
                     && self.attr("required").is_none()
+            }
+            NonTSPseudoClass::Valid | NonTSPseudoClass::Invalid => {
+                use pageon_dom::forms;
+                let invalid = if self.is("form") || self.is("fieldset") {
+                    Some(forms::has_invalid(self.dom, self.id))
+                } else {
+                    (!forms::barred(self.dom, self.id))
+                        .then(|| !forms::validity(self.dom, self.id).valid())
+                };
+                invalid.is_some_and(|i| i == matches!(pc, NonTSPseudoClass::Invalid))
+            }
+            NonTSPseudoClass::UserInvalid => pageon_dom::forms::user_invalid(self.dom, self.id),
+            NonTSPseudoClass::UserValid => {
+                use pageon_dom::forms;
+                self.dom.control(self.id).is_some_and(|c| c.user_validity)
+                    && !forms::barred(self.dom, self.id)
+                    && forms::validity(self.dom, self.id).valid()
+            }
+            NonTSPseudoClass::CustomState(state) => {
+                let name = state.0.to_string();
+                self.dom
+                    .internals(self.id)
+                    .is_some_and(|i| i.states.contains(&name))
             }
             NonTSPseudoClass::ReadOnly => {
                 !(self.is("input") || self.is("textarea")) || self.attr("readonly").is_some()

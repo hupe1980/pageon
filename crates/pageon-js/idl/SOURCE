@@ -1,5 +1,5 @@
 @webref/idl 3.86.0 (https://www.npmjs.com/package/@webref/idl), files: dom, html, cssom, pointerevents, webidl, SVG,
-cssom-view, uievents, hr-time, console, geometry, fetch, xhr, url, intersection-observer,
+wai-aria, cssom-view, uievents, hr-time, console, geometry, fetch, xhr, url, intersection-observer,
 webdriver, ua-client-hints, webcrypto, encoding, resize-observer, requestidlecallback. Extracted from the W3C/WHATWG specifications
 by Webref. Licence: the specifications' licences (WHATWG: CC BY 4.0; W3C: W3C Software and
 Document License). Used unmodified, as generator input.

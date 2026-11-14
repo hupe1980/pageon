@@ -25,7 +25,85 @@ pub enum Scope {
 /// Rewrites a stylesheet's selectors for `scope`.
 pub fn rewrite(css: &str, scope: Scope) -> String {
     let mut out = String::with_capacity(css.len() + css.len() / 4);
-    rules(css, scope, &mut out);
+    rules(css, &|p| selector_list(p, scope), &mut out);
+    out
+}
+
+/// Pseudo-classes Blitz does not match, and what the mirror marks instead (mirror-only
+/// attributes the page never sees).
+const PSEUDO: &[(&str, &str)] = &[
+    (":user-invalid", "[pageon-user-invalid]"),
+    (":user-valid", "[pageon-user-valid]"),
+    (":invalid", "[pageon-invalid]"),
+    (":valid", "[pageon-valid]"),
+    (":required", ":is(input,select,textarea)[required]"),
+    (":optional", ":is(input,select,textarea):not([required])"),
+];
+
+/// Whether a stylesheet uses a pseudo-class the mirror marks (then [`pseudo`] rewrites it).
+pub fn uses_pseudo(css: &str) -> bool {
+    let lower = css.contains(":state(") || PSEUDO.iter().any(|(p, _)| css.contains(p));
+    lower
+        || (css.bytes().any(|b| b.is_ascii_uppercase()) && {
+            let l = css.to_ascii_lowercase();
+            l.contains(":state(") || PSEUDO.iter().any(|(p, _)| l.contains(p))
+        })
+}
+
+/// Rewrites `:valid`, `:invalid`, `:user-valid`, `:user-invalid`, `:required`, `:optional` and
+/// `:state(x)` in selectors to the mirror's markers; `None` when the sheet uses none.
+pub fn pseudo(css: &str) -> Option<String> {
+    if !uses_pseudo(css) {
+        return None;
+    }
+    let mut out = String::with_capacity(css.len() + 64);
+    rules(css, &pseudo_selector, &mut out);
+    Some(out)
+}
+
+fn pseudo_selector(sel: &str) -> String {
+    let b = sel.as_bytes();
+    let mut out = String::with_capacity(sel.len() + 32);
+    let mut i = 0;
+    'scan: while i < b.len() {
+        let c = b[i];
+        if c == b':' && (i == 0 || b[i - 1] != b':') && b.get(i + 1) != Some(&b':') {
+            let rest = &sel[i..];
+            if rest.len() >= 7
+                && rest[..7].eq_ignore_ascii_case(":state(")
+                && let Some(close) = rest.find(')')
+            {
+                let name = rest[7..close].trim().trim_matches(['"', '\'']);
+                out.push_str("[pageon-state~=\"");
+                out.extend(name.chars().filter(|c| *c != '"' && *c != '\\'));
+                out.push_str("\"]");
+                i += close + 1;
+                continue;
+            }
+            for (p, to) in PSEUDO {
+                let n = p.len();
+                if rest.len() >= n
+                    && rest[..n].eq_ignore_ascii_case(p)
+                    && !rest[n..].bytes().next().is_some_and(|x| {
+                        x.is_ascii_alphanumeric() || x == b'-' || x == b'_' || x == b'('
+                    })
+                {
+                    out.push_str(to);
+                    i += n;
+                    continue 'scan;
+                }
+            }
+        }
+        if c == b'"' || c == b'\'' {
+            let end = css_string_end(sel, i);
+            out.push_str(&sel[i..end]);
+            i = end;
+            continue;
+        }
+        let ch = sel[i..].chars().next().unwrap_or(' ');
+        out.push(ch);
+        i += ch.len_utf8();
+    }
     out
 }
 
@@ -40,7 +118,7 @@ const GROUPING: &[&str] = &[
     "starting-style",
 ];
 
-fn rules(css: &str, scope: Scope, out: &mut String) {
+fn rules(css: &str, prelude_of: &dyn Fn(&str) -> String, out: &mut String) {
     let b = css.as_bytes();
     let mut i = 0;
     while i < b.len() {
@@ -66,13 +144,13 @@ fn rules(css: &str, scope: Scope, out: &mut String) {
                     out.push_str(prelude);
                     out.push('{');
                     if GROUPING.contains(&name.as_str()) {
-                        rules(body, scope, out);
+                        rules(body, prelude_of, out);
                     } else {
                         out.push_str(body);
                     }
                     out.push('}');
                 } else {
-                    out.push_str(&selector_list(prelude, scope));
+                    out.push_str(&prelude_of(prelude));
                     out.push('{');
                     out.push_str(body);
                     out.push('}');

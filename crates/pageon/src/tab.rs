@@ -354,7 +354,34 @@ pub struct Outcome {
     /// (`already at the end`, `the page prevented scrolling`).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub scrolled: Vec<String>,
+    /// The form was not submitted: its invalid fields, in tree order (at most 5).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub invalid: Vec<InvalidField>,
+    /// Invalid fields beyond those listed.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub invalid_more: usize,
 }
+
+fn is_zero(n: &usize) -> bool {
+    *n == 0
+}
+
+/// A field whose validation blocked a submission.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct InvalidField {
+    /// The agent's ref for the field, if it has one.
+    pub target: Option<String>,
+    /// Its accessible name.
+    pub name: String,
+    /// Why (the validation message), clipped to 300 characters.
+    pub message: String,
+    /// The page set the message (`setCustomValidity`, a component's `setValidity`).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub page_data: bool,
+}
+
+/// Most invalid fields an outcome lists.
+const MAX_INVALID: usize = 5;
 
 impl fmt::Display for Outcome {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -379,6 +406,29 @@ impl fmt::Display for Outcome {
                     if d.accepted { "accepted" } else { "dismissed" }
                 )
             });
+        }
+        if !self.invalid.is_empty() {
+            let fields: Vec<String> = self
+                .invalid
+                .iter()
+                .map(|f| {
+                    let who = match &f.target {
+                        Some(r) => format!("{r} {}", q(&f.name)),
+                        None => q(&f.name),
+                    };
+                    let why = f.message.replace('\n', " — ");
+                    if f.page_data {
+                        format!("{who} (page data) {}", q(&why))
+                    } else {
+                        format!("{who} ({why})")
+                    }
+                })
+                .collect();
+            let mut line = format!("not submitted: {}", fields.join(", "));
+            if self.invalid_more > 0 {
+                line.push_str(&format!(" and {} more", self.invalid_more));
+            }
+            parts.push(line);
         }
         for p in &self.popups {
             parts.push(format!("popup {}", q(p)));
@@ -765,6 +815,9 @@ fn is_form_control(doc: &Document, id: NodeId) -> bool {
 
 /// A form control disabled by its own attribute or a disabled `<fieldset>` ancestor.
 fn disabled(doc: &Document, id: NodeId) -> bool {
+    if pageon_dom::forms::is_form_associated(&doc.dom, id) {
+        return pageon_dom::forms::disabled(&doc.dom, id);
+    }
     if !is_form_control(doc, id) {
         return false;
     }
@@ -929,6 +982,10 @@ impl<'s, E: Env> Tab<'s, E> {
         o.navigated = o.navigated.take().map(|u| self.redact(u));
         o.tool_result = o.tool_result.take().map(|r| self.redact(r));
         o.popups = o.popups.drain(..).map(|u| self.redact(u)).collect();
+        for f in &mut o.invalid {
+            f.message = self.redact(std::mem::take(&mut f.message));
+            f.name = self.redact(std::mem::take(&mut f.name));
+        }
     }
 
     /// A view of the page at a viewport and budget, with secrets redacted.
@@ -1833,9 +1890,13 @@ impl<'s, E: Env> Tab<'s, E> {
         out: &mut Outcome,
     ) -> Result<(), ActionError> {
         let (nav, dialogs, popups) = live.engine.borrow_mut().take_requests(live.realm);
+        let blocked = live.engine.borrow_mut().take_blocked(live.realm);
         out.dialogs.extend(dialogs);
         out.popups.extend(popups);
         refresh(&mut self.doc);
+        if !blocked.is_empty() {
+            self.report_invalid(frame, blocked, out);
+        }
         if frame == 0 {
             self.apply_history(out);
         } else {
@@ -1855,6 +1916,45 @@ impl<'s, E: Env> Tab<'s, E> {
             History::Push
         };
         self.navigate(initiator.as_ref(), &nav, mode, out)
+    }
+
+    /// Lists the fields whose validation blocked a submission, with the agent's refs and their
+    /// accessible names.
+    fn report_invalid(&self, frame: usize, blocked: Vec<pageon_js::Blocked>, out: &mut Outcome) {
+        let docs = crate::capture::frame_documents(&self.doc);
+        let Some(Some(doc)) = docs.get(frame) else {
+            return;
+        };
+        let composed = doc.dom().has_shadow().then(|| doc.dom().composed().dom);
+        let dom = composed.as_ref().unwrap_or(doc.dom());
+        // Names as the agent sees them: text hidden by CSS is not part of a name.
+        let layout = doc.layout(Viewport::default());
+        let tree = pageon_ax::Tree::build(dom, layout.error().is_none().then_some(&layout));
+        let mut seen = std::collections::HashSet::new();
+        let fields: Vec<&pageon_js::Blocked> =
+            blocked.iter().filter(|b| seen.insert(b.node)).collect();
+        out.invalid_more += fields.len().saturating_sub(MAX_INVALID);
+        for b in fields.into_iter().take(MAX_INVALID) {
+            // A component is reported by the field the agent types into (its anchor), unless
+            // the component itself has a name.
+            let own = tree.name(b.node).unwrap_or_default();
+            let node = if own.is_empty() { b.focus } else { b.node };
+            let backend = crate::capture::backend(frame, node);
+            let target = self
+                .episode
+                .ref_of(&format!("F{frame}"), backend)
+                .or_else(|| {
+                    self.episode
+                        .ref_of(&format!("F{frame}"), crate::capture::backend(frame, b.node))
+                });
+            let name = tree.name(node).unwrap_or_default().to_string();
+            out.invalid.push(InvalidField {
+                target,
+                name: pageon_agent::quote::clip(&name, 100),
+                message: pageon_agent::quote::clip(&b.message, 300),
+                page_data: b.page_set,
+            });
+        }
     }
 
     /// Loads `nav` in place (the old page goes on success, stays on failure).

@@ -248,6 +248,11 @@ impl Episode {
         self.last.as_deref()
     }
 
+    /// The ref the agent has for an element (frame id and backend node id), if any.
+    pub fn ref_of(&self, frame_id: &str, backend_id: i64) -> Option<String> {
+        self.table.find(frame_id, backend_id).map(refs::ref_name)
+    }
+
     /// The element a ref names (frame and backend node), without checking that it is still
     /// there or uncovered.
     pub fn key(&self, reference: &str) -> Option<Target> {

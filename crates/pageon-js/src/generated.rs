@@ -22,6 +22,8 @@ pub enum Iface {
     Crypto,
     /// `CustomElementRegistry`.
     CustomElementRegistry,
+    /// `CustomStateSet`.
+    CustomStateSet,
     /// `DOMException`.
     DOMException,
     /// `DOMImplementation`.
@@ -34,6 +36,8 @@ pub enum Iface {
     DOMStringMap,
     /// `DOMTokenList`.
     DOMTokenList,
+    /// `ElementInternals`.
+    ElementInternals,
     /// `Event`.
     Event,
     /// `EventTarget`.
@@ -114,6 +118,8 @@ pub enum Iface {
     URL,
     /// `URLSearchParams`.
     URLSearchParams,
+    /// `ValidityState`.
+    ValidityState,
     /// `VisualViewport`.
     VisualViewport,
     /// `Window`.
@@ -314,7 +320,7 @@ pub enum Iface {
 
 impl Iface {
     /// All interfaces.
-    pub const ALL: &'static [Iface] = &[Iface::AbortController, Iface::CSSStyleDeclaration, Iface::CSSStyleProperties, Iface::CanvasRenderingContext2D, Iface::Crypto, Iface::CustomElementRegistry, Iface::DOMException, Iface::DOMImplementation, Iface::DOMRectList, Iface::DOMRectReadOnly, Iface::DOMStringMap, Iface::DOMTokenList, Iface::Event, Iface::EventTarget, Iface::FormData, Iface::HTMLCollection, Iface::HTMLFormControlsCollection, Iface::HTMLOptionsCollection, Iface::Headers, Iface::History, Iface::IdleDeadline, Iface::IntersectionObserver, Iface::IntersectionObserverEntry, Iface::Location, Iface::MediaQueryList, Iface::MediaQueryListEvent, Iface::MessageEvent, Iface::ModelContext, Iface::MutationObserver, Iface::MutationRecord, Iface::NamedNodeMap, Iface::Navigator, Iface::NavigatorUAData, Iface::Node, Iface::NodeFilter, Iface::NodeList, Iface::Performance, Iface::PopStateEvent, Iface::ProgressEvent, Iface::Request, Iface::ResizeObserver, Iface::ResizeObserverEntry, Iface::ResizeObserverSize, Iface::Response, Iface::Storage, Iface::StyleSheet, Iface::TextDecoder, Iface::TextEncoder, Iface::TreeWalker, Iface::UIEvent, Iface::URL, Iface::URLSearchParams, Iface::VisualViewport, Iface::Window, Iface::XMLHttpRequestEventTarget, Iface::XMLSerializer, Iface::console, Iface::AbortSignal, Iface::Attr, Iface::CSSStyleSheet, Iface::CharacterData, Iface::Comment, Iface::CustomEvent, Iface::DOMRect, Iface::Document, Iface::DocumentFragment, Iface::DocumentType, Iface::Element, Iface::FocusEvent, Iface::HTMLElement, Iface::HTMLEmbedElement, Iface::HTMLFieldSetElement, Iface::HTMLFontElement, Iface::HTMLFormElement, Iface::HTMLFrameElement, Iface::HTMLFrameSetElement, Iface::HTMLHRElement, Iface::HTMLHeadElement, Iface::HTMLHeadingElement, Iface::HTMLHtmlElement, Iface::HTMLIFrameElement, Iface::HTMLImageElement, Iface::HTMLInputElement, Iface::HTMLLIElement, Iface::HTMLLabelElement, Iface::HTMLLegendElement, Iface::HTMLLinkElement, Iface::HTMLMapElement, Iface::HTMLMarqueeElement, Iface::HTMLMediaElement, Iface::HTMLMenuElement, Iface::HTMLMetaElement, Iface::HTMLMeterElement, Iface::HTMLModElement, Iface::HTMLOListElement, Iface::HTMLObjectElement, Iface::HTMLOptGroupElement, Iface::HTMLOptionElement, Iface::HTMLOutputElement, Iface::HTMLParagraphElement, Iface::HTMLParamElement, Iface::HTMLPictureElement, Iface::HTMLPreElement, Iface::HTMLProgressElement, Iface::HTMLQuoteElement, Iface::HTMLScriptElement, Iface::HTMLSelectElement, Iface::HTMLSelectedContentElement, Iface::HTMLSlotElement, Iface::HTMLSourceElement, Iface::HTMLSpanElement, Iface::HTMLStyleElement, Iface::HTMLTableCaptionElement, Iface::HTMLTableCellElement, Iface::HTMLTableColElement, Iface::HTMLTableElement, Iface::HTMLTableRowElement, Iface::HTMLTableSectionElement, Iface::HTMLTemplateElement, Iface::HTMLTextAreaElement, Iface::HTMLTimeElement, Iface::HTMLTitleElement, Iface::HTMLTrackElement, Iface::HTMLUListElement, Iface::HTMLUnknownElement, Iface::HTMLVideoElement, Iface::KeyboardEvent, Iface::MouseEvent, Iface::PointerEvent, Iface::SVGElement, Iface::SVGGraphicsElement, Iface::ShadowRoot, Iface::Text, Iface::WheelEvent, Iface::XMLHttpRequest, Iface::HTMLAnchorElement, Iface::HTMLAreaElement, Iface::HTMLAudioElement, Iface::HTMLBRElement, Iface::HTMLBaseElement, Iface::HTMLBodyElement, Iface::HTMLButtonElement, Iface::HTMLCanvasElement, Iface::HTMLDListElement, Iface::HTMLDataElement, Iface::HTMLDataListElement, Iface::HTMLDetailsElement, Iface::HTMLDialogElement, Iface::HTMLDirectoryElement, Iface::HTMLDivElement];
+    pub const ALL: &'static [Iface] = &[Iface::AbortController, Iface::CSSStyleDeclaration, Iface::CSSStyleProperties, Iface::CanvasRenderingContext2D, Iface::Crypto, Iface::CustomElementRegistry, Iface::CustomStateSet, Iface::DOMException, Iface::DOMImplementation, Iface::DOMRectList, Iface::DOMRectReadOnly, Iface::DOMStringMap, Iface::DOMTokenList, Iface::ElementInternals, Iface::Event, Iface::EventTarget, Iface::FormData, Iface::HTMLCollection, Iface::HTMLFormControlsCollection, Iface::HTMLOptionsCollection, Iface::Headers, Iface::History, Iface::IdleDeadline, Iface::IntersectionObserver, Iface::IntersectionObserverEntry, Iface::Location, Iface::MediaQueryList, Iface::MediaQueryListEvent, Iface::MessageEvent, Iface::ModelContext, Iface::MutationObserver, Iface::MutationRecord, Iface::NamedNodeMap, Iface::Navigator, Iface::NavigatorUAData, Iface::Node, Iface::NodeFilter, Iface::NodeList, Iface::Performance, Iface::PopStateEvent, Iface::ProgressEvent, Iface::Request, Iface::ResizeObserver, Iface::ResizeObserverEntry, Iface::ResizeObserverSize, Iface::Response, Iface::Storage, Iface::StyleSheet, Iface::TextDecoder, Iface::TextEncoder, Iface::TreeWalker, Iface::UIEvent, Iface::URL, Iface::URLSearchParams, Iface::ValidityState, Iface::VisualViewport, Iface::Window, Iface::XMLHttpRequestEventTarget, Iface::XMLSerializer, Iface::console, Iface::AbortSignal, Iface::Attr, Iface::CSSStyleSheet, Iface::CharacterData, Iface::Comment, Iface::CustomEvent, Iface::DOMRect, Iface::Document, Iface::DocumentFragment, Iface::DocumentType, Iface::Element, Iface::FocusEvent, Iface::HTMLElement, Iface::HTMLEmbedElement, Iface::HTMLFieldSetElement, Iface::HTMLFontElement, Iface::HTMLFormElement, Iface::HTMLFrameElement, Iface::HTMLFrameSetElement, Iface::HTMLHRElement, Iface::HTMLHeadElement, Iface::HTMLHeadingElement, Iface::HTMLHtmlElement, Iface::HTMLIFrameElement, Iface::HTMLImageElement, Iface::HTMLInputElement, Iface::HTMLLIElement, Iface::HTMLLabelElement, Iface::HTMLLegendElement, Iface::HTMLLinkElement, Iface::HTMLMapElement, Iface::HTMLMarqueeElement, Iface::HTMLMediaElement, Iface::HTMLMenuElement, Iface::HTMLMetaElement, Iface::HTMLMeterElement, Iface::HTMLModElement, Iface::HTMLOListElement, Iface::HTMLObjectElement, Iface::HTMLOptGroupElement, Iface::HTMLOptionElement, Iface::HTMLOutputElement, Iface::HTMLParagraphElement, Iface::HTMLParamElement, Iface::HTMLPictureElement, Iface::HTMLPreElement, Iface::HTMLProgressElement, Iface::HTMLQuoteElement, Iface::HTMLScriptElement, Iface::HTMLSelectElement, Iface::HTMLSelectedContentElement, Iface::HTMLSlotElement, Iface::HTMLSourceElement, Iface::HTMLSpanElement, Iface::HTMLStyleElement, Iface::HTMLTableCaptionElement, Iface::HTMLTableCellElement, Iface::HTMLTableColElement, Iface::HTMLTableElement, Iface::HTMLTableRowElement, Iface::HTMLTableSectionElement, Iface::HTMLTemplateElement, Iface::HTMLTextAreaElement, Iface::HTMLTimeElement, Iface::HTMLTitleElement, Iface::HTMLTrackElement, Iface::HTMLUListElement, Iface::HTMLUnknownElement, Iface::HTMLVideoElement, Iface::KeyboardEvent, Iface::MouseEvent, Iface::PointerEvent, Iface::SVGElement, Iface::SVGGraphicsElement, Iface::ShadowRoot, Iface::Text, Iface::WheelEvent, Iface::XMLHttpRequest, Iface::HTMLAnchorElement, Iface::HTMLAreaElement, Iface::HTMLAudioElement, Iface::HTMLBRElement, Iface::HTMLBaseElement, Iface::HTMLBodyElement, Iface::HTMLButtonElement, Iface::HTMLCanvasElement, Iface::HTMLDListElement, Iface::HTMLDataElement, Iface::HTMLDataListElement, Iface::HTMLDetailsElement, Iface::HTMLDialogElement, Iface::HTMLDirectoryElement, Iface::HTMLDivElement];
 
     /// The interface name.
     pub fn name(self) -> &'static str {
@@ -325,12 +331,14 @@ impl Iface {
             Iface::CanvasRenderingContext2D => "CanvasRenderingContext2D",
             Iface::Crypto => "Crypto",
             Iface::CustomElementRegistry => "CustomElementRegistry",
+            Iface::CustomStateSet => "CustomStateSet",
             Iface::DOMException => "DOMException",
             Iface::DOMImplementation => "DOMImplementation",
             Iface::DOMRectList => "DOMRectList",
             Iface::DOMRectReadOnly => "DOMRectReadOnly",
             Iface::DOMStringMap => "DOMStringMap",
             Iface::DOMTokenList => "DOMTokenList",
+            Iface::ElementInternals => "ElementInternals",
             Iface::Event => "Event",
             Iface::EventTarget => "EventTarget",
             Iface::FormData => "FormData",
@@ -371,6 +379,7 @@ impl Iface {
             Iface::UIEvent => "UIEvent",
             Iface::URL => "URL",
             Iface::URLSearchParams => "URLSearchParams",
+            Iface::ValidityState => "ValidityState",
             Iface::VisualViewport => "VisualViewport",
             Iface::Window => "Window",
             Iface::XMLHttpRequestEventTarget => "XMLHttpRequestEventTarget",
@@ -481,12 +490,14 @@ impl Iface {
             Iface::CanvasRenderingContext2D => None,
             Iface::Crypto => None,
             Iface::CustomElementRegistry => None,
+            Iface::CustomStateSet => None,
             Iface::DOMException => None,
             Iface::DOMImplementation => None,
             Iface::DOMRectList => None,
             Iface::DOMRectReadOnly => None,
             Iface::DOMStringMap => None,
             Iface::DOMTokenList => None,
+            Iface::ElementInternals => None,
             Iface::Event => None,
             Iface::EventTarget => None,
             Iface::FormData => None,
@@ -527,6 +538,7 @@ impl Iface {
             Iface::UIEvent => Some(Iface::Event),
             Iface::URL => None,
             Iface::URLSearchParams => None,
+            Iface::ValidityState => None,
             Iface::VisualViewport => Some(Iface::EventTarget),
             Iface::Window => Some(Iface::EventTarget),
             Iface::XMLHttpRequestEventTarget => Some(Iface::EventTarget),
@@ -1246,6 +1258,84 @@ fn op__CustomElementRegistry__upgrade(scope: &mut v8::PinScope, args: v8::Functi
 }
 
 #[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn iter_Entries__CustomStateSet(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::CustomStateSet)?;
+        let p = crate::dom::custom_state_set::pairs(cx, this)?;
+        let r = cv::iterator(cx, p, cv::Iter::Entries)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn iter_Values__CustomStateSet(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::CustomStateSet)?;
+        let p = crate::dom::custom_state_set::pairs(cx, this)?;
+        let r = cv::iterator(cx, p, cv::Iter::Values)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn iter_forEach__CustomStateSet(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::CustomStateSet)?;
+        let p = crate::dom::custom_state_set::pairs(cx, this)?;
+        cv::for_each(cx, args, p)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set_size__CustomStateSet(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::CustomStateSet)?;
+        let r = crate::dom::custom_state_set::set_size(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set_has__CustomStateSet(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::CustomStateSet)?;
+        let v = cv::string(cx, args.get(0))?;
+        let r = crate::dom::custom_state_set::set_has(cx, this, v)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set_add__CustomStateSet(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::CustomStateSet)?;
+        let v = cv::string(cx, args.get(0))?;
+        crate::dom::custom_state_set::set_add(cx, this, v)?;
+        cx.ret(this)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set_delete__CustomStateSet(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::CustomStateSet)?;
+        let v = cv::string(cx, args.get(0))?;
+        let r = crate::dom::custom_state_set::set_delete(cx, this, v)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set_clear__CustomStateSet(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::CustomStateSet)?;
+        crate::dom::custom_state_set::set_clear(cx, this)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
 fn get__DOMException__name(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::DOMException)?;
@@ -1478,6 +1568,991 @@ fn set__DOMTokenList__value(scope: &mut v8::PinScope, args: v8::FunctionCallback
         let v = args.get(0);
         let a0: String = cv::string(cx, v)?;
         crate::dom::dom_token_list::set_value(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ElementInternals__shadowRoot(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: Option<Obj> = crate::dom::element_internals::get_shadow_root(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__ElementInternals__setFormValue(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        if args.length() <= 0 { return Err(cv::Error::args("ElementInternals.setFormValue", 0)); }
+        let a0: Option<Value> = { let v = args.get(0); if v.is_null_or_undefined() { None } else { Some(cv::value(cx, v)) } };
+        let a1: Option<Option<Value>> = { let v = args.get(1); if v.is_undefined() { None } else { Some(if v.is_null_or_undefined() { None } else { Some(cv::value(cx, v)) }) } };
+        let r: () = crate::dom::element_internals::set_form_value(cx, this, a0, a1)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ElementInternals__form(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: Option<Obj> = crate::dom::element_internals::get_form(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__ElementInternals__setValidity(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let a0: ValidityStateFlags = { let v = args.get(0); if v.is_undefined() { ValidityStateFlags::default() } else { dict_validity_state_flags(cx, v)? } };
+        let a1: Option<String> = { let v = args.get(1); if v.is_undefined() { None } else { Some(cv::string(cx, v)?) } };
+        let a2: Option<Obj> = { let v = args.get(2); if v.is_undefined() { None } else { Some(cv::obj(cx, v, Iface::HTMLElement)?) } };
+        let r: () = crate::dom::element_internals::set_validity(cx, this, a0, a1, a2)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ElementInternals__willValidate(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: bool = crate::dom::element_internals::get_will_validate(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ElementInternals__validity(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: Obj = crate::dom::element_internals::get_validity(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ElementInternals__validationMessage(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: String = crate::dom::element_internals::get_validation_message(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__ElementInternals__checkValidity(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: bool = crate::dom::element_internals::check_validity(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__ElementInternals__reportValidity(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: bool = crate::dom::element_internals::report_validity(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ElementInternals__labels(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: Obj = crate::dom::element_internals::get_labels(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ElementInternals__states(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: Obj = crate::dom::element_internals::get_states(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ElementInternals__role(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: Option<String> = crate::dom::aria_mixin::get_role(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__ElementInternals__role(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let v = args.get(0);
+        let a0: Option<String> = if v.is_null_or_undefined() { None } else { Some(cv::string(cx, v)?) };
+        crate::dom::aria_mixin::set_role(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ElementInternals__ariaAtomic(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: Option<String> = crate::dom::aria_mixin::get_aria_atomic(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__ElementInternals__ariaAtomic(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let v = args.get(0);
+        let a0: Option<String> = if v.is_null_or_undefined() { None } else { Some(cv::string(cx, v)?) };
+        crate::dom::aria_mixin::set_aria_atomic(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ElementInternals__ariaAutoComplete(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: Option<String> = crate::dom::aria_mixin::get_aria_auto_complete(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__ElementInternals__ariaAutoComplete(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let v = args.get(0);
+        let a0: Option<String> = if v.is_null_or_undefined() { None } else { Some(cv::string(cx, v)?) };
+        crate::dom::aria_mixin::set_aria_auto_complete(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ElementInternals__ariaBrailleLabel(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: Option<String> = crate::dom::aria_mixin::get_aria_braille_label(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__ElementInternals__ariaBrailleLabel(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let v = args.get(0);
+        let a0: Option<String> = if v.is_null_or_undefined() { None } else { Some(cv::string(cx, v)?) };
+        crate::dom::aria_mixin::set_aria_braille_label(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ElementInternals__ariaBrailleRoleDescription(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: Option<String> = crate::dom::aria_mixin::get_aria_braille_role_description(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__ElementInternals__ariaBrailleRoleDescription(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let v = args.get(0);
+        let a0: Option<String> = if v.is_null_or_undefined() { None } else { Some(cv::string(cx, v)?) };
+        crate::dom::aria_mixin::set_aria_braille_role_description(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ElementInternals__ariaBusy(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: Option<String> = crate::dom::aria_mixin::get_aria_busy(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__ElementInternals__ariaBusy(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let v = args.get(0);
+        let a0: Option<String> = if v.is_null_or_undefined() { None } else { Some(cv::string(cx, v)?) };
+        crate::dom::aria_mixin::set_aria_busy(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ElementInternals__ariaChecked(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: Option<String> = crate::dom::aria_mixin::get_aria_checked(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__ElementInternals__ariaChecked(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let v = args.get(0);
+        let a0: Option<String> = if v.is_null_or_undefined() { None } else { Some(cv::string(cx, v)?) };
+        crate::dom::aria_mixin::set_aria_checked(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ElementInternals__ariaColCount(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: Option<String> = crate::dom::aria_mixin::get_aria_col_count(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__ElementInternals__ariaColCount(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let v = args.get(0);
+        let a0: Option<String> = if v.is_null_or_undefined() { None } else { Some(cv::string(cx, v)?) };
+        crate::dom::aria_mixin::set_aria_col_count(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ElementInternals__ariaColIndex(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: Option<String> = crate::dom::aria_mixin::get_aria_col_index(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__ElementInternals__ariaColIndex(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let v = args.get(0);
+        let a0: Option<String> = if v.is_null_or_undefined() { None } else { Some(cv::string(cx, v)?) };
+        crate::dom::aria_mixin::set_aria_col_index(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ElementInternals__ariaColIndexText(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: Option<String> = crate::dom::aria_mixin::get_aria_col_index_text(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__ElementInternals__ariaColIndexText(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let v = args.get(0);
+        let a0: Option<String> = if v.is_null_or_undefined() { None } else { Some(cv::string(cx, v)?) };
+        crate::dom::aria_mixin::set_aria_col_index_text(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ElementInternals__ariaColSpan(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: Option<String> = crate::dom::aria_mixin::get_aria_col_span(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__ElementInternals__ariaColSpan(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let v = args.get(0);
+        let a0: Option<String> = if v.is_null_or_undefined() { None } else { Some(cv::string(cx, v)?) };
+        crate::dom::aria_mixin::set_aria_col_span(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ElementInternals__ariaCurrent(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: Option<String> = crate::dom::aria_mixin::get_aria_current(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__ElementInternals__ariaCurrent(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let v = args.get(0);
+        let a0: Option<String> = if v.is_null_or_undefined() { None } else { Some(cv::string(cx, v)?) };
+        crate::dom::aria_mixin::set_aria_current(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ElementInternals__ariaDescription(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: Option<String> = crate::dom::aria_mixin::get_aria_description(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__ElementInternals__ariaDescription(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let v = args.get(0);
+        let a0: Option<String> = if v.is_null_or_undefined() { None } else { Some(cv::string(cx, v)?) };
+        crate::dom::aria_mixin::set_aria_description(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ElementInternals__ariaDisabled(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: Option<String> = crate::dom::aria_mixin::get_aria_disabled(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__ElementInternals__ariaDisabled(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let v = args.get(0);
+        let a0: Option<String> = if v.is_null_or_undefined() { None } else { Some(cv::string(cx, v)?) };
+        crate::dom::aria_mixin::set_aria_disabled(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ElementInternals__ariaExpanded(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: Option<String> = crate::dom::aria_mixin::get_aria_expanded(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__ElementInternals__ariaExpanded(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let v = args.get(0);
+        let a0: Option<String> = if v.is_null_or_undefined() { None } else { Some(cv::string(cx, v)?) };
+        crate::dom::aria_mixin::set_aria_expanded(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ElementInternals__ariaHasPopup(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: Option<String> = crate::dom::aria_mixin::get_aria_has_popup(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__ElementInternals__ariaHasPopup(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let v = args.get(0);
+        let a0: Option<String> = if v.is_null_or_undefined() { None } else { Some(cv::string(cx, v)?) };
+        crate::dom::aria_mixin::set_aria_has_popup(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ElementInternals__ariaHidden(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: Option<String> = crate::dom::aria_mixin::get_aria_hidden(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__ElementInternals__ariaHidden(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let v = args.get(0);
+        let a0: Option<String> = if v.is_null_or_undefined() { None } else { Some(cv::string(cx, v)?) };
+        crate::dom::aria_mixin::set_aria_hidden(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ElementInternals__ariaInvalid(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: Option<String> = crate::dom::aria_mixin::get_aria_invalid(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__ElementInternals__ariaInvalid(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let v = args.get(0);
+        let a0: Option<String> = if v.is_null_or_undefined() { None } else { Some(cv::string(cx, v)?) };
+        crate::dom::aria_mixin::set_aria_invalid(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ElementInternals__ariaKeyShortcuts(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: Option<String> = crate::dom::aria_mixin::get_aria_key_shortcuts(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__ElementInternals__ariaKeyShortcuts(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let v = args.get(0);
+        let a0: Option<String> = if v.is_null_or_undefined() { None } else { Some(cv::string(cx, v)?) };
+        crate::dom::aria_mixin::set_aria_key_shortcuts(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ElementInternals__ariaLabel(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: Option<String> = crate::dom::aria_mixin::get_aria_label(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__ElementInternals__ariaLabel(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let v = args.get(0);
+        let a0: Option<String> = if v.is_null_or_undefined() { None } else { Some(cv::string(cx, v)?) };
+        crate::dom::aria_mixin::set_aria_label(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ElementInternals__ariaLevel(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: Option<String> = crate::dom::aria_mixin::get_aria_level(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__ElementInternals__ariaLevel(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let v = args.get(0);
+        let a0: Option<String> = if v.is_null_or_undefined() { None } else { Some(cv::string(cx, v)?) };
+        crate::dom::aria_mixin::set_aria_level(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ElementInternals__ariaLive(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: Option<String> = crate::dom::aria_mixin::get_aria_live(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__ElementInternals__ariaLive(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let v = args.get(0);
+        let a0: Option<String> = if v.is_null_or_undefined() { None } else { Some(cv::string(cx, v)?) };
+        crate::dom::aria_mixin::set_aria_live(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ElementInternals__ariaModal(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: Option<String> = crate::dom::aria_mixin::get_aria_modal(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__ElementInternals__ariaModal(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let v = args.get(0);
+        let a0: Option<String> = if v.is_null_or_undefined() { None } else { Some(cv::string(cx, v)?) };
+        crate::dom::aria_mixin::set_aria_modal(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ElementInternals__ariaMultiLine(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: Option<String> = crate::dom::aria_mixin::get_aria_multi_line(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__ElementInternals__ariaMultiLine(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let v = args.get(0);
+        let a0: Option<String> = if v.is_null_or_undefined() { None } else { Some(cv::string(cx, v)?) };
+        crate::dom::aria_mixin::set_aria_multi_line(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ElementInternals__ariaMultiSelectable(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: Option<String> = crate::dom::aria_mixin::get_aria_multi_selectable(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__ElementInternals__ariaMultiSelectable(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let v = args.get(0);
+        let a0: Option<String> = if v.is_null_or_undefined() { None } else { Some(cv::string(cx, v)?) };
+        crate::dom::aria_mixin::set_aria_multi_selectable(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ElementInternals__ariaOrientation(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: Option<String> = crate::dom::aria_mixin::get_aria_orientation(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__ElementInternals__ariaOrientation(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let v = args.get(0);
+        let a0: Option<String> = if v.is_null_or_undefined() { None } else { Some(cv::string(cx, v)?) };
+        crate::dom::aria_mixin::set_aria_orientation(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ElementInternals__ariaPlaceholder(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: Option<String> = crate::dom::aria_mixin::get_aria_placeholder(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__ElementInternals__ariaPlaceholder(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let v = args.get(0);
+        let a0: Option<String> = if v.is_null_or_undefined() { None } else { Some(cv::string(cx, v)?) };
+        crate::dom::aria_mixin::set_aria_placeholder(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ElementInternals__ariaPosInSet(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: Option<String> = crate::dom::aria_mixin::get_aria_pos_in_set(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__ElementInternals__ariaPosInSet(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let v = args.get(0);
+        let a0: Option<String> = if v.is_null_or_undefined() { None } else { Some(cv::string(cx, v)?) };
+        crate::dom::aria_mixin::set_aria_pos_in_set(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ElementInternals__ariaPressed(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: Option<String> = crate::dom::aria_mixin::get_aria_pressed(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__ElementInternals__ariaPressed(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let v = args.get(0);
+        let a0: Option<String> = if v.is_null_or_undefined() { None } else { Some(cv::string(cx, v)?) };
+        crate::dom::aria_mixin::set_aria_pressed(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ElementInternals__ariaReadOnly(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: Option<String> = crate::dom::aria_mixin::get_aria_read_only(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__ElementInternals__ariaReadOnly(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let v = args.get(0);
+        let a0: Option<String> = if v.is_null_or_undefined() { None } else { Some(cv::string(cx, v)?) };
+        crate::dom::aria_mixin::set_aria_read_only(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ElementInternals__ariaRelevant(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: Option<String> = crate::dom::aria_mixin::get_aria_relevant(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__ElementInternals__ariaRelevant(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let v = args.get(0);
+        let a0: Option<String> = if v.is_null_or_undefined() { None } else { Some(cv::string(cx, v)?) };
+        crate::dom::aria_mixin::set_aria_relevant(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ElementInternals__ariaRequired(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: Option<String> = crate::dom::aria_mixin::get_aria_required(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__ElementInternals__ariaRequired(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let v = args.get(0);
+        let a0: Option<String> = if v.is_null_or_undefined() { None } else { Some(cv::string(cx, v)?) };
+        crate::dom::aria_mixin::set_aria_required(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ElementInternals__ariaRoleDescription(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: Option<String> = crate::dom::aria_mixin::get_aria_role_description(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__ElementInternals__ariaRoleDescription(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let v = args.get(0);
+        let a0: Option<String> = if v.is_null_or_undefined() { None } else { Some(cv::string(cx, v)?) };
+        crate::dom::aria_mixin::set_aria_role_description(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ElementInternals__ariaRowCount(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: Option<String> = crate::dom::aria_mixin::get_aria_row_count(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__ElementInternals__ariaRowCount(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let v = args.get(0);
+        let a0: Option<String> = if v.is_null_or_undefined() { None } else { Some(cv::string(cx, v)?) };
+        crate::dom::aria_mixin::set_aria_row_count(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ElementInternals__ariaRowIndex(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: Option<String> = crate::dom::aria_mixin::get_aria_row_index(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__ElementInternals__ariaRowIndex(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let v = args.get(0);
+        let a0: Option<String> = if v.is_null_or_undefined() { None } else { Some(cv::string(cx, v)?) };
+        crate::dom::aria_mixin::set_aria_row_index(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ElementInternals__ariaRowIndexText(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: Option<String> = crate::dom::aria_mixin::get_aria_row_index_text(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__ElementInternals__ariaRowIndexText(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let v = args.get(0);
+        let a0: Option<String> = if v.is_null_or_undefined() { None } else { Some(cv::string(cx, v)?) };
+        crate::dom::aria_mixin::set_aria_row_index_text(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ElementInternals__ariaRowSpan(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: Option<String> = crate::dom::aria_mixin::get_aria_row_span(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__ElementInternals__ariaRowSpan(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let v = args.get(0);
+        let a0: Option<String> = if v.is_null_or_undefined() { None } else { Some(cv::string(cx, v)?) };
+        crate::dom::aria_mixin::set_aria_row_span(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ElementInternals__ariaSelected(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: Option<String> = crate::dom::aria_mixin::get_aria_selected(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__ElementInternals__ariaSelected(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let v = args.get(0);
+        let a0: Option<String> = if v.is_null_or_undefined() { None } else { Some(cv::string(cx, v)?) };
+        crate::dom::aria_mixin::set_aria_selected(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ElementInternals__ariaSetSize(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: Option<String> = crate::dom::aria_mixin::get_aria_set_size(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__ElementInternals__ariaSetSize(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let v = args.get(0);
+        let a0: Option<String> = if v.is_null_or_undefined() { None } else { Some(cv::string(cx, v)?) };
+        crate::dom::aria_mixin::set_aria_set_size(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ElementInternals__ariaSort(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: Option<String> = crate::dom::aria_mixin::get_aria_sort(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__ElementInternals__ariaSort(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let v = args.get(0);
+        let a0: Option<String> = if v.is_null_or_undefined() { None } else { Some(cv::string(cx, v)?) };
+        crate::dom::aria_mixin::set_aria_sort(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ElementInternals__ariaValueMax(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: Option<String> = crate::dom::aria_mixin::get_aria_value_max(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__ElementInternals__ariaValueMax(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let v = args.get(0);
+        let a0: Option<String> = if v.is_null_or_undefined() { None } else { Some(cv::string(cx, v)?) };
+        crate::dom::aria_mixin::set_aria_value_max(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ElementInternals__ariaValueMin(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: Option<String> = crate::dom::aria_mixin::get_aria_value_min(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__ElementInternals__ariaValueMin(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let v = args.get(0);
+        let a0: Option<String> = if v.is_null_or_undefined() { None } else { Some(cv::string(cx, v)?) };
+        crate::dom::aria_mixin::set_aria_value_min(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ElementInternals__ariaValueNow(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: Option<String> = crate::dom::aria_mixin::get_aria_value_now(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__ElementInternals__ariaValueNow(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let v = args.get(0);
+        let a0: Option<String> = if v.is_null_or_undefined() { None } else { Some(cv::string(cx, v)?) };
+        crate::dom::aria_mixin::set_aria_value_now(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ElementInternals__ariaValueText(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let r: Option<String> = crate::dom::aria_mixin::get_aria_value_text(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__ElementInternals__ariaValueText(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ElementInternals)?;
+        let v = args.get(0);
+        let a0: Option<String> = if v.is_null_or_undefined() { None } else { Some(cv::string(cx, v)?) };
+        crate::dom::aria_mixin::set_aria_value_text(cx, this, a0)?;
         cx.ret(())
     });
 }
@@ -4468,6 +5543,105 @@ fn ctor__URLSearchParams(scope: &mut v8::PinScope, args: v8::FunctionCallbackArg
         if args.new_target().is_undefined() { return Err(cv::Error::Type("Failed to construct 'URLSearchParams': Please use the 'new' operator.".into())); }
         let a0: Value = { let v = args.get(0); if v.is_undefined() { cv::string_value(cx, "") } else { cv::value(cx, v) } };
         let r: Obj = crate::dom::url_search_params::constructor(cx, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ValidityState__valueMissing(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ValidityState)?;
+        let r: bool = crate::dom::validity_state::get_value_missing(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ValidityState__typeMismatch(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ValidityState)?;
+        let r: bool = crate::dom::validity_state::get_type_mismatch(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ValidityState__patternMismatch(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ValidityState)?;
+        let r: bool = crate::dom::validity_state::get_pattern_mismatch(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ValidityState__tooLong(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ValidityState)?;
+        let r: bool = crate::dom::validity_state::get_too_long(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ValidityState__tooShort(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ValidityState)?;
+        let r: bool = crate::dom::validity_state::get_too_short(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ValidityState__rangeUnderflow(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ValidityState)?;
+        let r: bool = crate::dom::validity_state::get_range_underflow(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ValidityState__rangeOverflow(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ValidityState)?;
+        let r: bool = crate::dom::validity_state::get_range_overflow(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ValidityState__stepMismatch(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ValidityState)?;
+        let r: bool = crate::dom::validity_state::get_step_mismatch(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ValidityState__badInput(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ValidityState)?;
+        let r: bool = crate::dom::validity_state::get_bad_input(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ValidityState__customError(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ValidityState)?;
+        let r: bool = crate::dom::validity_state::get_custom_error(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ValidityState__valid(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ValidityState)?;
+        let r: bool = crate::dom::validity_state::get_valid(cx, this)?;
         cx.ret(r)
     });
 }
@@ -7633,6 +8807,61 @@ fn get__Attr__specified(scope: &mut v8::PinScope, args: v8::FunctionCallbackArgu
 }
 
 #[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__CSSStyleSheet__insertRule(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::CSSStyleSheet)?;
+        if args.length() <= 0 { return Err(cv::Error::args("CSSStyleSheet.insertRule", 0)); }
+        let a0: String = { let v = args.get(0); cv::string(cx, v)? };
+        let a1: u32 = { let v = args.get(1); if v.is_undefined() { 0 } else { cv::int::<u32>(cx, v)? } };
+        let r: u32 = crate::dom::css_style_sheet::insert_rule(cx, this, a0, a1)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__CSSStyleSheet__deleteRule(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::CSSStyleSheet)?;
+        if args.length() <= 0 { return Err(cv::Error::args("CSSStyleSheet.deleteRule", 0)); }
+        let a0: u32 = { let v = args.get(0); cv::int::<u32>(cx, v)? };
+        let r: () = crate::dom::css_style_sheet::delete_rule(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__CSSStyleSheet__replace(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::CSSStyleSheet)?;
+        if args.length() <= 0 { return Err(cv::Error::args("CSSStyleSheet.replace", 0)); }
+        let a0: String = { let v = args.get(0); cv::string(cx, v)? };
+        let r: Value = crate::dom::css_style_sheet::replace(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__CSSStyleSheet__replaceSync(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::CSSStyleSheet)?;
+        if args.length() <= 0 { return Err(cv::Error::args("CSSStyleSheet.replaceSync", 0)); }
+        let a0: String = { let v = args.get(0); cv::string(cx, v)? };
+        let r: () = crate::dom::css_style_sheet::replace_sync(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn ctor__CSSStyleSheet(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        if args.new_target().is_undefined() { return Err(cv::Error::Type("Failed to construct 'CSSStyleSheet': Please use the 'new' operator.".into())); }
+        let a0: CSSStyleSheetInit = { let v = args.get(0); if v.is_undefined() { CSSStyleSheetInit::default() } else { dict_css_style_sheet_init(cx, v)? } };
+        let r: Obj = crate::dom::css_style_sheet::constructor(cx, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
 fn get__CharacterData__data(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::CharacterData)?;
@@ -8323,6 +9552,26 @@ fn op__Document__getElementById(scope: &mut v8::PinScope, args: v8::FunctionCall
         let a0: String = { let v = args.get(0); cv::string(cx, v)? };
         let r: Option<Obj> = crate::dom::non_element_parent_node::get_element_by_id(cx, this, a0)?;
         cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Document__adoptedStyleSheets(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Document)?;
+        let r: Value = crate::dom::document_or_shadow_root::get_adopted_style_sheets(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Document__adoptedStyleSheets(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Document)?;
+        let v = args.get(0);
+        let a0: Vec<Obj> = cv::seq(cx, v, |cx, v| Ok(cv::obj(cx, v, Iface::CSSStyleSheet)?))?;
+        crate::dom::document_or_shadow_root::set_adopted_style_sheets(cx, this, a0)?;
+        cx.ret(())
     });
 }
 
@@ -11025,6 +12274,798 @@ fn get__Element__assignedSlot(scope: &mut v8::PinScope, args: v8::FunctionCallba
 }
 
 #[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Element__role(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        let r = cv::reflect_get(cx, this, "role", cv::Reflect::NullableStr)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Element__role(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        cv::reflect_set(cx, this, "role", args.get(0), cv::Reflect::NullableStr)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Element__ariaAtomic(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        let r = cv::reflect_get(cx, this, "aria-atomic", cv::Reflect::NullableStr)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Element__ariaAtomic(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        cv::reflect_set(cx, this, "aria-atomic", args.get(0), cv::Reflect::NullableStr)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Element__ariaAutoComplete(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        let r = cv::reflect_get(cx, this, "aria-autocomplete", cv::Reflect::NullableStr)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Element__ariaAutoComplete(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        cv::reflect_set(cx, this, "aria-autocomplete", args.get(0), cv::Reflect::NullableStr)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Element__ariaBrailleLabel(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        let r = cv::reflect_get(cx, this, "aria-braillelabel", cv::Reflect::NullableStr)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Element__ariaBrailleLabel(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        cv::reflect_set(cx, this, "aria-braillelabel", args.get(0), cv::Reflect::NullableStr)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Element__ariaBrailleRoleDescription(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        let r = cv::reflect_get(cx, this, "aria-brailleroledescription", cv::Reflect::NullableStr)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Element__ariaBrailleRoleDescription(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        cv::reflect_set(cx, this, "aria-brailleroledescription", args.get(0), cv::Reflect::NullableStr)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Element__ariaBusy(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        let r = cv::reflect_get(cx, this, "aria-busy", cv::Reflect::NullableStr)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Element__ariaBusy(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        cv::reflect_set(cx, this, "aria-busy", args.get(0), cv::Reflect::NullableStr)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Element__ariaChecked(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        let r = cv::reflect_get(cx, this, "aria-checked", cv::Reflect::NullableStr)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Element__ariaChecked(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        cv::reflect_set(cx, this, "aria-checked", args.get(0), cv::Reflect::NullableStr)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Element__ariaColCount(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        let r = cv::reflect_get(cx, this, "aria-colcount", cv::Reflect::NullableStr)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Element__ariaColCount(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        cv::reflect_set(cx, this, "aria-colcount", args.get(0), cv::Reflect::NullableStr)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Element__ariaColIndex(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        let r = cv::reflect_get(cx, this, "aria-colindex", cv::Reflect::NullableStr)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Element__ariaColIndex(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        cv::reflect_set(cx, this, "aria-colindex", args.get(0), cv::Reflect::NullableStr)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Element__ariaColIndexText(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        let r = cv::reflect_get(cx, this, "aria-colindextext", cv::Reflect::NullableStr)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Element__ariaColIndexText(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        cv::reflect_set(cx, this, "aria-colindextext", args.get(0), cv::Reflect::NullableStr)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Element__ariaColSpan(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        let r = cv::reflect_get(cx, this, "aria-colspan", cv::Reflect::NullableStr)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Element__ariaColSpan(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        cv::reflect_set(cx, this, "aria-colspan", args.get(0), cv::Reflect::NullableStr)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Element__ariaCurrent(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        let r = cv::reflect_get(cx, this, "aria-current", cv::Reflect::NullableStr)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Element__ariaCurrent(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        cv::reflect_set(cx, this, "aria-current", args.get(0), cv::Reflect::NullableStr)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Element__ariaDescription(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        let r = cv::reflect_get(cx, this, "aria-description", cv::Reflect::NullableStr)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Element__ariaDescription(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        cv::reflect_set(cx, this, "aria-description", args.get(0), cv::Reflect::NullableStr)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Element__ariaDisabled(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        let r = cv::reflect_get(cx, this, "aria-disabled", cv::Reflect::NullableStr)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Element__ariaDisabled(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        cv::reflect_set(cx, this, "aria-disabled", args.get(0), cv::Reflect::NullableStr)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Element__ariaExpanded(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        let r = cv::reflect_get(cx, this, "aria-expanded", cv::Reflect::NullableStr)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Element__ariaExpanded(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        cv::reflect_set(cx, this, "aria-expanded", args.get(0), cv::Reflect::NullableStr)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Element__ariaHasPopup(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        let r = cv::reflect_get(cx, this, "aria-haspopup", cv::Reflect::NullableStr)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Element__ariaHasPopup(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        cv::reflect_set(cx, this, "aria-haspopup", args.get(0), cv::Reflect::NullableStr)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Element__ariaHidden(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        let r = cv::reflect_get(cx, this, "aria-hidden", cv::Reflect::NullableStr)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Element__ariaHidden(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        cv::reflect_set(cx, this, "aria-hidden", args.get(0), cv::Reflect::NullableStr)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Element__ariaInvalid(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        let r = cv::reflect_get(cx, this, "aria-invalid", cv::Reflect::NullableStr)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Element__ariaInvalid(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        cv::reflect_set(cx, this, "aria-invalid", args.get(0), cv::Reflect::NullableStr)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Element__ariaKeyShortcuts(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        let r = cv::reflect_get(cx, this, "aria-keyshortcuts", cv::Reflect::NullableStr)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Element__ariaKeyShortcuts(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        cv::reflect_set(cx, this, "aria-keyshortcuts", args.get(0), cv::Reflect::NullableStr)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Element__ariaLabel(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        let r = cv::reflect_get(cx, this, "aria-label", cv::Reflect::NullableStr)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Element__ariaLabel(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        cv::reflect_set(cx, this, "aria-label", args.get(0), cv::Reflect::NullableStr)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Element__ariaLevel(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        let r = cv::reflect_get(cx, this, "aria-level", cv::Reflect::NullableStr)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Element__ariaLevel(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        cv::reflect_set(cx, this, "aria-level", args.get(0), cv::Reflect::NullableStr)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Element__ariaLive(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        let r = cv::reflect_get(cx, this, "aria-live", cv::Reflect::NullableStr)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Element__ariaLive(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        cv::reflect_set(cx, this, "aria-live", args.get(0), cv::Reflect::NullableStr)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Element__ariaModal(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        let r = cv::reflect_get(cx, this, "aria-modal", cv::Reflect::NullableStr)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Element__ariaModal(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        cv::reflect_set(cx, this, "aria-modal", args.get(0), cv::Reflect::NullableStr)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Element__ariaMultiLine(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        let r = cv::reflect_get(cx, this, "aria-multiline", cv::Reflect::NullableStr)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Element__ariaMultiLine(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        cv::reflect_set(cx, this, "aria-multiline", args.get(0), cv::Reflect::NullableStr)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Element__ariaMultiSelectable(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        let r = cv::reflect_get(cx, this, "aria-multiselectable", cv::Reflect::NullableStr)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Element__ariaMultiSelectable(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        cv::reflect_set(cx, this, "aria-multiselectable", args.get(0), cv::Reflect::NullableStr)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Element__ariaOrientation(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        let r = cv::reflect_get(cx, this, "aria-orientation", cv::Reflect::NullableStr)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Element__ariaOrientation(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        cv::reflect_set(cx, this, "aria-orientation", args.get(0), cv::Reflect::NullableStr)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Element__ariaPlaceholder(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        let r = cv::reflect_get(cx, this, "aria-placeholder", cv::Reflect::NullableStr)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Element__ariaPlaceholder(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        cv::reflect_set(cx, this, "aria-placeholder", args.get(0), cv::Reflect::NullableStr)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Element__ariaPosInSet(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        let r = cv::reflect_get(cx, this, "aria-posinset", cv::Reflect::NullableStr)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Element__ariaPosInSet(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        cv::reflect_set(cx, this, "aria-posinset", args.get(0), cv::Reflect::NullableStr)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Element__ariaPressed(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        let r = cv::reflect_get(cx, this, "aria-pressed", cv::Reflect::NullableStr)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Element__ariaPressed(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        cv::reflect_set(cx, this, "aria-pressed", args.get(0), cv::Reflect::NullableStr)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Element__ariaReadOnly(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        let r = cv::reflect_get(cx, this, "aria-readonly", cv::Reflect::NullableStr)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Element__ariaReadOnly(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        cv::reflect_set(cx, this, "aria-readonly", args.get(0), cv::Reflect::NullableStr)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Element__ariaRelevant(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        let r = cv::reflect_get(cx, this, "aria-relevant", cv::Reflect::NullableStr)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Element__ariaRelevant(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        cv::reflect_set(cx, this, "aria-relevant", args.get(0), cv::Reflect::NullableStr)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Element__ariaRequired(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        let r = cv::reflect_get(cx, this, "aria-required", cv::Reflect::NullableStr)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Element__ariaRequired(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        cv::reflect_set(cx, this, "aria-required", args.get(0), cv::Reflect::NullableStr)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Element__ariaRoleDescription(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        let r = cv::reflect_get(cx, this, "aria-roledescription", cv::Reflect::NullableStr)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Element__ariaRoleDescription(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        cv::reflect_set(cx, this, "aria-roledescription", args.get(0), cv::Reflect::NullableStr)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Element__ariaRowCount(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        let r = cv::reflect_get(cx, this, "aria-rowcount", cv::Reflect::NullableStr)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Element__ariaRowCount(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        cv::reflect_set(cx, this, "aria-rowcount", args.get(0), cv::Reflect::NullableStr)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Element__ariaRowIndex(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        let r = cv::reflect_get(cx, this, "aria-rowindex", cv::Reflect::NullableStr)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Element__ariaRowIndex(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        cv::reflect_set(cx, this, "aria-rowindex", args.get(0), cv::Reflect::NullableStr)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Element__ariaRowIndexText(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        let r = cv::reflect_get(cx, this, "aria-rowindextext", cv::Reflect::NullableStr)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Element__ariaRowIndexText(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        cv::reflect_set(cx, this, "aria-rowindextext", args.get(0), cv::Reflect::NullableStr)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Element__ariaRowSpan(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        let r = cv::reflect_get(cx, this, "aria-rowspan", cv::Reflect::NullableStr)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Element__ariaRowSpan(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        cv::reflect_set(cx, this, "aria-rowspan", args.get(0), cv::Reflect::NullableStr)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Element__ariaSelected(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        let r = cv::reflect_get(cx, this, "aria-selected", cv::Reflect::NullableStr)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Element__ariaSelected(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        cv::reflect_set(cx, this, "aria-selected", args.get(0), cv::Reflect::NullableStr)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Element__ariaSetSize(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        let r = cv::reflect_get(cx, this, "aria-setsize", cv::Reflect::NullableStr)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Element__ariaSetSize(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        cv::reflect_set(cx, this, "aria-setsize", args.get(0), cv::Reflect::NullableStr)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Element__ariaSort(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        let r = cv::reflect_get(cx, this, "aria-sort", cv::Reflect::NullableStr)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Element__ariaSort(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        cv::reflect_set(cx, this, "aria-sort", args.get(0), cv::Reflect::NullableStr)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Element__ariaValueMax(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        let r = cv::reflect_get(cx, this, "aria-valuemax", cv::Reflect::NullableStr)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Element__ariaValueMax(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        cv::reflect_set(cx, this, "aria-valuemax", args.get(0), cv::Reflect::NullableStr)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Element__ariaValueMin(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        let r = cv::reflect_get(cx, this, "aria-valuemin", cv::Reflect::NullableStr)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Element__ariaValueMin(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        cv::reflect_set(cx, this, "aria-valuemin", args.get(0), cv::Reflect::NullableStr)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Element__ariaValueNow(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        let r = cv::reflect_get(cx, this, "aria-valuenow", cv::Reflect::NullableStr)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Element__ariaValueNow(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        cv::reflect_set(cx, this, "aria-valuenow", args.get(0), cv::Reflect::NullableStr)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Element__ariaValueText(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        let r = cv::reflect_get(cx, this, "aria-valuetext", cv::Reflect::NullableStr)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Element__ariaValueText(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        cv::reflect_set(cx, this, "aria-valuetext", args.get(0), cv::Reflect::NullableStr)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
 fn get__FocusEvent__relatedTarget(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::FocusEvent)?;
@@ -11163,6 +13204,15 @@ fn set__HTMLElement__innerText(scope: &mut v8::PinScope, args: v8::FunctionCallb
         let a0: String = cv::string_nte(cx, v)?;
         crate::dom::html_element::set_inner_text(cx, this, a0)?;
         cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__HTMLElement__attachInternals(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLElement)?;
+        let r: Obj = crate::dom::html_element::attach_internals(cx, this)?;
+        cx.ret(r)
     });
 }
 
@@ -13120,6 +15170,15 @@ fn set__HTMLFieldSetElement__disabled(scope: &mut v8::PinScope, args: v8::Functi
 }
 
 #[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__HTMLFieldSetElement__form(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLFieldSetElement)?;
+        let r: Option<Obj> = crate::dom::html_field_set_element::get_form(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
 fn get__HTMLFieldSetElement__name(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::HTMLFieldSetElement)?;
@@ -13134,6 +15193,71 @@ fn set__HTMLFieldSetElement__name(scope: &mut v8::PinScope, args: v8::FunctionCa
         let this = cx.this(args, Iface::HTMLFieldSetElement)?;
         cv::reflect_set(cx, this, "name", args.get(0), cv::Reflect::Str)?;
         cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__HTMLFieldSetElement__type(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLFieldSetElement)?;
+        let r: String = crate::dom::html_field_set_element::get_type_(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__HTMLFieldSetElement__willValidate(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLFieldSetElement)?;
+        let r: bool = crate::dom::html_field_set_element::get_will_validate(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__HTMLFieldSetElement__validity(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLFieldSetElement)?;
+        let r: Obj = crate::dom::html_field_set_element::get_validity(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__HTMLFieldSetElement__validationMessage(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLFieldSetElement)?;
+        let r: String = crate::dom::html_field_set_element::get_validation_message(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__HTMLFieldSetElement__checkValidity(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLFieldSetElement)?;
+        let r: bool = crate::dom::html_field_set_element::check_validity(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__HTMLFieldSetElement__reportValidity(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLFieldSetElement)?;
+        let r: bool = crate::dom::html_field_set_element::report_validity(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__HTMLFieldSetElement__setCustomValidity(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLFieldSetElement)?;
+        if args.length() <= 0 { return Err(cv::Error::args("HTMLFieldSetElement.setCustomValidity", 0)); }
+        let a0: String = { let v = args.get(0); cv::string(cx, v)? };
+        let r: () = crate::dom::html_field_set_element::set_custom_validity(cx, this, a0)?;
+        cx.ret(r)
     });
 }
 
@@ -13314,6 +15438,33 @@ fn op__HTMLFormElement__requestSubmit(scope: &mut v8::PinScope, args: v8::Functi
         let this = cx.this(args, Iface::HTMLFormElement)?;
         let a0: Option<Obj> = { let v = args.get(0); if v.is_undefined() { None } else { if v.is_null_or_undefined() { None } else { Some(cv::obj(cx, v, Iface::HTMLElement)?) } } };
         let r: () = crate::dom::html_form_element::request_submit(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__HTMLFormElement__reset(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLFormElement)?;
+        let r: () = crate::dom::html_form_element::reset(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__HTMLFormElement__checkValidity(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLFormElement)?;
+        let r: bool = crate::dom::html_form_element::check_validity(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__HTMLFormElement__reportValidity(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLFormElement)?;
+        let r: bool = crate::dom::html_form_element::report_validity(cx, this)?;
         cx.ret(r)
     });
 }
@@ -14655,6 +16806,24 @@ fn set__HTMLInputElement__max(scope: &mut v8::PinScope, args: v8::FunctionCallba
 }
 
 #[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__HTMLInputElement__maxLength(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLInputElement)?;
+        let r = cv::reflect_get(cx, this, "maxlength", cv::Reflect::NonNegative)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__HTMLInputElement__maxLength(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLInputElement)?;
+        cv::reflect_set(cx, this, "maxlength", args.get(0), cv::Reflect::NonNegative)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
 fn get__HTMLInputElement__min(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::HTMLInputElement)?;
@@ -14668,6 +16837,24 @@ fn set__HTMLInputElement__min(scope: &mut v8::PinScope, args: v8::FunctionCallba
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::HTMLInputElement)?;
         cv::reflect_set(cx, this, "min", args.get(0), cv::Reflect::Str)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__HTMLInputElement__minLength(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLInputElement)?;
+        let r = cv::reflect_get(cx, this, "minlength", cv::Reflect::NonNegative)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__HTMLInputElement__minLength(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLInputElement)?;
+        cv::reflect_set(cx, this, "minlength", args.get(0), cv::Reflect::NonNegative)?;
         cx.ret(())
     });
 }
@@ -14891,6 +17078,62 @@ fn set__HTMLInputElement__value(scope: &mut v8::PinScope, args: v8::FunctionCall
         let a0: String = cv::string_nte(cx, v)?;
         crate::dom::html_input_element::set_value(cx, this, a0)?;
         cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__HTMLInputElement__willValidate(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLInputElement)?;
+        let r: bool = crate::dom::html_input_element::get_will_validate(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__HTMLInputElement__validity(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLInputElement)?;
+        let r: Obj = crate::dom::html_input_element::get_validity(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__HTMLInputElement__validationMessage(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLInputElement)?;
+        let r: String = crate::dom::html_input_element::get_validation_message(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__HTMLInputElement__checkValidity(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLInputElement)?;
+        let r: bool = crate::dom::html_input_element::check_validity(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__HTMLInputElement__reportValidity(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLInputElement)?;
+        let r: bool = crate::dom::html_input_element::report_validity(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__HTMLInputElement__setCustomValidity(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLInputElement)?;
+        if args.length() <= 0 { return Err(cv::Error::args("HTMLInputElement.setCustomValidity", 0)); }
+        let a0: String = { let v = args.get(0); cv::string(cx, v)? };
+        let r: () = crate::dom::html_input_element::set_custom_validity(cx, this, a0)?;
+        cx.ret(r)
     });
 }
 
@@ -16239,6 +18482,15 @@ fn factory__Option(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments
 }
 
 #[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__HTMLOutputElement__form(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLOutputElement)?;
+        let r: Option<Obj> = crate::dom::html_output_element::get_form(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
 fn get__HTMLOutputElement__name(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::HTMLOutputElement)?;
@@ -16253,6 +18505,71 @@ fn set__HTMLOutputElement__name(scope: &mut v8::PinScope, args: v8::FunctionCall
         let this = cx.this(args, Iface::HTMLOutputElement)?;
         cv::reflect_set(cx, this, "name", args.get(0), cv::Reflect::Str)?;
         cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__HTMLOutputElement__type(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLOutputElement)?;
+        let r: String = crate::dom::html_output_element::get_type_(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__HTMLOutputElement__willValidate(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLOutputElement)?;
+        let r: bool = crate::dom::html_output_element::get_will_validate(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__HTMLOutputElement__validity(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLOutputElement)?;
+        let r: Obj = crate::dom::html_output_element::get_validity(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__HTMLOutputElement__validationMessage(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLOutputElement)?;
+        let r: String = crate::dom::html_output_element::get_validation_message(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__HTMLOutputElement__checkValidity(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLOutputElement)?;
+        let r: bool = crate::dom::html_output_element::check_validity(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__HTMLOutputElement__reportValidity(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLOutputElement)?;
+        let r: bool = crate::dom::html_output_element::report_validity(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__HTMLOutputElement__setCustomValidity(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLOutputElement)?;
+        if args.length() <= 0 { return Err(cv::Error::args("HTMLOutputElement.setCustomValidity", 0)); }
+        let a0: String = { let v = args.get(0); cv::string(cx, v)? };
+        let r: () = crate::dom::html_output_element::set_custom_validity(cx, this, a0)?;
+        cx.ret(r)
     });
 }
 
@@ -16617,6 +18934,15 @@ fn set__HTMLSelectElement__disabled(scope: &mut v8::PinScope, args: v8::Function
 }
 
 #[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__HTMLSelectElement__form(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLSelectElement)?;
+        let r: Option<Obj> = crate::dom::html_select_element::get_form(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
 fn get__HTMLSelectElement__multiple(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::HTMLSelectElement)?;
@@ -16774,6 +19100,62 @@ fn set__HTMLSelectElement__value(scope: &mut v8::PinScope, args: v8::FunctionCal
         let a0: String = cv::string(cx, v)?;
         crate::dom::html_select_element::set_value(cx, this, a0)?;
         cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__HTMLSelectElement__willValidate(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLSelectElement)?;
+        let r: bool = crate::dom::html_select_element::get_will_validate(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__HTMLSelectElement__validity(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLSelectElement)?;
+        let r: Obj = crate::dom::html_select_element::get_validity(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__HTMLSelectElement__validationMessage(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLSelectElement)?;
+        let r: String = crate::dom::html_select_element::get_validation_message(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__HTMLSelectElement__checkValidity(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLSelectElement)?;
+        let r: bool = crate::dom::html_select_element::check_validity(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__HTMLSelectElement__reportValidity(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLSelectElement)?;
+        let r: bool = crate::dom::html_select_element::report_validity(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__HTMLSelectElement__setCustomValidity(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLSelectElement)?;
+        if args.length() <= 0 { return Err(cv::Error::args("HTMLSelectElement.setCustomValidity", 0)); }
+        let a0: String = { let v = args.get(0); cv::string(cx, v)? };
+        let r: () = crate::dom::html_select_element::set_custom_validity(cx, this, a0)?;
+        cx.ret(r)
     });
 }
 
@@ -17797,6 +20179,51 @@ fn set__HTMLTextAreaElement__disabled(scope: &mut v8::PinScope, args: v8::Functi
 }
 
 #[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__HTMLTextAreaElement__form(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLTextAreaElement)?;
+        let r: Option<Obj> = crate::dom::html_text_area_element::get_form(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__HTMLTextAreaElement__maxLength(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLTextAreaElement)?;
+        let r = cv::reflect_get(cx, this, "maxlength", cv::Reflect::NonNegative)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__HTMLTextAreaElement__maxLength(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLTextAreaElement)?;
+        cv::reflect_set(cx, this, "maxlength", args.get(0), cv::Reflect::NonNegative)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__HTMLTextAreaElement__minLength(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLTextAreaElement)?;
+        let r = cv::reflect_get(cx, this, "minlength", cv::Reflect::NonNegative)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__HTMLTextAreaElement__minLength(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLTextAreaElement)?;
+        cv::reflect_set(cx, this, "minlength", args.get(0), cv::Reflect::NonNegative)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
 fn get__HTMLTextAreaElement__name(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::HTMLTextAreaElement)?;
@@ -17940,6 +20367,62 @@ fn get__HTMLTextAreaElement__textLength(scope: &mut v8::PinScope, args: v8::Func
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::HTMLTextAreaElement)?;
         let r: u32 = crate::dom::html_text_area_element::get_text_length(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__HTMLTextAreaElement__willValidate(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLTextAreaElement)?;
+        let r: bool = crate::dom::html_text_area_element::get_will_validate(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__HTMLTextAreaElement__validity(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLTextAreaElement)?;
+        let r: Obj = crate::dom::html_text_area_element::get_validity(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__HTMLTextAreaElement__validationMessage(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLTextAreaElement)?;
+        let r: String = crate::dom::html_text_area_element::get_validation_message(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__HTMLTextAreaElement__checkValidity(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLTextAreaElement)?;
+        let r: bool = crate::dom::html_text_area_element::check_validity(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__HTMLTextAreaElement__reportValidity(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLTextAreaElement)?;
+        let r: bool = crate::dom::html_text_area_element::report_validity(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__HTMLTextAreaElement__setCustomValidity(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLTextAreaElement)?;
+        if args.length() <= 0 { return Err(cv::Error::args("HTMLTextAreaElement.setCustomValidity", 0)); }
+        let a0: String = { let v = args.get(0); cv::string(cx, v)? };
+        let r: () = crate::dom::html_text_area_element::set_custom_validity(cx, this, a0)?;
         cx.ret(r)
     });
 }
@@ -20317,6 +22800,26 @@ fn set__ShadowRoot__innerHTML(scope: &mut v8::PinScope, args: v8::FunctionCallba
 }
 
 #[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ShadowRoot__adoptedStyleSheets(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ShadowRoot)?;
+        let r: Value = crate::dom::document_or_shadow_root::get_adopted_style_sheets(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__ShadowRoot__adoptedStyleSheets(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ShadowRoot)?;
+        let v = args.get(0);
+        let a0: Vec<Obj> = cv::seq(cx, v, |cx, v| Ok(cv::obj(cx, v, Iface::CSSStyleSheet)?))?;
+        crate::dom::document_or_shadow_root::set_adopted_style_sheets(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
 fn get__ShadowRoot__activeElement(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::ShadowRoot)?;
@@ -21944,6 +24447,62 @@ fn set__HTMLButtonElement__value(scope: &mut v8::PinScope, args: v8::FunctionCal
 }
 
 #[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__HTMLButtonElement__willValidate(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLButtonElement)?;
+        let r: bool = crate::dom::html_button_element::get_will_validate(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__HTMLButtonElement__validity(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLButtonElement)?;
+        let r: Obj = crate::dom::html_button_element::get_validity(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__HTMLButtonElement__validationMessage(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLButtonElement)?;
+        let r: String = crate::dom::html_button_element::get_validation_message(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__HTMLButtonElement__checkValidity(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLButtonElement)?;
+        let r: bool = crate::dom::html_button_element::check_validity(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__HTMLButtonElement__reportValidity(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLButtonElement)?;
+        let r: bool = crate::dom::html_button_element::report_validity(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__HTMLButtonElement__setCustomValidity(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLButtonElement)?;
+        if args.length() <= 0 { return Err(cv::Error::args("HTMLButtonElement.setCustomValidity", 0)); }
+        let a0: String = { let v = args.get(0); cv::string(cx, v)? };
+        let r: () = crate::dom::html_button_element::set_custom_validity(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
 fn get__HTMLCanvasElement__width(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::HTMLCanvasElement)?;
@@ -22228,6 +24787,39 @@ fn dict_assigned_nodes_options(cx: &mut Cx<'_, '_, '_>, v: v8::Local<'_, v8::Val
     if v.is_null_or_undefined() { return Ok(d); }
     let obj = cv::object(cx, v, "AssignedNodesOptions")?;
     { let v = cv::get(cx, obj, "flatten")?; if !v.is_undefined() { d.flatten = cv::boolean(cx, v); } }
+    Ok(d)
+}
+
+/// The `CSSStyleSheetInit` dictionary.
+#[derive(Debug, Clone)]
+#[allow(missing_docs)]
+pub struct CSSStyleSheetInit {
+    /// `baseURL`.
+    pub base_url: Option<String>,
+    /// `disabled`.
+    pub disabled: bool,
+    /// `media`.
+    pub media: Option<Value>,
+}
+
+impl Default for CSSStyleSheetInit {
+    fn default() -> Self {
+        Self {
+            base_url: None,
+            disabled: false,
+            media: None,
+        }
+    }
+}
+
+#[allow(unused_variables, unused_mut, clippy::all)]
+fn dict_css_style_sheet_init(cx: &mut Cx<'_, '_, '_>, v: v8::Local<'_, v8::Value>) -> R<CSSStyleSheetInit> {
+    let mut d = CSSStyleSheetInit::default();
+    if v.is_null_or_undefined() { return Ok(d); }
+    let obj = cv::object(cx, v, "CSSStyleSheetInit")?;
+    { let v = cv::get(cx, obj, "baseURL")?; if !v.is_undefined() { d.base_url = if v.is_null_or_undefined() { None } else { Some(cv::string(cx, v)?) }; } }
+    { let v = cv::get(cx, obj, "disabled")?; if !v.is_undefined() { d.disabled = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "media")?; if !v.is_undefined() { d.media = Some(cv::value(cx, v)); } }
     Ok(d)
 }
 
@@ -23792,6 +26384,67 @@ fn dict_ui_event_init(cx: &mut Cx<'_, '_, '_>, v: v8::Local<'_, v8::Value>) -> R
     Ok(d)
 }
 
+/// The `ValidityStateFlags` dictionary.
+#[derive(Debug, Clone)]
+#[allow(missing_docs)]
+pub struct ValidityStateFlags {
+    /// `badInput`.
+    pub bad_input: bool,
+    /// `customError`.
+    pub custom_error: bool,
+    /// `patternMismatch`.
+    pub pattern_mismatch: bool,
+    /// `rangeOverflow`.
+    pub range_overflow: bool,
+    /// `rangeUnderflow`.
+    pub range_underflow: bool,
+    /// `stepMismatch`.
+    pub step_mismatch: bool,
+    /// `tooLong`.
+    pub too_long: bool,
+    /// `tooShort`.
+    pub too_short: bool,
+    /// `typeMismatch`.
+    pub type_mismatch: bool,
+    /// `valueMissing`.
+    pub value_missing: bool,
+}
+
+impl Default for ValidityStateFlags {
+    fn default() -> Self {
+        Self {
+            bad_input: false,
+            custom_error: false,
+            pattern_mismatch: false,
+            range_overflow: false,
+            range_underflow: false,
+            step_mismatch: false,
+            too_long: false,
+            too_short: false,
+            type_mismatch: false,
+            value_missing: false,
+        }
+    }
+}
+
+#[allow(unused_variables, unused_mut, clippy::all)]
+fn dict_validity_state_flags(cx: &mut Cx<'_, '_, '_>, v: v8::Local<'_, v8::Value>) -> R<ValidityStateFlags> {
+    let mut d = ValidityStateFlags::default();
+    if v.is_null_or_undefined() { return Ok(d); }
+    let obj = cv::object(cx, v, "ValidityStateFlags")?;
+    { let v = cv::get(cx, obj, "badInput")?; if !v.is_undefined() { d.bad_input = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "customError")?; if !v.is_undefined() { d.custom_error = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "patternMismatch")?; if !v.is_undefined() { d.pattern_mismatch = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "rangeOverflow")?; if !v.is_undefined() { d.range_overflow = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "rangeUnderflow")?; if !v.is_undefined() { d.range_underflow = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "stepMismatch")?; if !v.is_undefined() { d.step_mismatch = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "tooLong")?; if !v.is_undefined() { d.too_long = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "tooShort")?; if !v.is_undefined() { d.too_short = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "typeMismatch")?; if !v.is_undefined() { d.type_mismatch = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "valueMissing")?; if !v.is_undefined() { d.value_missing = cv::boolean(cx, v); } }
+    Ok(d)
+}
+
 /// The `WheelEventInit` dictionary.
 #[derive(Debug, Clone)]
 #[allow(missing_docs)]
@@ -24036,6 +26689,18 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         crate::dom::hooks::template(scope, Iface::CustomElementRegistry, f);
         out.push(v8::Global::new(scope, f));
     }
+    { // CustomStateSet
+        let f = cv::interface(scope, "CustomStateSet", cv::illegal_constructor);
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::setlike(scope, proto, iter_Entries__CustomStateSet, iter_Values__CustomStateSet, iter_forEach__CustomStateSet, set_size__CustomStateSet, set_has__CustomStateSet);
+        cv::method(scope, proto.into(), "add", set_add__CustomStateSet, 1);
+        cv::method(scope, proto.into(), "delete", set_delete__CustomStateSet, 1);
+        cv::method(scope, proto.into(), "clear", set_clear__CustomStateSet, 0);
+        crate::dom::hooks::template(scope, Iface::CustomStateSet, f);
+        out.push(v8::Global::new(scope, f));
+    }
     { // DOMException
         let f = cv::interface(scope, "DOMException", ctor__DOMException);
         let inst = f.instance_template(scope);
@@ -24130,6 +26795,69 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::accessor(scope, proto, "value", get__DOMTokenList__value, Some(set__DOMTokenList__value.map_fn_to()));
         cv::method(scope, proto.into(), "toString", get__DOMTokenList__value, 0);
         crate::dom::hooks::template(scope, Iface::DOMTokenList, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // ElementInternals
+        let f = cv::interface(scope, "ElementInternals", cv::illegal_constructor);
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "shadowRoot", get__ElementInternals__shadowRoot, None);
+        cv::method(scope, proto.into(), "setFormValue", op__ElementInternals__setFormValue, 1);
+        cv::accessor(scope, proto, "form", get__ElementInternals__form, None);
+        cv::method(scope, proto.into(), "setValidity", op__ElementInternals__setValidity, 0);
+        cv::accessor(scope, proto, "willValidate", get__ElementInternals__willValidate, None);
+        cv::accessor(scope, proto, "validity", get__ElementInternals__validity, None);
+        cv::accessor(scope, proto, "validationMessage", get__ElementInternals__validationMessage, None);
+        cv::method(scope, proto.into(), "checkValidity", op__ElementInternals__checkValidity, 0);
+        cv::method(scope, proto.into(), "reportValidity", op__ElementInternals__reportValidity, 0);
+        cv::accessor(scope, proto, "labels", get__ElementInternals__labels, None);
+        cv::accessor(scope, proto, "states", get__ElementInternals__states, None);
+        cv::accessor(scope, proto, "role", get__ElementInternals__role, Some(set__ElementInternals__role.map_fn_to()));
+        cv::accessor(scope, proto, "ariaAtomic", get__ElementInternals__ariaAtomic, Some(set__ElementInternals__ariaAtomic.map_fn_to()));
+        cv::accessor(scope, proto, "ariaAutoComplete", get__ElementInternals__ariaAutoComplete, Some(set__ElementInternals__ariaAutoComplete.map_fn_to()));
+        cv::accessor(scope, proto, "ariaBrailleLabel", get__ElementInternals__ariaBrailleLabel, Some(set__ElementInternals__ariaBrailleLabel.map_fn_to()));
+        cv::accessor(scope, proto, "ariaBrailleRoleDescription", get__ElementInternals__ariaBrailleRoleDescription, Some(set__ElementInternals__ariaBrailleRoleDescription.map_fn_to()));
+        cv::accessor(scope, proto, "ariaBusy", get__ElementInternals__ariaBusy, Some(set__ElementInternals__ariaBusy.map_fn_to()));
+        cv::accessor(scope, proto, "ariaChecked", get__ElementInternals__ariaChecked, Some(set__ElementInternals__ariaChecked.map_fn_to()));
+        cv::accessor(scope, proto, "ariaColCount", get__ElementInternals__ariaColCount, Some(set__ElementInternals__ariaColCount.map_fn_to()));
+        cv::accessor(scope, proto, "ariaColIndex", get__ElementInternals__ariaColIndex, Some(set__ElementInternals__ariaColIndex.map_fn_to()));
+        cv::accessor(scope, proto, "ariaColIndexText", get__ElementInternals__ariaColIndexText, Some(set__ElementInternals__ariaColIndexText.map_fn_to()));
+        cv::accessor(scope, proto, "ariaColSpan", get__ElementInternals__ariaColSpan, Some(set__ElementInternals__ariaColSpan.map_fn_to()));
+        cv::accessor(scope, proto, "ariaCurrent", get__ElementInternals__ariaCurrent, Some(set__ElementInternals__ariaCurrent.map_fn_to()));
+        cv::accessor(scope, proto, "ariaDescription", get__ElementInternals__ariaDescription, Some(set__ElementInternals__ariaDescription.map_fn_to()));
+        cv::accessor(scope, proto, "ariaDisabled", get__ElementInternals__ariaDisabled, Some(set__ElementInternals__ariaDisabled.map_fn_to()));
+        cv::accessor(scope, proto, "ariaExpanded", get__ElementInternals__ariaExpanded, Some(set__ElementInternals__ariaExpanded.map_fn_to()));
+        cv::accessor(scope, proto, "ariaHasPopup", get__ElementInternals__ariaHasPopup, Some(set__ElementInternals__ariaHasPopup.map_fn_to()));
+        cv::accessor(scope, proto, "ariaHidden", get__ElementInternals__ariaHidden, Some(set__ElementInternals__ariaHidden.map_fn_to()));
+        cv::accessor(scope, proto, "ariaInvalid", get__ElementInternals__ariaInvalid, Some(set__ElementInternals__ariaInvalid.map_fn_to()));
+        cv::accessor(scope, proto, "ariaKeyShortcuts", get__ElementInternals__ariaKeyShortcuts, Some(set__ElementInternals__ariaKeyShortcuts.map_fn_to()));
+        cv::accessor(scope, proto, "ariaLabel", get__ElementInternals__ariaLabel, Some(set__ElementInternals__ariaLabel.map_fn_to()));
+        cv::accessor(scope, proto, "ariaLevel", get__ElementInternals__ariaLevel, Some(set__ElementInternals__ariaLevel.map_fn_to()));
+        cv::accessor(scope, proto, "ariaLive", get__ElementInternals__ariaLive, Some(set__ElementInternals__ariaLive.map_fn_to()));
+        cv::accessor(scope, proto, "ariaModal", get__ElementInternals__ariaModal, Some(set__ElementInternals__ariaModal.map_fn_to()));
+        cv::accessor(scope, proto, "ariaMultiLine", get__ElementInternals__ariaMultiLine, Some(set__ElementInternals__ariaMultiLine.map_fn_to()));
+        cv::accessor(scope, proto, "ariaMultiSelectable", get__ElementInternals__ariaMultiSelectable, Some(set__ElementInternals__ariaMultiSelectable.map_fn_to()));
+        cv::accessor(scope, proto, "ariaOrientation", get__ElementInternals__ariaOrientation, Some(set__ElementInternals__ariaOrientation.map_fn_to()));
+        cv::accessor(scope, proto, "ariaPlaceholder", get__ElementInternals__ariaPlaceholder, Some(set__ElementInternals__ariaPlaceholder.map_fn_to()));
+        cv::accessor(scope, proto, "ariaPosInSet", get__ElementInternals__ariaPosInSet, Some(set__ElementInternals__ariaPosInSet.map_fn_to()));
+        cv::accessor(scope, proto, "ariaPressed", get__ElementInternals__ariaPressed, Some(set__ElementInternals__ariaPressed.map_fn_to()));
+        cv::accessor(scope, proto, "ariaReadOnly", get__ElementInternals__ariaReadOnly, Some(set__ElementInternals__ariaReadOnly.map_fn_to()));
+        cv::accessor(scope, proto, "ariaRelevant", get__ElementInternals__ariaRelevant, Some(set__ElementInternals__ariaRelevant.map_fn_to()));
+        cv::accessor(scope, proto, "ariaRequired", get__ElementInternals__ariaRequired, Some(set__ElementInternals__ariaRequired.map_fn_to()));
+        cv::accessor(scope, proto, "ariaRoleDescription", get__ElementInternals__ariaRoleDescription, Some(set__ElementInternals__ariaRoleDescription.map_fn_to()));
+        cv::accessor(scope, proto, "ariaRowCount", get__ElementInternals__ariaRowCount, Some(set__ElementInternals__ariaRowCount.map_fn_to()));
+        cv::accessor(scope, proto, "ariaRowIndex", get__ElementInternals__ariaRowIndex, Some(set__ElementInternals__ariaRowIndex.map_fn_to()));
+        cv::accessor(scope, proto, "ariaRowIndexText", get__ElementInternals__ariaRowIndexText, Some(set__ElementInternals__ariaRowIndexText.map_fn_to()));
+        cv::accessor(scope, proto, "ariaRowSpan", get__ElementInternals__ariaRowSpan, Some(set__ElementInternals__ariaRowSpan.map_fn_to()));
+        cv::accessor(scope, proto, "ariaSelected", get__ElementInternals__ariaSelected, Some(set__ElementInternals__ariaSelected.map_fn_to()));
+        cv::accessor(scope, proto, "ariaSetSize", get__ElementInternals__ariaSetSize, Some(set__ElementInternals__ariaSetSize.map_fn_to()));
+        cv::accessor(scope, proto, "ariaSort", get__ElementInternals__ariaSort, Some(set__ElementInternals__ariaSort.map_fn_to()));
+        cv::accessor(scope, proto, "ariaValueMax", get__ElementInternals__ariaValueMax, Some(set__ElementInternals__ariaValueMax.map_fn_to()));
+        cv::accessor(scope, proto, "ariaValueMin", get__ElementInternals__ariaValueMin, Some(set__ElementInternals__ariaValueMin.map_fn_to()));
+        cv::accessor(scope, proto, "ariaValueNow", get__ElementInternals__ariaValueNow, Some(set__ElementInternals__ariaValueNow.map_fn_to()));
+        cv::accessor(scope, proto, "ariaValueText", get__ElementInternals__ariaValueText, Some(set__ElementInternals__ariaValueText.map_fn_to()));
+        crate::dom::hooks::template(scope, Iface::ElementInternals, f);
         out.push(v8::Global::new(scope, f));
     }
     { // Event
@@ -24750,6 +27478,25 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         crate::dom::hooks::template(scope, Iface::URLSearchParams, f);
         out.push(v8::Global::new(scope, f));
     }
+    { // ValidityState
+        let f = cv::interface(scope, "ValidityState", cv::illegal_constructor);
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "valueMissing", get__ValidityState__valueMissing, None);
+        cv::accessor(scope, proto, "typeMismatch", get__ValidityState__typeMismatch, None);
+        cv::accessor(scope, proto, "patternMismatch", get__ValidityState__patternMismatch, None);
+        cv::accessor(scope, proto, "tooLong", get__ValidityState__tooLong, None);
+        cv::accessor(scope, proto, "tooShort", get__ValidityState__tooShort, None);
+        cv::accessor(scope, proto, "rangeUnderflow", get__ValidityState__rangeUnderflow, None);
+        cv::accessor(scope, proto, "rangeOverflow", get__ValidityState__rangeOverflow, None);
+        cv::accessor(scope, proto, "stepMismatch", get__ValidityState__stepMismatch, None);
+        cv::accessor(scope, proto, "badInput", get__ValidityState__badInput, None);
+        cv::accessor(scope, proto, "customError", get__ValidityState__customError, None);
+        cv::accessor(scope, proto, "valid", get__ValidityState__valid, None);
+        crate::dom::hooks::template(scope, Iface::ValidityState, f);
+        out.push(v8::Global::new(scope, f));
+    }
     { // VisualViewport
         let f = cv::interface(scope, "VisualViewport", cv::illegal_constructor);
         f.inherit(v8::Local::new(scope, &out[Iface::EventTarget as usize]));
@@ -25016,11 +27763,15 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         out.push(v8::Global::new(scope, f));
     }
     { // CSSStyleSheet
-        let f = cv::interface(scope, "CSSStyleSheet", cv::illegal_constructor);
+        let f = cv::interface(scope, "CSSStyleSheet", ctor__CSSStyleSheet);
         f.inherit(v8::Local::new(scope, &out[Iface::StyleSheet as usize]));
         let inst = f.instance_template(scope);
         inst.set_internal_field_count(cv::FIELDS);
         let proto = f.prototype_template(scope);
+        cv::method(scope, proto.into(), "insertRule", op__CSSStyleSheet__insertRule, 1);
+        cv::method(scope, proto.into(), "deleteRule", op__CSSStyleSheet__deleteRule, 1);
+        cv::method(scope, proto.into(), "replace", op__CSSStyleSheet__replace, 1);
+        cv::method(scope, proto.into(), "replaceSync", op__CSSStyleSheet__replaceSync, 1);
         crate::dom::hooks::template(scope, Iface::CSSStyleSheet, f);
         out.push(v8::Global::new(scope, f));
     }
@@ -25124,6 +27875,7 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::accessor(scope, proto, "onvisibilitychange", get__Document__onvisibilitychange, Some(set__Document__onvisibilitychange.map_fn_to()));
         cv::accessor(scope, proto, "modelContext", get__Document__modelContext, None);
         cv::method(scope, proto.into(), "getElementById", op__Document__getElementById, 1);
+        cv::accessor(scope, proto, "adoptedStyleSheets", get__Document__adoptedStyleSheets, Some(set__Document__adoptedStyleSheets.map_fn_to()));
         cv::accessor(scope, proto, "activeElement", get__Document__activeElement, None);
         cv::accessor(scope, proto, "children", get__Document__children, None);
         cv::accessor(scope, proto, "firstElementChild", get__Document__firstElementChild, None);
@@ -25329,6 +28081,50 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::method(scope, proto.into(), "replaceWith", op__Element__replaceWith, 0);
         cv::method(scope, proto.into(), "remove", op__Element__remove, 0);
         cv::accessor(scope, proto, "assignedSlot", get__Element__assignedSlot, None);
+        cv::accessor(scope, proto, "role", get__Element__role, Some(set__Element__role.map_fn_to()));
+        cv::accessor(scope, proto, "ariaAtomic", get__Element__ariaAtomic, Some(set__Element__ariaAtomic.map_fn_to()));
+        cv::accessor(scope, proto, "ariaAutoComplete", get__Element__ariaAutoComplete, Some(set__Element__ariaAutoComplete.map_fn_to()));
+        cv::accessor(scope, proto, "ariaBrailleLabel", get__Element__ariaBrailleLabel, Some(set__Element__ariaBrailleLabel.map_fn_to()));
+        cv::accessor(scope, proto, "ariaBrailleRoleDescription", get__Element__ariaBrailleRoleDescription, Some(set__Element__ariaBrailleRoleDescription.map_fn_to()));
+        cv::accessor(scope, proto, "ariaBusy", get__Element__ariaBusy, Some(set__Element__ariaBusy.map_fn_to()));
+        cv::accessor(scope, proto, "ariaChecked", get__Element__ariaChecked, Some(set__Element__ariaChecked.map_fn_to()));
+        cv::accessor(scope, proto, "ariaColCount", get__Element__ariaColCount, Some(set__Element__ariaColCount.map_fn_to()));
+        cv::accessor(scope, proto, "ariaColIndex", get__Element__ariaColIndex, Some(set__Element__ariaColIndex.map_fn_to()));
+        cv::accessor(scope, proto, "ariaColIndexText", get__Element__ariaColIndexText, Some(set__Element__ariaColIndexText.map_fn_to()));
+        cv::accessor(scope, proto, "ariaColSpan", get__Element__ariaColSpan, Some(set__Element__ariaColSpan.map_fn_to()));
+        cv::accessor(scope, proto, "ariaCurrent", get__Element__ariaCurrent, Some(set__Element__ariaCurrent.map_fn_to()));
+        cv::accessor(scope, proto, "ariaDescription", get__Element__ariaDescription, Some(set__Element__ariaDescription.map_fn_to()));
+        cv::accessor(scope, proto, "ariaDisabled", get__Element__ariaDisabled, Some(set__Element__ariaDisabled.map_fn_to()));
+        cv::accessor(scope, proto, "ariaExpanded", get__Element__ariaExpanded, Some(set__Element__ariaExpanded.map_fn_to()));
+        cv::accessor(scope, proto, "ariaHasPopup", get__Element__ariaHasPopup, Some(set__Element__ariaHasPopup.map_fn_to()));
+        cv::accessor(scope, proto, "ariaHidden", get__Element__ariaHidden, Some(set__Element__ariaHidden.map_fn_to()));
+        cv::accessor(scope, proto, "ariaInvalid", get__Element__ariaInvalid, Some(set__Element__ariaInvalid.map_fn_to()));
+        cv::accessor(scope, proto, "ariaKeyShortcuts", get__Element__ariaKeyShortcuts, Some(set__Element__ariaKeyShortcuts.map_fn_to()));
+        cv::accessor(scope, proto, "ariaLabel", get__Element__ariaLabel, Some(set__Element__ariaLabel.map_fn_to()));
+        cv::accessor(scope, proto, "ariaLevel", get__Element__ariaLevel, Some(set__Element__ariaLevel.map_fn_to()));
+        cv::accessor(scope, proto, "ariaLive", get__Element__ariaLive, Some(set__Element__ariaLive.map_fn_to()));
+        cv::accessor(scope, proto, "ariaModal", get__Element__ariaModal, Some(set__Element__ariaModal.map_fn_to()));
+        cv::accessor(scope, proto, "ariaMultiLine", get__Element__ariaMultiLine, Some(set__Element__ariaMultiLine.map_fn_to()));
+        cv::accessor(scope, proto, "ariaMultiSelectable", get__Element__ariaMultiSelectable, Some(set__Element__ariaMultiSelectable.map_fn_to()));
+        cv::accessor(scope, proto, "ariaOrientation", get__Element__ariaOrientation, Some(set__Element__ariaOrientation.map_fn_to()));
+        cv::accessor(scope, proto, "ariaPlaceholder", get__Element__ariaPlaceholder, Some(set__Element__ariaPlaceholder.map_fn_to()));
+        cv::accessor(scope, proto, "ariaPosInSet", get__Element__ariaPosInSet, Some(set__Element__ariaPosInSet.map_fn_to()));
+        cv::accessor(scope, proto, "ariaPressed", get__Element__ariaPressed, Some(set__Element__ariaPressed.map_fn_to()));
+        cv::accessor(scope, proto, "ariaReadOnly", get__Element__ariaReadOnly, Some(set__Element__ariaReadOnly.map_fn_to()));
+        cv::accessor(scope, proto, "ariaRelevant", get__Element__ariaRelevant, Some(set__Element__ariaRelevant.map_fn_to()));
+        cv::accessor(scope, proto, "ariaRequired", get__Element__ariaRequired, Some(set__Element__ariaRequired.map_fn_to()));
+        cv::accessor(scope, proto, "ariaRoleDescription", get__Element__ariaRoleDescription, Some(set__Element__ariaRoleDescription.map_fn_to()));
+        cv::accessor(scope, proto, "ariaRowCount", get__Element__ariaRowCount, Some(set__Element__ariaRowCount.map_fn_to()));
+        cv::accessor(scope, proto, "ariaRowIndex", get__Element__ariaRowIndex, Some(set__Element__ariaRowIndex.map_fn_to()));
+        cv::accessor(scope, proto, "ariaRowIndexText", get__Element__ariaRowIndexText, Some(set__Element__ariaRowIndexText.map_fn_to()));
+        cv::accessor(scope, proto, "ariaRowSpan", get__Element__ariaRowSpan, Some(set__Element__ariaRowSpan.map_fn_to()));
+        cv::accessor(scope, proto, "ariaSelected", get__Element__ariaSelected, Some(set__Element__ariaSelected.map_fn_to()));
+        cv::accessor(scope, proto, "ariaSetSize", get__Element__ariaSetSize, Some(set__Element__ariaSetSize.map_fn_to()));
+        cv::accessor(scope, proto, "ariaSort", get__Element__ariaSort, Some(set__Element__ariaSort.map_fn_to()));
+        cv::accessor(scope, proto, "ariaValueMax", get__Element__ariaValueMax, Some(set__Element__ariaValueMax.map_fn_to()));
+        cv::accessor(scope, proto, "ariaValueMin", get__Element__ariaValueMin, Some(set__Element__ariaValueMin.map_fn_to()));
+        cv::accessor(scope, proto, "ariaValueNow", get__Element__ariaValueNow, Some(set__Element__ariaValueNow.map_fn_to()));
+        cv::accessor(scope, proto, "ariaValueText", get__Element__ariaValueText, Some(set__Element__ariaValueText.map_fn_to()));
         crate::dom::hooks::template(scope, Iface::Element, f);
         out.push(v8::Global::new(scope, f));
     }
@@ -25355,6 +28151,7 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::method(scope, proto.into(), "click", op__HTMLElement__click, 0);
         cv::accessor(scope, proto, "accessKey", get__HTMLElement__accessKey, Some(set__HTMLElement__accessKey.map_fn_to()));
         cv::accessor(scope, proto, "innerText", get__HTMLElement__innerText, Some(set__HTMLElement__innerText.map_fn_to()));
+        cv::method(scope, proto.into(), "attachInternals", op__HTMLElement__attachInternals, 0);
         cv::accessor(scope, proto, "headingOffset", get__HTMLElement__headingOffset, Some(set__HTMLElement__headingOffset.map_fn_to()));
         cv::accessor(scope, proto, "headingReset", get__HTMLElement__headingReset, Some(set__HTMLElement__headingReset.map_fn_to()));
         cv::accessor(scope, proto, "offsetParent", get__HTMLElement__offsetParent, None);
@@ -25480,7 +28277,15 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         inst.set_internal_field_count(cv::FIELDS);
         let proto = f.prototype_template(scope);
         cv::accessor(scope, proto, "disabled", get__HTMLFieldSetElement__disabled, Some(set__HTMLFieldSetElement__disabled.map_fn_to()));
+        cv::accessor(scope, proto, "form", get__HTMLFieldSetElement__form, None);
         cv::accessor(scope, proto, "name", get__HTMLFieldSetElement__name, Some(set__HTMLFieldSetElement__name.map_fn_to()));
+        cv::accessor(scope, proto, "type", get__HTMLFieldSetElement__type, None);
+        cv::accessor(scope, proto, "willValidate", get__HTMLFieldSetElement__willValidate, None);
+        cv::accessor(scope, proto, "validity", get__HTMLFieldSetElement__validity, None);
+        cv::accessor(scope, proto, "validationMessage", get__HTMLFieldSetElement__validationMessage, None);
+        cv::method(scope, proto.into(), "checkValidity", op__HTMLFieldSetElement__checkValidity, 0);
+        cv::method(scope, proto.into(), "reportValidity", op__HTMLFieldSetElement__reportValidity, 0);
+        cv::method(scope, proto.into(), "setCustomValidity", op__HTMLFieldSetElement__setCustomValidity, 1);
         crate::dom::hooks::template(scope, Iface::HTMLFieldSetElement, f);
         out.push(v8::Global::new(scope, f));
     }
@@ -25511,6 +28316,9 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::accessor(scope, proto, "length", get__HTMLFormElement__length, None);
         cv::method(scope, proto.into(), "submit", op__HTMLFormElement__submit, 0);
         cv::method(scope, proto.into(), "requestSubmit", op__HTMLFormElement__requestSubmit, 0);
+        cv::method(scope, proto.into(), "reset", op__HTMLFormElement__reset, 0);
+        cv::method(scope, proto.into(), "checkValidity", op__HTMLFormElement__checkValidity, 0);
+        cv::method(scope, proto.into(), "reportValidity", op__HTMLFormElement__reportValidity, 0);
         crate::dom::hooks::template(scope, Iface::HTMLFormElement, f);
         out.push(v8::Global::new(scope, f));
     }
@@ -25666,7 +28474,9 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::accessor(scope, proto, "formNoValidate", get__HTMLInputElement__formNoValidate, Some(set__HTMLInputElement__formNoValidate.map_fn_to()));
         cv::accessor(scope, proto, "formTarget", get__HTMLInputElement__formTarget, Some(set__HTMLInputElement__formTarget.map_fn_to()));
         cv::accessor(scope, proto, "max", get__HTMLInputElement__max, Some(set__HTMLInputElement__max.map_fn_to()));
+        cv::accessor(scope, proto, "maxLength", get__HTMLInputElement__maxLength, Some(set__HTMLInputElement__maxLength.map_fn_to()));
         cv::accessor(scope, proto, "min", get__HTMLInputElement__min, Some(set__HTMLInputElement__min.map_fn_to()));
+        cv::accessor(scope, proto, "minLength", get__HTMLInputElement__minLength, Some(set__HTMLInputElement__minLength.map_fn_to()));
         cv::accessor(scope, proto, "multiple", get__HTMLInputElement__multiple, Some(set__HTMLInputElement__multiple.map_fn_to()));
         cv::accessor(scope, proto, "name", get__HTMLInputElement__name, Some(set__HTMLInputElement__name.map_fn_to()));
         cv::accessor(scope, proto, "pattern", get__HTMLInputElement__pattern, Some(set__HTMLInputElement__pattern.map_fn_to()));
@@ -25679,6 +28489,12 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::accessor(scope, proto, "type", get__HTMLInputElement__type, Some(set__HTMLInputElement__type.map_fn_to()));
         cv::accessor(scope, proto, "defaultValue", get__HTMLInputElement__defaultValue, Some(set__HTMLInputElement__defaultValue.map_fn_to()));
         cv::accessor(scope, proto, "value", get__HTMLInputElement__value, Some(set__HTMLInputElement__value.map_fn_to()));
+        cv::accessor(scope, proto, "willValidate", get__HTMLInputElement__willValidate, None);
+        cv::accessor(scope, proto, "validity", get__HTMLInputElement__validity, None);
+        cv::accessor(scope, proto, "validationMessage", get__HTMLInputElement__validationMessage, None);
+        cv::method(scope, proto.into(), "checkValidity", op__HTMLInputElement__checkValidity, 0);
+        cv::method(scope, proto.into(), "reportValidity", op__HTMLInputElement__reportValidity, 0);
+        cv::method(scope, proto.into(), "setCustomValidity", op__HTMLInputElement__setCustomValidity, 1);
         cv::accessor(scope, proto, "labels", get__HTMLInputElement__labels, None);
         cv::method(scope, proto.into(), "select", op__HTMLInputElement__select, 0);
         cv::accessor(scope, proto, "align", get__HTMLInputElement__align, Some(set__HTMLInputElement__align.map_fn_to()));
@@ -25907,7 +28723,15 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         let inst = f.instance_template(scope);
         inst.set_internal_field_count(cv::FIELDS);
         let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "form", get__HTMLOutputElement__form, None);
         cv::accessor(scope, proto, "name", get__HTMLOutputElement__name, Some(set__HTMLOutputElement__name.map_fn_to()));
+        cv::accessor(scope, proto, "type", get__HTMLOutputElement__type, None);
+        cv::accessor(scope, proto, "willValidate", get__HTMLOutputElement__willValidate, None);
+        cv::accessor(scope, proto, "validity", get__HTMLOutputElement__validity, None);
+        cv::accessor(scope, proto, "validationMessage", get__HTMLOutputElement__validationMessage, None);
+        cv::method(scope, proto.into(), "checkValidity", op__HTMLOutputElement__checkValidity, 0);
+        cv::method(scope, proto.into(), "reportValidity", op__HTMLOutputElement__reportValidity, 0);
+        cv::method(scope, proto.into(), "setCustomValidity", op__HTMLOutputElement__setCustomValidity, 1);
         crate::dom::hooks::template(scope, Iface::HTMLOutputElement, f);
         out.push(v8::Global::new(scope, f));
     }
@@ -26000,6 +28824,7 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         inst.set_internal_field_count(cv::FIELDS);
         let proto = f.prototype_template(scope);
         cv::accessor(scope, proto, "disabled", get__HTMLSelectElement__disabled, Some(set__HTMLSelectElement__disabled.map_fn_to()));
+        cv::accessor(scope, proto, "form", get__HTMLSelectElement__form, None);
         cv::accessor(scope, proto, "multiple", get__HTMLSelectElement__multiple, Some(set__HTMLSelectElement__multiple.map_fn_to()));
         cv::accessor(scope, proto, "name", get__HTMLSelectElement__name, Some(set__HTMLSelectElement__name.map_fn_to()));
         cv::accessor(scope, proto, "required", get__HTMLSelectElement__required, Some(set__HTMLSelectElement__required.map_fn_to()));
@@ -26010,6 +28835,12 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::method(scope, proto.into(), "item", op__HTMLSelectElement__item, 1);
         cv::accessor(scope, proto, "selectedIndex", get__HTMLSelectElement__selectedIndex, Some(set__HTMLSelectElement__selectedIndex.map_fn_to()));
         cv::accessor(scope, proto, "value", get__HTMLSelectElement__value, Some(set__HTMLSelectElement__value.map_fn_to()));
+        cv::accessor(scope, proto, "willValidate", get__HTMLSelectElement__willValidate, None);
+        cv::accessor(scope, proto, "validity", get__HTMLSelectElement__validity, None);
+        cv::accessor(scope, proto, "validationMessage", get__HTMLSelectElement__validationMessage, None);
+        cv::method(scope, proto.into(), "checkValidity", op__HTMLSelectElement__checkValidity, 0);
+        cv::method(scope, proto.into(), "reportValidity", op__HTMLSelectElement__reportValidity, 0);
+        cv::method(scope, proto.into(), "setCustomValidity", op__HTMLSelectElement__setCustomValidity, 1);
         crate::dom::hooks::template(scope, Iface::HTMLSelectElement, f);
         out.push(v8::Global::new(scope, f));
     }
@@ -26185,6 +29016,9 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         let proto = f.prototype_template(scope);
         cv::accessor(scope, proto, "dirName", get__HTMLTextAreaElement__dirName, Some(set__HTMLTextAreaElement__dirName.map_fn_to()));
         cv::accessor(scope, proto, "disabled", get__HTMLTextAreaElement__disabled, Some(set__HTMLTextAreaElement__disabled.map_fn_to()));
+        cv::accessor(scope, proto, "form", get__HTMLTextAreaElement__form, None);
+        cv::accessor(scope, proto, "maxLength", get__HTMLTextAreaElement__maxLength, Some(set__HTMLTextAreaElement__maxLength.map_fn_to()));
+        cv::accessor(scope, proto, "minLength", get__HTMLTextAreaElement__minLength, Some(set__HTMLTextAreaElement__minLength.map_fn_to()));
         cv::accessor(scope, proto, "name", get__HTMLTextAreaElement__name, Some(set__HTMLTextAreaElement__name.map_fn_to()));
         cv::accessor(scope, proto, "placeholder", get__HTMLTextAreaElement__placeholder, Some(set__HTMLTextAreaElement__placeholder.map_fn_to()));
         cv::accessor(scope, proto, "readOnly", get__HTMLTextAreaElement__readOnly, Some(set__HTMLTextAreaElement__readOnly.map_fn_to()));
@@ -26194,6 +29028,12 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::accessor(scope, proto, "defaultValue", get__HTMLTextAreaElement__defaultValue, Some(set__HTMLTextAreaElement__defaultValue.map_fn_to()));
         cv::accessor(scope, proto, "value", get__HTMLTextAreaElement__value, Some(set__HTMLTextAreaElement__value.map_fn_to()));
         cv::accessor(scope, proto, "textLength", get__HTMLTextAreaElement__textLength, None);
+        cv::accessor(scope, proto, "willValidate", get__HTMLTextAreaElement__willValidate, None);
+        cv::accessor(scope, proto, "validity", get__HTMLTextAreaElement__validity, None);
+        cv::accessor(scope, proto, "validationMessage", get__HTMLTextAreaElement__validationMessage, None);
+        cv::method(scope, proto.into(), "checkValidity", op__HTMLTextAreaElement__checkValidity, 0);
+        cv::method(scope, proto.into(), "reportValidity", op__HTMLTextAreaElement__reportValidity, 0);
+        cv::method(scope, proto.into(), "setCustomValidity", op__HTMLTextAreaElement__setCustomValidity, 1);
         cv::method(scope, proto.into(), "select", op__HTMLTextAreaElement__select, 0);
         crate::dom::hooks::template(scope, Iface::HTMLTextAreaElement, f);
         out.push(v8::Global::new(scope, f));
@@ -26456,6 +29296,7 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::accessor(scope, proto, "host", get__ShadowRoot__host, None);
         cv::accessor(scope, proto, "onslotchange", get__ShadowRoot__onslotchange, Some(set__ShadowRoot__onslotchange.map_fn_to()));
         cv::accessor(scope, proto, "innerHTML", get__ShadowRoot__innerHTML, Some(set__ShadowRoot__innerHTML.map_fn_to()));
+        cv::accessor(scope, proto, "adoptedStyleSheets", get__ShadowRoot__adoptedStyleSheets, Some(set__ShadowRoot__adoptedStyleSheets.map_fn_to()));
         cv::accessor(scope, proto, "activeElement", get__ShadowRoot__activeElement, None);
         crate::dom::hooks::template(scope, Iface::ShadowRoot, f);
         out.push(v8::Global::new(scope, f));
@@ -26650,6 +29491,12 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::accessor(scope, proto, "name", get__HTMLButtonElement__name, Some(set__HTMLButtonElement__name.map_fn_to()));
         cv::accessor(scope, proto, "type", get__HTMLButtonElement__type, Some(set__HTMLButtonElement__type.map_fn_to()));
         cv::accessor(scope, proto, "value", get__HTMLButtonElement__value, Some(set__HTMLButtonElement__value.map_fn_to()));
+        cv::accessor(scope, proto, "willValidate", get__HTMLButtonElement__willValidate, None);
+        cv::accessor(scope, proto, "validity", get__HTMLButtonElement__validity, None);
+        cv::accessor(scope, proto, "validationMessage", get__HTMLButtonElement__validationMessage, None);
+        cv::method(scope, proto.into(), "checkValidity", op__HTMLButtonElement__checkValidity, 0);
+        cv::method(scope, proto.into(), "reportValidity", op__HTMLButtonElement__reportValidity, 0);
+        cv::method(scope, proto.into(), "setCustomValidity", op__HTMLButtonElement__setCustomValidity, 1);
         crate::dom::hooks::template(scope, Iface::HTMLButtonElement, f);
         out.push(v8::Global::new(scope, f));
     }
@@ -26750,12 +29597,14 @@ pub fn expose(scope: &mut v8::PinScope<'_, '_>, global: v8::Local<'_, v8::Object
     cv::expose(scope, global, &t[Iface::CanvasRenderingContext2D as usize], "CanvasRenderingContext2D");
     cv::expose(scope, global, &t[Iface::Crypto as usize], "Crypto");
     cv::expose(scope, global, &t[Iface::CustomElementRegistry as usize], "CustomElementRegistry");
+    cv::expose(scope, global, &t[Iface::CustomStateSet as usize], "CustomStateSet");
     cv::expose(scope, global, &t[Iface::DOMException as usize], "DOMException");
     cv::expose(scope, global, &t[Iface::DOMImplementation as usize], "DOMImplementation");
     cv::expose(scope, global, &t[Iface::DOMRectList as usize], "DOMRectList");
     cv::expose(scope, global, &t[Iface::DOMRectReadOnly as usize], "DOMRectReadOnly");
     cv::expose(scope, global, &t[Iface::DOMStringMap as usize], "DOMStringMap");
     cv::expose(scope, global, &t[Iface::DOMTokenList as usize], "DOMTokenList");
+    cv::expose(scope, global, &t[Iface::ElementInternals as usize], "ElementInternals");
     cv::expose(scope, global, &t[Iface::Event as usize], "Event");
     cv::expose(scope, global, &t[Iface::EventTarget as usize], "EventTarget");
     cv::expose(scope, global, &t[Iface::FormData as usize], "FormData");
@@ -26796,6 +29645,7 @@ pub fn expose(scope: &mut v8::PinScope<'_, '_>, global: v8::Local<'_, v8::Object
     cv::expose(scope, global, &t[Iface::UIEvent as usize], "UIEvent");
     cv::expose(scope, global, &t[Iface::URL as usize], "URL");
     cv::expose(scope, global, &t[Iface::URLSearchParams as usize], "URLSearchParams");
+    cv::expose(scope, global, &t[Iface::ValidityState as usize], "ValidityState");
     cv::expose(scope, global, &t[Iface::VisualViewport as usize], "VisualViewport");
     cv::expose(scope, global, &t[Iface::XMLHttpRequestEventTarget as usize], "XMLHttpRequestEventTarget");
     cv::expose(scope, global, &t[Iface::XMLSerializer as usize], "XMLSerializer");

@@ -14,6 +14,8 @@ categories = ["web-programming", "parser-implementations"]
 [dependencies]
 html5ever = "0.40"
 encoding_rs = "0.8"
+fancy-regex = "0.19"
+url = "2"
 
 [dev-dependencies]
 markup5ever_rcdom = "0.40.1"

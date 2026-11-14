@@ -24,6 +24,13 @@ pub struct Definition {
     connected: Option<Value>,
     disconnected: Option<Value>,
     attribute_changed: Option<Value>,
+    /// `static formAssociated = true`.
+    form_associated: bool,
+    /// `static disabledFeatures` holds `"internals"`.
+    disable_internals: bool,
+    form_associated_cb: Option<Value>,
+    form_reset_cb: Option<Value>,
+    form_disabled_cb: Option<Value>,
 }
 
 /// What an element is to the registry.
@@ -46,6 +53,8 @@ pub struct Registry {
     /// How far the document's mutation log has been read.
     pub(crate) cursor: usize,
     reacting: bool,
+    /// Form-associated elements: the form owner and disabled state last told to them.
+    faces: HashMap<NodeId, (Option<NodeId>, bool)>,
 }
 
 impl Registry {
@@ -121,6 +130,7 @@ pub fn construct(cx: &mut Cx<'_, '_, '_>, new_target: Value) -> R<Obj> {
     let el = super::create_element(&mut cx.dom_mut(), html5ever::ns!(html), &name);
     set_prototype(cx, el, i);
     cx.st().custom.state.insert(el, State::Custom(i, false));
+    mark_form_associated(cx, el, i);
     Ok(Obj::Node(el))
 }
 
@@ -134,10 +144,17 @@ fn set_prototype(cx: &mut Cx<'_, '_, '_>, el: NodeId, def: usize) {
 /// Upgrades `el` with definition `def`: the constructor runs on the existing element, then
 /// `attributeChangedCallback` for its observed attributes and `connectedCallback` if connected.
 fn upgrade(cx: &mut Cx<'_, '_, '_>, el: NodeId, def: usize) -> R<()> {
-    if cx.st().custom.state.contains_key(&el) {
+    // Already upgraded, or being constructed (a reaction its constructor's DOM calls run must
+    // not construct it again).
+    let busy = {
+        let st = cx.st();
+        st.custom.state.contains_key(&el) || st.custom.construction.contains(&el)
+    };
+    if busy {
         return Ok(());
     }
     set_prototype(cx, el, def);
+    mark_form_associated(cx, el, def);
     let ctor = cx.st().custom.defs[def].ctor.clone();
     cx.st().custom.construction.push(el);
     let (ok, terminated, error) = {
@@ -183,25 +200,108 @@ fn upgrade(cx: &mut Cx<'_, '_, '_>, el: NodeId, def: usize) -> R<()> {
         cx.st().custom.state.insert(el, State::Custom(def, true));
         call(cx, el, def, Callback::Connected)?;
     }
+    if cx.st().custom.defs[def].form_associated {
+        face_check(cx, el)?;
+    }
     Ok(())
+}
+
+/// Marks an element of a form-associated definition (its form owner is tracked from now on).
+fn mark_form_associated(cx: &mut Cx<'_, '_, '_>, el: NodeId, def: usize) {
+    if cx.st().custom.defs[def].form_associated {
+        cx.dom_mut().internals_mut(el).form_associated = true;
+        cx.st().custom.faces.entry(el).or_insert((None, false));
+    }
+}
+
+/// Tells a form-associated element of a changed form owner or disabled state
+/// (`formAssociatedCallback`, `formDisabledCallback`).
+fn face_check(cx: &mut Cx<'_, '_, '_>, el: NodeId) -> R<()> {
+    let Some(&(owner, disabled)) = cx.st().custom.faces.get(&el) else {
+        return Ok(());
+    };
+    let Some(State::Custom(def, _)) = cx.st().custom.state.get(&el).copied() else {
+        return Ok(());
+    };
+    let (now_owner, now_disabled) = {
+        let dom = cx.dom();
+        if dom.get(el).is_none() {
+            drop(dom);
+            cx.st().custom.faces.remove(&el);
+            return Ok(());
+        }
+        (
+            pageon_dom::forms::owner(&dom, el),
+            pageon_dom::forms::disabled(&dom, el),
+        )
+    };
+    cx.st().custom.faces.insert(el, (now_owner, now_disabled));
+    cx.dom_mut().internals_mut(el).disabled = now_disabled;
+    if now_owner != owner {
+        call(cx, el, def, Callback::FormAssociated(now_owner))?;
+    }
+    if now_disabled != disabled {
+        call(cx, el, def, Callback::FormDisabled(now_disabled))?;
+    }
+    Ok(())
+}
+
+/// `formResetCallback` of a form-associated element.
+pub(crate) fn form_reset(cx: &mut Cx<'_, '_, '_>, el: NodeId) -> R<()> {
+    let state = cx.st().custom.state.get(&el).copied();
+    if let Some(State::Custom(def, _)) = state {
+        call(cx, el, def, Callback::FormReset)?;
+    }
+    Ok(())
+}
+
+/// What `attachInternals()` needs to know: whether `el` is a custom element (being constructed
+/// or constructed), and whether its definition disables internals.
+pub(crate) fn internals_allowed(cx: &Cx<'_, '_, '_>, el: NodeId) -> Option<bool> {
+    let (state, constructing) = {
+        let st = cx.st();
+        (
+            st.custom.state.get(&el).copied(),
+            st.custom.construction.last() == Some(&el),
+        )
+    };
+    let def = match state {
+        Some(State::Custom(d, _)) => d,
+        _ if constructing => def_for(cx, el)?,
+        _ => return None,
+    };
+    let allowed = !cx.st().custom.defs[def].disable_internals;
+    Some(allowed)
 }
 
 enum Callback {
     Connected,
     Disconnected,
     Attribute(String, Option<String>, Option<String>),
+    FormAssociated(Option<NodeId>),
+    FormReset,
+    FormDisabled(bool),
 }
 
 fn call(cx: &mut Cx<'_, '_, '_>, el: NodeId, def: usize, c: Callback) -> R<()> {
+    enum Arg {
+        Str(Option<String>),
+        Node(Option<NodeId>),
+        Bool(bool),
+    }
     let (f, args) = {
         let st = cx.st();
         let d = &st.custom.defs[def];
         match c {
             Callback::Connected => (d.connected.clone(), Vec::new()),
             Callback::Disconnected => (d.disconnected.clone(), Vec::new()),
-            Callback::Attribute(n, old, new) => {
-                (d.attribute_changed.clone(), vec![Some(n), old, new])
-            }
+            Callback::Attribute(n, old, new) => (
+                d.attribute_changed.clone(),
+                vec![Arg::Str(Some(n)), Arg::Str(old), Arg::Str(new)],
+            ),
+            Callback::FormAssociated(f) => (d.form_associated_cb.clone(), vec![Arg::Node(f)]),
+            Callback::FormReset => (d.form_reset_cb.clone(), Vec::new()),
+            Callback::FormDisabled(b) => (d.form_disabled_cb.clone(), vec![Arg::Bool(b)]),
         }
     };
     let Some(f) = f else { return Ok(()) };
@@ -209,8 +309,10 @@ fn call(cx: &mut Cx<'_, '_, '_>, el: NodeId, def: usize, c: Callback) -> R<()> {
     let args: Vec<v8::Local<v8::Value>> = args
         .into_iter()
         .map(|a| match a {
-            Some(s) => cx.str(&s).into(),
-            None => v8::null(cx.scope).into(),
+            Arg::Str(Some(s)) => cx.str(&s).into(),
+            Arg::Node(Some(n)) => cx.wrap(Obj::Node(n)).into(),
+            Arg::Bool(b) => v8::Boolean::new(cx.scope, b).into(),
+            Arg::Str(None) | Arg::Node(None) => v8::null(cx.scope).into(),
         })
         .collect();
     cx.invoke(&f, this, &args)?;
@@ -228,7 +330,14 @@ pub(crate) fn react(cx: &mut Cx<'_, '_, '_>) -> R<()> {
         if !active || reacting {
             return Ok(());
         }
-        let reactions = collect(cx);
+        let (reactions, changed) = collect(cx);
+        if changed && !cx.st().custom.faces.is_empty() {
+            let faces: Vec<NodeId> = cx.st().custom.faces.keys().copied().collect();
+            cx.st().custom.reacting = true;
+            let r = faces.into_iter().try_for_each(|el| face_check(cx, el));
+            cx.st().custom.reacting = false;
+            r?;
+        }
         if reactions.is_empty() {
             return Ok(());
         }
@@ -260,8 +369,9 @@ fn run(cx: &mut Cx<'_, '_, '_>, reactions: Vec<Reaction>) -> R<()> {
     Ok(())
 }
 
-/// Reads the mutation log from the cursor and turns it into reactions.
-fn collect(cx: &mut Cx<'_, '_, '_>) -> Vec<Reaction> {
+/// Reads the mutation log from the cursor and turns it into reactions; and whether the log had
+/// entries (form owners may have changed).
+fn collect(cx: &mut Cx<'_, '_, '_>) -> (Vec<Reaction>, bool) {
     let log: Vec<Mutation> = {
         let cursor = cx.st().custom.cursor;
         let dom = cx.dom();
@@ -279,6 +389,7 @@ fn collect(cx: &mut Cx<'_, '_, '_>) -> Vec<Reaction> {
         }
     }
     let mut out = Vec::new();
+    let changed = !log.is_empty();
     for m in log {
         match m {
             Mutation::ChildList { added, removed, .. } => {
@@ -330,7 +441,7 @@ fn collect(cx: &mut Cx<'_, '_, '_>) -> Vec<Reaction> {
             _ => {}
         }
     }
-    out
+    (out, changed)
 }
 
 /// Upgrades every candidate in `root`'s shadow-including subtree (in tree order).
@@ -471,6 +582,27 @@ pub mod custom_element_registry {
                 }
             }
         }
+        let mut disable_internals = false;
+        let features = prop(cx, &ctor, "disabledFeatures")?;
+        let features = cx.local(&features);
+        if let Ok(arr) = v8::Local::<v8::Array>::try_from(features) {
+            for i in 0..arr.length() {
+                if let Some(s) = arr.get_index(cx.scope, i) {
+                    disable_internals |= s.to_rust_string_lossy(cx.scope) == "internals";
+                }
+            }
+        }
+        let fa = prop(cx, &ctor, "formAssociated")?;
+        let form_associated = cx.local(&fa).boolean_value(cx.scope);
+        let (form_associated_cb, form_reset_cb, form_disabled_cb) = if form_associated {
+            (
+                callback(cx, &proto, "formAssociatedCallback")?,
+                callback(cx, &proto, "formResetCallback")?,
+                callback(cx, &proto, "formDisabledCallback")?,
+            )
+        } else {
+            (None, None, None)
+        };
         cx.st().custom.defs.push(Definition {
             name: name.clone(),
             ctor: ctor.clone(),
@@ -479,6 +611,11 @@ pub mod custom_element_registry {
             connected,
             disconnected,
             attribute_changed,
+            form_associated,
+            disable_internals,
+            form_associated_cb,
+            form_reset_cb,
+            form_disabled_cb,
         });
         super::super::observers::update_observing(cx);
         // Upgrade what is already in the document, in tree order.

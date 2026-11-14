@@ -14,14 +14,13 @@ fn attr(cx: &Cx<'_, '_, '_>, id: NodeId, name: &str) -> Option<String> {
 }
 
 fn form_of(cx: &Cx<'_, '_, '_>, id: NodeId) -> Option<NodeId> {
-    let dom = cx.dom();
-    std::iter::successors(dom.parent(id), |&p| dom.parent(p))
-        .find(|&p| dom.get(p).is_some_and(|n| n.is_html("form")))
+    pageon_dom::forms::owner(&cx.dom(), id)
 }
 
 /// `HTMLInputElement`.
 pub mod html_input_element {
     use super::*;
+    pub use crate::dom::validation::api::*;
 
     const TYPES: &[&str] = &[
         "hidden",
@@ -188,31 +187,32 @@ pub mod html_input_element {
     }
 
     pub fn get_labels(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<Option<Obj>> {
-        let id = this.node()?;
-        let own = attr(cx, id, "id");
-        let labels: Vec<NodeId> = {
-            let dom = cx.dom();
-            dom.traverse(dom.root())
-                .filter_map(|e| match e {
-                    pageon_dom::Edge::Enter(n)
-                        if dom.get(n).is_some_and(|x| x.is_html("label")) =>
-                    {
-                        let x = dom.get(n)?;
-                        let by_for = own.as_deref().is_some_and(|i| x.attr("for") == Some(i));
-                        let wraps = x.attr("for").is_none() && dom.is_inclusive_ancestor(n, id);
-                        (by_for || wraps).then_some(n)
-                    }
-                    _ => None,
-                })
-                .collect()
-        };
+        let labels = labels_of(cx, this.node()?);
         Ok(Some(cx.alloc(Iface::NodeList, Slot::Static(labels))))
+    }
+
+    /// The labels of a labelable element: `label for=id`, or wrapping labels without `for`.
+    pub(crate) fn labels_of(cx: &Cx<'_, '_, '_>, id: NodeId) -> Vec<NodeId> {
+        let own = attr(cx, id, "id");
+        let dom = cx.dom();
+        dom.traverse(dom.root())
+            .filter_map(|e| match e {
+                pageon_dom::Edge::Enter(n) if dom.get(n).is_some_and(|x| x.is_html("label")) => {
+                    let x = dom.get(n)?;
+                    let by_for = own.as_deref().is_some_and(|i| x.attr("for") == Some(i));
+                    let wraps = x.attr("for").is_none() && dom.is_inclusive_ancestor(n, id);
+                    (by_for || wraps).then_some(n)
+                }
+                _ => None,
+            })
+            .collect()
     }
 }
 
 /// `HTMLTextAreaElement`.
 pub mod html_text_area_element {
     use super::*;
+    pub use crate::dom::validation::api::*;
 
     pub fn get_value(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<String> {
         let id = this.node()?;
@@ -374,6 +374,7 @@ pub mod html_option_element {
 /// `HTMLSelectElement`.
 pub mod html_select_element {
     use super::*;
+    pub use crate::dom::validation::api::*;
 
     fn options(cx: &Cx<'_, '_, '_>, id: NodeId) -> Vec<NodeId> {
         collect(&cx.dom(), &Coll::Options(id))
@@ -459,6 +460,7 @@ pub mod html_select_element {
 /// `HTMLButtonElement`.
 pub mod html_button_element {
     use super::*;
+    pub use crate::dom::validation::api::*;
 
     pub fn get_type_(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<String> {
         let t = attr(cx, this.node()?, "type")
@@ -504,6 +506,21 @@ pub mod html_form_element {
     /// `submit()`: submits without a `submit` event.
     pub fn submit(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<()> {
         crate::dom::input::submit_form(cx, this.node()?, None, false)
+    }
+
+    /// `checkValidity()`.
+    pub fn check_validity(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<bool> {
+        crate::dom::validation::check_form(cx, this.node()?)
+    }
+
+    /// `reportValidity()`.
+    pub fn report_validity(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<bool> {
+        crate::dom::validation::report_form(cx, this.node()?)
+    }
+
+    /// `reset()`.
+    pub fn reset(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<()> {
+        crate::dom::input::reset_form(cx, this.node()?)
     }
 
     /// `requestSubmit()`: fires `submit` (cancelable), then submits.

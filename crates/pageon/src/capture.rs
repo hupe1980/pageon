@@ -64,7 +64,7 @@ pub(crate) fn frame_documents(root: &Document) -> Vec<Option<&Document>> {
     entries(root).into_iter().map(|e| e.doc).collect()
 }
 
-fn backend(frame: usize, id: NodeId) -> i64 {
+pub(crate) fn backend(frame: usize, id: NodeId) -> i64 {
     ((frame as i64 & 0x7fff) << 48)
         | (i64::from(id.generation() & 0xffff) << 32)
         | (i64::from(id.index()) + 1)

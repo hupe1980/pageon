@@ -121,6 +121,8 @@ pub struct Composed {
     pub host_of: HashMap<NodeId, u32>,
     /// Node → the ordinal of the shadow tree whose slot it is assigned to.
     pub slotted: HashMap<NodeId, u32>,
+    /// Shadow root → its ordinal (the roots themselves are not in the flat tree).
+    pub roots: HashMap<NodeId, u32>,
 }
 
 impl Dom {
@@ -310,6 +312,7 @@ impl Dom {
             scope_of: HashMap::new(),
             host_of: HashMap::new(),
             slotted: HashMap::new(),
+            roots: HashMap::new(),
         };
         if !self.has_shadow() {
             return out;
@@ -333,6 +336,7 @@ impl Dom {
         for &(host, root) in &hosts {
             let n = ordinal[&root];
             out.host_of.insert(host, n);
+            out.roots.insert(root, n);
             for e in self.traverse(root) {
                 if let crate::Edge::Enter(x) = e
                     && x != root
