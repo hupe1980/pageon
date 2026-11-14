@@ -389,14 +389,17 @@ fn us2_multipart_script_navigation_and_fragments() {
         .unwrap_or_else(|| panic!("must stop"));
     assert!(matches!(e, pageon::LoadError::TooManyRedirects(_)), "{e}");
 
-    // A fragment link stays on the page.
+    // A fragment link stays on the page: a same-document navigation, nothing requested.
     let (mut tab, obs) = open(&session, "https://shop.test/hash");
     let before = env.urls().len();
     let o = act(
         &mut tab,
         &format!("click {}", find(&obs, "link", "Details")),
     );
-    assert!(o.navigated.is_none(), "{o}");
+    assert!(
+        o.same_document && o.navigated.as_deref() == Some("https://shop.test/hash#details"),
+        "{o}"
+    );
     assert_eq!(env.urls().len(), before);
     assert_eq!(text_of(tab.document(), "out"), "#details");
 }

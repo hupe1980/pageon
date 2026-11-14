@@ -1096,3 +1096,47 @@ fn isolated_worlds_are_separate_javascript_over_one_document() {
         "{refused}"
     );
 }
+
+#[test]
+fn history_api_navigations_stay_in_the_document() {
+    let env = Replay::new(site(vec![html(
+        "https://spa.test/",
+        "<title>SPA</title><script>window.go = (p) => history.pushState({p}, '', p)</script>",
+    )]));
+    let session = Session::new(env);
+    let mut c = Cdp::new(&session);
+    for m in ["Page.enable", "Runtime.enable"] {
+        c.page(m, json!({}));
+    }
+    c.page("Page.navigate", json!({"url": "https://spa.test/"}));
+    c.events.clear();
+    c.eval("go('/orders')");
+    let within: Vec<&Value> = c
+        .events
+        .iter()
+        .filter(|e| e["method"] == "Page.navigatedWithinDocument")
+        .collect();
+    assert_eq!(within.len(), 1, "{:#?}", c.events);
+    assert_eq!(within[0]["params"]["url"], "https://spa.test/orders");
+    assert_eq!(within[0]["params"]["navigationType"], "historyApi");
+    assert!(
+        !c.events
+            .iter()
+            .any(|e| e["method"] == "Runtime.executionContextsCleared"
+                || e["method"] == "Page.frameNavigated"),
+        "the document stays: {:#?}",
+        c.events
+    );
+    c.events.clear();
+    c.eval("location.hash = 'x'");
+    let frag = c
+        .events
+        .iter()
+        .find(|e| e["method"] == "Page.navigatedWithinDocument");
+    assert_eq!(
+        frag.map(|e| e["params"]["navigationType"].clone()),
+        Some(json!("fragment"))
+    );
+    let h = c.page("Page.getNavigationHistory", json!({}));
+    assert_eq!(h["result"]["currentIndex"], 2, "{h}");
+}

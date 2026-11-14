@@ -811,17 +811,22 @@ impl Engine {
     }
 
     /// Moves the document to one of its own history entries: URL, state, `popstate` and
-    /// (fragment change) `hashchange`.
+    /// (fragment change) `hashchange`, then the entry's viewport scroll if given
+    /// (`scrollRestoration` `auto`), after the page re-rendered for it.
     pub fn restore_history(
         &mut self,
         realm: usize,
-        url: &str,
-        state: Option<crate::dom::session::State>,
-        index: u32,
-        length: u32,
+        entry: (&str, Option<crate::dom::session::State>),
+        (index, length): (u32, u32),
+        scroll: Option<(f64, f64)>,
     ) {
+        let (url, state) = entry;
         let _ = self.input(realm, "popstate", |cx| {
-            crate::dom::session::restore(cx, url, state, index, length)
+            crate::dom::session::restore(cx, url, state, index, length)?;
+            if let Some((x, y)) = scroll {
+                crate::dom::scroll::set(cx, Scroller::Viewport, x, y);
+            }
+            Ok(())
         });
     }
 

@@ -149,9 +149,10 @@ pageon is pre-release. Its [threat model](THREAT_MODEL.md) lists what it defends
 every known gap, open ones included; read it before pointing an agent at anything that
 matters. Report vulnerabilities privately ([SECURITY.md](SECURITY.md)).
 
-Not yet supported: form-associated custom elements (`ElementInternals`), constructable
-stylesheets, `iframe.contentWindow`, workers,
-WebDriver classic, request interception. Unsupported APIs are absent rather than faked, so
+Not yet supported: form-associated custom elements (`ElementInternals`) and form validation,
+constructable stylesheets, `iframe.contentWindow` and `postMessage`, file uploads (`Blob`,
+`File`), `WebSocket` and `EventSource`, `IndexedDB`, workers, Selection and `Range`, the
+Navigation API, `crypto.subtle`, WebDriver classic, request interception. Unsupported APIs are absent rather than faked, so
 pages and clients can detect them, and protocol methods pageon lacks fail at once with what to
 use instead.
 

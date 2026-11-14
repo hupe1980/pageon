@@ -130,6 +130,7 @@ const EVENTS: &[&str] = &[
     "browsingContext.navigationCommitted",
     "browsingContext.navigationFailed",
     "browsingContext.fragmentNavigated",
+    "browsingContext.historyUpdated",
     "browsingContext.domContentLoaded",
     "browsingContext.load",
     "script.realmCreated",
@@ -150,7 +151,6 @@ const SILENT: &[&str] = &[
     "input",
     "browsingContext.userPromptOpened",
     "browsingContext.userPromptClosed",
-    "browsingContext.historyUpdated",
     "browsingContext.navigationAborted",
     "browsingContext.downloadWillBegin",
     "browsingContext.downloadEnd",
@@ -825,11 +825,19 @@ impl<'s, E: Env> Session<'s, E> {
                 if let Some(c) = self.contexts.iter_mut().find(|c| c.id == id) {
                     c.url = url.clone();
                 }
-                self.emit(
-                    "browsingContext.fragmentNavigated",
-                    json!({"context": id, "navigation": nav, "timestamp": ts, "url": url}),
-                    Some(&id),
-                );
+                if p["navigationType"].as_str() == Some("historyApi") {
+                    self.emit(
+                        "browsingContext.historyUpdated",
+                        json!({"context": id, "timestamp": ts, "url": url}),
+                        Some(&id),
+                    );
+                } else {
+                    self.emit(
+                        "browsingContext.fragmentNavigated",
+                        json!({"context": id, "navigation": nav, "timestamp": ts, "url": url}),
+                        Some(&id),
+                    );
+                }
             }
             "Page.lifecycleEvent" => {
                 let event = match p["name"].as_str() {

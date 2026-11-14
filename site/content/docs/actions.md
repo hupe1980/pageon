@@ -61,12 +61,19 @@ ok click e12 · navigated to "https://shop.example/confirm" · 2 request(s) · s
 
 An outcome reports what actually happened, not what was attempted:
 
-- the navigation, if any, and refusals by the site (`refused: challenge by …`);
+- the navigation, if any, and refusals by the site (`refused: challenge by …`); single-page
+  apps that change the URL in place (`history.pushState`, fragments) report
+  `navigated to "…" (same page)`;
 - dialogs the page opened (answered by the dialog policy), popups, downloads;
 - requests made, and requests held or blocked by the policy;
 - new script errors;
 - a tool's result, for tool calls;
 - how settling ended.
+
+`back` and `forward` move through the tab's history like a browser's buttons: within a
+single-page app they stay in the page (the app gets `popstate`), elsewhere they load the page
+with its saved state. Entries a page added without a click or key from you are skipped, as in
+Chrome, so a page cannot trap the agent with `history.pushState`.
 
 ## Errors
 

@@ -326,6 +326,9 @@ pub struct Outcome {
     pub action: String,
     /// The URL the tab navigated to, if it did.
     pub navigated: Option<String>,
+    /// The navigation stayed in the page (the history API, a fragment): no document loaded.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub same_document: bool,
     /// Dialogs the page opened, answered by the dialog policy.
     pub dialogs: Vec<Dialog>,
     /// Popup URLs (`window.open`, `target=_blank`): open them with [`Session::open`].
@@ -359,7 +362,11 @@ impl fmt::Display for Outcome {
         let mut parts = vec![format!("ok {}", self.action)];
         parts.extend(self.scrolled.iter().cloned());
         if let Some(u) = &self.navigated {
-            parts.push(format!("navigated to {}", q(u.as_str())));
+            parts.push(if self.same_document {
+                format!("navigated to {} (same page)", q(u.as_str()))
+            } else {
+                format!("navigated to {}", q(u.as_str()))
+            });
         }
         for d in &self.dialogs {
             parts.push(if d.kind == "alert" {
@@ -564,13 +571,47 @@ enum History {
     Keep,
 }
 
+/// One entry of a tab's history: a URL of one document, with the page's state.
+#[derive(Debug, Clone)]
+struct Entry {
+    url: String,
+    /// `history.state`, serialized.
+    state: Option<pageon_js::SavedState>,
+    /// The document it belongs to: entries of one document traverse in place.
+    doc: u64,
+    /// The viewport scroll when the entry was left.
+    scroll: (f64, f64),
+    /// The page added an entry from here without a user activation: the agent's `back` and
+    /// `forward` skip it (Chrome's history-manipulation intervention).
+    skippable: bool,
+}
+
+impl Entry {
+    fn new(url: String, doc: u64) -> Self {
+        Self {
+            url,
+            state: None,
+            doc,
+            scroll: (0.0, 0.0),
+            skippable: false,
+        }
+    }
+}
+
+/// The most history entries a tab keeps (Chrome's figure); the oldest go first.
+const MAX_ENTRIES: usize = 50;
+
 /// A live page in a [`Session`]: its documents keep running between actions.
 pub struct Tab<'s, E: Env> {
     pub(crate) session: &'s Session<E>,
     options: LoadOptions,
     pub(crate) doc: Document,
-    history: Vec<String>,
+    history: Vec<Entry>,
     index: usize,
+    /// The current document's number (entries with it traverse in place).
+    doc_seq: u64,
+    /// History requests being applied (a page answering traversals with traversals is cut).
+    history_depth: u32,
     pub(crate) episode: Episode,
     downloads: Vec<Download>,
     opened: Outcome,
@@ -784,8 +825,10 @@ impl<'s, E: Env> Tab<'s, E> {
         let tab = Self {
             session,
             options,
-            history: vec![doc.final_url.clone()],
+            history: vec![Entry::new(doc.final_url.clone(), 1)],
             index: 0,
+            doc_seq: 1,
+            history_depth: 0,
             doc,
             episode: Episode::new(Budget::o200k(4000), Mode::Diff),
             downloads: Vec::new(),
@@ -796,6 +839,9 @@ impl<'s, E: Env> Tab<'s, E> {
             observed: 0,
         };
         let mut tab = tab;
+        // History changes the page made while loading (a router's `replaceState`).
+        let mut load_out = Outcome::default();
+        tab.apply_history(&mut load_out);
         tab.record_step(
             format!("open {input}"),
             serde_json::json!({"open": {"url": input, "options": options}}),
@@ -911,8 +957,11 @@ impl<'s, E: Env> Tab<'s, E> {
     }
 
     /// The history of this tab, and the index of the current entry.
-    pub fn history(&self) -> (&[String], usize) {
-        (&self.history, self.index)
+    pub fn history(&self) -> (Vec<String>, usize) {
+        (
+            self.history.iter().map(|e| e.url.clone()).collect(),
+            self.index,
+        )
     }
 
     /// Every download so far.
@@ -1048,15 +1097,13 @@ impl<'s, E: Env> Tab<'s, E> {
             action: action.to_string(),
             ..Outcome::default()
         };
-        let (top, url) = (self.doc.js.scroll.viewport, self.doc.final_url.clone());
+        let top = self.doc.js.scroll.viewport;
         let result = self.run(&action, &mut out);
         // Any scroll the action caused (keys, in-page links, the page's own scripts), unless
         // the action reported it already or loaded another page.
         let now = self.doc.js.scroll.viewport;
-        if now != top
-            && self.doc.final_url == url
-            && !out.scrolled.iter().any(|s| s.starts_with("scrolled to"))
-        {
+        let loaded = out.navigated.is_some() && !out.same_document;
+        if now != top && !loaded && !out.scrolled.iter().any(|s| s.starts_with("scrolled to")) {
             out.scrolled
                 .push(format!("scrolled to {},{}", now.0.round(), now.1.round()));
         }
@@ -1269,11 +1316,23 @@ impl<'s, E: Env> Tab<'s, E> {
                 self.navigate(None, &nav, History::Push, out)
             }
             Action::Back | Action::Forward => {
-                let next = if *action == Action::Back {
-                    self.index.checked_sub(1)
-                } else {
-                    Some(self.index + 1).filter(|&i| i < self.history.len())
+                let back = *action == Action::Back;
+                let step = |i: usize| -> Option<usize> {
+                    if back {
+                        i.checked_sub(1)
+                    } else {
+                        Some(i + 1).filter(|&j| j < self.history.len())
+                    }
                 };
+                // Entries the page added without a user activation are skipped, so a page
+                // cannot hold the agent (Chrome's history-manipulation intervention).
+                let mut next = step(self.index);
+                while let Some(i) = next
+                    && self.history[i].skippable
+                    && let Some(j) = step(i)
+                {
+                    next = Some(j);
+                }
                 let Some(i) = next else {
                     return Err(ActionError::Unsupported(format!(
                         "{action} (no {} page in this tab)",
@@ -1284,20 +1343,7 @@ impl<'s, E: Env> Tab<'s, E> {
                         }
                     )));
                 };
-                let nav = NavRequest {
-                    url: self.history[i].clone(),
-                    method: "GET".into(),
-                    body: Vec::new(),
-                    content_type: None,
-                    replace: false,
-                };
-                let before = self.index;
-                self.index = i;
-                let r = self.navigate(None, &nav, History::Keep, out);
-                if r.is_err() {
-                    self.index = before;
-                }
-                r
+                self.traverse_to(i, true, out)
             }
             Action::Wait(ms) => {
                 let live = self.live(0)?;
@@ -1768,6 +1814,12 @@ impl<'s, E: Env> Tab<'s, E> {
         out.dialogs.extend(dialogs);
         out.popups.extend(popups);
         refresh(&mut self.doc);
+        if frame == 0 {
+            self.apply_history(out);
+        } else {
+            // Frames have no session history of their own here: their requests are dropped.
+            let _ = live.engine.borrow_mut().take_history(live.realm);
+        }
         let Some(nav) = nav else { return Ok(()) };
         if frame != 0 {
             return Err(ActionError::Unsupported(
@@ -1791,12 +1843,16 @@ impl<'s, E: Env> Tab<'s, E> {
         mode: History,
         out: &mut Outcome,
     ) -> Result<(), ActionError> {
+        // A traversal restores the entry's state for the new document's scripts.
+        let restored = (mode == History::Keep)
+            .then(|| self.history[self.index].state.clone())
+            .flatten();
         let start = Start {
             initiator: initiator.map(|c| (c, nav)),
             keep: true,
             parent: None,
             delegate_tools: false,
-            history: None,
+            history: restored.as_ref(),
         };
         let loaded = crate::load::open(
             &nav.url,
@@ -1816,14 +1872,28 @@ impl<'s, E: Env> Tab<'s, E> {
                     virtual_ms: doc.summary.virtual_ms,
                     pending_timers: doc.summary.pending_timers,
                 };
+                self.doc_seq += 1;
+                let seq = self.doc_seq;
+                // A new tab's initial `about:blank` is replaced by its first page (as Chrome).
+                let initial = self.history.len() == 1 && self.history[0].url == "about:blank";
+                let mode = if initial && mode == History::Push {
+                    History::Replace
+                } else {
+                    mode
+                };
                 match mode {
                     History::Push => {
+                        self.history[self.index].scroll = self.doc.js.scroll.viewport;
                         self.history.truncate(self.index + 1);
-                        self.history.push(url.clone());
-                        self.index = self.history.len() - 1;
+                        self.history.push(Entry::new(url.clone(), seq));
+                        self.trim_history();
                     }
-                    History::Replace => self.history[self.index] = url.clone(),
-                    History::Keep => self.history[self.index] = url.clone(),
+                    History::Replace => self.history[self.index] = Entry::new(url.clone(), seq),
+                    History::Keep => {
+                        let e = &mut self.history[self.index];
+                        e.url.clone_from(&url);
+                        e.doc = seq;
+                    }
                 }
                 self.session.seen(doc.loaded_at);
                 let mut doc = *doc;
@@ -1831,6 +1901,9 @@ impl<'s, E: Env> Tab<'s, E> {
                 out.refusal.clone_from(&doc.refusal);
                 self.doc = doc;
                 out.navigated = Some(url);
+                out.same_document = false;
+                // History changes the new page made while loading.
+                self.apply_history(out);
             }
             Loaded::Download(d) => {
                 out.downloads.push(d.clone());
@@ -1838,6 +1911,151 @@ impl<'s, E: Env> Tab<'s, E> {
             }
         }
         Ok(())
+    }
+
+    /// Keeps at most [`MAX_ENTRIES`] and points at the last one. Entries a page added without
+    /// a user activation go first, oldest first, so a page flooding the history cannot bury
+    /// the agent's way back; then the oldest entries.
+    fn trim_history(&mut self) {
+        let last = self.history.len().saturating_sub(1);
+        while self.history.len() > MAX_ENTRIES {
+            let drop = (0..last.min(self.history.len() - 1))
+                .find(|&i| self.history[i].skippable)
+                .unwrap_or(0);
+            self.history.remove(drop);
+        }
+        self.index = self.history.len() - 1;
+    }
+
+    /// Tells the current document where it is in the tab's history.
+    fn sync_history(&self) {
+        if let Some(live) = &self.doc.live {
+            let (index, len) = (self.index, self.history.len());
+            live.engine.borrow_mut().set_history(
+                live.realm,
+                u32::try_from(index).unwrap_or(u32::MAX),
+                u32::try_from(len).unwrap_or(u32::MAX),
+            );
+        }
+    }
+
+    /// Applies what the main document asked of the history (`pushState`, `replaceState`,
+    /// fragment navigations, `back`/`forward`/`go`), in order; in-place URL changes are
+    /// reported as `navigated to "…" (same page)` unless the action loaded a document.
+    fn apply_history(&mut self, out: &mut Outcome) {
+        self.history_depth += 1;
+        self.apply_history_ops(out);
+        self.history_depth -= 1;
+        self.sync_history();
+    }
+
+    fn apply_history_ops(&mut self, out: &mut Outcome) {
+        // A page answering `popstate` or a load with more history calls is bounded here.
+        for _ in 0..16 {
+            let Some(live) = self.doc.live.clone() else {
+                return;
+            };
+            let ops = live.engine.borrow_mut().take_history(live.realm);
+            if ops.is_empty() {
+                break;
+            }
+            for op in ops {
+                match op {
+                    pageon_js::HistoryOp::Push {
+                        url,
+                        state,
+                        activated,
+                    } => {
+                        let current = &mut self.history[self.index];
+                        current.scroll = self.doc.js.scroll.viewport;
+                        if !activated {
+                            current.skippable = true;
+                        }
+                        self.history.truncate(self.index + 1);
+                        let mut e = Entry::new(self.redact(url.clone()), self.doc_seq);
+                        e.state = state;
+                        self.history.push(e);
+                        self.trim_history();
+                        self.moved_in_place(url, out);
+                    }
+                    pageon_js::HistoryOp::Replace { url, state } => {
+                        let e = &mut self.history[self.index];
+                        e.state = state;
+                        if e.url != url {
+                            e.url.clone_from(&url);
+                            self.moved_in_place(url, out);
+                        }
+                    }
+                    pageon_js::HistoryOp::Traverse(delta) => {
+                        let target = i64::try_from(self.index).unwrap_or(0) + i64::from(delta);
+                        if self.history_depth <= 3
+                            && let Ok(i) = usize::try_from(target)
+                            && i < self.history.len()
+                        {
+                            let _ = self.traverse_to(i, false, out);
+                        }
+                    }
+                }
+            }
+            self.sync_history();
+        }
+    }
+
+    /// The document's URL changed in place.
+    fn moved_in_place(&mut self, url: String, out: &mut Outcome) {
+        let loaded = out.navigated.is_some() && !out.same_document;
+        self.doc.final_url.clone_from(&url);
+        out.navigated = Some(url);
+        out.same_document = !loaded;
+    }
+
+    /// Goes to history entry `i`: in place (`popstate`) when it belongs to the current
+    /// document, by loading its document (with its state) otherwise.
+    fn traverse_to(
+        &mut self,
+        i: usize,
+        settle: bool,
+        out: &mut Outcome,
+    ) -> Result<(), ActionError> {
+        let same = self.history[i].doc == self.doc_seq;
+        if same && let Some(live) = self.doc.live.clone() {
+            self.history[self.index].scroll = self.doc.js.scroll.viewport;
+            self.index = i;
+            let e = self.history[i].clone();
+            let (_, manual) = live.engine.borrow().history_state(live.realm);
+            let errors_before = live.engine.borrow().errors().len();
+            live.engine.borrow_mut().restore_history(
+                live.realm,
+                (&e.url, e.state.clone()),
+                (
+                    u32::try_from(i).unwrap_or(u32::MAX),
+                    u32::try_from(self.history.len()).unwrap_or(u32::MAX),
+                ),
+                (!manual).then_some(e.scroll),
+            );
+            self.moved_in_place(e.url, out);
+            // The agent's move settles like an action; a page's own move runs within its task.
+            return if settle {
+                self.after(0, &live, errors_before, out)
+            } else {
+                Ok(())
+            };
+        }
+        let nav = NavRequest {
+            url: self.history[i].url.clone(),
+            method: "GET".into(),
+            body: Vec::new(),
+            content_type: None,
+            replace: false,
+        };
+        let before = self.index;
+        self.history[before].scroll = self.doc.js.scroll.viewport;
+        self.index = i;
+        let r = self.navigate(None, &nav, History::Keep, out);
+        if r.is_err() {
+            self.index = before;
+        }
+        r
     }
 }
 

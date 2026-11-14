@@ -51,7 +51,9 @@ await page.frameLocator('#payment').getByLabel('Card').fill('4242 4242 4242 4242
 The CDP subset Puppeteer and Playwright use: targets and frames (same- and cross-origin),
 navigation and history, evaluate and handles, selectors, locators and auto-waiting, trusted
 clicks and typing, cookies, request/response, console and error events, and screenshots (PNG and
-JPEG, viewport, full page, clip, elements).
+JPEG, viewport, full page, clip, elements). Single-page apps that route with the History API
+send `Page.navigatedWithinDocument` (BiDi: `browsingContext.historyUpdated`), so `page.url()`,
+`waitForURL` and `goBack` work as in Chrome.
 
 Isolated worlds are real, as in Chrome: Puppeteer's and Playwright's utility worlds run in their
 own JavaScript context over the same document. A page that redefines `Array.prototype.map`,

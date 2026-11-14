@@ -1,0 +1,153 @@
+<!doctype html>
+<html>
+<head><meta charset=utf-8><title>Platform basics</title>
+<style>
+  #box { width: 120px; height: 40px; padding: 5px; border: 2px solid black; }
+  @media (min-width: 600px) { #mq { color: rgb(0, 128, 0); } }
+</style>
+</head>
+<body>
+<div id=box>box</div><p id=mq>mq</p>
+<select id=sel></select>
+<pre id=out></pre>
+<script>
+// Derived from the web-platform-tests of each API (html/browsers/history, css/cssom-view
+// matchMedia, WebCryptoAPI/getRandomValues, encoding, html/infrastructure/safe-passing-of-
+// structured-data, resize-observer, requestidlecallback, html/semantics/embedded-content).
+const results = [];
+const check = (name, ok) => results.push([name, !!ok]);
+const throws = (f, name) => { try { f(); return false; } catch (e) { return e.name === name; } };
+const $ = (id) => document.getElementById(id);
+
+// ----- History -----
+check('history exists', typeof history === 'object' && history instanceof History);
+check('history.length starts at 1', history.length === 1);
+check('history.state starts null', history.state === null);
+check('scrollRestoration defaults to auto', history.scrollRestoration === 'auto');
+history.scrollRestoration = 'manual';
+check('scrollRestoration can be manual', history.scrollRestoration === 'manual');
+history.scrollRestoration = 'bogus';
+check('invalid scrollRestoration is ignored', history.scrollRestoration === 'manual');
+history.scrollRestoration = 'auto';
+history.pushState({ n: 1, d: new Date(0), m: new Map([[1, 'a']]) }, '', '/one');
+check('pushState changes the URL', location.pathname === '/one');
+check('pushState adds an entry', history.length === 2);
+check('state is a structured clone', history.state.n === 1 && history.state.d instanceof Date && history.state.m.get(1) === 'a');
+check('history.state is the same object each time', history.state === history.state);
+history.replaceState('two', '', '/two?x=1#f');
+check('replaceState changes the URL and state', location.href.endsWith('/two?x=1#f') && history.state === 'two');
+check('replaceState adds no entry', history.length === 2);
+check('pushState with another origin is a SecurityError', throws(() => history.pushState(null, '', 'https://elsewhere.test/'), 'SecurityError'));
+check('the URL is unchanged after a refused pushState', location.pathname === '/two');
+check('pushState of a function is a DataCloneError', throws(() => history.pushState(() => 1, ''), 'DataCloneError'));
+check('pushState of a DOM node is a DataCloneError', throws(() => history.pushState(document.body, ''), 'DataCloneError'));
+check('PopStateEvent constructor', new PopStateEvent('popstate', { state: 5 }).state === 5);
+check('PopStateEvent hasUAVisualTransition', new PopStateEvent('popstate').hasUAVisualTransition === false);
+check('no Navigation API', !('navigation' in window));
+
+// ----- matchMedia -----
+const mql = matchMedia('(min-width: 600px)');
+check('matchMedia returns a MediaQueryList', mql instanceof MediaQueryList && mql instanceof EventTarget);
+check('matchMedia matches the viewport', mql.matches === true && mql.media === '(min-width: 600px)');
+check('matchMedia agrees with CSS', getComputedStyle($('mq')).color === 'rgb(0, 128, 0)');
+check('matchMedia is a new object each call', matchMedia('(min-width: 600px)') !== mql);
+check('prefers-color-scheme is light', matchMedia('(prefers-color-scheme: dark)').matches === false && matchMedia('(prefers-color-scheme: light)').matches === true);
+check('invalid list serializes as not all', matchMedia('and and').media === 'not all' && matchMedia('and and').matches === false);
+check('addListener and removeListener exist', typeof mql.addListener === 'function' && typeof mql.removeListener === 'function');
+check('MediaQueryListEvent', new MediaQueryListEvent('change', { media: 'print', matches: true }).media === 'print');
+
+// ----- crypto -----
+const u8 = new Uint8Array(32);
+check('getRandomValues returns its argument', crypto.getRandomValues(u8) === u8);
+check('getRandomValues fills', u8.some((b) => b !== 0));
+const u32 = crypto.getRandomValues(new Uint32Array(4));
+check('getRandomValues on Uint32Array', u32.some((x) => x !== 0));
+check('getRandomValues on BigInt64Array', crypto.getRandomValues(new BigInt64Array(2)).some((x) => x !== 0n));
+check('getRandomValues on a subarray leaves the rest', (() => { const a = new Uint8Array(8); crypto.getRandomValues(a.subarray(4)); return a[0] === 0 && a[1] === 0 && a[2] === 0 && a[3] === 0; })());
+check('getRandomValues refuses floats', throws(() => crypto.getRandomValues(new Float64Array(2)), 'TypeMismatchError'));
+check('getRandomValues refuses DataView', throws(() => crypto.getRandomValues(new DataView(new ArrayBuffer(4))), 'TypeMismatchError'));
+check('getRandomValues quota', throws(() => crypto.getRandomValues(new Uint8Array(65537)), 'QuotaExceededError') && crypto.getRandomValues(new Uint8Array(65536)).length === 65536);
+check('randomUUID is a version 4 UUID', /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(crypto.randomUUID()));
+check('randomUUID differs', crypto.randomUUID() !== crypto.randomUUID());
+check('no crypto.subtle', !('subtle' in crypto));
+
+// ----- Encoding -----
+const enc = new TextEncoder();
+check('TextEncoder encoding', enc.encoding === 'utf-8');
+check('encode', JSON.stringify([...enc.encode('aé€😀')]) === '[97,195,169,226,130,172,240,159,152,128]');
+check('encode lone surrogate as U+FFFD', JSON.stringify([...enc.encode('\uD800')]) === '[239,191,189]');
+const dst = new Uint8Array(5);
+const r = enc.encodeInto('aé€', dst);
+check('encodeInto stops at whole code points', r.read === 2 && r.written === 3);
+check('TextDecoder default utf-8', new TextDecoder().encoding === 'utf-8');
+check('TextDecoder label', new TextDecoder(' latin1 ').encoding === 'windows-1252');
+check('TextDecoder invalid label', throws(() => new TextDecoder('bogus'), 'RangeError'));
+check('TextDecoder replacement label is invalid', throws(() => new TextDecoder('iso-2022-kr'), 'RangeError'));
+check('decode', new TextDecoder().decode(new Uint8Array([97, 195, 169])) === 'aé');
+check('decode an ArrayBuffer and a DataView', new TextDecoder().decode(new Uint8Array([104, 105]).buffer) === 'hi' && new TextDecoder().decode(new DataView(new Uint8Array([104, 105]).buffer)) === 'hi');
+check('decode strips the BOM', new TextDecoder().decode(new Uint8Array([0xef, 0xbb, 0xbf, 104])) === 'h');
+check('ignoreBOM keeps it', new TextDecoder('utf-8', { ignoreBOM: true }).decode(new Uint8Array([0xef, 0xbb, 0xbf, 104])) === '﻿h');
+check('decode replaces invalid bytes', new TextDecoder().decode(new Uint8Array([0xff])) === '�');
+check('fatal throws', throws(() => new TextDecoder('utf-8', { fatal: true }).decode(new Uint8Array([0xff])), 'TypeError'));
+const sd = new TextDecoder();
+check('stream keeps partial sequences', sd.decode(new Uint8Array([0xe2, 0x82]), { stream: true }) === '' && sd.decode(new Uint8Array([0xac])) === '€');
+check('decode windows-1252', new TextDecoder('windows-1252').decode(new Uint8Array([0x80])) === '€');
+check('decode shift_jis', new TextDecoder('shift_jis').decode(new Uint8Array([0x82, 0xa0])) === 'あ');
+
+// ----- structuredClone -----
+const src = { a: [1, { b: 2 }], d: new Date(5), r: /x/g, set: new Set([1]), big: 2n };
+src.self = src;
+const cl = structuredClone(src);
+check('structuredClone deep copies', cl !== src && cl.a[1].b === 2 && cl.a !== src.a);
+check('structuredClone keeps cycles', cl.self === cl);
+check('structuredClone keeps types', cl.d instanceof Date && cl.r instanceof RegExp && cl.set.has(1) && cl.big === 2n);
+check('structuredClone of a function is a DataCloneError', throws(() => structuredClone(() => 1), 'DataCloneError'));
+check('structuredClone of a symbol is a DataCloneError', throws(() => structuredClone(Symbol('s')), 'DataCloneError'));
+check('structuredClone of a node is a DataCloneError', throws(() => structuredClone(document.body), 'DataCloneError'));
+check('structuredClone refuses transfer', throws(() => structuredClone(new ArrayBuffer(1), { transfer: [] }), 'DataCloneError') === false);
+
+// ----- Image and Option -----
+const img = new Image(10, 20);
+check('Image creates an img', img instanceof HTMLImageElement && img.localName === 'img' && img.getAttribute('width') === '10' && img.getAttribute('height') === '20');
+check('Image.prototype is HTMLImageElement.prototype', Image.prototype === HTMLImageElement.prototype && Image.length === 0);
+check('Image needs new', throws(() => Image(), 'TypeError'));
+const opt = new Option('Label', 'v', true, false);
+check('Option creates an option', opt instanceof HTMLOptionElement && opt.text === 'Label' && opt.value === 'v' && opt.defaultSelected === true);
+$('sel').append(new Option('A', 'a'), new Option('B', 'b', false, true));
+check('Option selected', $('sel').value === 'b');
+
+// ----- requestIdleCallback and ResizeObserver (asynchronous) -----
+const order = [];
+setTimeout(() => order.push('timeout'), 0);
+const idleId = requestIdleCallback((d) => {
+  order.push('idle');
+  check('idle deadline', d instanceof IdleDeadline && d.timeRemaining() > 0 && d.timeRemaining() <= 50 && d.didTimeout === false);
+});
+check('requestIdleCallback returns an id', typeof idleId === 'number' && idleId > 0);
+cancelIdleCallback(requestIdleCallback(() => order.push('cancelled')));
+
+const seen = [];
+const ro = new ResizeObserver((entries, observer) => {
+  for (const e of entries) seen.push([e.target.id, Math.round(e.contentRect.width), Math.round(e.contentRect.height), Math.round(e.borderBoxSize[0].inlineSize), Math.round(e.contentBoxSize[0].blockSize)]);
+  check('callback gets the observer', observer === ro);
+});
+ro.observe($('box'));
+check('ResizeObserver needs a function', throws(() => new ResizeObserver(1), 'TypeError'));
+
+setTimeout(() => {
+  check('idle runs after timers due at the same time', order.join() === 'timeout,idle');
+  check('ResizeObserver reports the initial size', JSON.stringify(seen[0]) === JSON.stringify(['box', 120, 40, 134, 40]));
+  $('box').style.width = '200px';
+  setTimeout(() => {
+    check('ResizeObserver reports a change', seen.length === 2 && seen[1][1] === 200);
+    ro.disconnect();
+    $('box').style.width = '50px';
+    setTimeout(() => {
+      check('disconnect stops reports', seen.length === 2);
+      $('out').textContent = JSON.stringify(results);
+    }, 0);
+  }, 0);
+}, 10);
+</script>
+</body>
+</html>

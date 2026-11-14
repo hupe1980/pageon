@@ -82,7 +82,11 @@ These are absent, and reported when a page needs them:
 - `document.write`;
 - `ElementInternals` (form-associated custom elements), constructable stylesheets
   (`adoptedStyleSheets`) and customized built-ins (`is=`);
-- `iframe.contentWindow` and other cross-frame scripting;
+- `iframe.contentWindow`, `postMessage` and other cross-frame scripting;
+- form validation (`checkValidity`, `validity`);
+- `Blob`, `File`, `FileReader`, streams;
+- `WebSocket`, `EventSource`, `IndexedDB`;
+- Selection and `Range`, the Navigation API, `crypto.subtle`;
 - workers;
 - canvas text, images and readback;
 - SVG geometry;

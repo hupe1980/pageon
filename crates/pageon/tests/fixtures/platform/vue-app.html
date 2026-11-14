@@ -1,0 +1,18 @@
+<!doctype html><title>Vue shop</title>
+<script type="importmap">{"imports": {"vue": "/vendor/vue.js", "vue-router": "/vendor/vue-router.js"}}</script>
+<div id="app">
+  <nav><router-link to="/">Home</router-link> <router-link to="/orders">Orders</router-link></nav>
+  <main id="view"><router-view></router-view></main>
+</div>
+<script type="module">
+import { createApp } from 'vue';
+import { createRouter, createWebHistory } from 'vue-router';
+const Home = { template: '<h1>Welcome</h1>' };
+const Orders = { template: '<div><h1>Orders</h1><router-link to="/orders/7">Order 7</router-link></div>' };
+const Order = { template: '<h1>Order {{ $route.params.id }}</h1>' };
+const router = createRouter({
+  history: createWebHistory(),
+  routes: [{ path: '/', component: Home }, { path: '/orders', component: Orders }, { path: '/orders/:id', component: Order }],
+});
+createApp({}).use(router).mount('#app');
+</script>

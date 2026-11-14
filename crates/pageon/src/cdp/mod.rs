@@ -611,9 +611,45 @@ impl<'s, E: Env> Session<'s, E> {
         }
     }
 
+    /// The main frame's URL changed in place (the History API, a fragment):
+    /// `Page.navigatedWithinDocument`, as Chrome sends it; contexts and objects stay.
+    fn within_document(&mut self, ti: usize, url: &str) {
+        let Some(frame) = self.targets[ti].frames.first_mut() else {
+            return;
+        };
+        let old = std::mem::replace(&mut frame.url, url.to_string());
+        let id = frame.id.clone();
+        let before = |u: &str| u.split('#').next().unwrap_or(u).to_string();
+        let kind = if before(&old) == before(url) && url.contains('#') {
+            "fragment"
+        } else {
+            "historyApi"
+        };
+        if self.targets[ti].page {
+            self.target_event(
+                ti,
+                "Page.navigatedWithinDocument",
+                json!({"frameId": id, "url": url, "navigationType": kind}),
+            );
+        }
+        if self.discover {
+            let info = self.target_info(ti);
+            self.event(
+                "Target.targetInfoChanged",
+                json!({"targetInfo": info}),
+                None,
+            );
+        }
+    }
+
     /// Turns what an action or a script did into events: requests, then a new document.
     fn after_outcome(&mut self, ti: usize, out: &Outcome) {
-        let navigated = out.navigated.is_some();
+        if out.same_document
+            && let Some(url) = &out.navigated
+        {
+            self.within_document(ti, url);
+        }
+        let navigated = out.navigated.is_some() && !out.same_document;
         if navigated {
             self.begin_document(ti);
         }

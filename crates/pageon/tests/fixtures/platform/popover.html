@@ -1,0 +1,14 @@
+<!doctype html><meta charset=utf-8><title>Popover</title>
+<style>body { margin: 0 } #anchor { position: absolute; left: 100px; top: 200px; width: 80px; height: 30px } #tip { position: absolute; width: 60px; height: 20px }</style>
+<script type="importmap">{"imports": {"@floating-ui/core": "/vendor/floating-ui.core.js"}}</script>
+<button id=anchor>Menu</button><div id=tip role=tooltip>Tip</div>
+<p id=out>waiting</p>
+<script type="module">
+import { computePosition, autoUpdate, offset, flip } from '/vendor/floating-ui.dom.js';
+const anchor = document.getElementById('anchor');
+const tip = document.getElementById('tip');
+const place = () => computePosition(anchor, tip, { placement: 'bottom', middleware: [offset(4), flip()] })
+  .then(({ x, y }) => { tip.style.left = x + 'px'; tip.style.top = y + 'px'; document.getElementById('out').textContent = `placed ${Math.round(x)},${Math.round(y)}`; });
+// autoUpdate observes size changes with ResizeObserver.
+autoUpdate(anchor, tip, place);
+</script>
