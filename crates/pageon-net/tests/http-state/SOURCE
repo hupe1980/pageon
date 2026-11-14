@@ -1,0 +1,12 @@
+Web Platform Tests, cookies/http-state/resources/test-files at commit
+e2c77fa4d187c6a179f9343925ef9c3ab5488e86 (the last commit before the cases were rewritten into
+server-driven tests), files not prefixed `disabled-`. Originally Adam Barth's http-state test
+suite (RFC 6265), maintained in WPT to match browser behaviour.
+
+Each `<name>-test` holds the response headers for http://home.example.org:8888/cookie-parser?<name>
+(`Set-Cookie` lines, and an optional `Location` naming the URL to read cookies for; default
+http://home.example.org:8888/cookie-parser-result?<name>). `<name>-expected` holds the `Cookie`
+header expected for that URL, or nothing.
+
+Licence: W3C 3-clause BSD (https://github.com/web-platform-tests/wpt/blob/master/LICENSE.md).
+Used unmodified, as test data only.

@@ -1,0 +1,36 @@
+<!doctype html>
+<!-- The social preview card (static/og.png), rendered by pageon itself:
+     pageon fetch site/og/og.html --no-sandbox --screenshot site/static/og.png -->
+<html lang="en">
+<meta charset="utf-8">
+<title>pageon</title>
+<style>
+  html, body { margin: 0; width: 1280px; height: 720px; }
+  body {
+    background: #0b0d12; color: #e8eaf2;
+    font-family: "Liberation Sans", Arial, sans-serif;
+    position: relative; overflow: hidden;
+  }
+  .band { position: absolute; left: 0; top: 0; width: 1280px; height: 10px;
+          background: linear-gradient(90deg, #5b4cff, #06b6d4); }
+  .brand { position: absolute; left: 88px; top: 92px; display: flex; align-items: center; gap: 22px; }
+  .mark { width: 76px; height: 76px; border-radius: 20px;
+          background: linear-gradient(135deg, #5b4cff, #06b6d4); }
+  .name { font-size: 64px; font-weight: 700; letter-spacing: -1px; }
+  h1 { position: absolute; left: 88px; top: 220px; margin: 0; width: 1100px;
+       font-size: 76px; line-height: 1.08; font-weight: 700; letter-spacing: -2px; }
+  h1 em { font-style: normal; color: #8b7dff; }
+  p { position: absolute; left: 88px; top: 420px; margin: 0; width: 1000px;
+      font-size: 32px; line-height: 1.4; color: #b3b8cc; }
+  .tags { position: absolute; left: 88px; top: 576px; display: flex; gap: 16px; }
+  .tags span { font-family: "Liberation Mono", monospace; font-size: 22px; color: #22d3ee;
+               border: 2px solid #232838; border-radius: 12px; padding: 10px 18px; }
+</style>
+<body>
+  <div class="band"></div>
+  <div class="brand"><div class="mark"></div><div class="name">pageon</div></div>
+  <h1>The browser engine <em>built for AI agents</em></h1>
+  <p>Compact page views with stable refs, typed actions, sandboxed pages, replay and fork.</p>
+  <div class="tags"><span>MCP</span><span>Python</span><span>Puppeteer</span><span>Playwright</span><span>WebDriver BiDi</span></div>
+</body>
+</html>

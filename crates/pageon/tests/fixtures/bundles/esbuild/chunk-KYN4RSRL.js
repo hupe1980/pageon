@@ -1,0 +1,1 @@
+function f(t,e,n={}){let o=document.createElement(t);o.textContent=e;for(let[r,c]of Object.entries(n))o.setAttribute(r,c);return o}function p(...t){let e=document.getElementById("app");for(let n of t)e.append(n)}export{f as a,p as b};

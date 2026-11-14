@@ -1,0 +1,22 @@
+[package]
+name = "pageon-net"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "pageon's browser networking: the Fetch rules, CORS, cookies (PSL, CHIPS), Web Storage and the egress policy, over pageon-env"
+readme = "README.md"
+keywords = ["browser", "fetch", "cookies", "cors", "agents"]
+categories = ["web-programming"]
+
+[dependencies]
+pageon-env.workspace = true
+url = "2"
+psl = "2"
+serde.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

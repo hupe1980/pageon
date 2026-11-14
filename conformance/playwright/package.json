@@ -1,0 +1,9 @@
+{
+  "name": "pageon-conformance-playwright",
+  "private": true,
+  "description": "Playwright scripts against `pageon cdp` over connectOverCDP: offline, on replayed fixtures",
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": { "test": "node --test" },
+  "devDependencies": { "playwright-core": "1.65.0" }
+}

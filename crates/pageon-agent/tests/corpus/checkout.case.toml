@@ -1,0 +1,1 @@
+must_contain = ['"Email" ="ann@example.com" required', '{"Germany"|"France"|"Spain"|+2}', 'checkbox e', '"Save address" checked', '"Pay now" disabled', 'ph:"Coupon code"', '## main', '# "Checkout"', 'text "Total 42,00 €"']

@@ -1,0 +1,68 @@
+<!doctype html>
+<html>
+<head>
+<title>CSSOM View scrolling</title>
+<style>
+  body { margin: 0; font: 16px/20px sans-serif }
+  #fixed { position: fixed; top: 0; left: 0; width: 100px; height: 40px; background: #c00 }
+  #box { overflow: auto; width: 300px; height: 100px; margin-top: 60px }
+  #box .spacer { height: 600px }
+  #inner { margin: 0; height: 20px }
+  #tall { height: 4000px }
+  #end { height: 50px }
+</style>
+</head>
+<body>
+<div id=fixed></div>
+<div id=box><div class=spacer></div><p id=inner>inside</p></div>
+<div id=tall></div>
+<div id=end>end</div>
+<pre id=out></pre>
+<script>
+  // Every value is pushed as [label, value]; the Chromium oracle reads window.results.
+  const results = [];
+  const r = (k, v) => results.push([k, Math.round(v * 10) / 10]);
+  const $ = (id) => document.getElementById(id);
+  const doc = document.documentElement, box = $('box'), inner = $('inner'), end = $('end');
+  const scrolls = [];
+  addEventListener('scroll', () => scrolls.push('window'));
+  r('doc.scrollHeight', doc.scrollHeight);
+  r('doc.clientHeight', doc.clientHeight);
+  window.scrollTo(0, 1000);
+  r('scrollY', scrollY);
+  r('pageYOffset', pageYOffset);
+  r('scrollingElement.scrollTop', document.scrollingElement.scrollTop);
+  r('visualViewport.pageTop', visualViewport.pageTop);
+  r('box.rect.top', box.getBoundingClientRect().top);
+  r('fixed.rect.top', $('fixed').getBoundingClientRect().top);
+  window.scrollBy({ top: 250 });
+  r('scrollBy', scrollY);
+  window.scrollTo({ top: 1e9 });
+  r('clamped', scrollY);
+  doc.scrollTop = 40;
+  r('doc.scrollTop', scrollY);
+  window.scrollTo(0, 0);
+  r('box.scrollHeight', box.scrollHeight);
+  r('box.clientHeight', box.clientHeight);
+  box.scrollTop = 300;
+  r('box.scrollTop', box.scrollTop);
+  r('inner.rect.top', inner.getBoundingClientRect().top);
+  box.scrollBy(0, 1e6);
+  r('box.clamped', box.scrollTop);
+  box.scrollTo({ top: 0 });
+  r('box.reset', box.scrollTop);
+  end.scrollIntoView();
+  r('intoView.start', scrollY);
+  end.scrollIntoView({ block: 'end' });
+  r('intoView.end', scrollY);
+  end.scrollIntoView({ block: 'center' });
+  r('intoView.center', scrollY);
+  inner.scrollIntoView({ block: 'nearest' });
+  r('nested.box', box.scrollTop);
+  r('nested.window', scrollY);
+  r('elementFromPoint', document.elementFromPoint(10, 10) === $('fixed') ? 1 : 0);
+  window.results = results;
+  $('out').textContent = JSON.stringify(results);
+</script>
+</body>
+</html>

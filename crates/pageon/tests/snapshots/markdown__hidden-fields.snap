@@ -1,0 +1,7 @@
+---
+source: crates/pageon/tests/markdown.rs
+expression: md(name)
+---
+@markdown v1 "Signup" http://a.localhost:47811/pages/hidden-fields.html budget:4000/o200k
+
+# Sign up

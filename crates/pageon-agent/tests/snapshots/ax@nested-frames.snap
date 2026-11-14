@@ -1,0 +1,16 @@
+---
+source: crates/pageon-agent/tests/golden.rs
+expression: text
+---
+@page v1 "Frames" http://a.localhost:47811/pages/nested-frames.html load:complete budget:4000/o200k
+## main
+# "Dashboard"
+== frame e1 http://a.localhost:47811
+  # "Inner panel"
+  button e2 "Refresh"
+  == frame e3 http://a.localhost:47811
+    button e4 "Deep button"
+  == /frame
+== /frame
+== frame e5 http://127.0.0.1:9 third-party state:failed
+== /frame

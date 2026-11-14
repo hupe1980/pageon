@@ -1,0 +1,40 @@
+<!doctype html>
+<html>
+<head><title>Sign in</title></head>
+<body>
+<main>
+<h1>Sign in</h1>
+<sl-input id=email type=email><span slot=label>Email</span></sl-input>
+<sl-input id=password type=password label="Password"></sl-input>
+<sl-button id=go>Sign in</sl-button>
+<p id=status>signed out</p>
+</main>
+<script>
+// A Shoelace-like design system: the input and its label live in a shadow tree; labels come
+// by attribute or through a slot. Ids inside each shadow tree repeat, as in Shoelace.
+class SlInput extends HTMLElement {
+  constructor() {
+    super();
+    const root = this.attachShadow({ mode: 'open', delegatesFocus: true });
+    root.innerHTML = `<style>label { display: block } input { width: 200px }</style>
+      <label for=input part=form-control-label><slot name=label>${this.getAttribute('label') || ''}</slot></label>
+      <input id=input type="${this.getAttribute('type') || 'text'}">`;
+  }
+  get value() { return this.shadowRoot.getElementById('input').value; }
+}
+class SlButton extends HTMLElement {
+  constructor() {
+    super();
+    this.attachShadow({ mode: 'closed' }).innerHTML = '<button part=base><slot></slot></button>';
+  }
+}
+customElements.define('sl-input', SlInput);
+customElements.define('sl-button', SlButton);
+document.getElementById('go').addEventListener('click', () => {
+  const email = document.getElementById('email').value;
+  const pw = document.getElementById('password').value;
+  document.getElementById('status').textContent = pw ? `signed in as ${email}` : 'password missing';
+});
+</script>
+</body>
+</html>

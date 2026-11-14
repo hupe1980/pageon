@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block body_class %}doc{% endblock %}
+{% block content %}
+<div class="docs">
+  <button class="docs__menu" type="button" aria-expanded="false" aria-controls="sidebar" data-menu>Menu</button>
+  <aside class="sidebar" id="sidebar" aria-label="Documentation">{% set docs = section %}{% set current = "" %}{% include "sidebar.html" %}</aside>
+  <article class="prose">
+    <h1>{{ section.title }}</h1>
+    {% if section.description %}<p class="prose__lead">{{ section.description }}</p>{% endif %}
+    {{ section.content | safe }}
+    <div class="grid grid--2 doc-index">
+      {% for p in section.pages %}
+      <a class="card card--link" href="{{ p.permalink }}"><h3>{{ p.title }}</h3><p>{{ p.description }}</p></a>
+      {% endfor %}
+    </div>
+  </article>
+</div>
+{% endblock %}

@@ -1,0 +1,1 @@
+import{a as e,b as t}from"./chunk-KYN4RSRL.js";var n=await new Promise(o=>setTimeout(()=>o({title:"Module shop"}),10)),i=new URL("./logo.svg",import.meta.url).href,r=e("a","Open route",{href:"#route",id:"open"});r.addEventListener("click",async o=>{o.preventDefault(),(await import("./chunk-5S6S7CKR.js")).show()});t(e("h1",n.title),e("img","",{src:i,alt:"Logo"}),r);

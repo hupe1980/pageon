@@ -1,0 +1,145 @@
+<!doctype html>
+<html>
+<head><title>Shadow DOM and custom elements</title>
+<style>button { color: rgb(0, 0, 255) }</style>
+</head>
+<body>
+<!-- Parsed before its definition: upgraded by define(). -->
+<my-counter id=counter count=2></my-counter>
+<my-card id=card>
+  <template shadowrootmode=open>
+    <style>::slotted(h2) { margin: 0 } p { color: rgb(0, 128, 0) }</style>
+    <slot name=title id=ts></slot><p id=cardbody>card body</p><slot id=def>fallback</slot>
+  </template>
+  <h2 slot=title id=title>Card title</h2>
+</my-card>
+<x-closed id=closed><template shadowrootmode=closed><button id=secret>Hidden from scripts</button></template></x-closed>
+<x-closedslot><template shadowrootmode=closed><slot></slot></template><span id=cs>slotted into a closed tree</span></x-closedslot>
+<pre id=out></pre>
+<script>
+const results = [];
+const check = (name, ok) => results.push([name, !!ok]);
+const log = [];
+const $ = (id) => document.getElementById(id);
+
+class MyCounter extends HTMLElement {
+  static observedAttributes = ['count'];
+  constructor() {
+    super();
+    log.push('constructor');
+    this.attachShadow({ mode: 'open' });
+  }
+  get count() { return Number(this.getAttribute('count') || 0); }
+  render() {
+    this.shadowRoot.innerHTML = '<style>button { color: rgb(255, 165, 0) }</style>' +
+      `<button part=btn>Clicked ${this.count} times</button>`;
+    this.shadowRoot.querySelector('button').onclick = () => this.setAttribute('count', this.count + 1);
+  }
+  connectedCallback() { log.push('connected'); this.render(); }
+  disconnectedCallback() { log.push('disconnected'); }
+  attributeChangedCallback(name, old, now) {
+    log.push(`attr ${name} ${old} ${now}`);
+    if (this.shadowRoot.firstChild) this.render();
+  }
+}
+
+// Upgrade on define: constructor, attribute (existing value), connected — in that order.
+check('not upgraded before define', !($('counter') instanceof MyCounter));
+customElements.define('my-counter', MyCounter);
+check('upgraded by define', $('counter') instanceof MyCounter);
+check('reaction order on upgrade', log.join('|') === 'constructor|attr count null 2|connected');
+log.length = 0;
+// CEReactions: callbacks run before the DOM call returns.
+$('counter').setAttribute('count', '5');
+check('attributeChangedCallback before setAttribute returns', log.join('|') === 'attr count 2 5');
+$('counter').setAttribute('other', 'x');
+check('unobserved attributes are ignored', log.length === 1);
+log.length = 0;
+const made = document.createElement('my-counter');
+check('createElement constructs', made instanceof MyCounter && log.join('|') === 'constructor');
+document.body.append(made);
+check('connected on insertion', log.join('|') === 'constructor|connected');
+made.remove();
+check('disconnected on removal', log.at(-1) === 'disconnected');
+check('new works', new MyCounter() instanceof HTMLElement);
+check('get', customElements.get('my-counter') === MyCounter && customElements.get('x-none') === undefined);
+check('getName', customElements.getName(MyCounter) === 'my-counter');
+
+// define errors.
+const throws = (f, name) => { try { f(); return false; } catch (e) { return e.name === name; } };
+check('define: invalid name', throws(() => customElements.define('nodash', class extends HTMLElement {}), 'SyntaxError'));
+check('define: duplicate name', throws(() => customElements.define('my-counter', class extends HTMLElement {}), 'NotSupportedError'));
+check('define: not a constructor', throws(() => customElements.define('x-arrow', () => {}), 'TypeError'));
+check('define: customized built-ins absent', throws(() => customElements.define('x-btn', class extends HTMLButtonElement {}, { extends: 'button' }), 'NotSupportedError'));
+check('Illegal constructor', throws(() => new (class extends HTMLElement {})(), 'TypeError'));
+
+// Shadow roots.
+const host = document.createElement('div');
+document.body.append(host);
+const root = host.attachShadow({ mode: 'open' });
+check('attachShadow', root instanceof ShadowRoot && host.shadowRoot === root && root.host === host && root.mode === 'open');
+check('attachShadow twice', throws(() => host.attachShadow({ mode: 'open' }), 'NotSupportedError'));
+check('attachShadow on input', throws(() => document.createElement('input').attachShadow({ mode: 'open' }), 'NotSupportedError'));
+root.innerHTML = '<span id=deep>deep</span>';
+check('shadow getElementById', root.getElementById('deep') && !document.getElementById('deep'));
+check('shadow querySelector', root.querySelector('span').textContent === 'deep' && !document.querySelector('#deep'));
+check('getRootNode', root.firstChild.getRootNode() === root && root.firstChild.getRootNode({ composed: true }) === document);
+check('isConnected in shadow', root.firstChild.isConnected);
+check('closed root hidden', $('closed').shadowRoot === null);
+
+// Declarative shadow DOM and slots.
+const card = $('card');
+check('DSD attached', card.shadowRoot && card.shadowRoot.querySelector('#cardbody').textContent === 'card body');
+const ts = card.shadowRoot.getElementById('ts');
+check('named slot', ts.assignedNodes().length === 1 && ts.assignedNodes()[0] === $('title'));
+check('assignedSlot', $('title').assignedSlot === ts);
+const def = card.shadowRoot.getElementById('def');
+check('default slot takes text', def.assignedNodes().every((n) => n.nodeType === 3));
+check('flatten falls back', def.assignedElements().length === 0);
+let slotchange = 0;
+ts.addEventListener('slotchange', () => slotchange++);
+const extra = document.createElement('h2');
+extra.slot = 'title';
+card.append(extra);
+setTimeout(() => {
+  check('slotchange', slotchange === 1 && ts.assignedElements().length === 2);
+
+  // Events: retargeting, composedPath, composed.
+  let seen = null, path = null;
+  document.addEventListener('ping', (e) => { seen = e.target; path = e.composedPath(); });
+  const inner = $('counter').shadowRoot.querySelector('button');
+  inner.dispatchEvent(new Event('ping', { bubbles: true, composed: true }));
+  check('retargeted to the host', seen === $('counter'));
+  check('composedPath from outside starts inside an open root', path[0] === inner && path.includes($('counter').shadowRoot));
+  seen = null;
+  inner.dispatchEvent(new Event('ping', { bubbles: true }));
+  check('non-composed events stop at the root', seen === null);
+  let insideTarget = null;
+  $('counter').shadowRoot.addEventListener('ping', (e) => { insideTarget = e.target; });
+  inner.dispatchEvent(new Event('ping', { bubbles: true, composed: true }));
+  check('not retargeted inside', insideTarget === inner);
+  // Focus: the host from outside, the element from its own root.
+  inner.focus();
+  check('activeElement retargets to the host', document.activeElement === $('counter'));
+  check('shadowRoot.activeElement', $('counter').shadowRoot.activeElement === inner);
+  check('assignedSlot hides closed slots', $('cs').assignedSlot === null);
+
+  // Scripts in shadow trees run.
+  const s = document.createElement('script');
+  s.textContent = 'window.ranInShadow = true';
+  root.append(s);
+  setTimeout(() => {
+    check('scripts in shadow trees run', window.ranInShadow === true);
+    // Absent, so libraries detect it.
+    check('no attachInternals', !('attachInternals' in HTMLElement.prototype));
+    check('no adoptedStyleSheets', !('adoptedStyleSheets' in Document.prototype) && !('adoptedStyleSheets' in ShadowRoot.prototype));
+    check('no constructable stylesheets', throws(() => new CSSStyleSheet(), 'TypeError') || typeof CSSStyleSheet === 'undefined');
+    customElements.whenDefined('my-counter').then((c) => {
+      check('whenDefined', c === MyCounter);
+      $('out').textContent = JSON.stringify(results);
+    });
+  }, 0);
+}, 0);
+</script>
+</body>
+</html>

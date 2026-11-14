@@ -1,0 +1,19 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Checkout – Acme</title></head>
+<body>
+<header><a href="/">Acme Shop</a> <nav><a href="/deals">Deals</a> <a href="/cart">Cart (2)</a></nav></header>
+<main>
+<h1>Checkout</h1>
+<form>
+<label for="email">Email</label> <input id="email" type="email" value="ann@example.com" required>
+<label for="country">Country</label>
+<select id="country"><option>Germany</option><option>France</option><option>Spain</option><option>Italy</option><option>Austria</option></select>
+<label><input type="checkbox" checked> Save address</label>
+<fieldset><legend>Shipping</legend>
+<label><input type="radio" name="ship"> Express</label> <label><input type="radio" name="ship" checked> Standard</label></fieldset>
+<p>Total 42,00 €</p>
+<input placeholder="Coupon code"> <button type="button">Apply coupon</button>
+<button type="submit" disabled>Pay now</button>
+</form>
+</main>
+<footer><a href="/terms">Terms</a></footer>
+</body></html>

@@ -1,0 +1,24 @@
+[package]
+name = "pageon-py"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Python bindings of pageon (the `pageon` package, built by maturin)"
+publish = false
+
+[lib]
+name = "_native"
+crate-type = ["cdylib"]
+# The extension links against the interpreter that loads it; it is tested from Python.
+test = false
+doctest = false
+
+[dependencies]
+pageon-agent.workspace = true
+pyo3 = { version = "0.30", features = ["abi3-py311"] }
+
+[lints]
+workspace = true

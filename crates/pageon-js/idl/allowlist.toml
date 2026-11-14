@@ -1,0 +1,468 @@
+# The script-visible surface: per interface (or mixin), the members pageon implements by hand.
+#
+# Generated automatically for every interface below, without being listed:
+# - `[Reflect]` attributes with a scalar type (strings, booleans, integers, doubles, URLs);
+# - `EventHandler` attributes (`onclick`, …), routed to the generic handler store;
+# - constants.
+# Every `HTML…Element` interface exposed to Window is included for its reflected attributes.
+# Anything not generated or listed here is absent from the page: feature detection works.
+#
+# Members are implemented in `src/dom/<owner_snake>.rs` as `<member_snake>` (operations),
+# `get_<attr>` / `set_<attr>` (attributes) and `constructor`. A missing implementation is a
+# compile error.
+
+[EventTarget]
+members = ["addEventListener", "removeEventListener", "dispatchEvent"]
+
+[Event]
+members = [
+  "constructor", "type", "target", "srcElement", "currentTarget", "eventPhase", "stopPropagation",
+  "cancelBubble", "stopImmediatePropagation", "bubbles", "cancelable", "returnValue", "preventDefault",
+  "defaultPrevented", "composed", "isTrusted", "timeStamp", "initEvent", "composedPath",
+]
+
+[CustomEvent]
+members = ["constructor", "detail", "initCustomEvent"]
+
+[UIEvent]
+members = ["constructor", "view", "detail", "which"]
+
+[MouseEvent]
+members = [
+  "constructor", "screenX", "screenY", "clientX", "clientY", "ctrlKey", "shiftKey", "altKey", "metaKey",
+  "button", "buttons", "relatedTarget", "pageX", "pageY", "x", "y", "offsetX", "offsetY",
+]
+
+[KeyboardEvent]
+members = [
+  "constructor", "key", "code", "location", "ctrlKey", "shiftKey", "altKey", "metaKey", "repeat",
+  "isComposing", "charCode", "keyCode", "getModifierState",
+]
+
+[WheelEvent]
+members = ["constructor", "deltaX", "deltaY", "deltaZ", "deltaMode"]
+
+[PointerEvent]
+members = ["constructor", "pointerId", "pointerType", "isPrimary"]
+
+[FocusEvent]
+members = ["constructor", "relatedTarget"]
+
+[DOMException]
+members = ["constructor", "name", "message", "code"]
+
+[Node]
+members = [
+  "nodeType", "nodeName", "baseURI", "isConnected", "ownerDocument", "getRootNode", "parentNode",
+  "parentElement", "hasChildNodes", "childNodes", "firstChild", "lastChild", "previousSibling",
+  "nextSibling", "nodeValue", "textContent", "normalize", "cloneNode", "isEqualNode", "isSameNode",
+  "compareDocumentPosition", "contains", "insertBefore", "appendChild", "replaceChild", "removeChild",
+]
+
+[NonElementParentNode]
+members = ["getElementById"]
+
+[ParentNode]
+members = [
+  "children", "firstElementChild", "lastElementChild", "childElementCount", "prepend", "append",
+  "replaceChildren", "querySelector", "querySelectorAll",
+]
+
+[NonDocumentTypeChildNode]
+members = ["previousElementSibling", "nextElementSibling"]
+
+[ChildNode]
+members = ["before", "after", "replaceWith", "remove"]
+
+[DocumentOrShadowRoot]
+members = ["activeElement"]
+
+[Document]
+members = [
+  "URL", "documentURI", "compatMode", "characterSet", "charset", "inputEncoding", "contentType",
+  "doctype", "documentElement", "getElementsByTagName", "getElementsByTagNameNS",
+  "getElementsByClassName", "createElement", "createElementNS", "createDocumentFragment",
+  "createTextNode", "createComment", "importNode", "adoptNode", "createEvent", "modelContext",
+  "location", "domain", "referrer", "lastModified", "readyState", "title", "dir", "body", "head",
+  "images", "links", "forms", "scripts", "getElementsByName", "currentScript", "defaultView",
+  "hasFocus", "implementation", "cookie", "createTreeWalker", "elementFromPoint", "elementsFromPoint",
+  "scrollingElement",
+]
+
+[DOMImplementation]
+members = ["hasFeature"]
+
+[NamedNodeMap]
+members = ["length", "item", "getNamedItem", "getNamedItemNS"]
+
+[Attr]
+members = ["namespaceURI", "prefix", "localName", "name", "value", "ownerElement", "specified"]
+
+[SVGElement]
+members = []
+
+[SVGGraphicsElement]
+members = ["getBBox"]
+
+[DocumentType]
+members = ["name", "publicId", "systemId"]
+
+[DocumentFragment]
+members = ["constructor"]
+
+[Element]
+members = [
+  "namespaceURI", "prefix", "localName", "tagName", "id", "className", "classList", "attributes", "hasAttributes",
+  "getAttributeNames", "getAttribute", "getAttributeNS", "setAttribute", "setAttributeNS",
+  "removeAttribute", "removeAttributeNS", "toggleAttribute", "hasAttribute", "hasAttributeNS",
+  "closest", "matches", "webkitMatchesSelector", "getElementsByTagName", "getElementsByTagNameNS",
+  "getElementsByClassName", "insertAdjacentElement", "insertAdjacentText",
+  "innerHTML", "outerHTML", "insertAdjacentHTML",
+  "getClientRects", "getBoundingClientRect", "scrollTop", "scrollLeft",
+  "scrollWidth", "scrollHeight", "clientTop", "clientLeft", "clientWidth", "clientHeight",
+  "checkVisibility", "scrollIntoView", "scroll", "scrollTo", "scrollBy",
+  "attachShadow", "shadowRoot", "slot",
+]
+
+[Slottable]
+members = ["assignedSlot"]
+
+[CharacterData]
+members = ["data", "length", "appendData"]
+
+[Text]
+members = ["constructor", "wholeText"]
+
+[Comment]
+members = ["constructor"]
+
+[HTMLElement]
+members = [
+  "constructor", "innerText", "click", "hidden", "offsetParent", "offsetTop", "offsetLeft", "offsetWidth", "offsetHeight",
+]
+
+[HTMLOrSVGOrMathMLElement]
+members = ["dataset", "tabIndex", "focus", "blur"]
+
+[ElementCSSInlineStyle]
+members = ["style"]
+
+[HTMLInputElement]
+members = ["value", "checked", "defaultValue", "type", "select", "form", "labels"]
+
+[HTMLTextAreaElement]
+members = ["value", "defaultValue", "type", "select", "textLength"]
+
+[HTMLSelectElement]
+members = ["value", "selectedIndex", "options", "length", "type", "item"]
+
+[HTMLOptionElement]
+members = ["value", "text", "selected", "index", "label", "Option"]
+
+[HTMLButtonElement]
+members = ["type", "form"]
+
+[HTMLFormElement]
+members = ["elements", "length", "submit", "requestSubmit"]
+
+[HTMLDialogElement]
+members = ["returnValue", "show", "showModal", "close"]
+
+[HTMLHyperlinkElementUtils]
+members = ["href"]
+
+[HyperlinkElementUtils]
+members = ["origin", "protocol", "host", "hostname", "port", "pathname", "search", "hash"]
+
+[HTMLScriptElement]
+members = ["text", "supports", "src", "async", "crossOrigin"]
+
+[HTMLTemplateElement]
+members = ["content"]
+
+[Window]
+members = [
+  "window", "self", "document", "name", "location", "navigator", "top", "parent", "frames", "length",
+  "frameElement", "focus", "blur", "getComputedStyle",
+  "innerWidth", "innerHeight", "outerWidth", "outerHeight", "scrollX", "scrollY", "pageXOffset",
+  "pageYOffset", "devicePixelRatio", "alert", "confirm", "prompt", "open", "visualViewport",
+  "scroll", "scrollTo", "scrollBy", "customElements", "history", "matchMedia",
+  "requestIdleCallback", "cancelIdleCallback",
+]
+
+# The visual viewport: the layout viewport at its scroll position, at scale 1.
+[VisualViewport]
+members = ["offsetLeft", "offsetTop", "pageLeft", "pageTop", "width", "height", "scale"]
+
+[WindowOrWorkerGlobalScope]
+members = [
+  "setTimeout", "clearTimeout", "setInterval", "clearInterval", "queueMicrotask", "origin", "btoa",
+  "atob", "isSecureContext", "performance", "fetch", "crypto", "structuredClone",
+]
+
+[AnimationFrameProvider]
+members = ["requestAnimationFrame", "cancelAnimationFrame"]
+
+[Location]
+members = [
+  "href", "origin", "protocol", "host", "hostname", "port", "pathname", "search", "hash", "assign",
+  "replace", "reload",
+]
+
+[Navigator]
+members = []
+
+[NavigatorID]
+members = ["appCodeName", "appName", "appVersion", "platform", "product", "productSub", "userAgent", "vendor", "vendorSub"]
+
+[NavigatorLanguage]
+members = ["language", "languages"]
+
+[NavigatorOnLine]
+members = ["onLine"]
+
+[NavigatorCookies]
+members = ["cookieEnabled"]
+
+# Per profile: `webdriver` is true for the agent profile. `userAgentData` exists only
+# in secure contexts of the browser-compatible profile (removed at realm setup elsewhere).
+[NavigatorAutomationInformation]
+members = ["webdriver"]
+
+[NavigatorUA]
+members = ["userAgentData"]
+
+# WebMCP: the page registers tools; the agent side lives in the engine.
+[ModelContext]
+members = ["registerTool"]
+
+[NavigatorUAData]
+members = ["brands", "mobile", "platform", "getHighEntropyValues", "toJSON"]
+
+[Performance]
+members = ["now", "timeOrigin"]
+
+[NodeList]
+members = ["length", "item"]
+
+[HTMLCollection]
+members = ["length", "item", "namedItem"]
+
+[HTMLFormControlsCollection]
+members = []
+
+[HTMLOptionsCollection]
+members = []
+
+[DOMTokenList]
+members = ["length", "item", "contains", "add", "remove", "toggle", "replace", "value"]
+
+[DOMStringMap]
+members = []
+
+[CSSStyleDeclaration]
+members = ["cssText", "length", "item", "getPropertyValue", "getPropertyPriority", "setProperty", "removeProperty"]
+
+[CSSStyleProperties]
+members = ["cssFloat"]
+
+[DOMRectReadOnly]
+members = ["x", "y", "width", "height", "top", "right", "bottom", "left"]
+
+[DOMRect]
+members = []
+
+[DOMRectList]
+members = ["length", "item"]
+
+[console]
+members = ["log", "info", "warn", "error", "debug", "trace", "dir", "assert", "group", "groupCollapsed", "groupEnd", "table", "count", "time", "timeEnd"]
+
+# Canvas 2D: the drawing subset pages use, rasterized for real (tiny-skia). Text, images,
+# gradients and pixel readback are absent until paint.
+[HTMLCanvasElement]
+members = ["width", "height", "getContext"]
+
+[CanvasRenderingContext2D]
+members = ["canvas"]
+
+[CanvasState]
+members = ["save", "restore"]
+
+[CanvasTransform]
+members = ["scale", "rotate", "translate", "transform", "resetTransform"]
+
+[CanvasCompositing]
+members = ["globalAlpha", "globalCompositeOperation"]
+
+[CanvasFillStrokeStyles]
+members = ["strokeStyle", "fillStyle"]
+
+[CanvasRect]
+members = ["clearRect", "fillRect", "strokeRect"]
+
+[CanvasDrawPath]
+members = ["beginPath", "fill", "stroke"]
+
+[CanvasPathDrawingStyles]
+members = ["lineWidth"]
+
+[CanvasPath]
+members = ["closePath", "moveTo", "lineTo", "quadraticCurveTo", "bezierCurveTo", "rect", "arc"]
+
+# Networking: fetch, XHR, URL, storage. Requests go through pageon-net; responses
+# arrive as tasks while the page settles.
+
+[Headers]
+members = ["constructor", "append", "delete", "get", "getSetCookie", "has", "set", "iterable"]
+
+[Body]
+members = ["bodyUsed", "json", "text"]
+
+[Request]
+members = [
+  "constructor", "method", "url", "headers", "destination", "referrer", "mode", "credentials",
+  "redirect", "signal", "clone",
+]
+
+[Response]
+members = [
+  "constructor", "error", "redirect", "json", "type", "url", "redirected", "status", "ok",
+  "statusText", "headers", "clone",
+]
+
+[AbortController]
+members = ["constructor", "signal", "abort"]
+
+[AbortSignal]
+members = ["abort", "timeout", "any", "aborted", "reason", "throwIfAborted"]
+
+[XMLHttpRequestEventTarget]
+members = []
+
+[XMLHttpRequest]
+members = [
+  "constructor", "readyState", "open", "setRequestHeader", "timeout", "withCredentials", "send",
+  "abort", "responseURL", "status", "statusText", "getResponseHeader", "getAllResponseHeaders",
+  "overrideMimeType", "responseType", "response", "responseText",
+]
+
+[ProgressEvent]
+members = ["constructor", "lengthComputable", "loaded", "total"]
+
+[URL]
+members = [
+  "constructor", "parse", "canParse", "href", "origin", "protocol", "username", "password", "host",
+  "hostname", "port", "pathname", "search", "searchParams", "hash", "toJSON",
+]
+
+[URLSearchParams]
+members = [
+  "constructor", "size", "append", "delete", "get", "getAll", "has", "set", "sort", "iterable",
+  "toString",
+]
+
+[FormData]
+members = ["constructor", "append", "delete", "get", "getAll", "has", "set", "iterable"]
+
+[Storage]
+members = ["length", "key", "getItem", "setItem", "removeItem", "clear"]
+
+[WindowLocalStorage]
+members = ["localStorage"]
+
+[WindowSessionStorage]
+members = ["sessionStorage"]
+
+[MutationObserver]
+members = ["constructor", "observe", "disconnect", "takeRecords"]
+
+[MutationRecord]
+members = [
+  "type", "target", "addedNodes", "removedNodes", "previousSibling", "nextSibling", "attributeName",
+  "attributeNamespace", "oldValue",
+]
+
+[XMLSerializer]
+members = ["constructor", "serializeToString"]
+
+# Interface objects only (`instanceof`): stylesheets are not constructible, and
+# `adoptedStyleSheets` is absent, so libraries fall back to `<style>` elements.
+[StyleSheet]
+members = []
+
+[CSSStyleSheet]
+members = []
+
+[ShadowRoot]
+members = [
+  "mode", "delegatesFocus", "serializable", "slotAssignment", "clonable", "host", "innerHTML",
+]
+
+[HTMLSlotElement]
+members = ["assignedNodes", "assignedElements"]
+
+[CustomElementRegistry]
+members = ["define", "get", "getName", "whenDefined", "upgrade"]
+
+[IntersectionObserver]
+members = ["constructor", "root", "rootMargin", "thresholds", "observe", "unobserve", "disconnect", "takeRecords"]
+
+[IntersectionObserverEntry]
+members = [
+  "time", "rootBounds", "boundingClientRect", "intersectionRect", "isIntersecting", "intersectionRatio",
+  "target",
+]
+
+# The interface object of a callback interface: its constants (`NodeFilter.SHOW_ELEMENT`).
+[NodeFilter]
+members = []
+
+[TreeWalker]
+members = [
+  "root", "whatToShow", "filter", "currentNode", "parentNode", "firstChild", "lastChild",
+  "previousSibling", "nextSibling", "previousNode", "nextNode",
+]
+
+# Spec 027: platform basics.
+[History]
+members = ["length", "scrollRestoration", "state", "go", "back", "forward", "pushState", "replaceState"]
+
+[PopStateEvent]
+members = ["constructor", "state", "hasUAVisualTransition"]
+
+[MediaQueryList]
+members = ["media", "matches", "addListener", "removeListener"]
+
+[MediaQueryListEvent]
+members = ["constructor", "media", "matches"]
+
+[Crypto]
+members = ["getRandomValues", "randomUUID"]
+
+[TextEncoder]
+members = ["constructor", "encode", "encodeInto"]
+
+[TextEncoderCommon]
+members = ["encoding"]
+
+[TextDecoder]
+members = ["constructor", "decode"]
+
+[TextDecoderCommon]
+members = ["encoding", "fatal", "ignoreBOM"]
+
+[ResizeObserver]
+members = ["constructor", "observe", "unobserve", "disconnect"]
+
+[ResizeObserverEntry]
+members = ["target", "contentRect", "borderBoxSize", "contentBoxSize", "devicePixelContentBoxSize"]
+
+[ResizeObserverSize]
+members = ["inlineSize", "blockSize"]
+
+[IdleDeadline]
+members = ["timeRemaining", "didTimeout"]
+
+[HTMLImageElement]
+members = ["Image"]

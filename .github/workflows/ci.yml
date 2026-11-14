@@ -1,0 +1,106 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  rust:
+    name: Rust (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.99.0
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo fmt --all --check
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo xtask idl --check
+      - run: cargo test --workspace
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        if: matrix.os == 'ubuntu-latest'
+
+  bench:
+    name: Bench unit tests (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.99.0
+      - uses: astral-sh/setup-uv@v6
+      - name: Lint
+        working-directory: bench
+        run: |
+          uv run ruff check src tests ../bindings/python/python ../bindings/python/tests
+          uv run ruff format --check src tests ../bindings/python/python/pageon/browser.py ../bindings/python/tests
+      - name: Tests (no browser, no model)
+        working-directory: bench
+        run: uv run pytest -q
+      - name: Python client over `pageon mcp` (offline)
+        working-directory: bench
+        run: |
+          cargo build -p pageon
+          PAGEON_BIN="$PWD/../target/debug/pageon" uv run pytest -q ../bindings/python/tests
+
+  cdp:
+    name: Puppeteer, Playwright and BiDi conformance (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.99.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: cargo build -p pageon
+      - name: Install puppeteer-core (pinned)
+        working-directory: conformance/puppeteer
+        run: npm ci
+      - name: Harness, caged
+        working-directory: conformance/puppeteer
+        run: node --test
+      - name: Harness, in-process
+        working-directory: conformance/puppeteer
+        env:
+          PAGEON_CDP_ARGS: --no-sandbox
+        run: node --test
+      - name: Puppeteer over WebDriver BiDi, caged
+        working-directory: conformance/puppeteer
+        env:
+          PAGEON_PROTOCOL: webDriverBiDi
+        run: node --test
+      - name: Puppeteer over WebDriver BiDi, in-process
+        working-directory: conformance/puppeteer
+        env:
+          PAGEON_PROTOCOL: webDriverBiDi
+          PAGEON_CDP_ARGS: --no-sandbox
+        run: node --test
+      - name: Install playwright-core (pinned)
+        working-directory: conformance/playwright
+        run: npm ci
+      - name: Playwright harness, caged
+        working-directory: conformance/playwright
+        run: node --test
+      - name: Playwright harness, in-process
+        working-directory: conformance/playwright
+        env:
+          PAGEON_CDP_ARGS: --no-sandbox
+        run: node --test

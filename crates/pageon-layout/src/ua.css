@@ -1,0 +1,103 @@
+/* pageon's form-control defaults, layered after the default user-agent sheet, so intrinsic
+   control sizes match Chromium's (calibrated against the paired geometry fixtures). */
+input, select, button {
+  font-family: Arial, sans-serif;
+  font-size: 13.3333px;
+  box-sizing: border-box;
+}
+textarea {
+  font-family: monospace;
+  font-size: 13.3333px;
+  box-sizing: border-box;
+  width: 182px;
+  height: 36px;
+  padding: 2px;
+  border: 1px solid;
+}
+input:not([type]), input[type="text"], input[type="email"], input[type="password"],
+input[type="search"], input[type="url"], input[type="tel"], input[type="number"] {
+  width: 153px;
+  height: 21px;
+  padding: 1px 2px;
+  border: 2px inset;
+}
+button, input[type="submit"], input[type="button"], input[type="reset"] {
+  height: 21px;
+  padding: 1px 6px;
+  border: 2px outset;
+}
+input[type="checkbox"], input[type="radio"] {
+  width: 13px;
+  height: 13px;
+  margin: 3px 3px 3px 4px;
+  padding: 0;
+}
+input[type="radio"] {
+  margin: 3px 3px 0 5px;
+}
+select {
+  height: 19px;
+  padding: 0;
+  border: 1px solid;
+}
+/* A drop-down select box: as wide as its widest option plus the arrow (options stack in a
+   one-row column and none paints). Blitz has no select rendering of its own. */
+select:not([multiple]):not([size]), select[size="0"], select[size="1"] {
+  display: inline-flex;
+  flex-direction: column;
+  padding: 0 12px 0 4px;
+}
+select:not([multiple]):not([size]) > option, select:not([multiple]):not([size]) > optgroup > option {
+  display: block;
+  flex: none;
+  visibility: hidden;
+  white-space: pre;
+}
+/* The chosen option shows (first, so it sits at the top); the others only give the width. */
+select:not([multiple]):not([size]) > option[data-pageon-shown],
+select:not([multiple]):not([size]) > optgroup > option[data-pageon-shown] {
+  visibility: visible;
+  order: -1;
+}
+/* The drop-down arrow. */
+select:not([multiple]):not([size]) {
+  position: relative;
+}
+select:not([multiple]):not([size])::after {
+  content: "\25BC";
+  position: absolute;
+  right: 3px;
+  top: 5px;
+  font-size: 7px;
+}
+select > optgroup {
+  display: contents;
+}
+/* Disclosure markers in a glyph the bundled fonts have. */
+details > summary:first-of-type {
+  list-style-type: "\25BA  ";
+}
+details[open] > summary:first-of-type {
+  list-style-type: "\25BC  ";
+}
+/* A list box: its options are its rows. */
+select[multiple], select[size]:not([size="0"]):not([size="1"]) {
+  display: inline-block;
+  height: auto;
+  overflow: hidden;
+}
+/* The top layer (`showModal()`), as Chromium's `dialog:modal`. */
+dialog[data-pageon-top-layer] {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  max-width: calc(100% - 6px - 2em);
+  max-height: calc(100% - 6px - 2em);
+  overflow: auto;
+  z-index: 2147483647;
+}
+
+/* Shadow DOM: slots render their assigned nodes (or fallback) in place. */
+slot {
+  display: contents;
+}

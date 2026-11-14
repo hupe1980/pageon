@@ -1,0 +1,78 @@
++++
+title = "Python"
+description = "Drive pageon from Python with pageon.Browser: agent views, typed actions and outcomes, ActionError with guidance, screenshots, reset, lookahead, WebMCP tools and workflows."
+weight = 12
+[extra]
+group = "Interfaces"
++++
+
+The Python package runs `pageon mcp` as a child process and gives it a small, typed API. Pages
+run in the sandbox.
+
+```sh
+# the browser (see the quick start), then the package; building it needs Rust
+pip install "git+https://github.com/hupe1980/pageon#subdirectory=bindings/python"
+```
+
+Set `PAGEON_BIN` if the `pageon` binary is not on your `PATH`.
+
+## A session
+
+```python
+from pageon import Browser, ActionError
+
+with Browser(origins=["https://shop.example"], secrets=["shop@https://shop.example"]) as browser:
+    tab = browser.open("https://shop.example/login")
+    print(tab.observe())                       # the agent view, with refs
+    tab.type("e3", "ada")
+    out = tab.type("e4", "secret://shop", submit=True)
+    print(out)                                 # ok type e4 … · navigated to …/account
+    print(out.observation)                     # what changed
+    try:
+        tab.click("e99")
+    except ActionError as e:
+        print(e.kind, e.guidance)              # unknown_ref, use a ref from the latest observation
+```
+
+## Browser options
+
+`Browser(...)` takes the CLI's options as keyword arguments:
+
+| Argument | |
+| --- | --- |
+| `origins`, `read_origins` | Where the task may write and read |
+| `secrets` | `["name@https://origin"]`; values from `PAGEON_SECRET_<NAME>` |
+| `guard` | A [guard](@/docs/security.md#guard) command |
+| `state`, `save_state` | Playwright `storageState` files |
+| `record`, `replay` | Record the session, or serve one offline |
+| `budget` | Token budget of the views |
+| `sandbox`, `private_network`, `binary` | Process and network settings |
+| `allow_files` | Let the agent open `file:` pages (off by default) |
+
+An invalid argument (an origin without its scheme, say) raises `PageonError` with pageon's
+message.
+
+## Tab
+
+| Method | Returns |
+| --- | --- |
+| `observe(full=False)` | The agent view (what changed since the last one, unless `full`) |
+| `view(kind)` | `"markdown"`, `"text"`, `"requests"` or `"errors"` |
+| `click`, `type`, `press`, `select`, `hover`, `wait`, `back`, `forward` | An `Outcome`, or raises `ActionError` |
+| `scroll(direction="down", pixels=None, ref=None)` | Scroll the page or the container `ref` (`scroll(None, ref="e12")` brings e12 into view) |
+| `screenshot(marks, full_page, format, mask)`, `crop(ref)` | A `Screenshot` (`.save(path)`, `.legend`) |
+| `reset(step=None)` | Back to a step exactly, sending nothing again |
+| `lookahead(actions)` | What the agent would see after the actions, on a fork |
+| `call_tool(name, **arguments)` | The result of a page's [WebMCP](@/docs/webmcp.md) tool |
+| `workflow_save()`, `workflow_run(workflow, **params)` | [Workflows](@/docs/workflows.md) |
+| `takeover(reason)` | Waits while a person uses a live view |
+
+## Without a browser
+
+The package also serializes pages captured over CDP, for research on observation formats:
+
+```python
+import pageon
+capture = pageon.Capture.load("page.capture.json.gz")
+print(pageon.ax(capture, budget=4000))
+```

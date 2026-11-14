@@ -1,0 +1,38 @@
+# cargo-deny policy (`cargo deny check`). Licences must be compatible with shipping
+# pageon as MIT OR Apache-2.0; dependencies come from crates.io only.
+
+[graph]
+all-features = true
+
+[advisories]
+version = 2
+yanked = "deny"
+# `paste` is unmaintained, not vulnerable: a build-time proc-macro of `v8` (rusty_v8). Revisit
+# when rusty_v8 drops it.
+ignore = [{ id = "RUSTSEC-2024-0436", reason = "build-time proc-macro of v8; unmaintained, not vulnerable" }]
+
+[licenses]
+version = 2
+# ISC and MIT-0 are MIT-equivalent (rustls, webpki, aws-lc); CDLA-Permissive-2.0 covers the
+# Mozilla root-certificate data shipped by webpki-root-certs.
+allow = ["MIT", "MIT-0", "Apache-2.0", "Unicode-3.0", "BSD-3-Clause", "Zlib", "MPL-2.0", "ISC", "CDLA-Permissive-2.0", "BSD-2-Clause"]
+confidence-threshold = 0.8
+unused-allowed-license = "allow"
+# PyO3's build-time platform parsing (Python binding only); the LLVM exception only
+# widens Apache-2.0.
+exceptions = [
+    { allow = ["Apache-2.0 WITH LLVM-exception"], crate = "target-lexicon" },
+]
+
+[licenses.private]
+ignore = false
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+allow-wildcard-paths = true
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

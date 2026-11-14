@@ -1,0 +1,11 @@
+# pageon's single seam for nondeterminism: engine code reads
+# time, randomness and the network only through `pageon_env::Env`. The live implementation in
+# `crates/pageon-env/src/live.rs` is the only place allowed to use these.
+disallowed-methods = [
+    { path = "std::time::SystemTime::now", reason = "read time through pageon_env::Env::now_ms" },
+    { path = "std::time::Instant::now", reason = "read time through pageon_env::Env::now_ms" },
+    { path = "std::collections::hash_map::RandomState::new", reason = "draw randomness through pageon_env::Env::random_u64" },
+]
+disallowed-types = [
+    { path = "reqwest::Client", reason = "fetch through pageon_env::Env" },
+]

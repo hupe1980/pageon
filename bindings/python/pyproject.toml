@@ -1,0 +1,23 @@
+[build-system]
+requires = ["maturin>=1.9,<2"]
+build-backend = "maturin"
+
+[project]
+name = "pageon"
+dynamic = ["version"]
+description = "Drive the pageon browser engine from Python: agent views with stable refs, typed actions, screenshots, replay and lookahead; plus a BrowserGym backend"
+license = "MIT OR Apache-2.0"
+license-files = ["LICENSE-MIT", "LICENSE-APACHE"]
+authors = [{ name = "hupe1980" }]
+readme = "README.md"
+requires-python = ">=3.11"
+keywords = ["browser", "agents", "accessibility", "llm"]
+
+[project.optional-dependencies]
+# `pageon.browsergym`: BrowserGym's tasks and agents on pageon.
+browsergym = ["browsergym-core>=0.13", "gymnasium>=1.0"]
+
+[tool.maturin]
+python-source = "python"
+module-name = "pageon._native"
+exclude = ["**/__pycache__/**", "**/*.pyc"]

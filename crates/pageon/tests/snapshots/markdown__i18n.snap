@@ -1,0 +1,13 @@
+---
+source: crates/pageon/tests/markdown.rs
+expression: md(name)
+---
+@markdown v1 "Mixed scripts 🎉" http://a.localhost:47811/pages/i18n.html budget:4000/o200k
+
+# مرحبا بالعالم
+
+שלום עולם — mixed עברית and English 👩‍💻
+
+Token: QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVphYmNkZWZnaGlqa2xtbm9wcXJzdHV2d3h5ejAxMjM0NTY3ODkrLz09QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVphYmNkZWZnaGlqa2xtbm9wcXJzdHV2d3h5ejAxMjM0NTY3ODkrLz09
+
+[Weird URL](https://example.com/a%20b?q=%22x%22 "e1")

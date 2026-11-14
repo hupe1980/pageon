@@ -1,0 +1,6 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Components</title></head>
+<body><main><h1>Settings</h1><x-open></x-open><x-closed></x-closed></main>
+<script>
+customElements.define('x-open', class extends HTMLElement { constructor(){ super(); this.attachShadow({mode:'open'}).innerHTML = '<label>Nickname <input value="ann"></label> <button>Save nickname</button>'; } });
+customElements.define('x-closed', class extends HTMLElement { constructor(){ super(); this.attachShadow({mode:'closed'}).innerHTML = '<button>Delete account</button>'; } });
+</script></body></html>

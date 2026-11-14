@@ -1,0 +1,13 @@
+---
+source: crates/pageon/tests/layout.rs
+expression: boxes
+---
+html 0,0 800×2128
+  body 8,8 784×2112
+    main 8,8 784×94
+      h1 48,8 744×37 covered-by:div
+      button 8,81 39×21 id="buy" covered-by:div
+      input 47,75 153×21 name="trap" hidden
+      div 0,0 800×600 id="overlay"
+    footer 8,2102 784×18 offscreen
+      a 8,2102 40×18 href="/t" offscreen

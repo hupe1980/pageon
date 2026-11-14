@@ -1,0 +1,33 @@
+[package]
+name = "pageon-env"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "pageon's single seam for nondeterminism: network, clock and randomness, live or recorded"
+readme = "README.md"
+keywords = ["browser", "determinism", "replay", "agents"]
+categories = ["web-programming"]
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+base64 = "0.22"
+aws-lc-rs = "1.19"
+url = "2"
+reqwest = { version = "0.13", default-features = false, features = ["rustls", "http2", "gzip", "brotli", "deflate", "stream"] }
+tokio = { version = "1", features = ["rt", "time"] }
+futures-util = { version = "0.3", default-features = false }
+# The browser-compatible profile's network client: Chrome 149's TLS and HTTP/2 over
+# BoringSSL. Pinned exactly: wreq-util 0.1.0 is GPL-3.0; re-check licences on every bump.
+wreq = { version = "=0.16.3", optional = true, default-features = false, features = ["webpki-roots", "tokio-rt", "gzip", "brotli", "zstd", "deflate", "stream"] }
+wreq-util = { version = "=0.2.1", optional = true }
+
+[features]
+# The opt-in browser-compatible profile at the network layer (needs cmake, clang and git).
+chrome = ["dep:wreq", "dep:wreq-util"]
+
+[lints]
+workspace = true

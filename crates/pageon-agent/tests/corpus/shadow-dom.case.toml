@@ -1,0 +1,1 @@
+must_contain = ['"Nickname" ="ann"', '"Save nickname"', '"Delete account"']

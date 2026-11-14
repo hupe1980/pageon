@@ -1,0 +1,2 @@
+budget = 1000
+must_contain = ['… ', 'more: ', '"Product 0"']

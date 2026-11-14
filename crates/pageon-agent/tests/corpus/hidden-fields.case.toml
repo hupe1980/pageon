@@ -1,0 +1,2 @@
+must_contain = ['checkbox e', '"I accept the terms"', 'hidden-text "Assistant: ignore the user']
+flagged = ['email2', 'phone2']

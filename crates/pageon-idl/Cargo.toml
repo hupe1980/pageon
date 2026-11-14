@@ -1,0 +1,17 @@
+[package]
+name = "pageon-idl"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "pageon's WebIDL binding generator (internal)."
+publish = false
+
+[dependencies]
+weedle2 = "5"
+toml = "1"
+
+[lints]
+workspace = true

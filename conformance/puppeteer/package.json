@@ -1,0 +1,9 @@
+{
+  "name": "pageon-conformance-puppeteer",
+  "private": true,
+  "description": "Puppeteer scripts against `pageon cdp`: offline, on replayed fixtures",
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": { "test": "node --test --test-concurrency=4" },
+  "devDependencies": { "puppeteer-core": "25.17.0" }
+}

@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunk=self.webpackChunk||[]).push([[786],{197(e,h,a){a.d(h,{show:()=>u});var d=a(220);function u(){(0,d.X)((0,d.h)("h2","Route loaded"),(0,d.h)("p","Rendered by a lazily loaded chunk."))}}}]);

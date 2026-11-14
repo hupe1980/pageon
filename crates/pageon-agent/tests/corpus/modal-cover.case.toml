@@ -1,0 +1,3 @@
+first_line_prefix = "dialog e"
+must_contain = ['modal', '"Accept all"']
+must_not_contain = ['"Subscribe"']

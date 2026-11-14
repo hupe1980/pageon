@@ -1,0 +1,142 @@
++++
+title = "Security model"
+description = "How pageon keeps agents safe on hostile pages: a sandboxed page process, origin sets enforced at egress, approvals, a guard program, quoted views and masked screenshots."
+weight = 30
+[extra]
+group = "Safety"
+nav = "Security model"
++++
+
+pageon assumes two things go wrong: pages are hostile (prompt injection, exploits), and the
+model sometimes does what a page tells it to. Its defences therefore sit in the engine and the
+broker, where neither the page nor the model can reach them.
+
+## The process model
+
+```text
+agent         MCP · Python · CDP · BiDi · Rust
+  │
+broker        network · origin policy · vault · guard · recorder
+  │           (one versioned JSON-lines channel)
+page process  DOM · V8 · layout   [sandboxed: no files, network or programs]
+```
+
+Every page runs in a **caged content process** built with
+[procage](https://github.com/hupe1980/procage): Landlock, seccomp and namespaces on Linux,
+Seatbelt on macOS. The cage can run JavaScript and nothing else: it cannot read your files,
+open a socket or start a program. Its only way out is the channel to the broker, which performs
+every request on its behalf.
+
+`--no-sandbox` runs pages in-process for debugging; they then run with your rights.
+
+## Origin sets
+
+```sh
+pageon mcp --origin https://shop.example --read-origin https://cdn.shop.example
+```
+
+With origin sets, every request is classified where it leaves:
+
+| Class | Request | Default |
+| --- | --- | --- |
+| `read` | `GET`, `HEAD`, `OPTIONS` to a task origin | Sent |
+| `write` | Any other method to a read-write origin | Sent, or asked if an approver is configured |
+| `outside` | Anything to an origin outside the sets, or a write to a read-only origin | Refused |
+
+`https://*.example.com` admits subdomains, and an origin needs its scheme: `--origin
+shop.example` is an error that names the fix (`https://shop.example`). The refusal is reported in the action's outcome and
+the request log, and the page sees an ordinary network error.
+
+## Approvals
+
+`pageon fetch --approve` asks on the terminal before every write. From Rust, `Policy::approver`
+takes a closure. An approver sees structured metadata about the request (method, URL, origin,
+class, labels, the action that caused it), never page text, so a page cannot talk it into
+anything.
+
+## Guard
+
+A guard is any program that decides about requests: a script, a rules engine, a local model, a
+remote critic.
+
+```sh
+pageon mcp --origin https://shop.example --guard ./guard.py
+```
+
+pageon writes one JSON effect per line to its stdin, for every request except reads of origins
+already contacted:
+
+```json
+{"method": "POST", "url": "https://shop.example/orders", "origin": "https://shop.example",
+ "class": "write", "labels": ["first-contact"], "cause": {"action": "click e12", "target": "button e12 \"Pay now\""}}
+```
+
+It answers one verdict per line: `{"verdict": "allow"}`, `{"verdict": "deny", "reason": "…"}` or
+`{"verdict": "ask"}` (defer to the approver). It **fails closed**: a crash, malformed output or
+no answer within 10 seconds denies, from then on.
+
+Labels help guards decide: `secret:<name>` (the request carries that secret to its own origin),
+`first-contact` (no request went to this origin before), `tool:<name>` and `consequential` (a
+[WebMCP](@/docs/webmcp.md) tool caused it).
+
+## The private network
+
+Pages cannot reach `localhost`, private ranges or link-local addresses (cloud metadata
+endpoints), in any IP encoding, through redirects or through DNS answers. `--private-network
+allow` lifts this for local development.
+
+## Local files
+
+A web page cannot load `file:` URLs: frames, scripts, stylesheets, images, `fetch` and XHR to
+the disk are refused and logged as `blocked … file URL from a web page`. Only a page opened
+from a file loads the files next to it.
+
+Agents cannot open local pages either: `pageon mcp`, `cdp` and `bidi` refuse `file:` URLs
+unless you start them with `--allow-files`. `pageon fetch ./page.html`, typed by you, works as
+always.
+
+## Takeover
+
+When an agent hands the page to a person (`browser_takeover`), what the person clicks and
+types is theirs: it reaches the page as trusted input but is not reported to the agent or
+recorded as a step. The agent sees the page as it is afterwards. The page's own requests are
+recorded as usual, so `pageon replay` of such a session diverges at the takeover.
+
+## Protocol clients
+
+Puppeteer's and Playwright's helpers (utility worlds) and WebDriver BiDi sandboxes run in
+isolated worlds: their own JavaScript over the page's document, so a page that redefines
+built-ins cannot change what a client computes.
+
+## What the model sees
+
+- **Quoted text.** All page text in a view is quoted, and so are the URLs, file names, page
+  errors and dialog messages in outcomes; a page cannot forge a view or outcome line.
+  `pageon fetch` escapes control characters, so page text cannot drive your terminal either.
+- **Marks.** Hidden text, invisible input traps and third-party frames are labelled; pageon
+  refuses to type into a hidden field.
+- **Masked pixels.** `--mask` paints over third-party frames and text a person cannot read.
+- **No secrets.** [Secrets](@/docs/secrets.md) never appear in views, screenshots, outcomes,
+  protocol messages or recordings.
+
+## Known limits
+
+pageon is pre-release, and its [threat model](https://github.com/hupe1980/pageon/blob/main/THREAT_MODEL.md)
+lists every known threat class with its status, including the open ones. The most important
+today:
+
+- **Defaults are permissive.** Without `--origin`, an approver or a guard, every request is
+  sent. Configure origin sets for every task that matters.
+- **Local endpoints.** `pageon cdp` has no token: any local process can connect while it runs.
+  An idle connection cannot block other clients, and only a real close command ends it.
+- **Files at rest.** Recordings and saved state hold cookies and page content. pageon writes
+  them readable by you only, but does not encrypt them; keep them private.
+- **A compromised page process.** The broker still trusts some of what the page process tells
+  it. The cage is the boundary that holds.
+
+Origin sets are the hard boundary. The secrets check at egress catches common encodings, not a
+page that splits, reverses or re-encodes a value before sending it to an allowed origin; keep
+untrusted third parties out of the origin sets.
+
+Report a vulnerability privately through
+[GitHub's advisories](https://github.com/hupe1980/pageon/security/advisories/new).

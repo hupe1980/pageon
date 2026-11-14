@@ -1,0 +1,1 @@
+must_contain = ['"Newsletter" checked', 'disabled', 'invalid', 'required', '+27}', 'expanded', 'collapsed']

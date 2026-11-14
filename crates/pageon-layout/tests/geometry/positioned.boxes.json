@@ -1,0 +1,73 @@
+{
+ "viewport": [
+  1280,
+  720
+ ],
+ "chromium": "158.0.8127.18",
+ "elements": [
+  {
+   "tag": "div",
+   "rendered": true,
+   "x": 28,
+   "y": 20,
+   "w": 402,
+   "h": 202
+  },
+  {
+   "tag": "div",
+   "rendered": true,
+   "x": 307,
+   "y": 31,
+   "w": 102,
+   "h": 52
+  },
+  {
+   "tag": "div",
+   "rendered": true,
+   "x": 59,
+   "y": 81,
+   "w": 122,
+   "h": 82
+  },
+  {
+   "tag": "div",
+   "rendered": true,
+   "x": 89,
+   "y": 111,
+   "w": 122,
+   "h": 82
+  },
+  {
+   "tag": "button",
+   "rendered": true,
+   "x": 109.109375,
+   "y": 112,
+   "w": 53.0625,
+   "h": 21
+  },
+  {
+   "tag": "p",
+   "rendered": true,
+   "x": 23,
+   "y": 247,
+   "w": 1264,
+   "h": 18
+  },
+  {
+   "tag": "div",
+   "rendered": true,
+   "x": 0,
+   "y": 679,
+   "w": 1280,
+   "h": 41
+  },
+  {
+   "tag": "a",
+   "rendered": true,
+   "x": 78.203125,
+   "y": 680,
+   "w": 24.890625,
+   "h": 18
+  }
+ ]
+}

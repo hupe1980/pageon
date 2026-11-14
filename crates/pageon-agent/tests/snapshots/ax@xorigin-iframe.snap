@@ -1,0 +1,13 @@
+---
+source: crates/pageon-agent/tests/golden.rs
+expression: text
+---
+@page v1 "Pay" http://a.localhost:47811/pages/xorigin-iframe.html load:complete budget:4000/o200k
+## main
+# "Payment"
+text "Enter your card below."
+== frame e1 http://b.localhost:47811 third-party
+  textbox e2 "Card number"
+  button e3 "Pay 42 €"
+== /frame
+button e4 "Back"

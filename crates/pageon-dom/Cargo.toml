@@ -1,0 +1,23 @@
+[package]
+name = "pageon-dom"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "pageon's document model: an arena DOM with handles that never alias, built by html5ever"
+readme = "README.md"
+keywords = ["browser", "dom", "html", "agents"]
+categories = ["web-programming", "parser-implementations"]
+
+[dependencies]
+html5ever = "0.40"
+encoding_rs = "0.8"
+
+[dev-dependencies]
+markup5ever_rcdom = "0.40.1"
+insta = "1"
+
+[lints]
+workspace = true

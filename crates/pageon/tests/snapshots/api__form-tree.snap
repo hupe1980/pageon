@@ -1,0 +1,15 @@
+---
+source: crates/pageon/tests/api.rs
+expression: tree
+---
+html
+  head
+  body
+    form
+      label "Email"
+        input name="email" type="email"
+      select name="c"
+        option "DE"
+        option "FR"
+      button type="submit" "Sign in"
+      textarea "a b"

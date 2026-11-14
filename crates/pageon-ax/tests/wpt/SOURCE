@@ -1,0 +1,6 @@
+Web Platform Tests, https://github.com/web-platform-tests/wpt
+Commit 37d67387d413101e299c51a6f308af9c207e98a0
+Files: html-aam/{roles,roles-contextual,names}.html, wai-aria/role/*.html (static subset),
+accname/name/comp_*.html (static subset), renamed with `/` → `_`.
+Licence: W3C 3-clause BSD License, https://github.com/web-platform-tests/wpt/blob/master/LICENSE.md
+Used unmodified, as test data only.

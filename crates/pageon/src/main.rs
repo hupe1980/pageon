@@ -1,0 +1,1337 @@
+//! The `pageon` command line.
+
+use std::io::Write as _;
+use std::path::PathBuf;
+use std::process::ExitCode;
+use std::time::Duration;
+
+use clap::{Args, Parser, Subcommand, ValueEnum};
+use pageon::{
+    Action, Budget, Dump, Effect, Env, Identity, Limits, Live, LoadError, LoadOptions, Mode,
+    Policy, Recording, Replay, Sandbox, SandboxOptions, Secret, Secrets, Session, StorageState,
+};
+
+/// A browser engine for autonomous agents.
+#[derive(Parser)]
+#[command(name = "pageon", version, about, propagate_version = true)]
+struct Cli {
+    #[command(subcommand)]
+    command: Command,
+}
+
+// Parsed once per run: the size difference between the subcommands does not matter.
+#[allow(clippy::large_enum_variant)]
+#[derive(Subcommand)]
+enum Command {
+    /// Load a page and print it.
+    ///
+    /// Examples:
+    ///   pageon fetch https://example.com
+    ///   pageon fetch https://example.com --dump tree
+    ///   pageon fetch https://example.com --dump ax --budget 2000
+    ///   pageon fetch https://example.com --dump markdown
+    ///   pageon fetch https://example.com --dump errors
+    ///   pageon fetch https://example.com --no-js
+    ///   pageon fetch https://example.com --dump requests
+    ///   pageon fetch http://localhost:3000 --private-network allow
+    ///   pageon fetch https://app.example --state state.json --save-state state.json
+    ///   pageon fetch https://shop.example --origin https://shop.example --approve
+    ///   pageon fetch https://example.com --act "click e3" --act "type e5 hello" --dump ax
+    ///   PAGEON_SECRET_SHOP=… pageon fetch https://shop.example/login --secret shop@https://shop.example --act 'type e2 secret://shop'
+    ///   pageon fetch https://example.com --record example.rec.json
+    ///   pageon fetch https://example.com --replay example.rec.json   (offline)
+    ///   pageon fetch https://example.com --screenshot page.png
+    ///   pageon fetch https://example.com --screenshot marks.png --marks   (legend on stdout)
+    ///   pageon fetch https://example.com --screenshot pay.png --crop e9   (provenance on stdout)
+    #[command(verbatim_doc_comment)]
+    Fetch {
+        /// URL (http, https, file) or path to a local file.
+        target: String,
+        /// What to print [default: text, or nothing with --screenshot].
+        #[arg(long, value_enum)]
+        dump: Option<DumpArg>,
+        /// Viewport for `--dump boxes`, `ax` and `markdown`, e.g. `1280x720`.
+        #[arg(long, value_name = "WxH", default_value = "1280x720", value_parser = parse_viewport)]
+        viewport: pageon::Viewport,
+        /// Act on the page after loading, in order (repeatable): `click e5`, `type e3 hello`,
+        /// `press Enter`, `select e7 Germany`, `hover e2`, `wait 500`, `goto URL`, `back`.
+        /// Refs are those of `--dump ax`.
+        #[arg(long = "act", value_name = "ACTION")]
+        acts: Vec<String>,
+        /// Ask on the terminal before every write (POST, PUT, …) to an --origin.
+        #[arg(long)]
+        approve: bool,
+        #[command(flatten)]
+        paint: PaintArgs,
+        #[command(flatten)]
+        session: SessionArgs,
+    },
+    /// Re-run a recorded session and check that every step reaches the same page.
+    ///
+    /// Examples:
+    ///   pageon fetch https://shop.example/login --act "type e3 ada" --act "click e5" --record ep.json
+    ///   pageon replay ep.json              # ✓ per step; exit 0 identical, 5 diverged
+    ///   pageon replay ep.json --to 1       # the agent view at step 1
+    ///   pageon replay ep.json --live       # against the live site: has it changed since?
+    ///
+    /// Offline replays serve every request from the recording; nothing leaves the machine.
+    #[command(verbatim_doc_comment)]
+    Replay {
+        /// A recording made with --record (by `pageon fetch --act` or `pageon mcp`).
+        file: PathBuf,
+        /// Stop after this step and print the page as it was then (see --dump).
+        #[arg(long, value_name = "N")]
+        to: Option<usize>,
+        /// Re-run against the live network instead of the recording, under this command's
+        /// options (not the recording's). Recorded writes are held: refused, or asked with
+        /// --approve.
+        #[arg(long)]
+        live: bool,
+        /// With --live: ask on the terminal before each recorded write instead of refusing it.
+        #[arg(long, requires = "live")]
+        approve: bool,
+        /// With --to: what to print [default: ax].
+        #[arg(long, value_enum)]
+        dump: Option<DumpArg>,
+        #[command(flatten)]
+        session: SessionArgs,
+    },
+    /// Serve a sandboxed browser to an agent over MCP (stdio).
+    ///
+    /// Add it to an agent host:
+    ///   Claude Code:     claude mcp add pageon -- pageon mcp
+    ///   Claude Desktop, Cursor (mcpServers in their JSON config):
+    ///     "pageon": { "command": "pageon", "args": ["mcp"] }
+    ///
+    /// Tools:
+    ///   read     browser_open, browser_observe, browser_view, browser_screenshot
+    ///   act      browser_click, browser_type, browser_press, browser_select, browser_hover,
+    ///            browser_scroll, browser_wait, browser_back, browser_forward, browser_call_tool
+    ///   explore  browser_lookahead (try actions on a fork; the page is unchanged, writes are held),
+    ///            browser_reset (back to any step, exactly, sending nothing again)
+    ///   reuse    browser_workflow_save, browser_workflow_run
+    ///   people   browser_takeover (a live view for a person: CAPTCHAs, second factors)
+    ///
+    /// Every reply ends with its step number. Logs go to stderr; stdout carries the protocol.
+    #[command(verbatim_doc_comment)]
+    Mcp {
+        #[command(flatten)]
+        session: SessionArgs,
+    },
+    /// Serve a sandboxed browser over the Chrome DevTools Protocol and WebDriver BiDi, for
+    /// Puppeteer, Playwright and BiDi clients.
+    ///
+    /// Connect with:
+    ///   puppeteer.connect({ browserURL: 'http://127.0.0.1:9222' })
+    ///   chromium.connectOverCDP('http://127.0.0.1:9222')
+    ///   puppeteer.connect({ browserWSEndpoint: 'ws://127.0.0.1:9222/session',
+    ///                       protocol: 'webDriverBiDi' })
+    ///
+    /// pageon implements the CDP subset Puppeteer and Playwright use: pages, frames and
+    /// navigation, evaluate and handles, selectors, locators and waiting, clicks and typing,
+    /// cookies, events and screenshots. Methods it lacks fail at once with what to use
+    /// instead. The agent view is one call away:
+    /// `(await page.createCDPSession()).send('Pageon.observe')`, and set-of-marks another:
+    /// `send('Pageon.screenshot', {marks: true})`. Over BiDi: `pageon:observe` and `pageon:act`.
+    ///
+    /// Listens on 127.0.0.1 only; serves one client and exits when it disconnects.
+    #[command(verbatim_doc_comment, visible_alias = "bidi")]
+    Cdp {
+        /// Port on 127.0.0.1 (0: pick a free one).
+        #[arg(long, default_value_t = 9222)]
+        port: u16,
+        /// Allow WebSocket connections from a web origin (repeatable; `*` for any). Browsers
+        /// send an Origin, Node clients do not.
+        #[arg(long, value_name = "ORIGIN")]
+        allow_origin: Vec<String>,
+        #[command(flatten)]
+        session: SessionArgs,
+    },
+    /// Create and publish a signed agent identity (Web Bot Auth).
+    ///
+    /// Examples:
+    ///   pageon identity new --agent https://bot.example
+    ///   pageon identity directory > http-message-signatures-directory
+    ///   pageon fetch https://example.com --identity pageon-identity.json
+    ///
+    /// With --identity (or PAGEON_IDENTITY), every request pageon sends carries a Web Bot Auth
+    /// signature (RFC 9421, Ed25519) that sites and CDNs can verify against your directory.
+    #[command(verbatim_doc_comment)]
+    Identity {
+        #[command(subcommand)]
+        command: IdentityCommand,
+    },
+    /// Compile a recorded session into a workflow, and run workflows without a model.
+    ///
+    /// Examples:
+    ///   pageon workflow compile ep.json -o report.flow.json
+    ///   pageon workflow run report.flow.json --param user=bob --secret shop@https://shop.example
+    ///
+    /// A workflow names elements as the agent saw them (role and name), with parameters for
+    /// typed values. A run stops with `drifted` (exit 7) when the site has moved on; repair by
+    /// acting by hand and compiling again.
+    #[command(verbatim_doc_comment)]
+    Workflow {
+        #[command(subcommand)]
+        command: WorkflowCommand,
+    },
+    /// The caged content process (started by pageon itself).
+    #[command(hide = true)]
+    Content {
+        /// Run the cage self-test.
+        #[arg(long)]
+        probe: bool,
+    },
+}
+
+#[derive(Subcommand)]
+// Parsed once per run: the size difference between the subcommands does not matter.
+#[allow(clippy::large_enum_variant)]
+enum WorkflowCommand {
+    /// Compile the steps of a recording (`--record`) into a workflow.
+    Compile {
+        /// The recording.
+        recording: PathBuf,
+        /// Where to write the workflow [default: stdout].
+        #[arg(short, long, value_name = "FILE")]
+        out: Option<PathBuf>,
+    },
+    /// Run a workflow live; exit 0 done, 7 drifted.
+    Run {
+        /// The workflow.
+        file: PathBuf,
+        /// A parameter value (repeatable): NAME=VALUE.
+        #[arg(long = "param", value_name = "NAME=VALUE")]
+        params: Vec<String>,
+        #[command(flatten)]
+        session: SessionArgs,
+    },
+}
+
+#[derive(Subcommand)]
+enum IdentityCommand {
+    /// Create a new Ed25519 identity.
+    New {
+        /// Your Signature-Agent URL (https): where verifiers find your key directory.
+        #[arg(long, value_name = "URL")]
+        agent: String,
+        /// The key file to write (never overwritten; readable by you only).
+        #[arg(long, value_name = "FILE", default_value = "pageon-identity.json")]
+        out: PathBuf,
+    },
+    /// Print the key directory to host (body on stdout, response headers on stderr).
+    Directory {
+        /// The key file.
+        #[arg(
+            long,
+            value_name = "FILE",
+            env = "PAGEON_IDENTITY",
+            default_value = "pageon-identity.json"
+        )]
+        identity: PathBuf,
+        /// Days the directory's signature stays valid.
+        #[arg(long, value_name = "DAYS", default_value_t = 90)]
+        days: u64,
+    },
+}
+
+/// Pixels, after loading and any --act.
+#[derive(Args)]
+struct PaintArgs {
+    /// Write a screenshot of the viewport to FILE (.png, or .jpg/.jpeg).
+    #[arg(long, value_name = "FILE")]
+    screenshot: Option<PathBuf>,
+    /// The whole page instead of the viewport (capped at 16384 px).
+    #[arg(long, requires = "screenshot")]
+    full_page: bool,
+    /// Set-of-marks: outline and label every visible element with its ref; the legend goes
+    /// to stdout.
+    #[arg(long, requires = "screenshot")]
+    marks: bool,
+    /// Only this element (a ref of `--dump ax`), with where its pixels come from on stdout.
+    #[arg(long, value_name = "REF", requires = "screenshot", conflicts_with_all = ["full_page", "marks"])]
+    crop: Option<String>,
+    /// Device pixels per CSS pixel, 0.25 to 2.
+    #[arg(long, default_value_t = 1.0, requires = "screenshot")]
+    scale: f32,
+    /// Paint over third-party frames and text a person cannot read (for vision models reading
+    /// untrusted pages); the notes say what was masked.
+    #[arg(long, requires = "screenshot")]
+    mask: bool,
+}
+
+/// What every page session needs: network, sandbox, policy, secrets, state, recordings.
+#[derive(Args)]
+struct SessionArgs {
+    /// Record everything the session used to this file.
+    #[arg(long, value_name = "FILE", conflicts_with = "replay")]
+    record: Option<PathBuf>,
+    /// Serve from a recording, offline.
+    #[arg(long, value_name = "FILE")]
+    replay: Option<PathBuf>,
+    /// Seconds before a request times out.
+    #[arg(long, value_name = "SECS", default_value_t = 30)]
+    timeout: u64,
+    /// Maximum response size in bytes.
+    #[arg(long, value_name = "BYTES", default_value_t = 50 * 1024 * 1024)]
+    max_bytes: u64,
+    /// Do not run the page's scripts.
+    #[arg(long)]
+    no_js: bool,
+    /// Token budget (o200k) of the agent views (`ax`, `markdown`).
+    #[arg(long, value_name = "TOKENS", default_value_t = 4000)]
+    budget: usize,
+    /// Whether the page may reach the private network (localhost, 10.0.0.0/8, 169.254.0.0/16,
+    /// …). Denied by default.
+    #[arg(long, value_enum, value_name = "POLICY", default_value_t = PrivateNetwork::Deny)]
+    private_network: PrivateNetwork,
+    /// Start with this state: a Playwright storageState file (cookies and localStorage) or a
+    /// cookie array.
+    #[arg(long, value_name = "FILE")]
+    state: Option<PathBuf>,
+    /// Same as `--state`.
+    #[arg(long, value_name = "FILE", hide = true, conflicts_with = "state")]
+    cookies: Option<PathBuf>,
+    /// Write the session's cookies and localStorage (Playwright storageState) here at the end.
+    #[arg(long, value_name = "FILE")]
+    save_state: Option<PathBuf>,
+    /// Run the page in-process instead of the sandbox (pages then run with your rights).
+    #[arg(long)]
+    no_sandbox: bool,
+    /// Let the agent open local files (file: URLs and paths) as pages over MCP, CDP and BiDi.
+    /// Off by default there; web pages never load local files either way.
+    #[arg(long)]
+    allow_files: bool,
+    /// An origin the task may read and write (repeatable; `https://*.example.com` for
+    /// subdomains). With any --origin or --read-origin, requests elsewhere are refused.
+    #[arg(long, value_name = "ORIGIN")]
+    origin: Vec<String>,
+    /// An origin the task may only read (repeatable).
+    #[arg(long, value_name = "ORIGIN")]
+    read_origin: Vec<String>,
+    /// A secret for `type eN secret://NAME`, bound to ORIGIN: NAME@ORIGIN, value from
+    /// PAGEON_SECRET_<NAME>; NAME:totp@ORIGIN for a TOTP seed (repeatable).
+    #[arg(long, value_name = "NAME@ORIGIN")]
+    secret: Vec<String>,
+    /// Send every request through this proxy (HTTP_PROXY / HTTPS_PROXY / NO_PROXY are used
+    /// without it).
+    #[arg(long, value_name = "URL", conflicts_with = "replay")]
+    proxy: Option<String>,
+    /// Ask this program about every request but reads of known origins: one JSON
+    /// effect per line on its stdin, one JSON verdict (`{"verdict": "allow"|"deny"|"ask"}`)
+    /// per line on its stdout; it fails closed.
+    #[arg(long, value_name = "COMMAND", env = "PAGEON_GUARD")]
+    guard: Option<String>,
+    /// Sign every request with this identity (Web Bot Auth; `pageon identity new`).
+    #[arg(long, value_name = "FILE", env = "PAGEON_IDENTITY")]
+    identity: Option<PathBuf>,
+    /// Who pageon says it is: an automated agent, or a pinned, coherent Chrome (needs a build
+    /// with `--features chrome`).
+    #[arg(long, value_enum, value_name = "PROFILE", default_value_t = ProfileArg::Agent)]
+    profile: ProfileArg,
+    /// Whether to honour robots.txt for the pages the agent opens. `ignore` is for sessions a
+    /// person directs.
+    #[arg(long, value_enum, value_name = "POLICY", default_value_t = RobotsArg::Respect)]
+    robots: RobotsArg,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum ProfileArg {
+    /// pageon, an automated agent (honest user agent, navigator.webdriver true).
+    Agent,
+    /// Chrome 149 on Linux, coherent across TLS, HTTP/2, headers, client hints and scripts.
+    BrowserCompatible,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum RobotsArg {
+    /// Honour robots.txt (RFC 9309, product token `pageon`).
+    Respect,
+    /// Do not check it (a session a person directs).
+    Ignore,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum PrivateNetwork {
+    /// Refuse loopback, private and link-local destinations.
+    Deny,
+    /// Allow them (local development).
+    Allow,
+}
+
+#[derive(Clone, Copy, ValueEnum)]
+enum DumpArg {
+    /// Readable text.
+    Text,
+    /// HTML serialization.
+    Html,
+    /// Element outline.
+    Tree,
+    /// Element outline with boxes and flags (hidden, offscreen, covered-by).
+    Boxes,
+    /// The agent view: landmarks, headings, quoted text, elements with refs.
+    Ax,
+    /// The main content as Markdown (visible text only; links carry refs).
+    Markdown,
+    /// Script errors of the page and its frames, one per line.
+    Errors,
+    /// Every request of the load (frames, scripts, fetch, XHR), with blocked ones and why.
+    Requests,
+}
+
+fn parse_viewport(s: &str) -> Result<pageon::Viewport, String> {
+    let (w, h) = s
+        .split_once(['x', '×'])
+        .ok_or_else(|| format!("{s:?}: expected WxH, e.g. 1280x720"))?;
+    let num = |v: &str| {
+        v.trim()
+            .parse::<u32>()
+            .ok()
+            .filter(|n| (1..=16384).contains(n))
+    };
+    match (num(w), num(h)) {
+        (Some(width), Some(height)) => Ok(pageon::Viewport { width, height }),
+        _ => Err(format!(
+            "{s:?}: width and height must be 1–16384, e.g. 1280x720"
+        )),
+    }
+}
+
+fn fail(e: &LoadError) -> ExitCode {
+    eprintln!("error: {e}\n  {}", e.guidance());
+    ExitCode::from(e.exit_code())
+}
+
+fn dump_kind(d: DumpArg) -> Dump {
+    match d {
+        DumpArg::Text => Dump::Text,
+        DumpArg::Html => Dump::Html,
+        DumpArg::Tree => Dump::Tree,
+        DumpArg::Boxes => Dump::Boxes,
+        DumpArg::Ax => Dump::Ax,
+        DumpArg::Markdown => Dump::Markdown,
+        DumpArg::Errors => Dump::Errors,
+        DumpArg::Requests => Dump::Requests,
+    }
+}
+
+/// Asks on the terminal whether a write may leave (deny without a terminal).
+fn ask(effect: &Effect) -> bool {
+    use std::io::BufRead as _;
+    let Ok(tty) = std::fs::File::open("/dev/tty") else {
+        eprintln!("policy: {effect} refused (no terminal to ask on)");
+        return false;
+    };
+    eprint!("allow {effect}? [y/N] ");
+    let mut line = String::new();
+    let _ = std::io::BufReader::new(tty).read_line(&mut line);
+    matches!(line.trim(), "y" | "Y" | "yes")
+}
+
+/// `--secret NAME@ORIGIN` (or `NAME:totp@ORIGIN`), its value from `PAGEON_SECRET_<NAME>`.
+fn parse_secret(spec: &str) -> Result<(String, Secret), String> {
+    let (name, origin) = spec
+        .split_once('@')
+        .ok_or_else(|| format!("{spec:?}: expected NAME@ORIGIN, e.g. shop@https://shop.example"))?;
+    let (name, totp) = match name.strip_suffix(":totp") {
+        Some(n) => (n, true),
+        None => (name, false),
+    };
+    let var = format!(
+        "PAGEON_SECRET_{}",
+        name.to_ascii_uppercase().replace(['-', '.'], "_")
+    );
+    let value = std::env::var(&var).map_err(|_| {
+        format!("secret {name}: set {var} to its value (it never reaches the page's text)")
+    })?;
+    let secret = if totp {
+        Secret::totp(&value).map_err(|e| format!("{var}: {e}"))?
+    } else {
+        Secret::value(value)
+    };
+    Ok((name.to_string(), secret.origins([origin.to_string()])))
+}
+
+/// The session flags, checked: load options, secrets and the starting state.
+struct Prepared {
+    options: LoadOptions,
+    secrets: Vec<(String, Secret)>,
+    state: Option<StorageState>,
+}
+
+fn prepare(s: &SessionArgs) -> Result<Prepared, ExitCode> {
+    for (flag, origins) in [("--origin", &s.origin), ("--read-origin", &s.read_origin)] {
+        for o in origins {
+            if let Err(e) = pageon::check_origin(o) {
+                eprintln!("error: {flag} {e}");
+                return Err(ExitCode::from(2));
+            }
+        }
+    }
+    let mut secrets = Vec::new();
+    for spec in &s.secret {
+        secrets.push(parse_secret(spec).map_err(|e| {
+            eprintln!("error: {e}");
+            ExitCode::from(2)
+        })?);
+    }
+    let state = match s.state.as_ref().or(s.cookies.as_ref()) {
+        Some(path) => {
+            let text = std::fs::read_to_string(path)
+                .map_err(|e| fail(&LoadError::Io(format!("{}: {e}", path.display()))))?;
+            Some(StorageState::from_json(&text).map_err(|e| {
+                fail(&LoadError::Io(format!(
+                    "{}: not a storageState file or cookie array: {e}",
+                    path.display()
+                )))
+            })?)
+        }
+        None => None,
+    };
+    Ok(Prepared {
+        options: LoadOptions {
+            scripts: !s.no_js,
+            allow_private_network: s.private_network == PrivateNetwork::Allow,
+            robots: s.robots == RobotsArg::Respect,
+            ..LoadOptions::default()
+        },
+        secrets,
+        state,
+    })
+}
+
+fn save_state(path: Option<&PathBuf>, s: &StorageState) -> Result<(), ExitCode> {
+    if let Some(path) = path {
+        let text = serde_json::to_string_pretty(s).unwrap_or_default() + "\n";
+        pageon_env::write_private(path, text.as_bytes())
+            .map_err(|e| fail(&LoadError::Io(format!("{}: {e}", path.display()))))?;
+    }
+    Ok(())
+}
+
+/// A job over the session's environment.
+type Job<'a, T> = Box<dyn FnOnce(&dyn Env) -> Result<T, ExitCode> + 'a>;
+
+/// Runs `job` with the secrets vault around the origin policy around `base`; returns the
+/// result and every secret value handed out.
+fn guarded<T>(
+    base: &dyn Env,
+    s: &SessionArgs,
+    secrets: &[(String, Secret)],
+    approve: bool,
+    hold_writes: bool,
+    job: Job<'_, T>,
+) -> (Result<T, ExitCode>, Vec<String>) {
+    let mut policy = Policy::new(base)
+        .read_write(&s.origin)
+        .read_only(&s.read_origin);
+    if approve {
+        policy = policy.approver(ask);
+    }
+    if hold_writes {
+        policy = policy.hold_writes();
+    }
+    if let Some(cmd) = &s.guard {
+        let guard = pageon::CommandGuard::new(cmd.clone());
+        policy = policy.guard(move |e| guard.verdict(e));
+    }
+    let mut vault = Secrets::new(&policy);
+    for (name, secret) in secrets {
+        vault = vault.with(name, secret.clone());
+    }
+    let r = job(&vault);
+    (r, vault.values())
+}
+
+/// Runs `job` over the session's environment stack: secrets around the policy around the
+/// network (live, recorded or replayed). A recording is saved afterwards, with every secret
+/// value handed out redacted.
+///
+/// `keep` records in memory even without `--record` (MCP keeps its steps for resets).
+fn with_env<T>(
+    s: &SessionArgs,
+    secrets: &[(String, Secret)],
+    approve: bool,
+    keep: bool,
+    job: impl FnOnce(&dyn Env) -> Result<T, ExitCode>,
+) -> Result<T, ExitCode> {
+    let job: Job<'_, T> = Box::new(job);
+    if let Some(path) = &s.replay {
+        let env = Replay::load(path).map_err(|e| {
+            eprintln!(
+                "error: {e}\n  record one with `pageon fetch <url> --record {}`",
+                path.display()
+            );
+            ExitCode::from(3)
+        })?;
+        if keep {
+            return guarded(&Recording::new(env), s, secrets, approve, false, job).0;
+        }
+        return guarded(&env, s, secrets, approve, false, job).0;
+    }
+    let limits = Limits {
+        timeout: Duration::from_secs(s.timeout),
+        max_bytes: s.max_bytes,
+    };
+    let live = live_env(s, limits)?;
+    let Some(path) = &s.record else {
+        if keep {
+            return guarded(&Recording::new(live), s, secrets, approve, false, job).0;
+        }
+        return guarded(&live, s, secrets, approve, false, job).0;
+    };
+    let env = Recording::new(live);
+    let (r, values) = guarded(&env, s, secrets, approve, false, job);
+    env.redact(values);
+    if let Err(e) = env.save(path) {
+        eprintln!(
+            "error: could not write the recording {}: {e}\n  check the directory exists and is writable",
+            path.display()
+        );
+        return Err(ExitCode::from(3));
+    }
+    r
+}
+
+/// The live network of a session: its profile, proxy and identity.
+fn live_env(s: &SessionArgs, limits: Limits) -> Result<Live, ExitCode> {
+    let mut live = match s.profile {
+        ProfileArg::Agent => Live::new(limits),
+        ProfileArg::BrowserCompatible => Live::browser_compatible(limits).map_err(|e| {
+            eprintln!("error: {e}");
+            ExitCode::from(2)
+        })?,
+    };
+    if let Some(p) = &s.proxy {
+        live = live.with_proxy(p).map_err(|e| {
+            eprintln!("error: {e}\n  pass a proxy URL such as http://127.0.0.1:3128");
+            ExitCode::from(2)
+        })?;
+    }
+    if let Some(path) = &s.identity {
+        let id = Identity::load(path).map_err(|e| {
+            eprintln!("error: {e}");
+            ExitCode::from(2)
+        })?;
+        if Identity::exposed(path) {
+            eprintln!(
+                "warning: {} is readable by others; run `chmod 600 {}`",
+                path.display(),
+                path.display()
+            );
+        }
+        live = live.with_identity(id);
+    }
+    Ok(live)
+}
+
+fn identity(command: IdentityCommand) -> ExitCode {
+    match command {
+        IdentityCommand::New { agent, out } => {
+            let id = match Identity::generate(&agent).and_then(|id| id.save(&out).map(|()| id)) {
+                Ok(id) => id,
+                Err(e) => {
+                    eprintln!("error: {e}");
+                    return ExitCode::from(2);
+                }
+            };
+            let base = id.agent().trim_end_matches('/');
+            println!("wrote {} (keyid {})", out.display(), id.keyid());
+            println!("next:");
+            println!(
+                "  1. host the directory: pageon identity directory --identity {} \\",
+                out.display()
+            );
+            println!("       > http-message-signatures-directory");
+            println!("     at {base}/.well-known/http-message-signatures-directory");
+            println!("     (serve it with the headers printed on stderr)");
+            println!(
+                "  2. sign requests: pageon fetch <url> --identity {}   (or PAGEON_IDENTITY)",
+                out.display()
+            );
+            println!(
+                "  3. register {base} with the verifiers you need (Cloudflare: Bot Submission Form)"
+            );
+            ExitCode::SUCCESS
+        }
+        IdentityCommand::Directory { identity, days } => {
+            let id = match Identity::load(&identity) {
+                Ok(id) => id,
+                Err(e) => {
+                    eprintln!("error: {e}");
+                    return ExitCode::from(2);
+                }
+            };
+            let authority = url::Url::parse(id.agent())
+                .ok()
+                .and_then(|u| {
+                    u.host_str().map(|h| {
+                        u.port()
+                            .map_or_else(|| h.to_string(), |p| format!("{h}:{p}"))
+                    })
+                })
+                .unwrap_or_default();
+            #[allow(clippy::disallowed_methods)] // the directory's validity is real time
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_or(0, |d| d.as_secs());
+            let (body, headers) = id.directory(&authority, now, now + days * 86_400);
+            println!("{body}");
+            for (k, v) in headers {
+                eprintln!("{k}: {v}");
+            }
+            ExitCode::SUCCESS
+        }
+    }
+}
+
+/// Page text with control characters other than newline and tab escaped (`\u001b`), so a page
+/// cannot drive the terminal it is printed to (titles, cursor moves, clearing, hyperlinks).
+fn terminal_safe(s: &str) -> std::borrow::Cow<'_, str> {
+    if !s.chars().any(|c| c.is_control() && c != '\n' && c != '\t') {
+        return s.into();
+    }
+    s.chars()
+        .map(|c| match c {
+            '\n' | '\t' => c.to_string(),
+            c if c.is_control() => format!("\\u{:04x}", c as u32),
+            c => c.to_string(),
+        })
+        .collect::<String>()
+        .into()
+}
+
+fn acted(r: Result<pageon::Outcome, pageon::ActionError>) -> Result<(), ExitCode> {
+    match r {
+        Ok(o) => {
+            eprintln!("{o}");
+            Ok(())
+        }
+        Err(e) => {
+            eprintln!("error: {e}\n  {}", e.guidance());
+            Err(ExitCode::from(3))
+        }
+    }
+}
+
+fn broken(e: pageon::SandboxError) -> ExitCode {
+    eprintln!("error: {e}\n  {}", e.guidance());
+    ExitCode::from(3)
+}
+
+/// What a fetch prints: the dump, the page's HTTP status and the site's refusal.
+type Printed = (String, u16, Option<pageon::Refusal>);
+
+struct Fetch<'a> {
+    target: &'a str,
+    dump: Option<DumpArg>,
+    paint: &'a PaintArgs,
+    viewport: pageon::Viewport,
+    actions: Vec<Action>,
+    budget: Budget,
+    session: &'a SessionArgs,
+    prepared: &'a Prepared,
+}
+
+/// Loads the page (caged by default), runs the actions (outcome lines to stderr), and
+/// returns the dump.
+fn fetch(env: &dyn Env, f: Fetch<'_>) -> Result<Printed, ExitCode> {
+    let format = match &f.paint.screenshot {
+        Some(p) => Some(
+            pageon::Format::from_path(&p.to_string_lossy()).ok_or_else(|| {
+                eprintln!(
+                    "error: cannot tell the image format of {}\n  name the file .png, .jpg or .jpeg",
+                    p.display()
+                );
+                ExitCode::from(2)
+            })?,
+        ),
+        None => None,
+    };
+    let dump = match (f.dump, format) {
+        (Some(d), _) => Some(d),
+        (None, None) => Some(DumpArg::Text),
+        (None, Some(_)) => None,
+    };
+    let kind = dump_kind(dump.unwrap_or(DumpArg::Text));
+    let acted_ax = matches!(kind, Dump::Ax) && !f.actions.is_empty();
+    let options = f.prepared.options;
+    if !f.session.no_sandbox {
+        let mut sb = Sandbox::new(env, SandboxOptions::default()).map_err(broken)?;
+        if std::io::IsTerminal::is_terminal(&std::io::stderr()) {
+            eprintln!("{}", sb.receipt());
+        }
+        if let Some(s) = &f.prepared.state {
+            sb.set_storage_state(s).map_err(broken)?;
+        }
+        let (text, status, refusal) = {
+            let mut tab = sb.open(f.target, options).map_err(|e| fail(&e))?;
+            if !f.actions.is_empty() {
+                tab.observe().map_err(broken)?;
+            }
+            for a in f.actions {
+                acted(tab.act(a))?;
+            }
+            let (line, code, refusal) = tab.status().map_err(broken)?;
+            eprintln!("{}", terminal_safe(&line));
+            let mut text = match dump {
+                None => String::new(),
+                Some(_) if acted_ax => tab.observe().map_err(broken)?,
+                Some(_) => tab.view(kind, f.viewport, f.budget).map_err(broken)?,
+            };
+            if let (Some(path), Some(format)) = (&f.paint.screenshot, format) {
+                let img = match &f.paint.crop {
+                    Some(r) => tab.crop(r, 8.0, format, f.paint.scale),
+                    None => tab.screenshot(&screenshot_options(f.paint, format)),
+                };
+                text.push_str(&painted(img, path)?);
+            }
+            (text, code, refusal)
+        };
+        if f.session.save_state.is_some() {
+            save_state(
+                f.session.save_state.as_ref(),
+                &sb.storage_state().map_err(broken)?,
+            )?;
+        }
+        return Ok((text, status, refusal));
+    }
+    let session = Session::new(env);
+    if let Some(s) = &f.prepared.state {
+        session.set_storage_state(s);
+    }
+    let mut tab = session.open(f.target, options).map_err(|e| fail(&e))?;
+    tab.set_view(f.budget, Mode::Full);
+    if !f.actions.is_empty() {
+        tab.observe();
+    }
+    for a in f.actions {
+        acted(tab.act(a))?;
+    }
+    eprintln!("{}", terminal_safe(&tab.status_line()));
+    let mut text = match dump {
+        None => String::new(),
+        Some(_) if acted_ax => tab.observe(),
+        Some(_) => tab.view(kind, f.viewport, f.budget),
+    };
+    if let (Some(path), Some(format)) = (&f.paint.screenshot, format) {
+        let img = match &f.paint.crop {
+            Some(r) => tab.crop(r, 8.0, format, f.paint.scale),
+            None => tab.screenshot(&screenshot_options(f.paint, format)),
+        };
+        text.push_str(&painted(img, path)?);
+    }
+    let status = tab.status();
+    let refusal = tab.document().refusal().cloned();
+    drop(tab);
+    save_state(f.session.save_state.as_ref(), &session.storage_state())?;
+    Ok((text, status, refusal))
+}
+
+fn screenshot_options(p: &PaintArgs, format: pageon::Format) -> pageon::ScreenshotOptions {
+    pageon::ScreenshotOptions {
+        area: if p.full_page {
+            pageon::Area::FullPage
+        } else {
+            pageon::Area::Viewport
+        },
+        scale: p.scale,
+        format,
+        marks: p.marks,
+        budget: None,
+        mask: p.mask,
+    }
+}
+
+/// Writes a painted image; its summary and notes go to stderr, its legend or provenance is
+/// returned for stdout.
+fn painted(
+    img: Result<pageon::Image, pageon::PaintError>,
+    path: &std::path::Path,
+) -> Result<String, ExitCode> {
+    let img = img.map_err(|e| {
+        eprintln!("error: {e}\n  {}", e.guidance());
+        ExitCode::from(3)
+    })?;
+    std::fs::write(path, &img.bytes).map_err(|e| {
+        eprintln!(
+            "error: cannot write {}: {e}\n  check the directory exists and is writable",
+            path.display()
+        );
+        ExitCode::from(2)
+    })?;
+    eprintln!("wrote {} ({})", path.display(), img.summary());
+    for n in &img.notes {
+        eprintln!("  {n}");
+    }
+    Ok(match (img.legend, img.provenance) {
+        (Some(l), _) => l,
+        (None, Some(p)) => p.to_string(),
+        (None, None) => String::new(),
+    })
+}
+
+fn content(probe: bool) -> ExitCode {
+    if probe {
+        let home = std::env::var("HOME").unwrap_or_else(|_| "/root".into());
+        println!("{}", pageon::content::probe(&home));
+        return ExitCode::SUCCESS;
+    }
+    match pageon::content::serve() {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(e) => {
+            eprintln!("content process: {e}");
+            ExitCode::from(70)
+        }
+    }
+}
+
+fn replay(
+    file: &std::path::Path,
+    to: Option<usize>,
+    live: bool,
+    approve: bool,
+    dump: Option<DumpArg>,
+    s: &SessionArgs,
+) -> ExitCode {
+    let log: pageon_env::Log = match std::fs::read_to_string(file)
+        .map_err(|e| e.to_string())
+        .and_then(|t| serde_json::from_str(&t).map_err(|e| e.to_string()))
+    {
+        Ok(l) => l,
+        Err(e) => {
+            eprintln!(
+                "error: cannot read the recording {}: {e}\n  record one with `pageon fetch URL --act … --record FILE`",
+                file.display()
+            );
+            return ExitCode::from(2);
+        }
+    };
+    if log.steps.is_empty() {
+        eprintln!(
+            "error: {} has no steps (it was recorded without actions, or before pageon 0.2)\n  record one with `pageon fetch URL --act … --record FILE` or `pageon mcp --record FILE`",
+            file.display()
+        );
+        return ExitCode::from(2);
+    }
+    let last = log.steps.len() - 1;
+    let upto = to.unwrap_or(last);
+    if upto > last {
+        eprintln!("error: step {upto} does not exist\n  the recording has steps 0 to {last}");
+        return ExitCode::from(2);
+    }
+    if log.user_agent != log.profile.user_agent() {
+        eprintln!(
+            "warning: recorded by {:?}; this is {:?} (a different version may replay differently)",
+            log.user_agent,
+            log.profile.user_agent()
+        );
+    }
+    let prepared = match prepare(s) {
+        Ok(p) => p,
+        Err(code) => return code,
+    };
+    let base: Box<dyn Env> = if live {
+        // The live web, as this command's session would reach it: its profile, identity and
+        // proxy, not the recording's.
+        let limits = Limits {
+            timeout: Duration::from_secs(s.timeout),
+            max_bytes: s.max_bytes,
+        };
+        match live_env(s, limits) {
+            Ok(l) => Box::new(l),
+            Err(code) => return code,
+        }
+    } else {
+        Box::new(Replay::new(log.clone()))
+    };
+    let steps = log.steps.clone();
+    let rec = match Recording::resume(log, upto, base, !live) {
+        Ok(r) => r,
+        Err(e) => {
+            eprintln!("error: {e}");
+            return ExitCode::from(2);
+        }
+    };
+    let kind = dump.map(dump_kind).unwrap_or(Dump::Ax);
+    let quiet = to.is_some();
+    let say = move |line: String| {
+        if quiet {
+            eprintln!("{line}");
+        } else {
+            println!("{line}");
+        }
+    };
+    let job: Job<'_, u8> = Box::new(|env: &dyn Env| {
+        let mut progress = |i: usize, st: &pageon_env::Step| say(format!("✓ {i} {}", st.action));
+        let mut run = |d: &mut dyn pageon::replay::Driver| -> Result<u8, ExitCode> {
+            match pageon::replay::rerun(d, &steps, upto, &mut progress) {
+                Err(div) => {
+                    say(pageon::replay::report(&div));
+                    say(format!("diverged at step {} of {}", div.step, steps.len()));
+                    Ok(5)
+                }
+                Ok(()) => {
+                    if to.is_some() {
+                        let v = d.view(kind).map_err(|e| {
+                            eprintln!("error: {e}");
+                            ExitCode::from(3)
+                        })?;
+                        println!("{v}");
+                    } else {
+                        say(format!("identical: {} steps", upto + 1));
+                    }
+                    Ok(0)
+                }
+            }
+        };
+        // Live, the operator's safety options replace the recorded ones.
+        let operator = prepared.options;
+        let mut run_as = |d: &mut dyn pageon::replay::Driver| {
+            if live {
+                run(&mut pageon::replay::Operator::new(d, operator))
+            } else {
+                run(d)
+            }
+        };
+        if s.no_sandbox {
+            let session = Session::new(env);
+            if let Some(st) = &prepared.state {
+                session.set_storage_state(st);
+            }
+            run_as(&mut pageon::replay::InProcess::new(&session))
+        } else {
+            let mut sb = Sandbox::new(env, SandboxOptions::default()).map_err(broken)?;
+            if let Some(st) = &prepared.state {
+                sb.set_storage_state(st).map_err(broken)?;
+            }
+            run_as(&mut pageon::replay::Caged::new(&mut sb))
+        }
+    });
+    match guarded(&rec, s, &prepared.secrets, approve, live, job).0 {
+        Ok(code) => ExitCode::from(code),
+        Err(code) => code,
+    }
+}
+
+fn workflow(command: WorkflowCommand) -> ExitCode {
+    match command {
+        WorkflowCommand::Compile { recording, out } => {
+            let log: pageon_env::Log = match std::fs::read_to_string(&recording)
+                .map_err(|e| e.to_string())
+                .and_then(|t| serde_json::from_str(&t).map_err(|e| e.to_string()))
+            {
+                Ok(l) => l,
+                Err(e) => {
+                    eprintln!(
+                        "error: cannot read the recording {}: {e}\n  record one with `pageon fetch URL --act … --record FILE`",
+                        recording.display()
+                    );
+                    return ExitCode::from(2);
+                }
+            };
+            let wf = match pageon::workflow::compile(&log.steps) {
+                Ok(w) => w,
+                Err(e) => {
+                    eprintln!("error: {e}");
+                    return ExitCode::from(2);
+                }
+            };
+            let refs = wf
+                .steps
+                .iter()
+                .filter(|s| s.to_string().contains("(recorded ref)"))
+                .count();
+            if refs > 0 {
+                eprintln!(
+                    "warning: {refs} step(s) name a recorded ref (an older recording): they may drift"
+                );
+            }
+            let json = serde_json::to_string_pretty(&wf).unwrap_or_default() + "\n";
+            match &out {
+                Some(path) => {
+                    if let Err(e) = pageon_env::write_private(path, json.as_bytes()) {
+                        eprintln!("error: cannot write {}: {e}", path.display());
+                        return ExitCode::from(3);
+                    }
+                }
+                None => print!("{json}"),
+            }
+            let params: Vec<&str> = wf.params.iter().map(|p| p.name.as_str()).collect();
+            eprintln!(
+                "compiled {} steps from {}{}",
+                wf.steps.len(),
+                wf.start,
+                if params.is_empty() {
+                    String::new()
+                } else {
+                    format!("; parameters: {}", params.join(", "))
+                }
+            );
+            ExitCode::SUCCESS
+        }
+        WorkflowCommand::Run {
+            file,
+            params,
+            session: s,
+        } => {
+            let wf: pageon::workflow::Workflow = match std::fs::read_to_string(&file)
+                .map_err(|e| e.to_string())
+                .and_then(|t| serde_json::from_str(&t).map_err(|e| e.to_string()))
+            {
+                Ok(w) => w,
+                Err(e) => {
+                    eprintln!(
+                        "error: cannot read the workflow {}: {e}\n  compile one with `pageon workflow compile RECORDING`",
+                        file.display()
+                    );
+                    return ExitCode::from(2);
+                }
+            };
+            let mut values = std::collections::HashMap::new();
+            for p in &params {
+                let Some((k, v)) = p.split_once('=') else {
+                    eprintln!("error: {p:?}: expected NAME=VALUE");
+                    return ExitCode::from(2);
+                };
+                values.insert(k.to_string(), v.to_string());
+            }
+            let prepared = match prepare(&s) {
+                Ok(p) => p,
+                Err(code) => return code,
+            };
+            let options = prepared.options;
+            let r = with_env(&s, &prepared.secrets, false, false, |env| {
+                let go = |d: &mut dyn pageon::replay::Driver| -> Result<u8, ExitCode> {
+                    let report = pageon::workflow::run(d, &wf, &values, options, &mut |l| {
+                        eprintln!("{l}");
+                    })
+                    .map_err(|e| {
+                        eprintln!("error: {e}");
+                        ExitCode::from(2)
+                    })?;
+                    eprintln!("{report}");
+                    match &report.stop {
+                        Some(stop) => {
+                            println!("{}", stop.view);
+                            Ok(7)
+                        }
+                        None => Ok(0),
+                    }
+                };
+                if s.no_sandbox {
+                    let session = Session::new(env);
+                    if let Some(st) = &prepared.state {
+                        session.set_storage_state(st);
+                    }
+                    go(&mut pageon::replay::InProcess::new(&session))
+                } else {
+                    let mut sb = Sandbox::new(env, SandboxOptions::default()).map_err(broken)?;
+                    if let Some(st) = &prepared.state {
+                        sb.set_storage_state(st).map_err(broken)?;
+                    }
+                    go(&mut pageon::replay::Caged::new(&mut sb))
+                }
+            });
+            match r {
+                Ok(code) => ExitCode::from(code),
+                Err(code) => code,
+            }
+        }
+    }
+}
+
+fn mcp(s: &SessionArgs) -> ExitCode {
+    let mut prepared = match prepare(s) {
+        Ok(p) => p,
+        Err(code) => return code,
+    };
+    // An agent drives this session: local files only when the operator says so.
+    prepared.options.allow_files = s.allow_files;
+    let r = with_env(s, &prepared.secrets, false, true, |env| {
+        let options = pageon::mcp::McpOptions {
+            sandbox: !s.no_sandbox,
+            load: prepared.options,
+            budget: Budget::o200k(s.budget),
+            state: prepared.state.clone(),
+            ..pageon::mcp::McpOptions::default()
+        };
+        let stdin = std::io::stdin();
+        let state =
+            pageon::mcp::serve(env, options, stdin.lock(), std::io::stdout()).map_err(|e| {
+                eprintln!("error: {e}");
+                ExitCode::from(3)
+            })?;
+        save_state(s.save_state.as_ref(), &state)
+    });
+    match r {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(code) => code,
+    }
+}
+
+fn cdp(port: u16, allow_origins: Vec<String>, s: &SessionArgs) -> ExitCode {
+    let mut prepared = match prepare(s) {
+        Ok(p) => p,
+        Err(code) => return code,
+    };
+    // Clients (and agents behind them) drive this session: local files only when allowed.
+    prepared.options.allow_files = s.allow_files;
+    let r = with_env(s, &prepared.secrets, false, false, |env| {
+        let server = pageon::cdp::server::Server::bind(pageon::cdp::server::ServerOptions {
+            port,
+            allow_origins,
+        })
+        .map_err(|e| {
+            eprintln!(
+                "error: cannot listen on 127.0.0.1:{port}: {e}\n  pick another --port, or --port 0 for a free one"
+            );
+            ExitCode::from(2)
+        })?;
+        let options = prepared.options;
+        let failed = |e: String| {
+            eprintln!("error: {e}");
+            ExitCode::from(3)
+        };
+        let state = if s.no_sandbox {
+            let session = Session::new(env);
+            if let Some(st) = &prepared.state {
+                session.set_storage_state(st);
+            }
+            use pageon::cdp::server::{Input, Proto};
+            let mut cdp = Some(pageon::cdp::Session::new(&session, options));
+            let mut bidi: Option<pageon::bidi::Session<'_, _>> = None;
+            eprintln!("DevTools listening on {}", server.ws_url());
+            eprintln!("WebDriver BiDi listening on {}", server.bidi_url());
+            server
+                .serve(&mut |proto, input| {
+                    if proto == Proto::Bidi && bidi.is_none() {
+                        let c = cdp
+                            .take()
+                            .unwrap_or_else(|| pageon::cdp::Session::new(&session, options));
+                        bidi = Some(pageon::bidi::Session::over(c));
+                    }
+                    Ok(match (bidi.as_mut(), cdp.as_mut(), input) {
+                        (Some(b), _, Input::Message(m)) => b.handle(m),
+                        (Some(b), _, Input::Idle(ms)) => b.idle(ms),
+                        (None, Some(c), Input::Message(m)) => c.handle(m),
+                        (None, Some(c), Input::Idle(ms)) => c.idle(ms),
+                        (None, None, _) => Vec::new(),
+                    })
+                })
+                .map_err(failed)?;
+            drop(bidi);
+            drop(cdp);
+            session.storage_state()
+        } else {
+            let mut sb = Sandbox::new(env, SandboxOptions::default()).map_err(broken)?;
+            if std::io::IsTerminal::is_terminal(&std::io::stderr()) {
+                eprintln!("{}", sb.receipt());
+            }
+            if let Some(st) = &prepared.state {
+                sb.set_storage_state(st).map_err(broken)?;
+            }
+            eprintln!("DevTools listening on {}", server.ws_url());
+            eprintln!("WebDriver BiDi listening on {}", server.bidi_url());
+            server
+                .serve(&mut |proto, input| {
+                    use pageon::cdp::server::{Input, Proto};
+                    match (proto, input) {
+                        (Proto::Cdp, Input::Message(m)) => sb.cdp(m, options),
+                        (Proto::Cdp, Input::Idle(ms)) => sb.cdp_idle(ms),
+                        (Proto::Bidi, Input::Message(m)) => sb.bidi(m, options),
+                        (Proto::Bidi, Input::Idle(ms)) => sb.bidi_idle(ms),
+                    }
+                    .map_err(|e| e.to_string())
+                })
+                .map_err(failed)?;
+            sb.storage_state().map_err(broken)?
+        };
+        save_state(s.save_state.as_ref(), &state)
+    });
+    match r {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(code) => code,
+    }
+}
+
+fn main() -> ExitCode {
+    let (target, dump, viewport, acts, approve, paint, session) = match Cli::parse().command {
+        Command::Content { probe } => return content(probe),
+        Command::Identity { command } => return identity(command),
+        Command::Workflow { command } => return workflow(command),
+        Command::Mcp { session } => return mcp(&session),
+        Command::Replay {
+            file,
+            to,
+            live,
+            approve,
+            dump,
+            session,
+        } => return replay(&file, to, live, approve, dump, &session),
+        Command::Cdp {
+            port,
+            allow_origin,
+            session,
+        } => return cdp(port, allow_origin, &session),
+        Command::Fetch {
+            target,
+            dump,
+            viewport,
+            acts,
+            approve,
+            paint,
+            session,
+        } => (target, dump, viewport, acts, approve, paint, session),
+    };
+    let mut actions = Vec::new();
+    for a in &acts {
+        match a.parse::<Action>() {
+            Ok(x) => actions.push(x),
+            Err(e) => {
+                eprintln!("error: {e}");
+                return ExitCode::from(2);
+            }
+        }
+    }
+    let prepared = match prepare(&session) {
+        Ok(p) => p,
+        Err(code) => return code,
+    };
+    let result = with_env(&session, &prepared.secrets, approve, false, |env| {
+        fetch(
+            env,
+            Fetch {
+                target: &target,
+                dump,
+                paint: &paint,
+                viewport,
+                actions,
+                budget: Budget::o200k(session.budget),
+                session: &session,
+                prepared: &prepared,
+            },
+        )
+    });
+    let (text, status, refusal) = match result {
+        Ok(d) => d,
+        Err(code) => return code,
+    };
+    let text = terminal_safe(&text);
+    let mut out = std::io::stdout().lock();
+    let _ = out.write_all(text.as_bytes());
+    if !text.is_empty() && !text.ends_with('\n') {
+        let _ = out.write_all(b"\n");
+    }
+    if let Some(r) = refusal {
+        eprintln!("refused: {r}\n  {}", r.guidance());
+        return ExitCode::from(6);
+    }
+    if status >= 400 {
+        eprintln!(
+            "error: the server answered {status}\n  the page above is the server's error page"
+        );
+        return ExitCode::from(4);
+    }
+    ExitCode::SUCCESS
+}

@@ -1,0 +1,60 @@
+[package]
+name = "pageon"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "The browser engine built for AI agents: compact page views with stable refs, typed actions, sandboxed pages, replay and fork; MCP, CDP and WebDriver BiDi servers."
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+readme = "../../README.md"
+keywords = ["browser", "agents", "mcp", "llm", "automation"]
+categories = ["web-programming"]
+authors.workspace = true
+
+[[bin]]
+name = "pageon"
+path = "src/main.rs"
+
+[dependencies]
+pageon-dom.workspace = true
+pageon-env.workspace = true
+pageon-layout.workspace = true
+pageon-ax.workspace = true
+pageon-agent.workspace = true
+pageon-js.workspace = true
+pageon-net.workspace = true
+serde_json.workspace = true
+url = "2"
+clap = { version = "4", features = ["derive", "env"] }
+procage.workspace = true
+serde.workspace = true
+hmac = "0.13"
+sha1 = "0.11"
+tungstenite = { version = "0.30", default-features = false, features = ["handshake"] }
+base64 = "0.22"
+getrandom = "0.4"
+libc = "0.2"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
+
+[features]
+# The opt-in browser-compatible profile at the network layer: Chrome's TLS and
+# HTTP/2 through BoringSSL. Off by default (needs cmake, clang and git to build).
+chrome = ["pageon-env/chrome"]
+
+[dev-dependencies]
+insta = "1"
+assert_cmd = "2"
+serde_json.workspace = true
+flate2 = "1"
+encoding_rs = "0.8"
+base64 = "0.22"
+toml = "1"
+serde = { workspace = true }
+pageon-agent.workspace = true
+pageon-env.workspace = true
+rustls = "0.23"
+aws-lc-rs = "1.19"
+
+[lints]
+workspace = true

@@ -1,0 +1,24 @@
+---
+source: crates/pageon-agent/tests/golden.rs
+expression: text
+---
+@page v1 "Checkout – Acme" http://a.localhost:47811/pages/checkout.html load:complete budget:4000/o200k
+## banner
+link e1 "Acme Shop"
+## navigation
+link e2 "Deals"
+link e3 "Cart (2)"
+## main
+# "Checkout"
+textbox e4 "Email" ="ann@example.com" required
+combobox e5 "Country" ="Germany" {"Germany"|"France"|"Spain"|+2}
+checkbox e6 "Save address" checked
+text "Shipping"
+radio e7 "Express"
+radio e8 "Standard" checked
+text "Total 42,00 €"
+textbox e9 ph:"Coupon code"
+button e10 "Apply coupon"
+button e11 "Pay now" disabled
+## contentinfo
+link e12 "Terms"

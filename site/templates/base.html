@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  {%- set page_title = config.title -%}
+  {%- set page_description = config.description -%}
+  {%- if page and page.title -%}
+    {%- set page_title = page.title ~ " · pageon" -%}
+    {%- if page.description -%}{%- set page_description = page.description -%}{%- endif -%}
+  {%- elif section and section.title and not section.path == "/" -%}
+    {%- set page_title = section.title ~ " · pageon" -%}
+    {%- if section.description -%}{%- set page_description = section.description -%}{%- endif -%}
+  {%- endif -%}
+  {%- set canonical = current_url | default(value=config.base_url ~ "/") -%}
+  <title>{% block title %}{{ page_title }}{% endblock %}</title>
+  <meta name="description" content="{{ page_description }}">
+  <meta name="keywords" content="{{ config.extra.keywords }}">
+  <meta name="author" content="{{ config.author }}">
+  <link rel="canonical" href="{{ canonical }}">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+
+  <meta property="og:type" content="{% if page %}article{% else %}website{% endif %}">
+  <meta property="og:site_name" content="pageon">
+  <meta property="og:title" content="{{ page_title }}">
+  <meta property="og:description" content="{{ page_description }}">
+  <meta property="og:url" content="{{ canonical }}">
+  <meta property="og:image" content="{{ get_url(path='og.png') }}">
+  <meta property="og:image:width" content="1280">
+  <meta property="og:image:height" content="720">
+  <meta property="og:image:alt" content="pageon: the browser engine built for AI agents">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{{ page_title }}">
+  <meta name="twitter:description" content="{{ page_description }}">
+  <meta name="twitter:image" content="{{ get_url(path='og.png') }}">
+
+  <meta name="theme-color" content="#0b0d12" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+  <link rel="icon" href="{{ get_url(path='favicon.svg') }}" type="image/svg+xml">
+  <link rel="sitemap" type="application/xml" href="{{ get_url(path='sitemap.xml') }}">
+  <link rel="stylesheet" href="{{ get_url(path='main.css', cachebust=true) }}">
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('theme');
+        if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+      } catch (e) {}
+    })();
+  </script>
+  {% block jsonld %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="nav">
+    <div class="nav__inner">
+      <a class="brand" href="{{ get_url(path='/') }}" aria-label="pageon home">
+        <svg class="brand__mark" viewBox="0 0 32 32" aria-hidden="true"><use href="{{ get_url(path='favicon.svg') }}#mark"/></svg>
+        <span>pageon</span>
+      </a>
+      <nav class="nav__links" aria-label="Main">
+        <a href="{{ get_url(path='@/docs/quick-start.md') }}">Docs</a>
+        <a href="{{ get_url(path='@/docs/mcp.md') }}">MCP</a>
+        <a href="{{ get_url(path='@/docs/python.md') }}">Python</a>
+        <a href="{{ get_url(path='@/docs/benchmarks.md') }}">Benchmarks</a>
+        <a href="{{ config.extra.repo }}" rel="noopener">GitHub</a>
+      </nav>
+      <div class="nav__tools">
+        <button class="search-open" type="button" aria-label="Search the docs" data-search-open>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <span>Search</span><kbd>/</kbd>
+        </button>
+        <button class="theme" type="button" aria-label="Toggle dark mode" data-theme-toggle>
+          <svg class="theme__sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+          <svg class="theme__moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <dialog class="search" aria-label="Search the documentation" data-search>
+    <form method="dialog" class="search__box" role="search">
+      <input type="search" placeholder="Search the docs…" aria-label="Search" autocomplete="off" data-search-input>
+      <button class="search__close" aria-label="Close search">Esc</button>
+    </form>
+    <ol class="search__results" data-search-results></ol>
+  </dialog>
+
+  <main id="main">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="footer">
+    <div class="footer__inner">
+      <div>
+        <a class="brand brand--small" href="{{ get_url(path='/') }}">
+          <svg class="brand__mark" viewBox="0 0 32 32" aria-hidden="true"><use href="{{ get_url(path='favicon.svg') }}#mark"/></svg>
+          <span>pageon</span>
+        </a>
+        <p>The browser engine built for AI agents. MIT OR Apache-2.0.</p>
+      </div>
+      <nav aria-label="Footer">
+        <a href="{{ get_url(path='@/docs/quick-start.md') }}">Quick start</a>
+        <a href="{{ get_url(path='@/docs/security.md') }}">Security model</a>
+        <a href="{{ get_url(path='@/docs/architecture.md') }}">Architecture</a>
+        <a href="{{ get_url(path='@/docs/faq.md') }}">FAQ</a>
+        <a href="{{ config.extra.repo }}" rel="noopener">GitHub</a>
+      </nav>
+    </div>
+  </footer>
+  <script src="{{ get_url(path='elasticlunr.min.js') }}" defer></script>
+  <script src="{{ get_url(path='search_index.en.js') }}" defer></script>
+  <script src="{{ get_url(path='site.js', cachebust=true) }}" defer></script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+---
+source: crates/pageon-agent/tests/golden.rs
+expression: text
+---
+@page v1 "Landmarks" http://a.localhost:47811/pages/landmarks.html load:complete budget:4000/o200k
+## banner
+# "Site"
+## navigation "Primary"
+link e1 "Home"
+## main
+# "Level 2"
+### "Level 3"
+### "Level 4"
+### "Level 5"
+### "Level 6"
+## region "Related"
+link e2 "Related link"
+## form "Search"
+searchbox e3 "Search terms"
+button e4 "Go"
+## complementary
+text "Sidebar note"
+## contentinfo
+text "© 2026"

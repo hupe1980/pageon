@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Page not found · pageon{% endblock %}
+{% block content %}
+<section class="wrap section final">
+  <h1>Page not found</h1>
+  <p>That page does not exist, or it moved. Try the search, or start from the docs.</p>
+  <div class="cta cta--center"><a class="btn btn--primary" href="{{ get_url(path='@/docs/quick-start.md') }}">Docs</a><a class="btn btn--ghost" href="{{ get_url(path='/') }}">Home</a></div>
+</section>
+{% endblock %}

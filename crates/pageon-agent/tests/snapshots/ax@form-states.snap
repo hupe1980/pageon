@@ -1,0 +1,15 @@
+---
+source: crates/pageon-agent/tests/golden.rs
+expression: text
+---
+@page v1 "Form states" http://a.localhost:47811/pages/form-states.html load:complete budget:4000/o200k
+## main
+# "Preferences"
+checkbox e1 "Newsletter" checked
+checkbox e2 "Beta (unavailable)" disabled
+disclosure e3 "Advanced" collapsed
+disclosure e4 "Basics" expanded
+text "Visible options"
+textbox e5 "Username" ="a b" required invalid
+combobox e6 "Choice" ="Option 0" {"Option 0"|"Option 1"|"Option 2"|+27}
+button e7 "Menu" collapsed

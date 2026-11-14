@@ -1,0 +1,49 @@
+{
+ "viewport": [
+  1280,
+  720
+ ],
+ "chromium": "158.0.8127.18",
+ "elements": [
+  {
+   "tag": "div",
+   "rendered": true,
+   "x": 8,
+   "y": 8,
+   "w": 602,
+   "h": 133
+  },
+  {
+   "tag": "div",
+   "rendered": true,
+   "x": 9,
+   "y": 9,
+   "w": 152,
+   "h": 102
+  },
+  {
+   "tag": "div",
+   "rendered": true,
+   "x": 507,
+   "y": 9,
+   "w": 102,
+   "h": 62
+  },
+  {
+   "tag": "p",
+   "rendered": true,
+   "x": 9,
+   "y": 25,
+   "w": 600,
+   "h": 72
+  },
+  {
+   "tag": "div",
+   "rendered": true,
+   "x": 9,
+   "y": 121,
+   "w": 600,
+   "h": 19
+  }
+ ]
+}

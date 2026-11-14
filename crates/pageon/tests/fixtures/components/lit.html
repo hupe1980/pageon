@@ -1,0 +1,25 @@
+<!doctype html>
+<html>
+<head><title>Lit</title>
+<script type=importmap>
+{"imports": {
+  "lit": "/lit/lit.js",
+  "lit-element/lit-element.js": "/lit/lit-element.js",
+  "lit-html": "/lit/lit-html.js",
+  "lit-html/is-server.js": "/lit/is-server.js",
+  "@lit/reactive-element": "/lit/reactive-element.js"
+}}
+</script>
+<script type=module>
+import { LitElement, html, css } from 'lit';
+class LitCounter extends LitElement {
+  static properties = { count: { type: Number } };
+  static styles = css`button { color: rgb(255, 0, 0) }`;
+  constructor() { super(); this.count = 0; }
+  render() { return html`<button @click=${() => this.count++}>count: ${this.count}</button>`; }
+}
+customElements.define('lit-counter', LitCounter);
+</script>
+</head>
+<body><lit-counter></lit-counter></body>
+</html>

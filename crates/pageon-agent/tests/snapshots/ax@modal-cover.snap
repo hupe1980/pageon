@@ -1,0 +1,9 @@
+---
+source: crates/pageon-agent/tests/golden.rs
+expression: text
+---
+@page v1 "News" http://a.localhost:47811/pages/modal-cover.html load:complete budget:4000/o200k
+dialog e1 "Cookies" modal
+  text "We use cookies."
+  button e2 "Accept all" focused
+  button e3 "Reject"

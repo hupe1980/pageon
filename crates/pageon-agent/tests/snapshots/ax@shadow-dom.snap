@@ -1,0 +1,10 @@
+---
+source: crates/pageon-agent/tests/golden.rs
+expression: text
+---
+@page v1 "Components" http://a.localhost:47811/pages/shadow-dom.html load:complete budget:4000/o200k
+## main
+# "Settings"
+textbox e1 "Nickname" ="ann"
+button e2 "Save nickname"
+button e3 "Delete account"

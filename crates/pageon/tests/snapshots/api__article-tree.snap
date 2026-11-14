@@ -1,0 +1,17 @@
+---
+source: crates/pageon/tests/api.rs
+expression: tree
+---
+html
+  head
+    title "Article"
+  body
+    header
+      a href="/" "Home"
+    main
+      h1 "Title"
+      p "First paragraph."
+        b "bold"
+      ul
+        li "one"
+        li "two"
