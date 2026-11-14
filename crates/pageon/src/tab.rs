@@ -715,7 +715,7 @@ fn doc_at<'a>(root: &'a mut Document, path: &[usize]) -> Option<&'a mut Document
 }
 
 /// Copies the live state of every document (DOM, modals, focus, errors) into its snapshot.
-fn refresh(doc: &mut Document) {
+pub(crate) fn refresh(doc: &mut Document) {
     if let Some(live) = &doc.live {
         doc.dom = live.dom.borrow().clone();
         let engine = live.engine.borrow();
@@ -725,7 +725,7 @@ fn refresh(doc: &mut Document) {
             doc.js.focused = st.focused;
         }
         doc.js.scroll = crate::Scroll::of(&engine, live.realm);
-        doc.js.errors = engine.errors();
+        doc.js.errors = engine.errors_of(live.realm);
         doc.summary.errors = doc.js.errors.len();
     }
     for f in &mut doc.frames {
@@ -1172,6 +1172,12 @@ impl<'s, E: Env> Tab<'s, E> {
             i += 1;
         }
         out
+    }
+
+    /// The frame (capture order) whose document has context `context` in the page's tree.
+    pub(crate) fn frame_of_context(&self, context: u32) -> Option<usize> {
+        (0..self.frames_meta().len())
+            .find(|&i| self.frame_document(i).is_some_and(|d| d.context == context))
     }
 
     /// The document of frame `frame`.
@@ -1639,10 +1645,10 @@ impl<'s, E: Env> Tab<'s, E> {
             .unwrap_or_else(|| "null".into())
     }
 
+    /// Page errors so far in the engine of frame `frame` (shared by its origin's documents).
     fn frame_errors(&mut self, frame: usize) -> usize {
-        frame_path(&self.doc, frame)
-            .and_then(|p| doc_at(&mut self.doc, &p).map(|d| d.js.errors.len()))
-            .unwrap_or(0)
+        self.live_if_started(frame)
+            .map_or(0, |l| l.engine.borrow().errors().len())
     }
 
     /// The live document of frame `frame`, starting its engine if it has none yet.
@@ -1653,13 +1659,14 @@ impl<'s, E: Env> Tab<'s, E> {
         let options = self.options;
         let env = self.session.env();
         let net = self.session.net().clone();
+        let page = self.doc.page.clone();
         let doc = doc_at(&mut self.doc, &path).ok_or_else(|| {
             ActionError::Unsupported("acting in a frame that did not load".into())
         })?;
         if let Some(l) = &doc.live {
             return Ok(l.clone());
         }
-        let live = crate::scripts::start_live(doc, env, &net, options)
+        let live = crate::scripts::start_live(doc, env, &net, options, page.as_deref())
             .map_err(|e| ActionError::Navigation(e.into()))?;
         let live = Rc::new(live);
         doc.live = Some(live.clone());
@@ -1801,6 +1808,21 @@ impl<'s, E: Env> Tab<'s, E> {
         };
         out.errors
             .extend(errors_doc.into_iter().skip(errors_before));
+        // Messages the action posted to documents of other origins, and their answers.
+        if let Some(page) = self.doc.page.clone() {
+            let others: Vec<_> = page
+                .engines
+                .borrow()
+                .values()
+                .filter(|e| !Rc::ptr_eq(e, &live.engine))
+                .map(|e| (e.clone(), e.borrow().errors().len()))
+                .collect();
+            page.pump(self.session.env(), window);
+            for (e, before) in others {
+                out.errors
+                    .extend(e.borrow().errors().into_iter().skip(before));
+            }
+        }
         self.finish(frame, live, out)
     }
 
@@ -1853,6 +1875,7 @@ impl<'s, E: Env> Tab<'s, E> {
             parent: None,
             delegate_tools: false,
             history: restored.as_ref(),
+            ..Default::default()
         };
         let loaded = crate::load::open(
             &nav.url,

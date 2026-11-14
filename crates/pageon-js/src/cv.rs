@@ -24,6 +24,22 @@ pub enum Obj {
     Window,
     /// A non-node object (event, collection, style declaration, …) in the realm's slab.
     Slab(u32),
+    /// Another frame's window, document or `<iframe>`, by context id (see [`crate::frames`]).
+    Frame(u32, Part),
+    /// A node of another document of this engine (realm, node). Only `importNode` takes it;
+    /// everything else refuses it.
+    Foreign(u32, NodeId),
+}
+
+/// What of another frame an [`Obj::Frame`] stands for.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Part {
+    /// Its window (the realm's global, or a remote window).
+    Window,
+    /// Its document (same engine only).
+    Document,
+    /// Its `<iframe>` element in the parent (same engine only).
+    Owner,
 }
 
 impl Obj {
@@ -31,6 +47,7 @@ impl Obj {
     pub fn node(self) -> R<NodeId> {
         match self {
             Obj::Node(n) => Ok(n),
+            Obj::Foreign(..) => Err(Error::dom("NotSupportedError", FOREIGN)),
             _ => Err(Error::Type("not a node".into())),
         }
     }
@@ -43,6 +60,10 @@ impl Obj {
         }
     }
 }
+
+/// Why a node of another document is refused.
+pub const FOREIGN: &str =
+    "The node belongs to another document; use document.importNode to copy it.";
 
 /// A binding failure, thrown into JavaScript.
 #[derive(Debug)]
@@ -258,6 +279,8 @@ impl<'s> Cx<'_, 's, '_> {
     pub fn wrap(&mut self, obj: Obj) -> v8::Local<'s, v8::Object> {
         match obj {
             Obj::Window => self.scope.get_current_context().global(self.scope),
+            Obj::Frame(context, part) => crate::frames::wrap(self, context, part),
+            Obj::Foreign(realm, node) => crate::frames::wrap_foreign(self, realm, node),
             Obj::Node(id) => {
                 if let Some(w) = self.realm.st.borrow().wrappers.get(&(self.world, id)) {
                     return v8::Local::new(self.scope, w);
@@ -465,6 +488,20 @@ fn unwrap_obj(cx: &mut Cx<'_, '_, '_>, v: v8::Local<'_, v8::Value>, iface: Iface
     };
     if !actual.is_a(iface) {
         return Err(illegal());
+    }
+    // A wrapper of another document of this engine: its slot means nothing here.
+    if let Some(c) = o.get_creation_context(cx.scope)
+        && c != cx.scope.get_current_context()
+        && let Some(other) = crate::realm::of_global(cx.scope, c.global(cx.scope))
+        && other != cx.realm.id
+    {
+        if actual.is_a(Iface::Node) && actual != Iface::Attr {
+            return Ok(Obj::Foreign(
+                u32::try_from(other).unwrap_or(u32::MAX),
+                NodeId::from_parts(a, b),
+            ));
+        }
+        return Err(Error::dom("NotSupportedError", FOREIGN));
     }
     // `Attr` is a `Node` in the IDL, but attributes are not nodes of pageon's document model.
     if actual.is_a(Iface::Node) && actual != Iface::Attr {
@@ -1030,6 +1067,9 @@ fn target(this: Obj) -> R<Target> {
         Obj::Window => Target::Window,
         Obj::Node(n) => Target::Node(n),
         Obj::Slab(i) => Target::Object(i),
+        Obj::Frame(..) | Obj::Foreign(..) => {
+            return Err(Error::dom("NotSupportedError", crate::cv::FOREIGN));
+        }
     })
 }
 

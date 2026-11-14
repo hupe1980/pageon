@@ -1,0 +1,10 @@
+<!doctype html><meta charset=utf-8><title>Remote</title>
+<iframe src="https://a.test/inner.html"></iframe>
+<script>
+let got = 0;
+addEventListener('message', (e) => {
+  if (e.origin !== 'https://a.test') return;
+  got++;
+  e.source.postMessage({ pong: e.data.ping, got }, e.origin);
+});
+</script>

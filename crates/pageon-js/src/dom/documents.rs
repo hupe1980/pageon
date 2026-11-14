@@ -240,6 +240,29 @@ pub mod document {
         node: Obj,
         deep: crate::cv::OrBool<crate::generated::ImportNodeOptions>,
     ) -> R<Obj> {
+        if let Obj::Foreign(realm, id) = node {
+            // A node of another document of this engine (a same-origin frame): copied in.
+            let deep = match deep {
+                crate::cv::OrBool::Bool(b) => b,
+                crate::cv::OrBool::Dict(_) => true,
+            };
+            let src = crate::frames::foreign_dom(cx, realm)
+                .ok_or_else(|| Error::dom("NotSupportedError", crate::cv::FOREIGN))?;
+            let src = src.borrow();
+            if matches!(
+                src.get(id).map(|n| &n.data),
+                None | Some(NodeData::Document | NodeData::ShadowRoot { .. })
+            ) {
+                return Err(Error::dom(
+                    "NotSupportedError",
+                    "The node provided is a document or a shadow root, which may not be imported.",
+                ));
+            }
+            let copy = super::super::copy_between(&src, id, &mut cx.dom_mut(), deep);
+            return copy
+                .map(Obj::Node)
+                .ok_or_else(|| Error::dom("NotFoundError", "the node is gone"));
+        }
         let id = node.node()?;
         if matches!(
             cx.dom().get(id).map(|n| &n.data),

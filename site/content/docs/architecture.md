@@ -48,8 +48,8 @@ and what a page can do, and reuses proven components for the rest.
 
 ## What is not there yet
 
-`ElementInternals` and form validation, constructable stylesheets, `iframe.contentWindow` and
-`postMessage`, file uploads (`Blob`, `File`), `WebSocket` and `EventSource`, `IndexedDB`, workers
+`ElementInternals` and form validation, constructable stylesheets, `MessageChannel`, iframes a
+script inserts after load, file uploads (`Blob`, `File`), `WebSocket` and `EventSource`, `IndexedDB`, workers
 and service workers, Selection and `Range`, the Navigation API, `crypto.subtle`,
 `document.write`, WebDriver classic, request interception, HTTP/3. Missing APIs are absent, not
 faked, and protocol methods pageon lacks say what to use instead.

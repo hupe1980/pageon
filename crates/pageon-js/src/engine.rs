@@ -175,6 +175,8 @@ pub struct Engine {
     /// Values held for protocol clients (`eval`).
     pub(crate) handles: std::collections::HashMap<u32, cv::Value>,
     pub(crate) next_handle: u32,
+    /// The security token of the engine's main-world contexts (one origin per engine).
+    token: Option<v8::Global<v8::Value>>,
     handle: v8::IsolateHandle,
     // Last: handles above are released before the isolate goes.
     isolate: v8::SharedIsolate,
@@ -249,10 +251,12 @@ impl Engine {
         };
         let handle = isolate.thread_safe_handle();
         let isolate = share(isolate);
+        static NEXT_ENGINE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
         let shared = Shared {
             now: now_ms as f64,
             origin: now_ms as f64,
             rng: seed | 1,
+            engine: NEXT_ENGINE.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
             ..Shared::default()
         };
         Self {
@@ -268,6 +272,7 @@ impl Engine {
             keys: Vec::new(),
             handles: Default::default(),
             next_handle: 0,
+            token: None,
         }
     }
 
@@ -325,6 +330,8 @@ impl Engine {
                 media_viewport: None,
                 resize_observers: Vec::new(),
                 crypto: crate::dom::platform::CryptoStream::new(cfg.crypto_key),
+                frame: None,
+                remote: Default::default(),
             }),
             templates: self.templates.clone(),
             shared: self.shared.clone(),
@@ -336,8 +343,55 @@ impl Engine {
             context: kept,
             index: id,
         });
+        self.shared.borrow_mut().realms.push(Rc::downgrade(&realm));
         self.realms.push((g, realm));
         id
+    }
+
+    /// This engine's id (distinct for every engine in the process).
+    pub fn id(&self) -> u64 {
+        self.shared.borrow().engine
+    }
+
+    /// Places a realm in a page's frame tree, as context `context`.
+    pub fn set_frame(
+        &mut self,
+        realm: usize,
+        frames: Rc<RefCell<crate::frames::Frames>>,
+        context: u32,
+    ) {
+        if let Some(r) = self.realm(realm) {
+            r.st.borrow_mut().frame = Some((frames, context));
+        }
+    }
+
+    /// Whether messages wait for this engine's documents.
+    pub fn has_mail(&self) -> bool {
+        let Some(frames) = self.frame_tree() else {
+            return false;
+        };
+        let id = self.id();
+        let f = frames.borrow();
+        f.mailbox.iter().any(|m| f.engine_of(m.to) == Some(id))
+    }
+
+    /// The frame tree the engine's documents are in.
+    pub(crate) fn frame_tree(&self) -> Option<Rc<RefCell<crate::frames::Frames>>> {
+        self.realms
+            .iter()
+            .find_map(|(_, r)| r.st.borrow().frame.as_ref().map(|(f, _)| f.clone()))
+    }
+
+    /// The page errors of one realm (documents sharing an engine have their own).
+    pub fn errors_of(&self, realm: usize) -> Vec<PageError> {
+        let mut sh = self.shared.borrow_mut();
+        sh.tag_errors(usize::MAX);
+        sh.errors
+            .iter()
+            .zip(&sh.error_realms)
+            .filter(|(_, r)| **r == realm || **r == usize::MAX)
+            .map(|(e, _)| e.clone())
+            .collect()
     }
 
     /// A context for `realm` in `world`, with the window's interfaces, the extras and the
@@ -366,6 +420,19 @@ impl Engine {
             },
         );
         let scope = &mut v8::ContextScope::new(hs, context);
+        // The documents of an engine share an origin, so their main worlds share a security
+        // token and reach each other's windows; isolated worlds keep their own.
+        if world == 0 {
+            let token = match &self.token {
+                Some(t) => v8::Local::new(scope, t),
+                None => {
+                    let t: v8::Local<'_, v8::Value> = v8::Object::new(scope).into();
+                    self.token = Some(v8::Global::new(scope, t));
+                    t
+                }
+            };
+            context.set_security_token(token);
+        }
         let global = context.global(scope);
         let key = crate::realm::register(scope, global, realm.clone(), world);
         self.keys.push(key);
@@ -591,6 +658,21 @@ impl Engine {
         });
         report_rejections(&self.shared);
         self.terminated(fired, name);
+        self.shared.borrow_mut().tag_errors(realm);
+    }
+
+    /// Records a page error of one document (e.g. its script failed to load).
+    pub fn report_in(
+        &mut self,
+        realm: usize,
+        kind: PageErrorKind,
+        message: impl Into<String>,
+        source: impl Into<String>,
+    ) {
+        let mut sh = self.shared.borrow_mut();
+        sh.tag_errors(usize::MAX);
+        sh.error(kind, message, source);
+        sh.tag_errors(realm);
     }
 
     /// Sets `document.readyState` and fires `readystatechange` at the document.
@@ -629,6 +711,7 @@ impl Engine {
             let (c, r) = self.realms.get(realm)?;
             (c, r.clone(), 0)
         };
+        let r_id = r.id;
         let mut locker = self.isolate.lock();
         let hs = std::pin::pin!(v8::HandleScope::new(&mut *locker));
         let hs = &mut hs.init();
@@ -652,6 +735,7 @@ impl Engine {
             notify_observers(&mut cx);
         }
         report_rejections(&self.shared);
+        self.shared.borrow_mut().tag_errors(r_id);
         Some(out)
     }
 
@@ -668,6 +752,12 @@ impl Engine {
             let ran = self.run_scripts(env);
             if ran > 0 {
                 tasks += ran;
+                continue;
+            }
+            // Messages posted to this engine's documents, in posting order.
+            let delivered = self.deliver_mail();
+            if delivered > 0 {
+                tasks += delivered;
                 continue;
             }
             let due_now = {
@@ -713,6 +803,7 @@ impl Engine {
                 e.with_cx(realm, |cx| run_timer(cx, &timer));
             });
             self.terminated(fired, "timer");
+            self.shared.borrow_mut().tag_errors(realm);
             if let Some(every) = timer.interval {
                 let mut sh = self.shared.borrow_mut();
                 if !fired && !sh.cancelled.contains(&timer.id) {

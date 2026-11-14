@@ -1,7 +1,7 @@
 // Frames through Puppeteer.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { start, bidi } from '../lib/helper.mjs';
+import { start } from '../lib/helper.mjs';
 import { framesSite } from '../../lib/frames.mjs';
 
 test('page.frames(), frame.$eval, click and type in same- and cross-origin frames', async () => {
@@ -23,12 +23,10 @@ test('page.frames(), frame.$eval, click and type in same- and cross-origin frame
     assert.equal(await pay.$eval('#out', (e) => e.textContent), 'paid 4242');
     // The main frame is untouched by input in the frames.
     assert.equal(await page.$eval('h1', (e) => e.textContent), 'Checkout');
-    // Over BiDi, Puppeteer's contentFrame() reads `iframe.contentWindow`, which pageon does
-    // not implement yet (absent, not faked); over CDP it asks DOM.describeNode.
-    if (!bidi) {
-      const iframe = await page.$('#pay');
-      assert.equal(await iframe.contentFrame(), pay);
-    }
+    // contentFrame(): over CDP Puppeteer asks DOM.describeNode; over BiDi it reads
+    // `iframe.contentWindow` (a cross-origin window for #pay, the real one for #help).
+    assert.equal(await (await page.$('#pay')).contentFrame(), pay);
+    assert.equal(await (await page.$('#help')).contentFrame(), help);
   } finally {
     await s.stop();
   }

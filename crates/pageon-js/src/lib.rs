@@ -10,6 +10,7 @@ mod cv;
 mod dom;
 mod engine;
 mod eval;
+pub mod frames;
 mod modules;
 #[rustfmt::skip]
 mod generated;

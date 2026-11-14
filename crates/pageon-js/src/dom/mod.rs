@@ -25,6 +25,7 @@ pub(crate) mod webmcp;
 mod webstorage;
 mod xml;
 
+pub use crate::frames::{htmli_frame_element, message_event};
 pub use canvas::{
     canvas_compositing, canvas_draw_path, canvas_fill_stroke_styles, canvas_path,
     canvas_path_drawing_styles, canvas_rect, canvas_rendering_context2_d, canvas_state,
@@ -183,6 +184,41 @@ pub(crate) fn import(dst: &mut Dom, src: &Dom, node: NodeId) -> Option<NodeId> {
 }
 
 /// A copy of `node` within the same document (with its subtree when `deep`), detached.
+/// Copies a node (and its subtree when `deep`) from another document into `dst`.
+pub(crate) fn copy_between(src: &Dom, node: NodeId, dst: &mut Dom, deep: bool) -> Option<NodeId> {
+    let data = match src.get(node)?.data.clone() {
+        NodeData::Element {
+            name,
+            attrs,
+            template_contents,
+            ..
+        } => {
+            let tc = template_contents
+                .filter(|_| deep)
+                .and_then(|t| copy_between(src, t, dst, true));
+            NodeData::Element {
+                name,
+                attrs,
+                template_contents: tc,
+                mathml_annotation_xml_integration_point: false,
+            }
+        }
+        other => other,
+    };
+    let copy = dst.create(data);
+    if let Some(s) = src.control(node).cloned() {
+        *dst.control_mut(copy) = s;
+    }
+    if deep {
+        for c in src.children(node) {
+            if let Some(cc) = copy_between(src, c, dst, true) {
+                let _ = dst.append(copy, cc);
+            }
+        }
+    }
+    Some(copy)
+}
+
 pub(crate) fn copy_within(dom: &mut Dom, node: NodeId, deep: bool) -> Option<NodeId> {
     let data = match dom.get(node)?.data.clone() {
         NodeData::Element {

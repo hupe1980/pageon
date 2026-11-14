@@ -42,7 +42,7 @@ enum Deferred {
 }
 
 struct Run<'e> {
-    engine: Engine,
+    engine: Rc<RefCell<Engine>>,
     realm: usize,
     dom: Rc<RefCell<Dom>>,
     base: Url,
@@ -99,7 +99,7 @@ impl Run<'_> {
                 _ => self.stylesheets_failed += 1,
             }
         }
-        if let Some(r) = self.engine.realm(self.realm) {
+        if let Some(r) = self.engine.borrow().realm(self.realm).cloned() {
             let mut st = r.st.borrow_mut();
             st.stylesheets.clone_from(&self.stylesheets);
             st.mutations += 1;
@@ -119,7 +119,8 @@ impl Run<'_> {
                 Some(encoding::decode(&r.body, Some(charset)).0)
             }
             Ok(r) => {
-                self.engine.report(
+                self.engine.borrow_mut().report_in(
+                    self.realm,
                     PageErrorKind::Load,
                     format!("script failed to load: HTTP {}", r.status),
                     url.as_str(),
@@ -127,7 +128,8 @@ impl Run<'_> {
                 None
             }
             Err(e) => {
-                self.engine.report(
+                self.engine.borrow_mut().report_in(
+                    self.realm,
                     PageErrorKind::Load,
                     format!("script failed to load: {e}"),
                     url.as_str(),
@@ -144,6 +146,7 @@ impl Run<'_> {
             let Some(n) = dom.get(node) else { return };
             let started = self
                 .engine
+                .borrow()
                 .realm(self.realm)
                 .is_some_and(|r| r.st.borrow().started_scripts.contains(&node));
             let text: String = dom
@@ -168,13 +171,14 @@ impl Run<'_> {
         if started {
             return;
         }
-        if let Some(r) = self.engine.realm(self.realm) {
+        if let Some(r) = self.engine.borrow().realm(self.realm).cloned() {
             r.st.borrow_mut().started_scripts.insert(node);
         }
         let joined = match src.as_deref().map(|s| self.base.join(s.trim())) {
             Some(Ok(u)) => Some(u),
             Some(Err(_)) => {
-                self.engine.report(
+                self.engine.borrow_mut().report_in(
+                    self.realm,
                     PageErrorKind::Load,
                     "invalid script URL",
                     src.unwrap_or_default(),
@@ -194,12 +198,16 @@ impl Run<'_> {
                 self.deferred.push(Deferred::Module(node, url, inline));
             }
             ScriptKind::ImportMap => match joined {
-                Some(url) => self.engine.report(
+                Some(url) => self.engine.borrow_mut().report_in(
+                    self.realm,
                     PageErrorKind::Unsupported,
                     "External import maps are not supported",
                     url.as_str(),
                 ),
-                None => self.engine.register_import_map(self.realm, &text),
+                None => self
+                    .engine
+                    .borrow_mut()
+                    .register_import_map(self.realm, &text),
             },
             ScriptKind::Classic => match joined {
                 Some(url) => {
@@ -208,8 +216,12 @@ impl Run<'_> {
                     } else {
                         self.sync_stylesheets();
                         if let Some(code) = self.fetch_script(&url) {
-                            self.engine
-                                .run_script(self.realm, &code, url.as_str(), Some(node));
+                            self.engine.borrow_mut().run_script(
+                                self.realm,
+                                &code,
+                                url.as_str(),
+                                Some(node),
+                            );
                         }
                     }
                 }
@@ -217,47 +229,78 @@ impl Run<'_> {
                     self.inline += 1;
                     self.sync_stylesheets();
                     let name = format!("<inline #{}>", self.inline);
-                    self.engine.run_script(self.realm, &text, &name, Some(node));
+                    self.engine
+                        .borrow_mut()
+                        .run_script(self.realm, &text, &name, Some(node));
                 }
             },
         }
         // Scripts this one inserted, and imports it started, run before parsing goes on.
-        self.engine.run_scripts(self.env);
+        self.engine.borrow_mut().run_scripts(self.env);
     }
 }
 
-/// Creates the page's engine and realm (on the first script, or for inline handlers).
-fn engine(
-    dom: &Rc<RefCell<Dom>>,
+/// The settings of a document's realm (its `crypto` key: 256 bits through the seam, the OS
+/// live, the recording in replay, separate from `Math.random`'s seed).
+fn config(
     client: &Client,
     env: &dyn Env,
     net: &Rc<RefCell<Net>>,
-    viewport: Viewport,
+    (url, origin): (&str, &str),
     accept_dialogs: bool,
-) -> Result<(Engine, usize), pageon_env::NetError> {
-    let now = env.now_ms()?;
-    let seed = env.random_u64()?;
-    // The `crypto` stream's key: 256 bits through the seam (the OS live, the recording in
-    // replay), separate from `Math.random`'s seed.
+) -> Result<RealmConfig, pageon_env::NetError> {
     let mut crypto_key = [0u8; 32];
     for chunk in crypto_key.chunks_mut(8) {
         chunk.copy_from_slice(&env.random_u64()?.to_le_bytes());
     }
-    let mut engine = Engine::new(now, seed, Limits::default());
-    let realm = engine.add_realm(
-        dom.clone(),
-        RealmConfig {
-            url: client.url.to_string(),
-            origin: crate::frames::origin_of(client.url.as_str()),
-            navigator: env.profile().navigator(),
-            viewport,
-            stylesheets: Vec::new(),
-            client: client.clone(),
-            net: net.clone(),
-            accept_dialogs,
-            crypto_key,
-        },
-    );
+    Ok(RealmConfig {
+        url: url.to_string(),
+        origin: origin.to_string(),
+        navigator: env.profile().navigator(),
+        viewport: Viewport::default(),
+        stylesheets: Vec::new(),
+        client: client.clone(),
+        net: net.clone(),
+        accept_dialogs,
+        crypto_key,
+    })
+}
+
+/// Adds a document's realm: to the engine its origin has in the page, or to a new engine
+/// (which the page then keeps for that origin). Places it in the page's frame tree.
+fn realm(
+    dom: &Rc<RefCell<Dom>>,
+    client: &Client,
+    env: &dyn Env,
+    net: &Rc<RefCell<Net>>,
+    accept_dialogs: bool,
+    start: &crate::load::Start<'_>,
+    (url, origin): (&str, &str),
+) -> Result<(Rc<RefCell<Engine>>, usize), pageon_env::NetError> {
+    let engine = match start.page.and_then(|(p, _)| p.engine(origin)) {
+        Some(e) => e,
+        None => {
+            let now = env.now_ms()?;
+            let seed = env.random_u64()?;
+            let e = Rc::new(RefCell::new(Engine::new(now, seed, Limits::default())));
+            if let Some((p, _)) = start.page {
+                p.engines.borrow_mut().insert(origin.to_string(), e.clone());
+            }
+            e
+        }
+    };
+    let cfg = config(client, env, net, (url, origin), accept_dialogs)?;
+    let realm = engine.borrow_mut().add_realm(dom.clone(), cfg);
+    if let Some((p, context)) = start.page {
+        let id = engine.borrow().id();
+        p.frames.borrow_mut().run_by(context, id, realm);
+        engine
+            .borrow_mut()
+            .set_frame(realm, p.frames.clone(), context);
+    }
+    engine
+        .borrow_mut()
+        .set_history_state(realm, start.history.cloned());
     Ok((engine, realm))
 }
 
@@ -271,8 +314,21 @@ fn has_inline_handlers(dom: &Dom) -> bool {
     })
 }
 
+/// The URL and origin of a document: its client's, or what it inherits (`about:srcdoc`).
+fn identity(client: &Client, start: &crate::load::Start<'_>) -> (String, String) {
+    match start.inherit {
+        Some((url, origin)) => (url.to_string(), origin.to_string()),
+        None => (
+            client.url.to_string(),
+            crate::frames::origin_of(client.url.as_str()),
+        ),
+    }
+}
+
 /// Parses `text` as the document at `url`, running its scripts, then settles. A page without
-/// scripts or inline handlers never starts the JavaScript engine.
+/// scripts or inline handlers never starts the JavaScript engine, unless its origin already
+/// runs one in the page (its frames and windows can then reach it). The running engine is
+/// returned for the page's frames and tabs.
 pub(crate) fn run(
     text: &str,
     client: &Client,
@@ -280,50 +336,23 @@ pub(crate) fn run(
     net: &Rc<RefCell<Net>>,
     now: u64,
     options: crate::LoadOptions,
-    (keep, history): (bool, Option<pageon_js::SavedState>),
+    start: crate::load::Start<'_>,
 ) -> Result<Ran, pageon_env::NetError> {
-    let viewport = Viewport::default();
     let settle_ms = options.settle_ms;
     let accept = options.dialogs == crate::DialogPolicy::Accept;
     let url = &client.url;
+    let (doc_url, origin) = identity(client, &start);
+    if let Some((p, context)) = start.page
+        && let Some(e) = p.frames.borrow_mut().entries.get_mut(context as usize)
+    {
+        e.origin.clone_from(&origin);
+    }
     let mut parser = Parser::new(ParseOptions { scripting: true });
     let dom = parser.dom();
     parser.feed(text);
-    let mut run: Option<Run<'_>> = None;
-    while let Step::Script(node) = parser.step() {
-        if run.is_none() {
-            let (mut engine, realm) = engine(&dom, client, env, net, viewport, accept)?;
-            engine.set_history_state(realm, history.clone());
-            run = Some(Run {
-                engine,
-                realm,
-                dom: dom.clone(),
-                base: url.clone(),
-                client: client.clone(),
-                env,
-                net: net.clone(),
-                now,
-                deferred: Vec::new(),
-                inline: 0,
-                sheets_seen: HashSet::new(),
-                stylesheets: Vec::new(),
-                stylesheets_failed: 0,
-            });
-        }
-        if let Some(r) = run.as_mut() {
-            // Custom elements parsed since the last script are constructed now.
-            r.engine.upgrade_custom_elements(r.realm);
-            r.script(node);
-        }
-    }
-    drop(parser.finish());
-    if let Some(r) = run.as_mut() {
-        r.engine.upgrade_custom_elements(r.realm);
-    }
-    if run.is_none() && has_inline_handlers(&dom.borrow()) {
-        let (mut engine, realm) = engine(&dom, client, env, net, viewport, accept)?;
-        engine.set_history_state(realm, history.clone());
-        run = Some(Run {
+    let begin = |dom: &Rc<RefCell<Dom>>| -> Result<Run<'_>, pageon_env::NetError> {
+        let (engine, realm) = realm(dom, client, env, net, accept, &start, (&doc_url, &origin))?;
+        Ok(Run {
             engine,
             realm,
             dom: dom.clone(),
@@ -337,7 +366,26 @@ pub(crate) fn run(
             sheets_seen: HashSet::new(),
             stylesheets: Vec::new(),
             stylesheets_failed: 0,
-        });
+        })
+    };
+    let joins = start.page.is_some_and(|(p, _)| p.engine(&origin).is_some());
+    let mut run: Option<Run<'_>> = if joins { Some(begin(&dom)?) } else { None };
+    while let Step::Script(node) = parser.step() {
+        if run.is_none() {
+            run = Some(begin(&dom)?);
+        }
+        if let Some(r) = run.as_mut() {
+            // Custom elements parsed since the last script are constructed now.
+            r.engine.borrow_mut().upgrade_custom_elements(r.realm);
+            r.script(node);
+        }
+    }
+    drop(parser.finish());
+    if let Some(r) = run.as_mut() {
+        r.engine.borrow_mut().upgrade_custom_elements(r.realm);
+    }
+    if run.is_none() && has_inline_handlers(&dom.borrow()) {
+        run = Some(begin(&dom)?);
     }
     let Some(mut r) = run else {
         let dom =
@@ -364,68 +412,56 @@ pub(crate) fn run(
     };
     let realm = r.realm;
     r.sync_stylesheets();
-    r.engine.set_ready_state(realm, "interactive");
+    let engine = r.engine.clone();
+    engine.borrow_mut().set_ready_state(realm, "interactive");
     for d in std::mem::take(&mut r.deferred) {
         match d {
             Deferred::Classic(node, url) => {
                 if let Some(code) = r.fetch_script(&url) {
-                    r.engine.run_script(realm, &code, url.as_str(), Some(node));
+                    engine
+                        .borrow_mut()
+                        .run_script(realm, &code, url.as_str(), Some(node));
                 }
             }
             Deferred::Module(node, url, inline) => {
                 r.sync_stylesheets();
-                r.engine
+                engine
+                    .borrow_mut()
                     .run_module(realm, &url, inline.as_deref(), Some(node), env);
             }
         }
-        r.engine.run_scripts(env);
+        engine.borrow_mut().run_scripts(env);
     }
     let root = dom.borrow().root();
-    r.engine
-        .fire(realm, Target::Node(root), "DOMContentLoaded", true);
-    r.engine.set_ready_state(realm, "complete");
-    r.engine.fire(realm, Target::Window, "load", false);
+    let mut e = engine.borrow_mut();
+    e.fire(realm, Target::Node(root), "DOMContentLoaded", true);
+    e.set_ready_state(realm, "complete");
+    e.fire(realm, Target::Window, "load", false);
     // A URL with a fragment opens scrolled to its target.
     if let Some(f) = url.fragment() {
-        r.engine.scroll_to_fragment(realm, f);
+        e.scroll_to_fragment(realm, f);
     }
-    let settled = r.engine.settle(settle_ms as f64, env);
-    let scroll = crate::Scroll::of(&r.engine, realm);
-    let (modals, focused) = r
-        .engine
+    let settled = e.settle(settle_ms as f64, env);
+    let scroll = crate::Scroll::of(&e, realm);
+    let (modals, focused) = e
         .realm(realm)
         .map(|x| {
             let st = x.st.borrow();
             (st.modals.clone(), st.focused)
         })
         .unwrap_or_default();
-    let errors = r.engine.errors();
-    let scripts = r.engine.scripts_run();
-    let (navigation, dialogs, popups) = r.engine.take_requests(realm);
+    let errors = e.errors_of(realm);
+    let scripts = e.scripts_run();
+    let (navigation, dialogs, popups) = e.take_requests(realm);
+    drop(e);
     let Run {
-        engine,
         stylesheets,
         stylesheets_failed,
         ..
     } = r;
-    let (dom, live) = if keep {
-        let snapshot = dom.borrow().clone();
-        (
-            snapshot,
-            Some(crate::LiveDoc {
-                engine: RefCell::new(engine),
-                realm,
-                dom,
-            }),
-        )
-    } else {
-        drop(engine); // the realm's handles go with the isolate
-        let dom =
-            Rc::try_unwrap(dom).map_or_else(|shared| shared.borrow().clone(), RefCell::into_inner);
-        (dom, None)
-    };
+    let snapshot = dom.borrow().clone();
     Ok(Ran {
-        dom,
+        dom: snapshot,
         stylesheets,
         stylesheets_failed,
         errors,
@@ -439,17 +475,18 @@ pub(crate) fn run(
         navigation,
         dialogs,
         popups,
-        live,
+        live: Some(crate::LiveDoc { engine, realm, dom }),
     })
 }
 
 /// Starts a running engine for a document loaded without one (no scripts), so a tab can act
-/// on it.
+/// on it, or adds its realm to the engine its origin runs in the page.
 pub(crate) fn start_live(
     doc: &crate::Document,
     env: &dyn Env,
     net: &Rc<RefCell<Net>>,
     options: crate::LoadOptions,
+    page: Option<&crate::frames::Page>,
 ) -> Result<crate::LiveDoc, pageon_env::NetError> {
     let Some(client) = doc
         .client
@@ -463,16 +500,33 @@ pub(crate) fn start_live(
     };
     let dom = Rc::new(RefCell::new(doc.dom.clone()));
     let accept = options.dialogs == crate::DialogPolicy::Accept;
-    let (engine, realm) = engine(&dom, &client, env, net, Viewport::default(), accept)?;
-    if let Some(r) = engine.realm(realm) {
+    let origin = page
+        .and_then(|p| {
+            p.frames
+                .borrow()
+                .entries
+                .get(doc.context as usize)
+                .map(|e| e.origin.clone())
+        })
+        .unwrap_or_else(|| crate::frames::origin_of(client.url.as_str()));
+    let start = crate::load::Start {
+        page: page.map(|p| (p, doc.context)),
+        ..Default::default()
+    };
+    let (engine, realm) = realm(
+        &dom,
+        &client,
+        env,
+        net,
+        accept,
+        &start,
+        (&doc.final_url, &origin),
+    )?;
+    if let Some(r) = engine.borrow().realm(realm) {
         let mut st = r.st.borrow_mut();
         st.stylesheets.clone_from(&doc.stylesheets);
         st.ready_state = "complete";
         st.mutations += 1;
     }
-    Ok(crate::LiveDoc {
-        engine: RefCell::new(engine),
-        realm,
-        dom,
-    })
+    Ok(crate::LiveDoc { engine, realm, dom })
 }

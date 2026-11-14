@@ -150,7 +150,7 @@ every known gap, open ones included; read it before pointing an agent at anythin
 matters. Report vulnerabilities privately ([SECURITY.md](SECURITY.md)).
 
 Not yet supported: form-associated custom elements (`ElementInternals`) and form validation,
-constructable stylesheets, `iframe.contentWindow` and `postMessage`, file uploads (`Blob`,
+constructable stylesheets, `MessageChannel`, scripted iframes added after load, file uploads (`Blob`,
 `File`), `WebSocket` and `EventSource`, `IndexedDB`, workers, Selection and `Range`, the
 Navigation API, `crypto.subtle`, WebDriver classic, request interception. Unsupported APIs are absent rather than faked, so
 pages and clients can detect them, and protocol methods pageon lacks fail at once with what to

@@ -241,8 +241,9 @@ impl<E: Env> Session<'_, E> {
         let realm = own.engine.borrow().realm(realm).map_or(realm, |r| r.id);
         (0..self.targets[ti].frames.len())
             .find(|&fi| {
-                tab.live_if_started(fi)
-                    .is_some_and(|l| std::ptr::eq(&l.engine, &own.engine) && l.realm == realm)
+                tab.live_if_started(fi).is_some_and(|l| {
+                    std::rc::Rc::ptr_eq(&l.engine, &own.engine) && l.realm == realm
+                })
             })
             .unwrap_or(fallback)
     }
@@ -265,6 +266,15 @@ impl<E: Env> Session<'_, E> {
                 }
                 if let Some(r) = m.remove("realm").and_then(|r| r.as_u64()) {
                     let fi = self.realm_frame(ti, r as usize, frame);
+                    let id = self.targets[ti].frames[fi].id.clone();
+                    m.insert("value".into(), json!({"context": id}));
+                }
+                // Another origin's window, by its context in the page's frame tree.
+                if let Some(c) = m.remove("frame").and_then(|c| c.as_u64()) {
+                    let fi = u32::try_from(c)
+                        .ok()
+                        .and_then(|c| self.targets[ti].tab.frame_of_context(c))
+                        .unwrap_or(frame);
                     let id = self.targets[ti].frames[fi].id.clone();
                     m.insert("value".into(), json!({"context": id}));
                 }

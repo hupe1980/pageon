@@ -1,0 +1,7 @@
+<!doctype html><meta charset=utf-8><title>Same</title><p id=para>from same</p>
+<script>
+window.answer = () => 42;
+parent.report('frame reads its parent document', parent.document.title === 'Checks');
+parent.report('frameElement', frameElement === parent.document.getElementById('same') && frameElement.id === 'same');
+parent.report('frame top', top === parent && top.location.href === 'https://a.test/');
+</script>

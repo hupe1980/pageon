@@ -1,0 +1,14 @@
+<!doctype html><meta charset=utf-8><title>Card</title>
+<label>Card number <input id=card autocomplete=cc-number></label>
+<p id=amount>No amount yet</p>
+<button id=pay>Pay</button>
+<script>
+addEventListener('message', (e) => {
+  if (e.origin !== 'https://shop.test') return;
+  amount.textContent = 'Amount ' + e.data.amount;
+});
+pay.addEventListener('click', () => {
+  parent.postMessage({ ok: true, token: 'tok_' + card.value.slice(-4) }, 'https://shop.test');
+});
+parent.postMessage({ ready: true }, 'https://shop.test');
+</script>

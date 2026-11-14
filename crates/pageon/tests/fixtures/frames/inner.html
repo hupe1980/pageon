@@ -1,0 +1,8 @@
+<!doctype html><meta charset=utf-8><title>Inner</title>
+<script>
+top.report('same-origin grandchild reaches top through a cross-origin parent', top.document.title === 'Checks');
+let blocked = false;
+try { parent.document; } catch (e) { blocked = e.name === 'SecurityError'; }
+top.report('its cross-origin parent is a remote window', blocked);
+top.report('frameElement under a cross-origin parent is null', frameElement === null);
+</script>

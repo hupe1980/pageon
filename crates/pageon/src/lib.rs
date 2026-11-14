@@ -109,11 +109,16 @@ pub struct Document {
     /// The tab's decoded images, once it has been painted: they take part in
     /// every layout from then on.
     pub(crate) images: Option<Rc<pageon_layout::Images>>,
+    /// The page's frames and engines (the top-level document of a page that ran scripts).
+    pub(crate) page: Option<Rc<frames::Page>>,
+    /// The document's context in its page's frame tree (0: the top-level document).
+    pub(crate) context: u32,
 }
 
 /// A document whose scripts keep running (in a tab): its engine, realm and live DOM.
 pub(crate) struct LiveDoc {
-    pub(crate) engine: std::cell::RefCell<pageon_js::Engine>,
+    /// The engine, shared by the documents of one origin in a page.
+    pub(crate) engine: Rc<std::cell::RefCell<pageon_js::Engine>>,
     pub(crate) realm: usize,
     pub(crate) dom: Rc<std::cell::RefCell<Dom>>,
 }
@@ -305,7 +310,7 @@ pub fn parse(html: &str, base_url: &str) -> Document {
         None,
         &Default::default(),
         LoadOptions::default(),
-        false,
+        None,
     );
     doc
 }
@@ -334,6 +339,8 @@ pub(crate) fn parse_without_frames(html: &str, base_url: &str) -> Document {
         client: None,
         live: None,
         images: None,
+        page: None,
+        context: 0,
     }
 }
 

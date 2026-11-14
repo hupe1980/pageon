@@ -183,7 +183,7 @@ members = ["content"]
 [Window]
 members = [
   "window", "self", "document", "name", "location", "navigator", "top", "parent", "frames", "length",
-  "frameElement", "focus", "blur", "getComputedStyle",
+  "frameElement", "focus", "blur", "getComputedStyle", "postMessage",
   "innerWidth", "innerHeight", "outerWidth", "outerHeight", "scrollX", "scrollY", "pageXOffset",
   "pageYOffset", "devicePixelRatio", "alert", "confirm", "prompt", "open", "visualViewport",
   "scroll", "scrollTo", "scrollBy", "customElements", "history", "matchMedia",
@@ -431,6 +431,9 @@ members = ["length", "scrollRestoration", "state", "go", "back", "forward", "pus
 [PopStateEvent]
 members = ["constructor", "state", "hasUAVisualTransition"]
 
+[MessageEvent]
+members = ["constructor", "data", "origin", "lastEventId", "source"]
+
 [MediaQueryList]
 members = ["media", "matches", "addListener", "removeListener"]
 
@@ -466,3 +469,6 @@ members = ["timeRemaining", "didTimeout"]
 
 [HTMLImageElement]
 members = ["Image"]
+
+[HTMLIFrameElement]
+members = ["contentWindow", "contentDocument"]

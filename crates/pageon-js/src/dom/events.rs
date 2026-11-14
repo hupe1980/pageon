@@ -70,6 +70,9 @@ pub mod event_target {
             Obj::Window => Target::Window,
             Obj::Node(n) => Target::Node(n),
             Obj::Slab(i) => Target::Object(i),
+            Obj::Frame(..) | Obj::Foreign(..) => {
+                return Err(Error::dom("NotSupportedError", crate::cv::FOREIGN));
+            }
         })
     }
 

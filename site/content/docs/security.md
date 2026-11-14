@@ -102,6 +102,16 @@ types is theirs: it reaches the page as trusted input but is not reported to the
 recorded as a step. The agent sees the page as it is afterwards. The page's own requests are
 recorded as usual, so `pageon replay` of such a session diverges at the takeover.
 
+## Frames
+
+A page's documents of one origin share a JavaScript engine and reach each other's windows,
+documents and nodes, as in a browser. Documents of other origins run in other engines, so no
+object crosses between origins. They see each other's windows only as cross-origin windows,
+where `postMessage`, `parent`, `top`, `frames`, `length`, `closed`, `focus`, `blur` and `close`
+work and anything else throws `SecurityError`. A frame cannot navigate its parent or the top
+page. `postMessage` delivers only to the origin the sender named, with the sender's real origin
+on the event. At most 1024 messages wait at once.
+
 ## Protocol clients
 
 Puppeteer's and Playwright's helpers (utility worlds) and WebDriver BiDi sandboxes run in

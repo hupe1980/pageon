@@ -133,12 +133,23 @@ pub mod window {
         ))
     }
 
-    pub fn get_top(_cx: &mut Cx<'_, '_, '_>, _this: Obj) -> R<Option<Obj>> {
-        Ok(Some(Obj::Window))
+    pub fn get_top(cx: &mut Cx<'_, '_, '_>, _this: Obj) -> R<Option<Obj>> {
+        Ok(Some(crate::frames::window::top(cx)))
     }
 
-    pub fn get_parent(_cx: &mut Cx<'_, '_, '_>, _this: Obj) -> R<Option<Obj>> {
-        Ok(Some(Obj::Window))
+    pub fn get_parent(cx: &mut Cx<'_, '_, '_>, _this: Obj) -> R<Option<Obj>> {
+        Ok(Some(crate::frames::window::parent(cx)))
+    }
+
+    /// `postMessage(message, targetOrigin, transfer)` to this window.
+    pub fn post_message(
+        cx: &mut Cx<'_, '_, '_>,
+        _this: Obj,
+        message: Value,
+        target_origin: String,
+        transfer: Vec<Value>,
+    ) -> R<()> {
+        crate::frames::window::post_message(cx, &message, &target_origin, transfer.len())
     }
 
     pub fn get_frames(_cx: &mut Cx<'_, '_, '_>, _this: Obj) -> R<Obj> {
@@ -146,6 +157,9 @@ pub mod window {
     }
 
     pub fn get_length(cx: &mut Cx<'_, '_, '_>, _this: Obj) -> R<u32> {
+        if let Some(children) = crate::frames::window::children(cx) {
+            return Ok(u32::try_from(children.len()).unwrap_or(0));
+        }
         let dom = cx.dom();
         let n = dom
             .traverse(dom.root())
@@ -154,8 +168,8 @@ pub mod window {
         Ok(u32::try_from(n).unwrap_or(0))
     }
 
-    pub fn get_frame_element(_cx: &mut Cx<'_, '_, '_>, _this: Obj) -> R<Option<Obj>> {
-        Ok(None)
+    pub fn get_frame_element(cx: &mut Cx<'_, '_, '_>, _this: Obj) -> R<Option<Obj>> {
+        Ok(crate::frames::window::frame_element(cx))
     }
 
     pub fn focus(_cx: &mut Cx<'_, '_, '_>, _this: Obj) -> R<()> {

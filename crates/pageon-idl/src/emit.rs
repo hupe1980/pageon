@@ -599,10 +599,10 @@ impl Gen<'_> {
                 // Members whose type pageon does not expose (e.g. `AbortSignal`) cannot be
                 // passed by a page, so they are not read.
                 let resolved = self.model.resolve(ty);
-                let inner = match &resolved {
-                    Ty::Nullable(i) => (**i).clone(),
-                    other => other.clone(),
-                };
+                let mut inner = resolved.clone();
+                while let Ty::Nullable(i) | Ty::Seq(i) = inner {
+                    inner = *i;
+                }
                 if let Ty::Named(n) = &inner {
                     let known = self.included.contains(n)
                         || self.model.dictionaries.contains_key(n)

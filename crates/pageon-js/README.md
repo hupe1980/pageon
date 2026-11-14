@@ -82,7 +82,8 @@ These are absent, and reported when a page needs them:
 - `document.write`;
 - `ElementInternals` (form-associated custom elements), constructable stylesheets
   (`adoptedStyleSheets`) and customized built-ins (`is=`);
-- `iframe.contentWindow`, `postMessage` and other cross-frame scripting;
+- `MessageChannel`, `BroadcastChannel` and `document.domain`; iframes a script inserts after
+  the page has loaded stay unloaded, and frames are not navigated by script;
 - form validation (`checkValidity`, `validity`);
 - `Blob`, `File`, `FileReader`, streams;
 - `WebSocket`, `EventSource`, `IndexedDB`;

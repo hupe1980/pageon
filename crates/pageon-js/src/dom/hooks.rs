@@ -84,6 +84,11 @@ pub fn template(
             );
         }
         Iface::Window => {
+            // `window[i]`: the child frames' windows.
+            inst.set_indexed_property_handler(
+                v8::IndexedPropertyHandlerConfiguration::new()
+                    .getter(crate::frames::window::indexed),
+            );
             // Named access on the window (`window.out` for `<div id=out>`), only when no real
             // property of that name exists.
             inst.set_named_property_handler(

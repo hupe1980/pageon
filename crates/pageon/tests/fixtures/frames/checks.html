@@ -1,0 +1,66 @@
+<!doctype html><meta charset=utf-8><title>Checks</title>
+<pre id=out></pre>
+<iframe id=same src="/same.html"></iframe>
+<iframe id=doc srcdoc="<p id=x>srcdoc</p><script>window.fromSrcdoc = 1</script>"></iframe>
+<iframe id=remote src="https://b.test/remote.html"></iframe>
+<script>
+// Derived from web-platform-tests html/browsers/windows, html/browsers/origin/cross-origin-objects
+// and webmessaging; each check is a name and whether it held.
+const results = [];
+function check(name, f) {
+  try { results.push([name, f() === true]); }
+  catch (e) { results.push([name + ' threw ' + e.name + ': ' + e.message, false]); }
+}
+function throws(f, name) { try { f(); return false; } catch (e) { return e.name === name; } }
+window.report = (name, ok) => results.push([name, ok === true]);
+check('frames load after the parent', () => frames.length === 0 && same.contentWindow === null && same.contentDocument === null);
+let loads = 0;
+for (const f of document.querySelectorAll('iframe')) f.addEventListener('load', () => { if (++loads === 3) run(); });
+function run() {
+  const s = same.contentWindow, r = remote.contentWindow;
+  check('length', () => frames.length === 3 && window.length === 3);
+  check('indexed windows', () => window[0] === s && frames[1] === doc.contentWindow && window[2] === r && window[3] === undefined);
+  check('same-origin contentDocument', () => same.contentDocument.title === 'Same' && s.document === same.contentDocument);
+  check('same-origin function call', () => s.answer() === 42);
+  check('same-origin parent and top', () => s.parent === window && s.top === window && s !== window);
+  check('srcdoc document', () => doc.contentWindow.fromSrcdoc === 1 && doc.contentDocument.getElementById('x').textContent === 'srcdoc');
+  check('srcdoc location', () => doc.contentWindow.location.href === 'about:srcdoc');
+  check('cross-origin contentDocument is null', () => remote.contentDocument === null);
+  check('cross-origin document throws', () => throws(() => r.document, 'SecurityError'));
+  check('cross-origin unknown property throws', () => throws(() => r.foo, 'SecurityError'));
+  check('cross-origin set throws', () => throws(() => { r.foo = 1; }, 'SecurityError'));
+  check('cross-origin define throws', () => throws(() => Object.defineProperty(r, 'foo', { value: 1 }), 'SecurityError'));
+  check('cross-origin location read throws', () => throws(() => r.location.href, 'SecurityError'));
+  check('cross-origin navigation refused', () => throws(() => { r.location.href = 'https://evil.test/'; }, 'NotSupportedError') && throws(() => { r.location = 'https://evil.test/'; }, 'NotSupportedError') && throws(() => r.location.replace('https://evil.test/'), 'NotSupportedError'));
+  check('cross-origin window identity', () => r.window === r && r.self === r && r.frames === r && remote.contentWindow === r);
+  check('cross-origin top and parent', () => r.top === window && r.parent === window);
+  check('cross-origin closed and opener', () => r.closed === false && r.opener === null);
+  check('cross-origin methods are stable', () => r.postMessage === r.postMessage && typeof r.focus === 'function');
+  check('cross-origin then is undefined', () => r.then === undefined);
+  check('cross-origin prototype is null', () => Object.getPrototypeOf(r) === null);
+  check('cross-origin length and same-origin grandchild', () => r.length === 1 && r[0].document.title === 'Inner');
+  check('foreign node refused', () => throws(() => document.body.appendChild(same.contentDocument.createElement('div')), 'NotSupportedError'));
+  check('foreign receiver refused', () => throws(() => Node.prototype.appendChild.call(same.contentDocument.body, document.createElement('i')), 'NotSupportedError'));
+  check('importNode copies across documents', () => {
+    const src = same.contentDocument.getElementById('para');
+    const n = document.importNode(src, true);
+    document.body.appendChild(n);
+    return n.textContent === 'from same' && n.ownerDocument === document && src.ownerDocument === same.contentDocument && src.isConnected;
+  });
+  check('top frameElement is null', () => window.frameElement === null);
+  check('postMessage target origin syntax', () => throws(() => r.postMessage(1, 'not a url'), 'SyntaxError'));
+  check('postMessage transfer refused', () => throws(() => postMessage(1, '*', [new ArrayBuffer(1)]), 'DataCloneError'));
+  check('postMessage unclonable', () => throws(() => r.postMessage(() => 1, '*'), 'DataCloneError'));
+  check('MessageEvent constructor', () => { const e = new MessageEvent('message', { data: 5, origin: 'https://x.test', source: window }); return e.data === 5 && e.origin === 'https://x.test' && e.source === window && e.lastEventId === ''; });
+  r.postMessage({ ping: 1 }, 'https://evil.test'); // dropped: wrong target origin
+  r.postMessage({ ping: 2 }, 'https://b.test');
+}
+addEventListener('message', (e) => {
+  if (!e.data || !e.data.pong) return;
+  check('message origin', () => e.origin === 'https://b.test');
+  check('message source', () => e.source === remote.contentWindow);
+  check('wrong target origin dropped', () => e.data.pong === 2 && e.data.got === 1);
+  check('message event', () => e instanceof MessageEvent && e.lastEventId === '' && e.isTrusted && e.type === 'message');
+  out.textContent = JSON.stringify(results);
+});
+</script>

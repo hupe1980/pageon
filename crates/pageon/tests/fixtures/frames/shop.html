@@ -1,0 +1,12 @@
+<!doctype html><meta charset=utf-8><title>Shop</title>
+<h1>Checkout</h1>
+<p id=result>Waiting for the card</p>
+<iframe id=pay src="https://pay.test/field.html" title="Card"></iframe>
+<script>
+const frame = document.getElementById('pay');
+addEventListener('message', (e) => {
+  if (e.origin !== 'https://pay.test' || e.source !== frame.contentWindow) return;
+  if (e.data.ready) frame.contentWindow.postMessage({ amount: 42 }, 'https://pay.test');
+  if (e.data.ok) result.textContent = 'Paid with ' + e.data.token;
+});
+</script>

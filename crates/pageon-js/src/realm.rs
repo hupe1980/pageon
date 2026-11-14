@@ -173,6 +173,8 @@ pub struct EventData {
     pub progress: (bool, f64, f64),
     /// `MediaQueryListEvent`: media and matches.
     pub media: Option<(String, bool)>,
+    /// `MessageEvent`: origin, lastEventId and source (data is in `detail`).
+    pub message: Option<Box<(String, String, Option<crate::cv::Obj>)>>,
 }
 
 /// Mouse and keyboard event fields.
@@ -461,6 +463,11 @@ pub struct State {
     pub resize_observers: Vec<u32>,
     /// The document's `crypto` stream.
     pub crypto: crate::dom::platform::CryptoStream,
+    /// The page's frame tree and this document's context in it (`None`: a document alone).
+    pub frame: Option<(Rc<RefCell<crate::frames::Frames>>, u32)>,
+    /// Windows of other frames as this realm sees them, and their cross-origin members, by
+    /// (world, context, member; `""` for the window itself).
+    pub remote: HashMap<(u32, u32, &'static str), v8::Global<v8::Object>>,
 }
 
 impl State {
@@ -557,9 +564,21 @@ pub struct Shared {
     pub cancelled: std::collections::HashSet<u32>,
     /// Protocol binding calls (realm, name, payload), drained by the client.
     pub bindings: Vec<(usize, String, String)>,
+    /// The engine's id (distinct for every engine in the process).
+    pub engine: u64,
+    /// The engine's realms, by index (weak: the engine owns them).
+    pub realms: Vec<std::rc::Weak<Realm>>,
+    /// The realm each page error happened in (parallel to `errors`, filled as realms run).
+    pub error_realms: Vec<usize>,
 }
 
 impl Shared {
+    /// Attributes the errors recorded since the last call to `realm`.
+    pub fn tag_errors(&mut self, realm: usize) {
+        let n = self.errors.len();
+        self.error_realms.resize(n, realm);
+    }
+
     /// The next random number in [0, 1).
     pub fn random(&mut self) -> f64 {
         let mut x = self.rng.max(1);

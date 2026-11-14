@@ -62,6 +62,8 @@ pub enum Iface {
     MediaQueryList,
     /// `MediaQueryListEvent`.
     MediaQueryListEvent,
+    /// `MessageEvent`.
+    MessageEvent,
     /// `ModelContext`.
     ModelContext,
     /// `MutationObserver`.
@@ -312,7 +314,7 @@ pub enum Iface {
 
 impl Iface {
     /// All interfaces.
-    pub const ALL: &'static [Iface] = &[Iface::AbortController, Iface::CSSStyleDeclaration, Iface::CSSStyleProperties, Iface::CanvasRenderingContext2D, Iface::Crypto, Iface::CustomElementRegistry, Iface::DOMException, Iface::DOMImplementation, Iface::DOMRectList, Iface::DOMRectReadOnly, Iface::DOMStringMap, Iface::DOMTokenList, Iface::Event, Iface::EventTarget, Iface::FormData, Iface::HTMLCollection, Iface::HTMLFormControlsCollection, Iface::HTMLOptionsCollection, Iface::Headers, Iface::History, Iface::IdleDeadline, Iface::IntersectionObserver, Iface::IntersectionObserverEntry, Iface::Location, Iface::MediaQueryList, Iface::MediaQueryListEvent, Iface::ModelContext, Iface::MutationObserver, Iface::MutationRecord, Iface::NamedNodeMap, Iface::Navigator, Iface::NavigatorUAData, Iface::Node, Iface::NodeFilter, Iface::NodeList, Iface::Performance, Iface::PopStateEvent, Iface::ProgressEvent, Iface::Request, Iface::ResizeObserver, Iface::ResizeObserverEntry, Iface::ResizeObserverSize, Iface::Response, Iface::Storage, Iface::StyleSheet, Iface::TextDecoder, Iface::TextEncoder, Iface::TreeWalker, Iface::UIEvent, Iface::URL, Iface::URLSearchParams, Iface::VisualViewport, Iface::Window, Iface::XMLHttpRequestEventTarget, Iface::XMLSerializer, Iface::console, Iface::AbortSignal, Iface::Attr, Iface::CSSStyleSheet, Iface::CharacterData, Iface::Comment, Iface::CustomEvent, Iface::DOMRect, Iface::Document, Iface::DocumentFragment, Iface::DocumentType, Iface::Element, Iface::FocusEvent, Iface::HTMLElement, Iface::HTMLEmbedElement, Iface::HTMLFieldSetElement, Iface::HTMLFontElement, Iface::HTMLFormElement, Iface::HTMLFrameElement, Iface::HTMLFrameSetElement, Iface::HTMLHRElement, Iface::HTMLHeadElement, Iface::HTMLHeadingElement, Iface::HTMLHtmlElement, Iface::HTMLIFrameElement, Iface::HTMLImageElement, Iface::HTMLInputElement, Iface::HTMLLIElement, Iface::HTMLLabelElement, Iface::HTMLLegendElement, Iface::HTMLLinkElement, Iface::HTMLMapElement, Iface::HTMLMarqueeElement, Iface::HTMLMediaElement, Iface::HTMLMenuElement, Iface::HTMLMetaElement, Iface::HTMLMeterElement, Iface::HTMLModElement, Iface::HTMLOListElement, Iface::HTMLObjectElement, Iface::HTMLOptGroupElement, Iface::HTMLOptionElement, Iface::HTMLOutputElement, Iface::HTMLParagraphElement, Iface::HTMLParamElement, Iface::HTMLPictureElement, Iface::HTMLPreElement, Iface::HTMLProgressElement, Iface::HTMLQuoteElement, Iface::HTMLScriptElement, Iface::HTMLSelectElement, Iface::HTMLSelectedContentElement, Iface::HTMLSlotElement, Iface::HTMLSourceElement, Iface::HTMLSpanElement, Iface::HTMLStyleElement, Iface::HTMLTableCaptionElement, Iface::HTMLTableCellElement, Iface::HTMLTableColElement, Iface::HTMLTableElement, Iface::HTMLTableRowElement, Iface::HTMLTableSectionElement, Iface::HTMLTemplateElement, Iface::HTMLTextAreaElement, Iface::HTMLTimeElement, Iface::HTMLTitleElement, Iface::HTMLTrackElement, Iface::HTMLUListElement, Iface::HTMLUnknownElement, Iface::HTMLVideoElement, Iface::KeyboardEvent, Iface::MouseEvent, Iface::PointerEvent, Iface::SVGElement, Iface::SVGGraphicsElement, Iface::ShadowRoot, Iface::Text, Iface::WheelEvent, Iface::XMLHttpRequest, Iface::HTMLAnchorElement, Iface::HTMLAreaElement, Iface::HTMLAudioElement, Iface::HTMLBRElement, Iface::HTMLBaseElement, Iface::HTMLBodyElement, Iface::HTMLButtonElement, Iface::HTMLCanvasElement, Iface::HTMLDListElement, Iface::HTMLDataElement, Iface::HTMLDataListElement, Iface::HTMLDetailsElement, Iface::HTMLDialogElement, Iface::HTMLDirectoryElement, Iface::HTMLDivElement];
+    pub const ALL: &'static [Iface] = &[Iface::AbortController, Iface::CSSStyleDeclaration, Iface::CSSStyleProperties, Iface::CanvasRenderingContext2D, Iface::Crypto, Iface::CustomElementRegistry, Iface::DOMException, Iface::DOMImplementation, Iface::DOMRectList, Iface::DOMRectReadOnly, Iface::DOMStringMap, Iface::DOMTokenList, Iface::Event, Iface::EventTarget, Iface::FormData, Iface::HTMLCollection, Iface::HTMLFormControlsCollection, Iface::HTMLOptionsCollection, Iface::Headers, Iface::History, Iface::IdleDeadline, Iface::IntersectionObserver, Iface::IntersectionObserverEntry, Iface::Location, Iface::MediaQueryList, Iface::MediaQueryListEvent, Iface::MessageEvent, Iface::ModelContext, Iface::MutationObserver, Iface::MutationRecord, Iface::NamedNodeMap, Iface::Navigator, Iface::NavigatorUAData, Iface::Node, Iface::NodeFilter, Iface::NodeList, Iface::Performance, Iface::PopStateEvent, Iface::ProgressEvent, Iface::Request, Iface::ResizeObserver, Iface::ResizeObserverEntry, Iface::ResizeObserverSize, Iface::Response, Iface::Storage, Iface::StyleSheet, Iface::TextDecoder, Iface::TextEncoder, Iface::TreeWalker, Iface::UIEvent, Iface::URL, Iface::URLSearchParams, Iface::VisualViewport, Iface::Window, Iface::XMLHttpRequestEventTarget, Iface::XMLSerializer, Iface::console, Iface::AbortSignal, Iface::Attr, Iface::CSSStyleSheet, Iface::CharacterData, Iface::Comment, Iface::CustomEvent, Iface::DOMRect, Iface::Document, Iface::DocumentFragment, Iface::DocumentType, Iface::Element, Iface::FocusEvent, Iface::HTMLElement, Iface::HTMLEmbedElement, Iface::HTMLFieldSetElement, Iface::HTMLFontElement, Iface::HTMLFormElement, Iface::HTMLFrameElement, Iface::HTMLFrameSetElement, Iface::HTMLHRElement, Iface::HTMLHeadElement, Iface::HTMLHeadingElement, Iface::HTMLHtmlElement, Iface::HTMLIFrameElement, Iface::HTMLImageElement, Iface::HTMLInputElement, Iface::HTMLLIElement, Iface::HTMLLabelElement, Iface::HTMLLegendElement, Iface::HTMLLinkElement, Iface::HTMLMapElement, Iface::HTMLMarqueeElement, Iface::HTMLMediaElement, Iface::HTMLMenuElement, Iface::HTMLMetaElement, Iface::HTMLMeterElement, Iface::HTMLModElement, Iface::HTMLOListElement, Iface::HTMLObjectElement, Iface::HTMLOptGroupElement, Iface::HTMLOptionElement, Iface::HTMLOutputElement, Iface::HTMLParagraphElement, Iface::HTMLParamElement, Iface::HTMLPictureElement, Iface::HTMLPreElement, Iface::HTMLProgressElement, Iface::HTMLQuoteElement, Iface::HTMLScriptElement, Iface::HTMLSelectElement, Iface::HTMLSelectedContentElement, Iface::HTMLSlotElement, Iface::HTMLSourceElement, Iface::HTMLSpanElement, Iface::HTMLStyleElement, Iface::HTMLTableCaptionElement, Iface::HTMLTableCellElement, Iface::HTMLTableColElement, Iface::HTMLTableElement, Iface::HTMLTableRowElement, Iface::HTMLTableSectionElement, Iface::HTMLTemplateElement, Iface::HTMLTextAreaElement, Iface::HTMLTimeElement, Iface::HTMLTitleElement, Iface::HTMLTrackElement, Iface::HTMLUListElement, Iface::HTMLUnknownElement, Iface::HTMLVideoElement, Iface::KeyboardEvent, Iface::MouseEvent, Iface::PointerEvent, Iface::SVGElement, Iface::SVGGraphicsElement, Iface::ShadowRoot, Iface::Text, Iface::WheelEvent, Iface::XMLHttpRequest, Iface::HTMLAnchorElement, Iface::HTMLAreaElement, Iface::HTMLAudioElement, Iface::HTMLBRElement, Iface::HTMLBaseElement, Iface::HTMLBodyElement, Iface::HTMLButtonElement, Iface::HTMLCanvasElement, Iface::HTMLDListElement, Iface::HTMLDataElement, Iface::HTMLDataListElement, Iface::HTMLDetailsElement, Iface::HTMLDialogElement, Iface::HTMLDirectoryElement, Iface::HTMLDivElement];
 
     /// The interface name.
     pub fn name(self) -> &'static str {
@@ -343,6 +345,7 @@ impl Iface {
             Iface::Location => "Location",
             Iface::MediaQueryList => "MediaQueryList",
             Iface::MediaQueryListEvent => "MediaQueryListEvent",
+            Iface::MessageEvent => "MessageEvent",
             Iface::ModelContext => "ModelContext",
             Iface::MutationObserver => "MutationObserver",
             Iface::MutationRecord => "MutationRecord",
@@ -498,6 +501,7 @@ impl Iface {
             Iface::Location => None,
             Iface::MediaQueryList => Some(Iface::EventTarget),
             Iface::MediaQueryListEvent => Some(Iface::Event),
+            Iface::MessageEvent => Some(Iface::Event),
             Iface::ModelContext => Some(Iface::EventTarget),
             Iface::MutationObserver => None,
             Iface::MutationRecord => None,
@@ -2526,6 +2530,54 @@ fn ctor__MediaQueryListEvent(scope: &mut v8::PinScope, args: v8::FunctionCallbac
         let a0: String = { let v = args.get(0); cv::string(cx, v)? };
         let a1: MediaQueryListEventInit = { let v = args.get(1); if v.is_undefined() { MediaQueryListEventInit::default() } else { dict_media_query_list_event_init(cx, v)? } };
         let r: Obj = crate::dom::media_query_list_event::constructor(cx, a0, a1)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__MessageEvent__data(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::MessageEvent)?;
+        let r: Value = crate::dom::message_event::get_data(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__MessageEvent__origin(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::MessageEvent)?;
+        let r: String = crate::dom::message_event::get_origin(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__MessageEvent__lastEventId(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::MessageEvent)?;
+        let r: String = crate::dom::message_event::get_last_event_id(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__MessageEvent__source(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::MessageEvent)?;
+        let r: Option<Obj> = crate::dom::message_event::get_source(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn ctor__MessageEvent(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        if args.new_target().is_undefined() { return Err(cv::Error::Type("Failed to construct 'MessageEvent': Please use the 'new' operator.".into())); }
+        if args.length() <= 0 { return Err(cv::Error::args("MessageEvent constructor", 0)); }
+        let a0: String = { let v = args.get(0); cv::string(cx, v)? };
+        let a1: MessageEventInit = { let v = args.get(1); if v.is_undefined() { MessageEventInit::default() } else { dict_message_event_init(cx, v)? } };
+        let r: Obj = crate::dom::message_event::constructor(cx, a0, a1)?;
         cx.ret(r)
     });
 }
@@ -4733,6 +4785,20 @@ fn op__Window__prompt(scope: &mut v8::PinScope, args: v8::FunctionCallbackArgume
         let a0: String = { let v = args.get(0); if v.is_undefined() { "".to_string() } else { cv::string(cx, v)? } };
         let a1: String = { let v = args.get(1); if v.is_undefined() { "".to_string() } else { cv::string(cx, v)? } };
         let r: Option<String> = crate::dom::window::prompt(cx, this, a0, a1)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Window__postMessage(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = Obj::Window;
+        if args.length() <= 0 { return Err(cv::Error::args("Window.postMessage", 0)); }
+        let a0: Value = { let v = args.get(0); cv::value(cx, v) };
+        if args.length() <= 1 { return Err(cv::Error::args("Window.postMessage", 1)); }
+        let a1: String = { let v = args.get(1); cv::string(cx, v)? };
+        let a2: Vec<Value> = { let v = args.get(2); if v.is_undefined() { Vec::new() } else { cv::seq(cx, v, |cx, v| Ok(cv::value(cx, v)))? } };
+        let r: () = crate::dom::window::post_message(cx, this, a0, a1, a2)?;
         cx.ret(r)
     });
 }
@@ -14009,6 +14075,24 @@ fn set__HTMLIFrameElement__height(scope: &mut v8::PinScope, args: v8::FunctionCa
 }
 
 #[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__HTMLIFrameElement__contentDocument(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLIFrameElement)?;
+        let r: Option<Obj> = crate::dom::htmli_frame_element::get_content_document(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__HTMLIFrameElement__contentWindow(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLIFrameElement)?;
+        let r: Option<Obj> = crate::dom::htmli_frame_element::get_content_window(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
 fn get__HTMLIFrameElement__align(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::HTMLIFrameElement)?;
@@ -22680,6 +22764,55 @@ fn dict_media_query_list_event_init(cx: &mut Cx<'_, '_, '_>, v: v8::Local<'_, v8
     Ok(d)
 }
 
+/// The `MessageEventInit` dictionary.
+#[derive(Debug, Clone)]
+#[allow(missing_docs)]
+pub struct MessageEventInit {
+    /// `bubbles`.
+    pub bubbles: bool,
+    /// `cancelable`.
+    pub cancelable: bool,
+    /// `composed`.
+    pub composed: bool,
+    /// `data`.
+    pub data: Option<Value>,
+    /// `lastEventId`.
+    pub last_event_id: String,
+    /// `origin`.
+    pub origin: String,
+    /// `source`.
+    pub source: Option<Value>,
+}
+
+impl Default for MessageEventInit {
+    fn default() -> Self {
+        Self {
+            bubbles: false,
+            cancelable: false,
+            composed: false,
+            data: None,
+            last_event_id: "".to_string(),
+            origin: "".to_string(),
+            source: None,
+        }
+    }
+}
+
+#[allow(unused_variables, unused_mut, clippy::all)]
+fn dict_message_event_init(cx: &mut Cx<'_, '_, '_>, v: v8::Local<'_, v8::Value>) -> R<MessageEventInit> {
+    let mut d = MessageEventInit::default();
+    if v.is_null_or_undefined() { return Ok(d); }
+    let obj = cv::object(cx, v, "MessageEventInit")?;
+    { let v = cv::get(cx, obj, "bubbles")?; if !v.is_undefined() { d.bubbles = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "cancelable")?; if !v.is_undefined() { d.cancelable = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "composed")?; if !v.is_undefined() { d.composed = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "data")?; if !v.is_undefined() { d.data = Some(cv::value(cx, v)); } }
+    { let v = cv::get(cx, obj, "lastEventId")?; if !v.is_undefined() { d.last_event_id = cv::string(cx, v)?; } }
+    { let v = cv::get(cx, obj, "origin")?; if !v.is_undefined() { d.origin = cv::string(cx, v)?; } }
+    { let v = cv::get(cx, obj, "source")?; if !v.is_undefined() { d.source = if v.is_null_or_undefined() { None } else { Some(cv::value(cx, v)) }; } }
+    Ok(d)
+}
+
 /// The `ModelContextRegisterToolOptions` dictionary.
 #[derive(Debug, Clone)]
 #[allow(missing_docs)]
@@ -24201,6 +24334,19 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         crate::dom::hooks::template(scope, Iface::MediaQueryListEvent, f);
         out.push(v8::Global::new(scope, f));
     }
+    { // MessageEvent
+        let f = cv::interface(scope, "MessageEvent", ctor__MessageEvent);
+        f.inherit(v8::Local::new(scope, &out[Iface::Event as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "data", get__MessageEvent__data, None);
+        cv::accessor(scope, proto, "origin", get__MessageEvent__origin, None);
+        cv::accessor(scope, proto, "lastEventId", get__MessageEvent__lastEventId, None);
+        cv::accessor(scope, proto, "source", get__MessageEvent__source, None);
+        crate::dom::hooks::template(scope, Iface::MessageEvent, f);
+        out.push(v8::Global::new(scope, f));
+    }
     { // ModelContext
         let f = cv::interface(scope, "ModelContext", cv::illegal_constructor);
         f.inherit(v8::Local::new(scope, &out[Iface::EventTarget as usize]));
@@ -24648,6 +24794,7 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::method(scope, inst.into(), "alert", op__Window__alert, 0);
         cv::method(scope, inst.into(), "confirm", op__Window__confirm, 0);
         cv::method(scope, inst.into(), "prompt", op__Window__prompt, 0);
+        cv::method(scope, inst.into(), "postMessage", op__Window__postMessage, 2);
         cv::method(scope, inst.into(), "matchMedia", op__Window__matchMedia, 1);
         cv::accessor(scope, inst, "visualViewport", get__Window__visualViewport, None);
         cv::accessor(scope, inst, "innerWidth", get__Window__innerWidth, None);
@@ -25468,6 +25615,8 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::accessor(scope, proto, "allowFullscreen", get__HTMLIFrameElement__allowFullscreen, Some(set__HTMLIFrameElement__allowFullscreen.map_fn_to()));
         cv::accessor(scope, proto, "width", get__HTMLIFrameElement__width, Some(set__HTMLIFrameElement__width.map_fn_to()));
         cv::accessor(scope, proto, "height", get__HTMLIFrameElement__height, Some(set__HTMLIFrameElement__height.map_fn_to()));
+        cv::accessor(scope, proto, "contentDocument", get__HTMLIFrameElement__contentDocument, None);
+        cv::accessor(scope, proto, "contentWindow", get__HTMLIFrameElement__contentWindow, None);
         cv::accessor(scope, proto, "align", get__HTMLIFrameElement__align, Some(set__HTMLIFrameElement__align.map_fn_to()));
         cv::accessor(scope, proto, "scrolling", get__HTMLIFrameElement__scrolling, Some(set__HTMLIFrameElement__scrolling.map_fn_to()));
         cv::accessor(scope, proto, "frameBorder", get__HTMLIFrameElement__frameBorder, Some(set__HTMLIFrameElement__frameBorder.map_fn_to()));
@@ -26621,6 +26770,7 @@ pub fn expose(scope: &mut v8::PinScope<'_, '_>, global: v8::Local<'_, v8::Object
     cv::expose(scope, global, &t[Iface::Location as usize], "Location");
     cv::expose(scope, global, &t[Iface::MediaQueryList as usize], "MediaQueryList");
     cv::expose(scope, global, &t[Iface::MediaQueryListEvent as usize], "MediaQueryListEvent");
+    cv::expose(scope, global, &t[Iface::MessageEvent as usize], "MessageEvent");
     cv::expose(scope, global, &t[Iface::ModelContext as usize], "ModelContext");
     cv::expose(scope, global, &t[Iface::MutationObserver as usize], "MutationObserver");
     cv::expose(scope, global, &t[Iface::MutationRecord as usize], "MutationRecord");

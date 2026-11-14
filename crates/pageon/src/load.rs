@@ -99,6 +99,10 @@ pub(crate) struct Start<'a> {
     pub(crate) delegate_tools: bool,
     /// The history state of the entry being restored (a traversal to another document).
     pub(crate) history: Option<&'a pageon_js::SavedState>,
+    /// The page the document belongs to, and its context in the page's frame tree.
+    pub(crate) page: Option<(&'a crate::frames::Page, u32)>,
+    /// The URL and origin of a document that inherits its origin (`about:srcdoc`).
+    pub(crate) inherit: Option<(&'a str, &'a str)>,
 }
 
 /// A navigation's result: a page, or a file to download.
@@ -119,7 +123,12 @@ pub(crate) fn open(
     options: LoadOptions,
     start: Start<'_>,
 ) -> Result<Loaded, LoadError> {
-    let mut loaded = fetch(input, env, net, options, start)?;
+    let mut page = crate::frames::Page::new();
+    let first = Start {
+        page: Some((&page, 0)),
+        ..start
+    };
+    let mut loaded = fetch(input, env, net, options, first)?;
     let mut chain = vec![input.to_string()];
     loop {
         let Loaded::Page(doc) = &mut loaded else {
@@ -135,16 +144,96 @@ pub(crate) fn open(
         let Some(client) = doc.client.clone() else {
             break;
         };
+        page = crate::frames::Page::new();
         let next = Start {
             initiator: Some((&client, &nav)),
+            page: Some((&page, 0)),
             ..start
         };
         loaded = fetch(&nav.url, env, net, options, next)?;
     }
     if let Loaded::Page(doc) = &mut loaded {
-        crate::frames::load_all(doc, Some(env), net, options, start.keep);
+        crate::frames::load_all(doc, Some(env), net, options, Some(&page));
+        crate::frames::connect(doc, &page, env, net, options);
+        if start.keep {
+            doc.page = Some(Rc::new(page));
+        } else {
+            // A load that is not kept: the documents stay as they are now, without engines.
+            strip(doc);
+        }
     }
     Ok(loaded)
+}
+
+fn strip(doc: &mut Document) {
+    doc.live = None;
+    for f in &mut doc.frames {
+        if let Some(d) = f.document.as_deref_mut() {
+            strip(d);
+        }
+    }
+}
+
+/// A frame document given inline (`srcdoc`, `about:blank`): no request; its scripts run with
+/// its parent's origin, as one more realm of that origin's engine when the page runs one.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn inline(
+    html: &str,
+    url: &str,
+    origin: &str,
+    parent: &Client,
+    env: &dyn Env,
+    net: &Rc<RefCell<Net>>,
+    options: LoadOptions,
+    start: Start<'_>,
+) -> Result<Document, LoadError> {
+    let started = env.now_ms()?;
+    let ran = crate::scripts::run(
+        html,
+        parent,
+        env,
+        net,
+        started,
+        options,
+        Start {
+            inherit: Some((url, origin)),
+            ..start
+        },
+    )?;
+    let end = env.now_ms()?;
+    let mut doc = crate::parse_without_frames("", url);
+    doc.summary = Summary {
+        bytes: html.len(),
+        ms: end.saturating_sub(started),
+        stylesheets: ran.stylesheets.len(),
+        stylesheets_failed: ran.stylesheets_failed,
+        scripts: ran.scripts,
+        errors: ran.errors.len(),
+        pending_timers: ran.pending_timers,
+        virtual_ms: ran.virtual_ms,
+        pending_requests: ran.pending_requests,
+        ..Summary::default()
+    };
+    doc.js = crate::JsState {
+        errors: ran.errors,
+        scripts: ran.scripts,
+        pending_timers: ran.pending_timers,
+        virtual_ms: ran.virtual_ms,
+        modals: ran.modals,
+        focused: ran.focused,
+        scroll: ran.scroll,
+        pending_requests: ran.pending_requests,
+        navigation: ran.navigation,
+        dialogs: ran.dialogs,
+        popups: ran.popups,
+    };
+    doc.dom = ran.dom;
+    doc.stylesheets = ran.stylesheets;
+    doc.loaded_at = end;
+    doc.client = Some(parent.clone());
+    doc.live = ran.live.map(Rc::new);
+    doc.context = start.page.map_or(0, |(_, c)| c);
+    Ok(doc)
 }
 
 /// The file name of a download: `Content-Disposition`'s `filename*`/`filename`, else the URL's
@@ -276,15 +365,7 @@ pub(crate) fn fetch(
     let mut js = crate::JsState::default();
     let mut live = None;
     let (dom, stylesheets, failed) = if html && options.scripts {
-        let ran = crate::scripts::run(
-            &text,
-            &client,
-            env,
-            net,
-            started,
-            options,
-            (start.keep, start.history.cloned()),
-        )?;
+        let ran = crate::scripts::run(&text, &client, env, net, started, options, start)?;
         js = crate::JsState {
             errors: ran.errors,
             scripts: ran.scripts,
@@ -351,6 +432,8 @@ pub(crate) fn fetch(
         client: Some(client),
         live,
         images: None,
+        page: None,
+        context: start.page.map_or(0, |(_, c)| c),
     })))
 }
 

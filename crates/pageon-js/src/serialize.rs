@@ -378,6 +378,9 @@ fn value<'s>(
     w.seen.push((hash, v8::Global::new(scope, o), i));
     w.repeated.push(false);
     let ty = kind(cx, v, o);
+    let remote = (ty == "window")
+        .then(|| crate::frames::remote_context(cx, o))
+        .flatten();
     let mut out = json!({"type": ty, "_seen": i});
     if w.budget == 0 {
         return out;
@@ -431,9 +434,14 @@ fn value<'s>(
             }
         }
         "window" => {
-            let r = crate::realm::of_global(scope, o).unwrap_or(w.realm);
             out["value"] = json!({});
-            out["realm"] = json!(r);
+            // Another origin's window names its frame; a realm's window names its realm.
+            if let Some(c) = remote {
+                out["frame"] = json!(c);
+            } else {
+                let r = crate::realm::of_global(scope, o).unwrap_or(w.realm);
+                out["realm"] = json!(r);
+            }
         }
         "node" => {
             if let Some((cv::Obj::Node(n), _)) = cv::unwrap_any(cx, v) {
@@ -459,7 +467,9 @@ fn kind<'s>(
     if v.is_function() {
         return "function";
     }
-    if crate::realm::of_global(cx.scope, o).is_some() {
+    if crate::realm::of_global(cx.scope, o).is_some()
+        || crate::frames::remote_context(cx, o).is_some()
+    {
         return "window";
     }
     if let Some((obj, iface)) = cv::unwrap_any(cx, v) {
