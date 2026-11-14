@@ -36,7 +36,8 @@ obs, reward, done, *_ = env.step("click('e1')")
   attribute or a variable, runs nothing and comes back in `last_action_error`, so a model that a
   page has hijacked cannot run code on your machine.
 
-Actions pageon cannot perform yet (drag, uploads) raise an error that names the action, instead
+`upload_file(bid, name)` uploads a file staged with `PageonEnv(files={"cv": (path, [origin])})` by
+name, never a path. Actions pageon cannot perform yet (drag) raise an error that names the action, instead
 of silently doing nothing. `scroll(dx, dy)` scrolls with the wheel where the pointer is, as in
 Chromium.
 

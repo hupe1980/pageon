@@ -37,7 +37,7 @@ Claude Desktop, Cursor and other hosts take the same command in their JSON confi
 | Group | Tools |
 | --- | --- |
 | Read | `browser_open`, `browser_observe`, `browser_view` (`markdown`, `text`, `requests`, `errors`), `browser_screenshot` |
-| Act | `browser_click`, `browser_type`, `browser_press`, `browser_select`, `browser_hover`, `browser_scroll`, `browser_wait`, `browser_back`, `browser_forward`, `browser_call_tool` |
+| Act | `browser_click`, `browser_type`, `browser_upload`, `browser_press`, `browser_select`, `browser_hover`, `browser_scroll`, `browser_wait`, `browser_back`, `browser_forward`, `browser_call_tool` |
 | Explore | `browser_lookahead`, `browser_reset` |
 | Reuse | `browser_workflow_save`, `browser_workflow_run` |
 | People | `browser_takeover` |

@@ -42,6 +42,7 @@ pub mod cdp;
 #[doc(hidden)]
 pub mod content;
 mod error;
+mod files;
 mod frames;
 mod guard;
 mod load;
@@ -60,6 +61,7 @@ pub mod takeover;
 pub mod workflow;
 
 pub use error::LoadError;
+pub use files::{Files, mime_type};
 pub use frames::{Frame, FrameState, MAX_DEPTH, MAX_FRAMES};
 pub use guard::{CommandGuard, GUARD_TIMEOUT};
 pub use load::{DialogPolicy, LoadOptions, load};

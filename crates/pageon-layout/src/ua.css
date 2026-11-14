@@ -35,6 +35,12 @@ input[type="checkbox"], input[type="radio"] {
 input[type="radio"] {
   margin: 3px 3px 0 5px;
 }
+/* A file input: Chrome's "Choose File" button and "No file chosen" (about 253 by 21). */
+input[type="file"] {
+  display: inline-block;
+  width: 253px;
+  height: 21px;
+}
 select {
   height: 19px;
   padding: 0;

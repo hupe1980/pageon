@@ -151,6 +151,7 @@ fn handshake_and_tools() {
             "browser_observe",
             "browser_click",
             "browser_type",
+            "browser_upload",
             "browser_press",
             "browser_select",
             "browser_hover",

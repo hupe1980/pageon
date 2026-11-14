@@ -192,6 +192,16 @@ impl Env for BrokerEnv {
         }
     }
 
+    fn file(&self, name: &str, origin: &str) -> Result<pageon_env::StagedFile, NetError> {
+        match self.ask(EnvCall::File {
+            name: name.into(),
+            origin: origin.into(),
+        })? {
+            EnvReply::File(r) => r,
+            _ => unexpected(),
+        }
+    }
+
     fn recorder(&self) -> Option<&dyn pageon_env::Recorder> {
         let records = match self.records.get() {
             Some(r) => r,

@@ -205,7 +205,6 @@ const UNSUPPORTED: &[(&str, &str)] = &[
         "browsingContext.stopScreencast",
         "pageon paints on demand and does not stream",
     ),
-    ("input.setFiles", "file uploads are not supported yet"),
     ("permissions.", "permissions are not supported"),
     ("webExtension.", "web extensions are not supported"),
     ("bluetooth.", "Web Bluetooth is not supported"),
@@ -357,6 +356,7 @@ impl<'s, E: Env> Session<'s, E> {
             "emulation.setScreenOrientationOverride" => Ok(json!({})),
             "input.performActions" => self.perform_actions(p),
             "input.releaseActions" => self.release_actions(p),
+            "input.setFiles" => self.set_files(p),
             m if m.starts_with("browsingContext.")
                 || m.starts_with("storage.")
                 || m.starts_with("pageon:") =>

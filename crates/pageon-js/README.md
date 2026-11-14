@@ -85,7 +85,8 @@ These are absent, and reported when a page needs them:
 - `MessageChannel`, `BroadcastChannel` and `document.domain`; iframes a script inserts after
   the page has loaded stay unloaded, and frames are not navigated by script;
 - value sanitization of number and date fields (an unparsable value is `badInput`, as typed);
-- `Blob`, `File`, `FileReader`, streams;
+- `blob:` URLs (`URL.createObjectURL`), streams, `FileReader.readAsBinaryString`, structured clone
+  of blobs, `DataTransfer`;
 - `WebSocket`, `EventSource`, `IndexedDB`;
 - Selection and `Range`, the Navigation API, `crypto.subtle`;
 - workers;

@@ -785,8 +785,22 @@ struct Serving {
     allow_private: bool,
     /// Secret handles the command types, each released once.
     secrets: Vec<String>,
+    /// Staged files the command uploads, each released once.
+    files: Vec<String>,
     /// The step this command may record (action text, input), once.
     step: Option<(String, serde_json::Value)>,
+}
+
+/// The staged files an upload action names (download handles are the tab's own).
+fn uploaded(action: &Action) -> Vec<String> {
+    match action {
+        Action::Upload(_, names) => names
+            .iter()
+            .filter(|n| !n.starts_with("download:"))
+            .cloned()
+            .collect(),
+        _ => Vec::new(),
+    }
 }
 
 /// The `secret://` handle a type action types, if any.
@@ -817,6 +831,7 @@ impl Serving {
             } => Self {
                 allow_private: tab(t),
                 secrets: typed_secret(action).into_iter().collect(),
+                files: uploaded(action),
                 step: (!person).then(|| {
                     (
                         action.to_string(),
@@ -827,10 +842,22 @@ impl Serving {
             Op::Lookahead { tab: t, actions } => Self {
                 allow_private: tab(t),
                 secrets: actions.iter().filter_map(typed_secret).collect(),
+                files: actions.iter().flat_map(uploaded).collect(),
                 step: None,
             },
             Op::Cdp { message, options } | Op::Bidi { message, options } => Self {
                 allow_private: options.allow_private_network,
+                // `DOM.setFileInputFiles` / `input.setFiles`: staged paths or names.
+                files: serde_json::from_str::<serde_json::Value>(message)
+                    .ok()
+                    .filter(|m| {
+                        m["method"] == "DOM.setFileInputFiles" || m["method"] == "input.setFiles"
+                    })
+                    .and_then(|m| m["params"]["files"].as_array().cloned())
+                    .unwrap_or_default()
+                    .iter()
+                    .filter_map(|f| f.as_str().map(str::to_string))
+                    .collect(),
                 // pageon's own action method (`Pageon.act`) may type a handle.
                 secrets: serde_json::from_str::<serde_json::Value>(message)
                     .ok()
@@ -902,6 +929,15 @@ fn answer<E: Env>(
             }
             None => EnvReply::Secret(Err(pageon_env::NetError::Blocked(format!(
                 "secret://{name} was not asked for by the agent (only a type action may use it)"
+            )))),
+        },
+        EnvCall::File { name, origin } => match serving.files.iter().position(|n| *n == name) {
+            Some(i) => {
+                serving.files.remove(i);
+                EnvReply::File(env.file(&name, &origin))
+            }
+            None => EnvReply::File(Err(pageon_env::NetError::Blocked(format!(
+                "file \"{name}\" was not asked for by the agent (only an upload may use it)"
             )))),
         },
         EnvCall::Records => EnvReply::Flag(env.recorder().is_some()),
@@ -1434,5 +1470,50 @@ mod tests {
             "{:?}",
             sent.headers
         );
+    }
+
+    /// SR-002 (032): a staged file only for the upload action naming it, once.
+    #[test]
+    fn files_only_for_the_upload_once() {
+        let path = std::env::temp_dir().join(format!("pageon-sb-file-{}.txt", std::process::id()));
+        std::fs::write(&path, b"cv").unwrap_or_else(|e| panic!("{e}"));
+        let env = crate::Files::new(Seen::default()).with("cv", &path, ["https://a.test"]);
+        let tabs = std::collections::HashMap::new();
+        let ask = || EnvCall::File {
+            name: "cv".into(),
+            origin: "https://a.test".into(),
+        };
+        let ok = |r: EnvReply| matches!(r, EnvReply::File(Ok(_)));
+        let mut jar = BrokerJar::default();
+        for op in [act(1, "click e1", false), act(1, "type e3 cv", false)] {
+            let mut serving = Serving::of(&op, &tabs);
+            assert!(
+                !ok(answer(&env, &mut serving, &mut jar, false, ask())),
+                "{op:?}"
+            );
+        }
+        let mut serving = Serving::of(&act(1, "upload e7 cv", false), &tabs);
+        assert!(ok(answer(&env, &mut serving, &mut jar, false, ask())));
+        assert!(
+            !ok(answer(&env, &mut serving, &mut jar, false, ask())),
+            "once per action"
+        );
+        let cdp = Op::Cdp {
+            message: format!(
+                r#"{{"id":1,"method":"DOM.setFileInputFiles","params":{{"files":[{:?}],"nodeId":3}}}}"#,
+                path.to_string_lossy()
+            ),
+            options: LoadOptions::default(),
+        };
+        let mut serving = Serving::of(&cdp, &tabs);
+        let by_path = EnvCall::File {
+            name: path.to_string_lossy().into_owned(),
+            origin: "https://a.test".into(),
+        };
+        assert!(
+            ok(answer(&env, &mut serving, &mut jar, false, by_path)),
+            "a staged path"
+        );
+        let _ = std::fs::remove_file(&path);
     }
 }

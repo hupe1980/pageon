@@ -124,6 +124,11 @@ pub(crate) enum EnvCall {
         name: String,
         origin: String,
     },
+    /// A staged file for an upload.
+    File {
+        name: String,
+        origin: String,
+    },
     /// Whether the broker's environment keeps steps.
     Records,
     /// A step that just ended.
@@ -139,6 +144,7 @@ pub(crate) enum EnvReply {
     Fetch(Result<Response, NetError>),
     Num(Result<u64, NetError>),
     Secret(Result<String, NetError>),
+    File(Result<pageon_env::StagedFile, NetError>),
     Flag(bool),
     Profile(pageon_env::Profile),
 }

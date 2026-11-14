@@ -27,6 +27,12 @@ Seatbelt on macOS. The cage can run JavaScript and nothing else: it cannot read 
 open a socket or start a program. Its only way out is the channel to the broker, which performs
 every request on its behalf.
 
+Files work like secrets: the operator stages each by name for the origins it may be uploaded
+to (`--file NAME@ORIGIN=PATH`), the agent uploads by name, and the broker reads the file only
+for an `upload` that names it, once, into a page of a bound origin. No agent, page or protocol
+client names a host path (CDP and BiDi clients may pass a staged path). A download uploads only
+back to its own site.
+
 The broker does not take the page process's word for what matters. Whether a request may reach
 the private network comes from the options the broker itself sent; a secret is handed out only
 while the agent's own `type … secret://name` runs, once; a recorded step is the broker's

@@ -352,6 +352,7 @@ pub(crate) fn fetch(
     if attachment || (!html && essence != "text/plain") {
         if start.parent.is_none() && url.scheme() != "file" {
             return Ok(Loaded::Download(crate::Download {
+                handle: String::new(),
                 filename: download_name(disposition, &url),
                 url: url.to_string(),
                 content_type: essence,

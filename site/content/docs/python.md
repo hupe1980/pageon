@@ -25,6 +25,7 @@ with Browser(origins=["https://shop.example"], secrets=["shop@https://shop.examp
     tab = browser.open("https://shop.example/login")
     print(tab.observe())                       # the agent view, with refs
     tab.type("e3", "ada")
+    tab.upload("e9", "cv")              # Browser(files={"cv": ("./cv.pdf", ["https://shop.example"])})
     out = tab.type("e4", "secret://shop", submit=True)
     print(out)                                 # ok type e4 … · navigated to …/account
     print(out.observation)                     # what changed

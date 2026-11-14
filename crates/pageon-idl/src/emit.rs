@@ -51,7 +51,9 @@ struct Gen<'m> {
     included: BTreeSet<String>,
     dicts: BTreeSet<String>,
     /// Overloads told apart by argument count: (owner, operation) → the other overloads.
-    alts: std::collections::BTreeMap<(String, String), Vec<Vec<Arg>>>,
+    /// Overload alternatives: arguments, and the (position, interface) that selects it when
+    /// it has as many required arguments as the main one (`FormData.append(name, blob, …)`).
+    alts: std::collections::BTreeMap<(String, String), Vec<Alt>>,
     out: String,
     errors: Vec<String>,
 }
@@ -63,6 +65,10 @@ fn is_scalar_reflect(t: &Ty) -> bool {
         _ => false,
     }
 }
+
+/// An overload alternative: its arguments, and the (position, interface) that selects it when
+/// it has as many required arguments as the main one.
+type Alt = (Vec<Arg>, Option<(usize, String)>);
 
 impl Gen<'_> {
     fn allowed(&self, owner: &str, name: &str) -> bool {
@@ -488,17 +494,23 @@ impl Gen<'_> {
                     .get(&(m.owner.clone(), name.clone()))
                     .cloned()
                     .unwrap_or_default();
-                alts.sort_by_key(|a| std::cmp::Reverse(required(a)));
+                alts.sort_by_key(|(a, _)| std::cmp::Reverse(required(a)));
                 let mut dispatch = String::new();
-                for alt in &alts {
+                for (alt, by) in &alts {
                     let (alt_code, alt_names) = self.args_code(alt, &ctx);
                     let f = std::iter::once(snake(name))
                         .chain(alt.iter().map(|a| snake(&a.name)))
                         .collect::<Vec<_>>()
                         .join("_");
+                    let when = match by {
+                        Some((k, iface)) => {
+                            format!(" && cv::obj(cx, args.get({k}), Iface::{iface}).is_ok()")
+                        }
+                        None => String::new(),
+                    };
                     let _ = write!(
                         dispatch,
-                        "        if args.length() >= {} {{\n{alt_code}        let r: {rt} = crate::dom::{owner}::{f}(cx, {})?;\n        return cx.ret(r);\n        }}\n",
+                        "        if args.length() >= {}{when} {{\n{alt_code}        let r: {rt} = crate::dom::{owner}::{f}(cx, {})?;\n        return cx.ret(r);\n        }}\n",
                         required(alt),
                         pass(alt_names)
                     );
@@ -721,8 +733,8 @@ impl Gen<'_> {
                 continue;
             };
             let (i, alts) = merge_overloads(i, model, &self.included);
-            for (owner, name, args) in alts {
-                self.alts.entry((owner, name)).or_default().push(args);
+            for (owner, name, alt) in alts {
+                self.alts.entry((owner, name)).or_default().push(alt);
             }
             ifaces.push(i);
         }
@@ -973,7 +985,7 @@ fn merge_overloads(
     mut iface: Interface,
     model: &Model,
     included: &BTreeSet<String>,
-) -> (Interface, Vec<(String, String, Vec<Arg>)>) {
+) -> (Interface, Vec<(String, String, Alt)>) {
     let mut alts = Vec::new();
     let absent = |t: &Ty| {
         let mut t = model.resolve(t);
@@ -1020,7 +1032,32 @@ fn merge_overloads(
             if required(b) > a.iter().filter(|x| !x.variadic).count()
                 && !b.iter().any(|x| absent(&x.ty))
             {
-                alts.push((owner, name, b.clone()));
+                alts.push((owner, name, (b.clone(), None)));
+                iface.members.remove(j);
+                continue;
+            }
+            // Same arity, told apart by an interface-typed argument where the other takes
+            // something else (`append(name, value)` / `append(name, blob, filename)`).
+            let by = b
+                .iter()
+                .enumerate()
+                .find_map(|(k, x)| match model.resolve(&x.ty) {
+                    Ty::Named(n)
+                        if model.interfaces.contains_key(&n)
+                            && !absent(&x.ty)
+                            && a.get(k).is_some_and(|y| {
+                                format!("{:?}", y.ty) != format!("{:?}", x.ty)
+                            }) =>
+                    {
+                        Some((k, n))
+                    }
+                    _ => None,
+                });
+            if let Some(by) = by
+                && required(b) == required(&a)
+                && !b.iter().any(|x| absent(&x.ty))
+            {
+                alts.push((owner, name, (b.clone(), Some(by))));
                 iface.members.remove(j);
                 continue;
             }

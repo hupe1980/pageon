@@ -28,7 +28,7 @@ import os
 import subprocess
 import threading
 import time
-from collections.abc import Iterable
+from collections.abc import Mapping, Iterable
 from pathlib import Path
 from typing import Any
 
@@ -65,6 +65,14 @@ _IGNORED = (
     "headless",
 )
 
+
+
+def _file_flags(files: "Mapping[str, tuple[str | os.PathLike[str], Iterable[str]]]") -> list[str]:
+    """``--file NAME@ORIGIN[,ORIGIN]=PATH`` for each staged file: the agent uploads by name."""
+    out: list[str] = []
+    for name, (path, origins) in files.items():
+        out += ["--file", f"{name}@{','.join(origins)}={os.fspath(path)}"]
+    return out
 
 class _Chat:
     """BrowserGym's chat, without its Chromium window: the messages, in order."""
@@ -117,6 +125,7 @@ class PageonEnv(BrowserEnv):
         origins: Iterable[str] = (),
         read_origins: Iterable[str] = (),
         secrets: Iterable[str] = (),
+        files: "Mapping[str, tuple[str | os.PathLike[str], Iterable[str]]]" = {},
         record: str | os.PathLike[str] | None = None,
         profile: str = "agent",
         identity: str | os.PathLike[str] | None = None,
@@ -149,6 +158,7 @@ class PageonEnv(BrowserEnv):
             self._args += ["--private-network", "allow"]
         if allow_files:
             self._args.append("--allow-files")
+        self._args += _file_flags(files)
         for flag, values in (("--origin", origins), ("--read-origin", read_origins), ("--secret", secrets)):
             for v in values:
                 self._args += [flag, v]
@@ -362,6 +372,10 @@ def _namespace(env: PageonEnv) -> dict[str, Any]:
     def hover(bid: str) -> None:
         act({"Hover": bid})
 
+    def upload_file(bid: str, file: str | list[str]) -> None:
+        # Staged file names (``PageonEnv(files=...)``), never host paths.
+        act({"Upload": [bid, [file] if isinstance(file, str) else list(file)]})
+
     def scroll(delta_x: float, delta_y: float) -> None:
         # The wheel, where the pointer is (as Playwright's mouse.wheel).
         act({"Scroll": {"by": {"pixels": [float(delta_x), float(delta_y)]}}})
@@ -423,7 +437,7 @@ def _namespace(env: PageonEnv) -> dict[str, Any]:
         "dblclick": unsupported("dblclick", "use click(bid)"),
         "focus": unsupported("focus", "use click(bid), or press(bid, key) which focuses first"),
         "drag_and_drop": unsupported("drag_and_drop", "there is no alternative yet"),
-        "upload_file": unsupported("upload_file", "there is no alternative yet"),
+        "upload_file": upload_file,
         "check": unsupported("check", "use click(bid) on the checkbox"),
         "uncheck": unsupported("uncheck", "use click(bid) on the checkbox"),
         "new_tab": unsupported("new_tab", "pageon environments have one tab; use goto(url)"),

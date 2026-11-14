@@ -186,6 +186,30 @@ pub mod html_input_element {
         Ok(form_of(cx, this.node()?).map(Obj::Node))
     }
 
+    /// `files`: a file input's `FileList` (`null` for other types).
+    pub fn get_files(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<Option<Obj>> {
+        let id = this.node()?;
+        if ty(cx, id) != "file" {
+            return Ok(None);
+        }
+        let files = cx.st().files.get(&id).cloned().unwrap_or_default();
+        Ok(Some(cx.alloc(Iface::FileList, Slot::FileList(files))))
+    }
+
+    /// Setting `files` to another input's `FileList` (`null` is ignored, as in Chrome).
+    pub fn set_files(cx: &mut Cx<'_, '_, '_>, this: Obj, list: Option<Obj>) -> R<()> {
+        let id = this.node()?;
+        let Some(list) = list else { return Ok(()) };
+        let files = match cx.st().slot(list.slab()?) {
+            Some(Slot::FileList(l)) => l.clone(),
+            _ => return Err(Error::Type("not a FileList".into())),
+        };
+        if ty(cx, id) == "file" {
+            cx.st().files.insert(id, files);
+        }
+        Ok(())
+    }
+
     pub fn get_labels(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<Option<Obj>> {
         let labels = labels_of(cx, this.node()?);
         Ok(Some(cx.alloc(Iface::NodeList, Slot::Static(labels))))

@@ -29,6 +29,9 @@ pub enum Action {
     HoverAt(f64, f64),
     /// Replace an editable element's text, typing it key by key.
     Type(String, String),
+    /// Put staged files (by name) or downloads (`download:N`) into a file input, or into the
+    /// file chooser that activating the element opens.
+    Upload(String, Vec<String>),
     /// Press a key on the focused element (`Enter`, `Tab`, `Escape`, `Backspace`, `a`, …).
     Press(String),
     /// Select options of a `<select>` by value or label.
@@ -134,6 +137,7 @@ impl fmt::Display for Action {
             Self::ClickAt(x, y) => write!(f, "click {x},{y}"),
             Self::HoverAt(x, y) => write!(f, "hover {x},{y}"),
             Self::Type(r, t) => write!(f, "type {r} {t:?}"),
+            Self::Upload(r, names) => write!(f, "upload {r} {}", names.join(",")),
             Self::Press(k) => write!(f, "press {k}"),
             Self::Select(r, v) => {
                 write!(f, "select {r}")?;
@@ -216,6 +220,18 @@ impl FromStr for Action {
                 None => Self::Hover(need("a ref, e.g. `hover e5`")?),
             },
             "type" => Self::Type(need("a ref and text, e.g. `type e3 hello`")?, unquote(tail)),
+            "upload" => {
+                let r = need("a ref and file names, e.g. `upload e7 cv`")?;
+                let names: Vec<String> = unquote(tail)
+                    .split(',')
+                    .map(|n| n.trim().to_string())
+                    .filter(|n| !n.is_empty())
+                    .collect();
+                if names.is_empty() {
+                    return Err("`upload` needs a staged file name, e.g. `upload e7 cv`".into());
+                }
+                Self::Upload(r, names)
+            }
             "select" => Self::Select(
                 need("a ref and an option, e.g. `select e7 Germany`")?,
                 vec![unquote(tail)],
@@ -251,7 +267,7 @@ impl FromStr for Action {
             }
             other => {
                 return Err(format!(
-                    "unknown action {other:?}: use click, type, press, select, hover, scroll, wait, goto, back, forward or tool"
+                    "unknown action {other:?}: use click, type, upload, press, select, hover, scroll, wait, goto, back, forward or tool"
                 ));
             }
         })
@@ -300,13 +316,17 @@ fn parse_scroll(rest: &str) -> Result<Action, String> {
 /// A file a navigation delivered instead of a page.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Download {
+    /// The handle to upload it again (`download:1`), to its own origin.
+    #[serde(default)]
+    pub handle: String,
     /// URL.
     pub url: String,
     /// File name (`Content-Disposition`, or the URL's last segment).
     pub filename: String,
     /// MIME type essence.
     pub content_type: String,
-    /// The bytes.
+    /// The bytes (base64 in JSON).
+    #[serde(with = "pageon_env::b64")]
     pub bytes: Vec<u8>,
 }
 
@@ -363,6 +383,9 @@ pub struct Outcome {
     /// Invalid fields beyond those listed.
     #[serde(default, skip_serializing_if = "is_zero")]
     pub invalid_more: usize,
+    /// The agent's click opened a file chooser (on this ref); `upload REF NAME` fills it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub file_chooser: Option<String>,
     /// Dialogs beyond the 20 listed (answered by the dialog policy all the same).
     #[serde(default, skip_serializing_if = "is_zero")]
     pub dialogs_more: usize,
@@ -442,6 +465,9 @@ impl fmt::Display for Outcome {
             }
             parts.push(line);
         }
+        if let Some(r) = &self.file_chooser {
+            parts.push(format!("file chooser for {r} (upload {r} NAME)"));
+        }
         if self.dialogs_more > 0 {
             parts.push(format!("and {} more dialogs", self.dialogs_more));
         }
@@ -453,7 +479,12 @@ impl fmt::Display for Outcome {
         }
         for d in &self.downloads {
             parts.push(format!(
-                "download {} ({}, {} B)",
+                "{} {} ({}, {} B)",
+                if d.handle.is_empty() {
+                    "download"
+                } else {
+                    &d.handle
+                },
                 q(&d.filename),
                 q(&d.content_type),
                 d.bytes.len()
@@ -524,6 +555,10 @@ pub enum Reason {
     Inert,
     /// Not a text field, textarea or editable element (for `type`).
     NotEditable,
+    /// Not a file input, and activating it opened no file chooser (for `upload`).
+    NotFileInput,
+    /// A file input without `multiple`, given several files.
+    OneFile,
 }
 
 impl fmt::Display for Reason {
@@ -535,6 +570,10 @@ impl fmt::Display for Reason {
             Self::Covered { by: None } => f.write_str("covered by another element"),
             Self::Inert => f.write_str("inert (outside the open modal dialog)"),
             Self::NotEditable => f.write_str("not editable"),
+            Self::NotFileInput => {
+                f.write_str("not a file input (and clicking it opened no file chooser)")
+            }
+            Self::OneFile => f.write_str("it takes one file (no `multiple`)"),
         }
     }
 }
@@ -569,6 +608,8 @@ pub enum ActionError {
     Unsupported(String),
     /// A `secret://` handle that is unknown, or not for the target's origin.
     Secret(String),
+    /// A file that is not staged, not for the target's origin, or cannot be read.
+    File(String),
     /// The content process failed (crashed or broke the protocol).
     Engine(String),
     /// A page tool could not be called, or failed; page text is quoted.
@@ -596,12 +637,20 @@ impl ActionError {
                 Reason::NotEditable => {
                     "type into a text field, a textarea or an editable element".into()
                 }
+                Reason::NotFileInput => {
+                    "upload to the file input, or to the button or label that opens it".into()
+                }
+                Reason::OneFile => "upload one file".into(),
             },
             Self::NoSuchOption { available, .. } => format!("use one of: {}", available.join(", ")),
             Self::Navigation(e) => e.guidance(),
             Self::Unsupported(_) => "use another action".into(),
             Self::Secret(_) => {
                 "bind the secret to this page's origin (Secrets::with, or --secret NAME@ORIGIN with PAGEON_SECRET_<NAME>)"
+                    .into()
+            }
+            Self::File(_) => {
+                "stage the file for this page's origin (--file NAME@ORIGIN=PATH, Files::with) and upload it by name"
                     .into()
             }
             Self::Engine(_) => "open the page again (a new content process starts)".into(),
@@ -627,6 +676,7 @@ impl fmt::Display for ActionError {
             Self::Navigation(e) => write!(f, "navigation failed: {e}"),
             Self::Unsupported(w) => write!(f, "{w} is not supported yet"),
             Self::Secret(m) => write!(f, "secret refused: {m}"),
+            Self::File(m) => write!(f, "upload refused: {m}"),
             Self::Engine(m) => write!(f, "the content process failed: {m}"),
             Self::Tool(m) => write!(f, "tool failed: {m}"),
         }
@@ -1142,8 +1192,11 @@ impl<'s, E: Env> Tab<'s, E> {
     /// The action's target as the agent last saw it: its view line and its role,
     /// name and index among equal ones.
     fn target_of(&self, action: &Action) -> Option<(String, pageon_env::Target)> {
-        let (Action::Click(r) | Action::Hover(r) | Action::Type(r, _) | Action::Select(r, _)) =
-            action
+        let (Action::Click(r)
+        | Action::Hover(r)
+        | Action::Type(r, _)
+        | Action::Select(r, _)
+        | Action::Upload(r, _)) = action
         else {
             return None;
         };
@@ -1534,6 +1587,7 @@ impl<'s, E: Env> Tab<'s, E> {
                 });
                 self.after(frame, &live, errors, out)
             }
+            Action::Upload(r, names) => self.upload(r, names, out),
             Action::Click(r) | Action::Hover(r) | Action::Type(r, _) | Action::Select(r, _) => {
                 // As a person does: bring it into view first, then act where it is now.
                 let (frame, node, _) = self.resolve(r)?;
@@ -1545,7 +1599,12 @@ impl<'s, E: Env> Tab<'s, E> {
                 {
                     let mut engine = live.engine.borrow_mut();
                     match action {
-                        Action::Click(_) => engine.click(live.realm, node, point),
+                        Action::Click(_) => {
+                            engine.click(live.realm, node, point);
+                            if engine.take_chooser(live.realm).is_some() {
+                                out.file_chooser = Some(r.clone());
+                            }
+                        }
                         Action::Hover(_) => engine.hover(live.realm, node, point),
                         Action::Type(_, text) => {
                             if engine.editable(live.realm, node).is_none() {
@@ -1585,6 +1644,122 @@ impl<'s, E: Env> Tab<'s, E> {
                 self.after(frame, &live, errors, out)
             }
         }
+    }
+
+    /// `upload REF NAMES`: a file input is filled directly (it may be hidden, as file inputs
+    /// behind styled buttons are); anything else is clicked as a person does and the file
+    /// chooser it opens is filled. Files come from the broker (staged, bound to origins) or
+    /// from this tab's downloads (to their own origin).
+    fn upload(&mut self, r: &str, names: &[String], out: &mut Outcome) -> Result<(), ActionError> {
+        let (frame, node, _) = self.resolve(r)?;
+        let live = self.live(frame)?;
+        let direct = live.engine.borrow().file_input(live.realm, node);
+        let errors = self.frame_errors(frame);
+        let (target, multiple) = match direct {
+            Some(m) => (node, m),
+            None => {
+                self.scroll_into_view(frame, node, out)?;
+                let (frame, node, point) = self.resolve(r)?;
+                self.check(frame, node, r, &Action::Click(r.to_string()))?;
+                let mut engine = live.engine.borrow_mut();
+                engine.click(live.realm, node, point);
+                let chooser =
+                    engine
+                        .take_chooser(live.realm)
+                        .ok_or_else(|| ActionError::NotActionable {
+                            target: r.to_string(),
+                            reason: Reason::NotFileInput,
+                        })?;
+                let m = engine.file_input(live.realm, chooser).unwrap_or(false);
+                (chooser, m)
+            }
+        };
+        self.put_files(frame, target, multiple, r, names, errors, out)
+    }
+
+    /// Puts files into a file input (`node` in `frame`) whose element the protocol named
+    /// (CDP `DOM.setFileInputFiles`, BiDi `input.setFiles`): staged names or paths only.
+    pub(crate) fn upload_node(
+        &mut self,
+        frame: usize,
+        node: NodeId,
+        names: &[String],
+    ) -> Result<Outcome, ActionError> {
+        let live = self.live(frame)?;
+        let multiple = live
+            .engine
+            .borrow()
+            .file_input(live.realm, node)
+            .ok_or_else(|| {
+                ActionError::Unsupported(
+                    "setting files on an element that is not a file input".into(),
+                )
+            })?;
+        let errors = self.frame_errors(frame);
+        let mut out = Outcome::default();
+        self.put_files(
+            frame,
+            node,
+            multiple,
+            "the element",
+            names,
+            errors,
+            &mut out,
+        )?;
+        Ok(out)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn put_files(
+        &mut self,
+        frame: usize,
+        target: NodeId,
+        multiple: bool,
+        r: &str,
+        names: &[String],
+        errors: usize,
+        out: &mut Outcome,
+    ) -> Result<(), ActionError> {
+        let live = self.live(frame)?;
+        if names.len() > 1 && !multiple {
+            return Err(ActionError::NotActionable {
+                target: r.to_string(),
+                reason: Reason::OneFile,
+            });
+        }
+        let origin = self.frame_origin(frame);
+        let mut files = Vec::new();
+        for name in names {
+            let (fname, ty, bytes) = if name.starts_with("download:") {
+                let d = self
+                    .downloads
+                    .iter()
+                    .find(|d| d.handle == *name)
+                    .ok_or_else(|| ActionError::File(format!("no {name} in this tab")))?;
+                let from = url::Url::parse(&d.url)
+                    .map(|u| u.origin().ascii_serialization())
+                    .unwrap_or_default();
+                if from != origin {
+                    return Err(ActionError::File(format!(
+                        "{name} came from {from} and uploads only there (stage it with --file to upload it to {origin})"
+                    )));
+                }
+                (d.filename.clone(), d.content_type.clone(), d.bytes.clone())
+            } else {
+                let f = self
+                    .session
+                    .env()
+                    .file(name, &origin)
+                    .map_err(|e| ActionError::File(e.to_string()))?;
+                (f.name, f.content_type, f.bytes)
+            };
+            let now = self.session.now_ms() as i64;
+            files.push((fname, ty, bytes, now));
+        }
+        live.engine
+            .borrow_mut()
+            .set_files(live.realm, target, files);
+        self.after(frame, &live, errors, out)
     }
 
     /// One observation line per page tool: quoted name and description, parameters,
@@ -2059,7 +2234,8 @@ impl<'s, E: Env> Tab<'s, E> {
                 // History changes the new page made while loading.
                 self.apply_history(out);
             }
-            Loaded::Download(d) => {
+            Loaded::Download(mut d) => {
+                d.handle = format!("download:{}", self.downloads.len() + 1);
                 if out.downloads.len() < pageon_js::MAX_PER_ACTION {
                     out.downloads.push(d.clone());
                     self.downloads.push(d);

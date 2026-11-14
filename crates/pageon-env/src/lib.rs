@@ -98,6 +98,18 @@ pub struct Request {
     pub cookie_scope: Option<CookieScope>,
 }
 
+/// A file the operator staged for upload: its base name, type and bytes.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct StagedFile {
+    /// The base name the page sees (`cv.pdf`).
+    pub name: String,
+    /// MIME type.
+    pub content_type: String,
+    /// Bytes.
+    #[serde(with = "b64")]
+    pub bytes: Vec<u8>,
+}
+
 /// The cookie context of a request (RFC 6265bis): which cookies may go along.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct CookieScope {
@@ -235,6 +247,15 @@ pub trait Env {
         )))
     }
 
+    /// Staged file `name` for a page of `origin` (an upload). Environments without staged
+    /// files have none; a host path is never read.
+    fn file(&self, name: &str, origin: &str) -> Result<StagedFile, NetError> {
+        let _ = origin;
+        Err(NetError::Blocked(format!(
+            "file \"{name}\" is not staged (stage it with --file {name}@ORIGIN=PATH)"
+        )))
+    }
+
     /// The recording that keeps this session's steps, if any.
     fn recorder(&self) -> Option<&dyn Recorder> {
         None
@@ -247,15 +268,17 @@ pub trait Env {
     }
 }
 
-/// Byte bodies as base64 in serialized requests and responses.
-mod b64 {
+/// Byte bodies as base64 in serialized requests and responses (`#[serde(with = …)]`).
+pub mod b64 {
     use base64::Engine as _;
     use serde::{Deserialize, Deserializer, Serializer};
 
+    /// Bytes as a base64 string.
     pub fn serialize<S: Serializer>(bytes: &[u8], s: S) -> Result<S::Ok, S::Error> {
         s.serialize_str(&base64::engine::general_purpose::STANDARD.encode(bytes))
     }
 
+    /// A base64 string as bytes.
     pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<Vec<u8>, D::Error> {
         let s = String::deserialize(d)?;
         base64::engine::general_purpose::STANDARD
@@ -279,6 +302,10 @@ impl<E: Env + ?Sized> Env for Box<E> {
 
     fn secret(&self, name: &str, origin: &str) -> Result<String, NetError> {
         (**self).secret(name, origin)
+    }
+
+    fn file(&self, name: &str, origin: &str) -> Result<StagedFile, NetError> {
+        (**self).file(name, origin)
     }
 
     fn recorder(&self) -> Option<&dyn Recorder> {
@@ -305,6 +332,10 @@ impl<E: Env + ?Sized> Env for &E {
 
     fn secret(&self, name: &str, origin: &str) -> Result<String, NetError> {
         (**self).secret(name, origin)
+    }
+
+    fn file(&self, name: &str, origin: &str) -> Result<StagedFile, NetError> {
+        (**self).file(name, origin)
     }
 
     fn recorder(&self) -> Option<&dyn Recorder> {

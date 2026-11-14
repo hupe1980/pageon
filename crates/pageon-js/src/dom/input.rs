@@ -239,6 +239,8 @@ pub(crate) fn activate(cx: &mut Cx<'_, '_, '_>, el: NodeId) -> R<()> {
                             return submit_form(cx, form, Some(c), true);
                         }
                         ("reset", Some(form)) => return reset_form(cx, form),
+                        // A file input opens the file chooser (filled by an upload).
+                        ("file", _) => cx.st().chooser = Some(c),
                         _ => {}
                     }
                     return Ok(());
@@ -444,7 +446,7 @@ pub(crate) fn submit_form(
             crate::dom::net::multipart(cx, &entries)
         } else {
             (
-                crate::dom::urls::serialize(&entries).into_bytes(),
+                crate::dom::urls::serialize_entries(&entries).into_bytes(),
                 "application/x-www-form-urlencoded".to_string(),
             )
         };
@@ -461,7 +463,7 @@ pub(crate) fn submit_form(
         });
         return Ok(());
     }
-    let query = crate::dom::urls::serialize(&entries);
+    let query = crate::dom::urls::serialize_entries(&entries);
     url.set_query(Some(&query));
     if target.is_some_and(|t| t.eq_ignore_ascii_case("_blank")) {
         cx.st().push_popup(url.to_string());
@@ -474,6 +476,19 @@ pub(crate) fn submit_form(
             replace: false,
         });
     }
+    Ok(())
+}
+
+/// Sets a file input's files as a person picking them does: `input`, then `change`.
+pub(crate) fn set_files(
+    cx: &mut Cx<'_, '_, '_>,
+    el: NodeId,
+    files: Vec<crate::dom::blobs::BlobData>,
+) -> R<()> {
+    let files: Vec<_> = files.into_iter().map(std::rc::Rc::new).collect();
+    cx.st().files.insert(el, files);
+    input_event(cx, el, "input", false)?;
+    input_event(cx, el, "change", false)?;
     Ok(())
 }
 

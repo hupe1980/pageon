@@ -323,3 +323,32 @@ def test_scroll(tmp_path: Path) -> None:
         assert "scrolled to 0," in str(out)
         tab.scroll("down", pixels=100000)
         assert "already at the end" in str(tab.scroll("down"))
+
+
+@pytest.mark.parametrize("sandbox", [True, False])
+def test_upload_a_staged_file(tmp_path: Path, sandbox: bool) -> None:
+    cv = tmp_path / "cv.txt"
+    cv.write_text("hello cv")
+    log = {
+        "version": 1,
+        "user_agent": "",
+        "exchanges": [
+            _html(
+                "https://jobs.test/",
+                "<input type=file id=f aria-label=CV><p id=out></p>"
+                "<script>f.onchange = () => out.textContent = 'got ' + f.files[0].name</script>",
+            ),
+        ],
+        "clock": [1_800_000_000_000 + i * 1000 for i in range(256)],
+        "random": list(range(1, 65)),
+    }
+    rec = tmp_path / "jobs.rec.json"
+    rec.write_text(json.dumps(log))
+    with Browser(replay=rec, sandbox=sandbox, files={"cv": (cv, ["https://jobs.test"])}, robots="ignore", binary=BIN) as browser:
+        tab = browser.open("https://jobs.test/")
+        page = tab.observe(full=True)
+        tab.upload(ref(page, "button", "CV"), "cv")
+        assert "got cv.txt" in tab.observe(full=True)
+        with pytest.raises(ActionError) as err:
+            tab.upload(ref(page, "button", "CV"), "/etc/passwd")
+        assert "is not staged" in str(err.value)

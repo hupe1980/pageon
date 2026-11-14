@@ -21,7 +21,7 @@ import subprocess
 import sys
 import threading
 from collections import deque
-from collections.abc import Callable, Iterable
+from collections.abc import Mapping, Callable, Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -32,6 +32,14 @@ __all__ = ["ActionError", "Browser", "Lookahead", "Outcome", "Screenshot", "Tab"
 
 _PROTOCOL = "2025-11-25"
 
+
+
+def _file_flags(files: "Mapping[str, tuple[str | os.PathLike[str], Iterable[str]]]") -> list[str]:
+    """``--file NAME@ORIGIN[,ORIGIN]=PATH`` for each staged file: the agent uploads by name."""
+    out: list[str] = []
+    for name, (path, origins) in files.items():
+        out += ["--file", f"{name}@{','.join(origins)}={os.fspath(path)}"]
+    return out
 
 class ActionError(PageonError):
     """An action the page refused. ``str(err)`` is the text to show the agent.
@@ -141,6 +149,7 @@ class Browser:
         origins: Iterable[str] = (),
         read_origins: Iterable[str] = (),
         secrets: Iterable[str] = (),
+        files: "Mapping[str, tuple[str | os.PathLike[str], Iterable[str]]]" = {},
         state: str | os.PathLike[str] | None = None,
         save_state: str | os.PathLike[str] | None = None,
         replay: str | os.PathLike[str] | None = None,
@@ -161,6 +170,7 @@ class Browser:
             args += ["--private-network", "allow"]
         if allow_files:
             args.append("--allow-files")
+        args += _file_flags(files)
         for flag, values in (("--origin", origins), ("--read-origin", read_origins), ("--secret", secrets)):
             for v in values:
                 args += [flag, v]
@@ -322,6 +332,12 @@ class Tab:
     def type(self, ref: str, text: str, submit: bool = False) -> Outcome:
         """Replace the field's value; ``secret://name`` types a secret the agent never sees."""
         return self._act("browser_type", {"ref": ref, "text": text, "submit": submit})
+
+    def upload(self, ref: str, *names: str) -> Outcome:
+        """Put files the operator staged (``files={"cv": ("./cv.pdf", ["https://jobs.example"])}``)
+        into a file input, or into the file chooser ``ref`` opens; ``download:N`` uploads a download
+        back to its own site. Never a path."""
+        return self._act("browser_upload", {"ref": ref, "files": list(names)})
 
     def press(self, key: str) -> Outcome:
         return self._act("browser_press", {"key": key})

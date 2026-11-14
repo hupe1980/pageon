@@ -785,6 +785,25 @@ impl<E: Env> Session<'_, E> {
                 let b = self.backend_id(ti, parent, owner);
                 Ok(json!({"backendNodeId": b, "nodeId": 0}))
             }
+            "DOM.setFileInputFiles" => {
+                let (frame, n) = self.node_param(ti, params)?;
+                let files: Vec<String> = params
+                    .get("files")
+                    .and_then(Json::as_array)
+                    .map(|a| {
+                        a.iter()
+                            .filter_map(|f| f.as_str().map(str::to_string))
+                            .collect()
+                    })
+                    .unwrap_or_default();
+                let tab = &mut self.targets[ti].tab;
+                if files.is_empty() {
+                    return Err(CdpError::params("files: staged file paths or names"));
+                }
+                tab.upload_node(frame, n, &files)
+                    .map_err(|e| CdpError::server(format!("{e}: {}", e.guidance())))?;
+                Ok(json!({}))
+            }
             "DOM.describeNode" => {
                 let (frame, n) = self.node_param(ti, params)?;
                 Ok(json!({"node": self.node_json(ti, frame, n)?}))

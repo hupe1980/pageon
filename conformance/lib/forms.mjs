@@ -24,4 +24,10 @@ export const formsSite = () => [
       });
     </script>`),
   html('https://forms.test/done?email=a%40b.test&agree=yes', '<h1>Done</h1>'),
+  uploadPage(),
 ];
+
+// A page with a file input whose change handler shows the file, for upload scenarios.
+export const uploadPage = () => html('https://forms.test/upload', `<title>Upload</title>
+  <input type=file id=f><p id=out></p>
+  <script>f.onchange = async () => { out.textContent = f.files[0].name + ':' + await f.files[0].text(); };</script>`);

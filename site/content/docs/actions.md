@@ -17,6 +17,7 @@ toggling labels).
 | --- | --- |
 | Click an element, or a viewport point | `click e5` · `click 120,40` |
 | Type into a field, key by key | `type e3 hello world` · `type e4 secret://shop` |
+| Upload staged files into a file input, or the chooser a button opens | `upload e9 cv` · `upload e9 cv,photo` · `upload e9 download:1` |
 | Press a key on the focused element | `press Enter` · `press Escape` |
 | Select options by value or label | `select e7 Germany` |
 | Hover | `hover e2` · `hover 120,40` |
@@ -104,5 +105,10 @@ When an action cannot be done, the error has a kind and guidance the model can f
 | `tool` | the page's tool failed: its message, quoted |
 | `unsupported` | use another action |
 
-Not yet supported: drag and drop, and file uploads. They fail with `unsupported` rather than
-doing something else.
+Files are uploaded by name, never by path: the operator stages each one for the sites it may go
+to (`--file cv@https://jobs.example=./cv.pdf`; `files=` in Python), and the broker hands it out
+only for the agent's own `upload` naming it. A click that opens a file chooser says so
+(`file chooser for e9 (upload e9 NAME)`). Downloads come back as handles (`download:1`, with
+the file's name, type and size) and can be uploaded again to the site they came from.
+
+Not yet supported: drag and drop. It fails with `unsupported` rather than doing something else.

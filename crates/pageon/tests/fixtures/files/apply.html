@@ -1,0 +1,19 @@
+<!doctype html><title>Apply</title>
+<form method=post action=/apply enctype=multipart/form-data>
+  <label>Name <input name=name></label>
+  <button type=button id=attach onclick="cv.click()">Attach CV</button>
+  <input id=cv name=cv type=file accept=.txt,.pdf hidden>
+  <p id=picked>No file</p>
+  <p id=preview></p>
+  <button>Apply</button>
+</form>
+<iframe src="https://evil.test/grab.html" title="Partner"></iframe>
+<script>
+  cv.addEventListener('change', () => {
+    const f = cv.files[0];
+    picked.textContent = f.name + ' (' + f.size + ' bytes, ' + f.type + ')';
+    const r = new FileReader();
+    r.onload = () => { preview.textContent = 'preview: ' + r.result; };
+    r.readAsText(f);
+  });
+</script>

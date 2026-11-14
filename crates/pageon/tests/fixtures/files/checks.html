@@ -1,0 +1,76 @@
+<!doctype html><meta charset=utf-8><title>File API checks</title>
+<!-- Derived from the web-platform-tests (FileAPI/blob, FileAPI/file, FileAPI/reading-data-section,
+     xhr/formdata, html/semantics/forms/the-input-element/files), with Chrome's results. -->
+<input type=file id=fi multiple><input type=text id=ti>
+<form id=fm><input type=file name=up><input name=t value=v></form>
+<p id=out></p>
+<script>
+const R = [];
+const t = (name, f) => { try { R.push([name, f() === true]); } catch (e) { R.push([name + ': ' + e, false]); } };
+const a = (name, p) => p.then((ok) => R.push([name, ok === true]), (e) => R.push([name + ': ' + e, false]));
+const throws = (f, n) => { try { f(); return false; } catch (e) { return e.name === n; } };
+
+t('Blob interface', () => typeof Blob === 'function' && new Blob() instanceof Blob);
+t('empty blob', () => new Blob().size === 0 && new Blob().type === '');
+t('size of string parts', () => new Blob(['ab', 'cd']).size === 4);
+t('UTF-8 encoding', () => new Blob(['é']).size === 2);
+t('type is lower-cased', () => new Blob([], {type: 'TEXT/Plain'}).type === 'text/plain');
+t('non-ASCII type is dropped', () => new Blob([], {type: 'tëxt/plain'}).type === '');
+t('typed array parts', () => new Blob([new Uint8Array([1, 2, 3])]).size === 3);
+t('ArrayBuffer parts', () => new Blob([new ArrayBuffer(5)]).size === 5);
+t('blob parts', () => new Blob([new Blob(['abc']), 'd']).size === 4);
+t('other values are strings', () => new Blob([12, null]).size === 6);
+t('slice()', () => new Blob(['abcdef']).slice().size === 6);
+t('slice(start, end)', () => new Blob(['abcdef']).slice(1, 3).size === 2);
+t('slice with negatives', () => new Blob(['abcdef']).slice(-2).size === 2);
+t('slice clamps', () => new Blob(['abc']).slice(2, 100).size === 1 && new Blob(['abc']).slice(5).size === 0);
+t('slice type', () => new Blob(['abc'], {type: 'a/b'}).slice(0, 1, 'C/D').type === 'c/d' && new Blob(['abc'], {type: 'a/b'}).slice(0, 1).type === '');
+t('slice returns a Blob, not a File', () => { const s = new File(['x'], 'f').slice(); return s instanceof Blob && !(s instanceof File); });
+t('File interface', () => typeof File === 'function' && new File([], 'a') instanceof Blob);
+t('File name and size', () => { const f = new File(['hello'], 'h.txt', {type: 'text/plain'}); return f.name === 'h.txt' && f.size === 5 && f.type === 'text/plain'; });
+t('File lastModified option', () => new File([], 'a', {lastModified: 42}).lastModified === 42);
+t('File lastModified defaults to now', () => typeof new File([], 'a').lastModified === 'number');
+t('File needs a name', () => throws(() => new File([]), 'TypeError'));
+t('FileList on file inputs', () => fi.files instanceof FileList && fi.files.length === 0 && fi.files.item(0) === null);
+t('files is null on other inputs', () => ti.files === null);
+t('FileList is iterable and indexed', () => fi.files[0] === undefined && [...fi.files].length === 0);
+t('FileReader interface', () => typeof FileReader === 'function' && new FileReader().readyState === 0);
+t('FileReader constants', () => FileReader.EMPTY === 0 && FileReader.LOADING === 1 && FileReader.DONE === 2);
+t('FileReader result starts null', () => new FileReader().result === null);
+t('a second read while loading throws', () => { const r = new FileReader(); r.readAsText(new Blob(['x'])); return throws(() => r.readAsText(new Blob(['y'])), 'InvalidStateError') && r.readyState === 1; });
+t('FormData.append(name, blob) makes a File named blob', () => { const d = new FormData(); d.append('b', new Blob(['x'])); const v = d.get('b'); return v instanceof File && v.name === 'blob'; });
+t('FormData.append(name, blob, filename)', () => { const d = new FormData(); d.append('b', new Blob(['x']), 'n.txt'); return d.get('b').name === 'n.txt'; });
+t('FormData keeps a file name', () => { const d = new FormData(); d.append('f', new File(['x'], 'orig.txt')); return d.get('f').name === 'orig.txt'; });
+t('FormData.set with a file', () => { const d = new FormData(); d.append('k', 'a'); d.append('k', 'b'); d.set('k', new File(['z'], 'z.txt')); return d.getAll('k').length === 1 && d.get('k').name === 'z.txt'; });
+t('FormData.getAll mixes', () => { const d = new FormData(); d.append('k', 'a'); d.append('k', new Blob(['b'])); const all = d.getAll('k'); return all[0] === 'a' && all[1] instanceof File; });
+t('FormData strings stay strings', () => { const d = new FormData(); d.append('k', 'v'); return d.get('k') === 'v'; });
+t('FormData from a form with an empty file input', () => { const d = new FormData(fm); const f = d.get('up'); return f instanceof File && f.name === '' && f.size === 0 && d.get('t') === 'v'; });
+t('file input value is empty', () => fi.value === '');
+t('file input value can only be cleared', () => throws(() => { fi.value = 'x'; }, 'InvalidStateError'));
+
+const reads = [];
+reads.push(a('text()', new Blob(['héllo']).text().then((s) => s === 'héllo')));
+reads.push(a('arrayBuffer()', new Blob([new Uint8Array([7, 8])]).arrayBuffer().then((b) => b instanceof ArrayBuffer && new Uint8Array(b)[1] === 8)));
+reads.push(a('bytes()', new Blob(['AB']).bytes().then((u) => u instanceof Uint8Array && u[0] === 65)));
+reads.push(a('text() of a slice', new Blob(['abcdef']).slice(2, 4).text().then((s) => s === 'cd')));
+reads.push(a('Response.blob()', new Response('hi', {headers: {'content-type': 'Text/Plain'}}).blob().then((b) => b.size === 2 && b.type === 'text/plain')));
+const read = (how, blob, ...args) => new Promise((ok) => {
+  const r = new FileReader();
+  const seen = [];
+  for (const ev of ['loadstart', 'progress', 'load', 'loadend']) r.addEventListener(ev, () => seen.push(ev));
+  r.onloadend = () => ok({r, seen});
+  r[how](blob, ...args);
+});
+reads.push(a('readAsText', read('readAsText', new Blob(['hi'])).then(({r}) => r.result === 'hi' && r.readyState === 2)));
+reads.push(a('readAsText with an encoding', read('readAsText', new Blob([new Uint8Array([0xe9])]), 'iso-8859-1').then(({r}) => r.result === 'é')));
+reads.push(a('readAsDataURL', read('readAsDataURL', new Blob(['hi'], {type: 'text/plain'})).then(({r}) => r.result === 'data:text/plain;base64,aGk=')));
+reads.push(a('readAsDataURL without a type', read('readAsDataURL', new Blob(['hi'])).then(({r}) => r.result === 'data:application/octet-stream;base64,aGk=')));
+reads.push(a('readAsArrayBuffer', read('readAsArrayBuffer', new Blob(['abc'])).then(({r}) => r.result instanceof ArrayBuffer && r.result.byteLength === 3)));
+reads.push(a('event order', read('readAsText', new Blob(['x'])).then(({seen}) => seen.join() === 'loadstart,progress,load,loadend')));
+reads.push(a('reads are asynchronous', new Promise((ok) => { const r = new FileReader(); let sync = true; r.onload = () => ok(!sync); r.readAsText(new Blob(['x'])); sync = false; })));
+reads.push(a('abort fires abort and loadend', new Promise((ok) => { const r = new FileReader(); const seen = []; r.onabort = () => seen.push('abort'); r.onloadend = () => seen.push('loadend'); r.onload = () => seen.push('load'); r.readAsText(new Blob(['x'])); r.abort(); setTimeout(() => ok(seen.join() === 'abort,loadend' && r.result === null && r.readyState === 2), 10); })));
+reads.push(a('fetch with a Blob body', (async () => { const r = new Request('https://checks.test/x', {method: 'POST', body: new Blob(['abc'], {type: 'text/csv'})}); return r.headers.get('content-type') === 'text/csv' && (await r.text()) === 'abc'; })()));
+reads.push(a('multipart with a file part', (async () => { const d = new FormData(); d.append('f', new File(['data'], 'a.txt', {type: 'text/plain'})); const r = new Request('https://checks.test/x', {method: 'POST', body: d}); const s = await r.text(); return s.includes('name="f"; filename="a.txt"\r\nContent-Type: text/plain\r\n\r\ndata\r\n'); })()));
+reads.push(a('multipart: a blob without type', (async () => { const d = new FormData(); d.append('b', new Blob(['x'])); const s = await new Request('https://checks.test/x', {method: 'POST', body: d}).text(); return s.includes('filename="blob"\r\nContent-Type: application/octet-stream'); })()));
+Promise.all(reads).then(() => { out.textContent = JSON.stringify(R); });
+</script>

@@ -2,6 +2,7 @@
 //! named after the interface or mixin that declares the members (the generated code calls
 //! `crate::dom::<owner>::<member>`).
 
+pub mod blobs;
 mod canvas;
 mod collections;
 pub(crate) mod custom_elements;
@@ -76,6 +77,7 @@ pub use shadow::{html_slot_element, shadow_root, slottable};
 pub use traversal::tree_walker;
 pub use xml::xml_serializer;
 
+pub use blobs::{blob, file, file_list, file_reader};
 pub use internals::{aria_mixin, custom_state_set, element_internals};
 pub use net::{
     abort_controller, abort_signal, body, headers, progress_event, request, response,

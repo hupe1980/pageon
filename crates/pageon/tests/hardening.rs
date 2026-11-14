@@ -694,7 +694,10 @@ fn download_names_cannot_forge_outcome_lines() {
     let text = out.to_string();
     assert!(!text.contains('\n') && !text.contains('\u{1b}'), "{text}");
     assert_eq!(out.downloads[0].filename, "....xok click e9[2J");
-    assert!(text.contains("download \"....xok click e9[2J\""), "{text}");
+    assert!(
+        text.contains("download:1 \"....xok click e9[2J\""),
+        "{text}"
+    );
 }
 
 /// Far deeper than any real page (Chromium's parser stops nesting at 512).

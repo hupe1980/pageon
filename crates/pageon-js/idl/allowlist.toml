@@ -148,7 +148,7 @@ members = ["dataset", "tabIndex", "focus", "blur"]
 members = ["style"]
 
 [HTMLInputElement]
-members = ["value", "checked", "defaultValue", "type", "select", "form", "labels", "willValidate", "validity", "validationMessage", "checkValidity", "reportValidity", "setCustomValidity"]
+members = ["files", "value", "checked", "defaultValue", "type", "select", "form", "labels", "willValidate", "validity", "validationMessage", "checkValidity", "reportValidity", "setCustomValidity"]
 
 [HTMLTextAreaElement]
 members = ["value", "defaultValue", "type", "select", "textLength", "form", "willValidate", "validity", "validationMessage", "checkValidity", "reportValidity", "setCustomValidity"]
@@ -331,7 +331,7 @@ members = ["closePath", "moveTo", "lineTo", "quadraticCurveTo", "bezierCurveTo",
 members = ["constructor", "append", "delete", "get", "getSetCookie", "has", "set", "iterable"]
 
 [Body]
-members = ["bodyUsed", "json", "text"]
+members = ["bodyUsed", "json", "text", "blob"]
 
 [Request]
 members = [
@@ -378,6 +378,22 @@ members = [
 
 [FormData]
 members = ["constructor", "append", "delete", "get", "getAll", "has", "set", "iterable"]
+
+# File API: blobs, files, file inputs' lists and readers (no `blob:` URLs, no streams).
+[Blob]
+members = ["constructor", "size", "type", "slice", "text", "arrayBuffer", "bytes"]
+
+[File]
+members = ["constructor", "name", "lastModified"]
+
+[FileList]
+members = ["item", "length"]
+
+[FileReader]
+members = [
+  "constructor", "readAsArrayBuffer", "readAsText", "readAsDataURL", "abort", "readyState", "result",
+  "error",
+]
 
 [Storage]
 members = ["length", "key", "getItem", "setItem", "removeItem", "clear"]

@@ -96,6 +96,13 @@ pub enum WStep {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         expect: Option<String>,
     },
+    /// Upload staged files by name.
+    Upload {
+        /// The file input, or what opens it.
+        target: Locator,
+        /// Staged file names.
+        files: Vec<String>,
+    },
     /// Select options.
     Select {
         /// The `<select>`.
@@ -154,6 +161,7 @@ impl WStep {
             Self::Click { target, .. }
             | Self::Hover { target }
             | Self::Type { target, .. }
+            | Self::Upload { target, .. }
             | Self::Select { target, .. } => Some(target),
             Self::Scroll { target, .. } => target.as_ref(),
             _ => None,
@@ -203,6 +211,7 @@ impl fmt::Display for WStep {
             Self::Click { target, .. } => write!(f, "click {target}"),
             Self::Hover { target } => write!(f, "hover {target}"),
             Self::Type { target, text, .. } => write!(f, "type {target} {}", q(text)),
+            Self::Upload { target, files } => write!(f, "upload {target} {}", files.join(",")),
             Self::Select { target, options } => {
                 write!(f, "select {target}")?;
                 for o in options {
@@ -411,6 +420,18 @@ pub fn compile(steps: &[Step]) -> Result<Workflow, String> {
                 input,
                 expect: None,
             },
+            Action::Upload(r, files) => {
+                if files.iter().any(|f| f.starts_with("download:")) {
+                    return Err(format!(
+                        "step `{}` uploads a download of this session; workflows upload staged files (--file)",
+                        step.action
+                    ));
+                }
+                WStep::Upload {
+                    target: locator(&r),
+                    files,
+                }
+            }
             Action::ClickAt(..) | Action::HoverAt(..) => {
                 return Err(format!(
                     "step `{}` acts at a point; workflows name elements (record with refs)",
@@ -705,6 +726,7 @@ pub fn run(
             WStep::Click { .. } => Action::Click(r),
             WStep::Hover { .. } => Action::Hover(r),
             WStep::Type { text, .. } => Action::Type(r, substitute(text, &values)),
+            WStep::Upload { files, .. } => Action::Upload(r, files.clone()),
             WStep::Select { options, .. } => Action::Select(r, options.clone()),
             WStep::Press { key, .. } => Action::Press(key.clone()),
             WStep::Wait { ms } => Action::Wait(*ms),

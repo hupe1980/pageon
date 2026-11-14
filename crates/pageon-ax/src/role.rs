@@ -390,7 +390,8 @@ fn input_role(dom: &Dom, id: NodeId) -> &'static str {
         .unwrap_or_default();
     let list = n.attr("list").is_some();
     match ty.as_str() {
-        "button" | "image" | "reset" | "submit" => "button",
+        // A file input is its "Choose file" button, as in Chrome.
+        "button" | "file" | "image" | "reset" | "submit" => "button",
         "checkbox" => {
             if n.attr("switch").is_some() {
                 "switch"

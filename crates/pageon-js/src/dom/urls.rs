@@ -12,6 +12,12 @@ fn illegal() -> Error {
 }
 
 /// `application/x-www-form-urlencoded` serialization.
+/// Entries as `application/x-www-form-urlencoded` (files by name).
+pub fn serialize_entries(pairs: &[(String, crate::dom::blobs::Entry)]) -> String {
+    let text: Vec<(String, String)> = pairs.iter().map(|(k, v)| (k.clone(), v.text())).collect();
+    serialize(&text)
+}
+
 pub fn serialize(pairs: &[(String, String)]) -> String {
     ::url::form_urlencoded::Serializer::new(String::new())
         .extend_pairs(pairs.iter().map(|(k, v)| (k.as_str(), v.as_str())))
@@ -349,7 +355,7 @@ pub(crate) fn form_entries(
     cx: &mut Cx<'_, '_, '_>,
     form: NodeId,
     submitter: Option<NodeId>,
-) -> R<Vec<(String, String)>> {
+) -> R<Vec<(String, crate::dom::blobs::Entry)>> {
     let controls: Vec<NodeId> = pageon_dom::forms::listed(&cx.dom(), form);
     let mut out = Vec::new();
     for id in controls {
@@ -376,8 +382,10 @@ pub(crate) fn form_entries(
                 .unwrap_or_default();
             for (k, v) in value {
                 match k {
-                    Some(k) => out.push((k, v)),
-                    None if !name.is_empty() => out.push((name.clone(), v)),
+                    Some(k) => out.push((k, crate::dom::blobs::Entry::Text(v))),
+                    None if !name.is_empty() => {
+                        out.push((name.clone(), crate::dom::blobs::Entry::Text(v)));
+                    }
                     None => {}
                 }
             }
@@ -392,20 +400,53 @@ pub(crate) fn form_entries(
                 "checkbox" | "radio" => {
                     if crate::dom::html_input_element::get_checked(cx, obj)? {
                         let v = crate::dom::html_input_element::get_value(cx, obj)?;
-                        out.push((name, v));
+                        out.push((name, crate::dom::blobs::Entry::Text(v)));
                     }
                 }
-                "file" | "image" | "reset" | "button" => {}
+                // A file input's files; with none, an empty file part (as Chrome sends).
+                "file" => {
+                    let files = cx.st().files.get(&id).cloned().unwrap_or_default();
+                    if files.is_empty() {
+                        out.push((
+                            name,
+                            crate::dom::blobs::Entry::File(std::rc::Rc::new(
+                                crate::dom::blobs::BlobData::file(
+                                    String::new(),
+                                    "application/octet-stream".into(),
+                                    Vec::new(),
+                                    0,
+                                ),
+                            )),
+                        ));
+                    } else {
+                        for f in files {
+                            out.push((name.clone(), crate::dom::blobs::Entry::File(f)));
+                        }
+                    }
+                }
+                "image" | "reset" | "button" => {}
                 "submit" => {
                     if submitter == Some(id) {
-                        out.push((name, crate::dom::html_input_element::get_value(cx, obj)?));
+                        out.push((
+                            name,
+                            crate::dom::blobs::Entry::Text(
+                                crate::dom::html_input_element::get_value(cx, obj)?,
+                            ),
+                        ));
                     }
                 }
-                _ => out.push((name, crate::dom::html_input_element::get_value(cx, obj)?)),
+                _ => out.push((
+                    name,
+                    crate::dom::blobs::Entry::Text(crate::dom::html_input_element::get_value(
+                        cx, obj,
+                    )?),
+                )),
             },
             "textarea" => out.push((
                 name,
-                crate::dom::html_text_area_element::get_value(cx, obj)?,
+                crate::dom::blobs::Entry::Text(crate::dom::html_text_area_element::get_value(
+                    cx, obj,
+                )?),
             )),
             "select" => {
                 let opts: Vec<NodeId> = {
@@ -422,7 +463,7 @@ pub(crate) fn form_entries(
                 for o in opts {
                     if crate::dom::html_option_element::selected(cx, o) {
                         let v = crate::dom::html_option_element::get_value(cx, Obj::Node(o))?;
-                        out.push((name.clone(), v));
+                        out.push((name.clone(), crate::dom::blobs::Entry::Text(v)));
                     }
                 }
             }
@@ -433,7 +474,7 @@ pub(crate) fn form_entries(
                     .and_then(|n| n.attr("value"))
                     .unwrap_or_default()
                     .to_string();
-                out.push((name, v));
+                out.push((name, crate::dom::blobs::Entry::Text(v)));
             }
             _ => {}
         }
@@ -441,14 +482,15 @@ pub(crate) fn form_entries(
     Ok(out)
 }
 
-/// `FormData` (string entries; `File` entries need `Blob`, which pageon does not have yet).
+/// `FormData`: text and file entries in order.
 pub mod form_data {
     use super::*;
+    use crate::dom::blobs::{Entry, blob_of, wrap};
 
     fn with<T>(
         cx: &Cx<'_, '_, '_>,
         this: Obj,
-        f: impl FnOnce(&mut Vec<(String, String)>) -> T,
+        f: impl FnOnce(&mut Vec<(String, Entry)>) -> T,
     ) -> R<T> {
         match cx.realm.st.borrow_mut().slot_mut(this.slab()?) {
             Some(Slot::FormData(l)) => Ok(f(l)),
@@ -471,35 +513,22 @@ pub mod form_data {
         Ok(cx.alloc(Iface::FormData, Slot::FormData(list)))
     }
 
-    pub fn append(cx: &mut Cx<'_, '_, '_>, this: Obj, name: String, value: String) -> R<()> {
-        with(cx, this, |l| l.push((name, value)))
+    /// A blob as a file entry: named `filename`, else its own name, else `blob`.
+    fn file_entry(cx: &Cx<'_, '_, '_>, blob: Obj, filename: Option<String>) -> R<Entry> {
+        let b = blob_of(cx, blob)?;
+        let modified = b.file.as_ref().map_or(0, |(_, m)| *m);
+        let name = filename
+            .or_else(|| b.file.as_ref().map(|(n, _)| n.clone()))
+            .unwrap_or_else(|| "blob".into());
+        Ok(Entry::File(std::rc::Rc::new(crate::dom::blobs::BlobData {
+            bytes: b.bytes.clone(),
+            content_type: b.content_type.clone(),
+            file: Some((name, modified)),
+        })))
     }
 
-    pub fn delete(cx: &mut Cx<'_, '_, '_>, this: Obj, name: String) -> R<()> {
-        with(cx, this, |l| l.retain(|(k, _)| *k != name))
-    }
-
-    pub fn get(cx: &mut Cx<'_, '_, '_>, this: Obj, name: String) -> R<Option<String>> {
-        with(cx, this, |l| {
-            l.iter().find(|(k, _)| *k == name).map(|(_, v)| v.clone())
-        })
-    }
-
-    pub fn get_all(cx: &mut Cx<'_, '_, '_>, this: Obj, name: String) -> R<Vec<String>> {
-        with(cx, this, |l| {
-            l.iter()
-                .filter(|(k, _)| *k == name)
-                .map(|(_, v)| v.clone())
-                .collect()
-        })
-    }
-
-    pub fn has(cx: &mut Cx<'_, '_, '_>, this: Obj, name: String) -> R<bool> {
-        with(cx, this, |l| l.iter().any(|(k, _)| *k == name))
-    }
-
-    pub fn set(cx: &mut Cx<'_, '_, '_>, this: Obj, name: String, value: String) -> R<()> {
-        with(cx, this, |l| match l.iter().position(|(k, _)| *k == name) {
+    fn put(l: &mut Vec<(String, Entry)>, name: String, value: Entry) {
+        match l.iter().position(|(k, _)| *k == name) {
             Some(i) => {
                 l[i].1 = value;
                 let mut j = i + 1;
@@ -512,10 +541,82 @@ pub mod form_data {
                 }
             }
             None => l.push((name, value)),
-        })
+        }
     }
 
+    pub fn append(cx: &mut Cx<'_, '_, '_>, this: Obj, name: String, value: String) -> R<()> {
+        with(cx, this, |l| l.push((name, Entry::Text(value))))
+    }
+
+    pub fn append_name_blob_value_filename(
+        cx: &mut Cx<'_, '_, '_>,
+        this: Obj,
+        name: String,
+        blob: Obj,
+        filename: Option<String>,
+    ) -> R<()> {
+        let e = file_entry(cx, blob, filename)?;
+        with(cx, this, |l| l.push((name, e)))
+    }
+
+    pub fn delete(cx: &mut Cx<'_, '_, '_>, this: Obj, name: String) -> R<()> {
+        with(cx, this, |l| l.retain(|(k, _)| *k != name))
+    }
+
+    fn value(cx: &mut Cx<'_, '_, '_>, e: Entry) -> Value {
+        match e {
+            Entry::Text(s) => {
+                let v = cx.str(&s).into();
+                cx.keep(v)
+            }
+            Entry::File(f) => {
+                let o = wrap(cx, f);
+                let v: v8::Local<v8::Value> = cx.wrap(o).into();
+                cx.keep(v)
+            }
+        }
+    }
+
+    pub fn get(cx: &mut Cx<'_, '_, '_>, this: Obj, name: String) -> R<Option<Value>> {
+        let e = with(cx, this, |l| {
+            l.iter().find(|(k, _)| *k == name).map(|(_, v)| v.clone())
+        })?;
+        Ok(e.map(|e| value(cx, e)))
+    }
+
+    pub fn get_all(cx: &mut Cx<'_, '_, '_>, this: Obj, name: String) -> R<Vec<Value>> {
+        let es: Vec<Entry> = with(cx, this, |l| {
+            l.iter()
+                .filter(|(k, _)| *k == name)
+                .map(|(_, v)| v.clone())
+                .collect()
+        })?;
+        Ok(es.into_iter().map(|e| value(cx, e)).collect())
+    }
+
+    pub fn has(cx: &mut Cx<'_, '_, '_>, this: Obj, name: String) -> R<bool> {
+        with(cx, this, |l| l.iter().any(|(k, _)| *k == name))
+    }
+
+    pub fn set(cx: &mut Cx<'_, '_, '_>, this: Obj, name: String, value: String) -> R<()> {
+        with(cx, this, |l| put(l, name, Entry::Text(value)))
+    }
+
+    pub fn set_name_blob_value_filename(
+        cx: &mut Cx<'_, '_, '_>,
+        this: Obj,
+        name: String,
+        blob: Obj,
+        filename: Option<String>,
+    ) -> R<()> {
+        let e = file_entry(cx, blob, filename)?;
+        with(cx, this, |l| put(l, name, e))
+    }
+
+    /// Iteration: files appear by name (a deviation: Chrome yields the `File`).
     pub fn pairs(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<Vec<(String, String)>> {
-        with(cx, this, |l| l.clone())
+        with(cx, this, |l| {
+            l.iter().map(|(k, v)| (k.clone(), v.text())).collect()
+        })
     }
 }

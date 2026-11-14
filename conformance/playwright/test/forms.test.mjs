@@ -22,3 +22,4 @@ test('validity, :invalid and a component form', async () => {
   await page.locator('#go').click();
   await page.waitForURL('https://forms.test/done?email=a%40b.test&agree=yes');
 });
+

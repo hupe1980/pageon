@@ -247,6 +247,24 @@ impl<E: Env> Session<'_, E> {
         Err(BidiError::invalid(format!("origin {origin}")))
     }
 
+    /// `input.setFiles`: staged files (by path or name) into a file input.
+    pub(super) fn set_files(&mut self, p: &Json) -> Answer {
+        let s = p["element"]["sharedId"]
+            .as_str()
+            .ok_or_else(|| BidiError::invalid("element: a node with a sharedId"))?;
+        let (frame, _, backend) = parse_shared_id(s)
+            .ok_or_else(|| BidiError::new("no such node", format!("no node {s:?}")))?;
+        let session = self.context_of(frame)?.session.clone();
+        let files = p["files"].clone();
+        self.call(
+            "DOM.setFileInputFiles",
+            json!({"backendNodeId": backend, "files": files}),
+            Some(&session),
+        )
+        .map_err(|e| BidiError::new("unable to set file input", e.message))?;
+        Ok(json!({}))
+    }
+
     pub(super) fn release_actions(&mut self, p: &Json) -> Answer {
         let context = p["context"]
             .as_str()

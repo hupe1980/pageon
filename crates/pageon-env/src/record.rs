@@ -494,6 +494,11 @@ impl<E: Env> Env for Recording<E> {
     fn secret(&self, name: &str, origin: &str) -> Result<String, NetError> {
         self.inner.secret(name, origin)
     }
+
+    /// Staged files pass through and are never recorded (a replay stages them again).
+    fn file(&self, name: &str, origin: &str) -> Result<crate::StagedFile, NetError> {
+        self.inner.file(name, origin)
+    }
 }
 
 impl<E: Env> Recorder for Recording<E> {

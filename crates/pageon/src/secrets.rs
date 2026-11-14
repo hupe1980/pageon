@@ -375,6 +375,10 @@ impl<E: Env> Env for Secrets<E> {
         self.inner.random_u64()
     }
 
+    fn file(&self, name: &str, origin: &str) -> Result<pageon_env::StagedFile, NetError> {
+        self.inner.file(name, origin)
+    }
+
     fn secret(&self, name: &str, origin: &str) -> Result<String, NetError> {
         let Some(s) = self.secrets.get(name) else {
             return Err(NetError::NoSecret(format!(

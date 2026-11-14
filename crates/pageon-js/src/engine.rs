@@ -318,6 +318,8 @@ impl Engine {
                 blocked: Vec::new(),
                 sheets: Default::default(),
                 refused: Default::default(),
+                files: Default::default(),
+                chooser: None,
                 dialogs_more: 0,
                 popups_more: 0,
                 requests_made: 0,
@@ -939,6 +941,40 @@ impl Engine {
         self.activate(realm);
         let _ = self.input(realm, "click", |cx| {
             crate::dom::input::click(cx, node, point)
+        });
+    }
+
+    /// Whether `node` is an enabled file input, and whether it takes several files.
+    pub fn file_input(&self, realm: usize, node: NodeId) -> Option<bool> {
+        let r = self.realm(realm)?;
+        let dom = r.dom.borrow();
+        let n = dom.get(node)?;
+        (n.is_html("input")
+            && pageon_dom::forms::input_type(&dom, node) == "file"
+            && !pageon_dom::forms::disabled(&dom, node))
+        .then(|| n.attr("multiple").is_some())
+    }
+
+    /// The file input whose chooser the last activation opened, if any (cleared).
+    pub fn take_chooser(&mut self, realm: usize) -> Option<NodeId> {
+        self.realm(realm)?.st.borrow_mut().chooser.take()
+    }
+
+    /// Puts files into a file input as a person picking them does (`input`, `change`).
+    /// Each file is `(name, type, bytes, lastModified ms)`.
+    pub fn set_files(
+        &mut self,
+        realm: usize,
+        node: NodeId,
+        files: Vec<(String, String, Vec<u8>, i64)>,
+    ) {
+        self.activate(realm);
+        let files = files
+            .into_iter()
+            .map(|(n, t, b, m)| crate::dom::blobs::BlobData::file(n, t, b, m))
+            .collect();
+        let _ = self.input(realm, "upload", |cx| {
+            crate::dom::input::set_files(cx, node, files)
         });
     }
 

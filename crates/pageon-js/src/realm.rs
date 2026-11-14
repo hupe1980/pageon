@@ -352,7 +352,13 @@ pub enum Slot {
     /// `URLSearchParams` (and the `URL` it belongs to).
     Params(Vec<(String, String)>, Option<u32>),
     /// `FormData`.
-    FormData(Vec<(String, String)>),
+    FormData(Vec<(String, crate::dom::blobs::Entry)>),
+    /// A `Blob` or `File`.
+    Blob(std::rc::Rc<crate::dom::blobs::BlobData>),
+    /// A `FileList`.
+    FileList(Vec<std::rc::Rc<crate::dom::blobs::BlobData>>),
+    /// A `FileReader`.
+    Reader(Box<crate::dom::blobs::ReaderData>),
     /// `localStorage` (`true`) or `sessionStorage`.
     Storage(bool),
     /// A `DOMException`.
@@ -451,6 +457,10 @@ pub struct State {
     pub blocked: Vec<crate::dom::validation::Blocked>,
     /// Constructed stylesheets and the trees adopting them.
     pub sheets: crate::dom::sheets::Sheets,
+    /// The files of each file input (set by uploads).
+    pub files: std::collections::HashMap<NodeId, Vec<std::rc::Rc<crate::dom::blobs::BlobData>>>,
+    /// The file input whose file chooser the last activation opened (taken by uploads).
+    pub chooser: Option<NodeId>,
     /// Caps already reported (one page error per kind).
     pub refused: std::collections::HashSet<&'static str>,
     /// Dialogs beyond [`MAX_PER_ACTION`] since the last check (answered, counted, not kept).

@@ -293,7 +293,10 @@ fn has_iterator(cx: &mut Cx<'_, '_, '_>, obj: v8::Local<'_, v8::Object>) -> bool
 
 /// A `multipart/form-data` body and its content type. Boundaries count per page, not random:
 /// loads replay identically.
-pub(crate) fn multipart(cx: &Cx<'_, '_, '_>, pairs: &[(String, String)]) -> (Vec<u8>, String) {
+pub(crate) fn multipart(
+    cx: &Cx<'_, '_, '_>,
+    pairs: &[(String, crate::dom::blobs::Entry)],
+) -> (Vec<u8>, String) {
     let n = {
         let mut sh = cx.realm.shared.borrow_mut();
         sh.seq += 1;
@@ -305,18 +308,38 @@ pub(crate) fn multipart(cx: &Cx<'_, '_, '_>, pairs: &[(String, String)]) -> (Vec
             .replace('\r', "%0D")
             .replace('\n', "%0A")
     };
-    let mut body = String::new();
+    let mut body: Vec<u8> = Vec::new();
     for (k, val) in pairs {
-        body.push_str(&format!(
-            "--{boundary}\r\nContent-Disposition: form-data; name=\"{}\"\r\n\r\n{val}\r\n",
-            esc(k)
-        ));
+        match val {
+            crate::dom::blobs::Entry::Text(t) => body.extend(
+                format!(
+                    "--{boundary}\r\nContent-Disposition: form-data; name=\"{}\"\r\n\r\n{t}\r\n",
+                    esc(k)
+                )
+                .into_bytes(),
+            ),
+            crate::dom::blobs::Entry::File(f) => {
+                let name = f.file.as_ref().map(|(n, _)| n.as_str()).unwrap_or("blob");
+                let ct = if f.content_type.is_empty() {
+                    "application/octet-stream"
+                } else {
+                    &f.content_type
+                };
+                body.extend(
+                    format!(
+                        "--{boundary}\r\nContent-Disposition: form-data; name=\"{}\"; filename=\"{}\"\r\nContent-Type: {ct}\r\n\r\n",
+                        esc(k),
+                        esc(name)
+                    )
+                    .into_bytes(),
+                );
+                body.extend_from_slice(&f.bytes);
+                body.extend_from_slice(b"\r\n");
+            }
+        }
     }
-    body.push_str(&format!("--{boundary}--\r\n"));
-    (
-        body.into_bytes(),
-        format!("multipart/form-data; boundary={boundary}"),
-    )
+    body.extend(format!("--{boundary}--\r\n").into_bytes());
+    (body, format!("multipart/form-data; boundary={boundary}"))
 }
 
 /// The bytes and content type of a body (`BodyInit`).
@@ -343,6 +366,14 @@ fn body_init(cx: &mut Cx<'_, '_, '_>, v: v8::Local<'_, v8::Value>) -> R<(Vec<u8>
                 })?;
                 let (body, ct) = multipart(cx, &pairs);
                 return Ok((body, Some(ct)));
+            }
+            Iface::Blob | Iface::File => {
+                let b = slot(cx, id, |s| match s {
+                    Slot::Blob(b) => Some(b.clone()),
+                    _ => None,
+                })?;
+                let ct = (!b.content_type.is_empty()).then(|| b.content_type.clone());
+                return Ok((b.bytes.to_vec(), ct));
             }
             _ => {}
         }
@@ -831,6 +862,35 @@ pub mod body {
         }
     }
 
+    /// `blob()`: the body as a `Blob` typed by the `Content-Type` header.
+    pub fn blob(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<Value> {
+        let headers = {
+            let st = cx.realm.st.borrow();
+            match this.slab().ok().and_then(|id| st.slot(id)) {
+                Some(Slot::Request(r)) => Some(r.headers),
+                Some(Slot::Response(r)) => Some(r.headers),
+                _ => None,
+            }
+        };
+        let ct = match headers {
+            Some(h) => headers::get(cx, Obj::Slab(h), "content-type".into())?.unwrap_or_default(),
+            None => String::new(),
+        };
+        match take(cx, this)? {
+            Ok(b) => {
+                let data = crate::dom::blobs::BlobData {
+                    bytes: b.into(),
+                    content_type: ct.to_ascii_lowercase(),
+                    file: None,
+                };
+                let o = crate::dom::blobs::wrap(cx, std::rc::Rc::new(data));
+                let w: v8::Local<v8::Value> = cx.wrap(o).into();
+                settled(cx, Ok(w))
+            }
+            Err(e) => settled(cx, Err(e)),
+        }
+    }
+
     pub fn json(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<Value> {
         let bytes = match take(cx, this)? {
             Ok(b) => b,
@@ -1264,6 +1324,17 @@ pub mod abort_signal {
             None => Ok(()),
         }
     }
+}
+
+/// Fires a `ProgressEvent` at a non-node event target (an XHR, a `FileReader`).
+pub(crate) fn progress_event_at(
+    cx: &mut Cx<'_, '_, '_>,
+    id: u32,
+    ty: &str,
+    loaded: f64,
+    total: f64,
+) -> R<()> {
+    progress(cx, id, ty, loaded, total)
 }
 
 fn progress(cx: &mut Cx<'_, '_, '_>, id: u32, ty: &str, loaded: f64, total: f64) -> R<()> {

@@ -465,7 +465,7 @@ fn us3_dialogs_popups_and_downloads() {
     let o = act(&mut tab, &format!("click {}", find(&obs, "link", "Report")));
     assert!(
         o.to_string()
-            .contains("download \"report.pdf\" (\"application/pdf\", 10 B)"),
+            .contains("download:1 \"report.pdf\" (\"application/pdf\", 10 B)"),
         "{o}"
     );
     assert_eq!(tab.url(), "https://a.test/");

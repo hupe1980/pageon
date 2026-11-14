@@ -547,6 +547,14 @@ fn tools() -> Vec<Value> {
             act.clone(),
         ),
         tool(
+            "browser_upload",
+            "Upload files",
+            "Put files the operator staged (by name, as listed when the server started) into a file input, or into the file chooser a button or label opens; download:N uploads a download back to its own site. You never name a path.",
+            json!({"ref": r, "files": {"type": "array", "items": {"type": "string"}, "minItems": 1}}),
+            &["ref", "files"],
+            act.clone(),
+        ),
+        tool(
             "browser_press",
             "Press a key",
             "Press a key on the focused element: Enter, Tab, Escape, Backspace, ArrowDown, or one character.",
@@ -695,6 +703,7 @@ pub(crate) fn kind_of(e: &ActionError) -> &'static str {
         ActionError::Unsupported(m) if m.starts_with("no page is open") => "no_page",
         ActionError::Unsupported(_) => "unsupported",
         ActionError::Secret(_) => "secret",
+        ActionError::File(_) => "file",
         ActionError::Engine(_) => "engine",
         ActionError::Tool(_) => "tool",
     }
@@ -1166,6 +1175,24 @@ fn call(
                 v.push(Action::Press("Enter".into()));
             }
             v
+        }
+        "browser_upload" => {
+            let files: Vec<String> = args
+                .get("files")
+                .and_then(Value::as_array)
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|x| x.as_str().map(str::to_string))
+                        .collect()
+                })
+                .unwrap_or_default();
+            if files.is_empty() {
+                return Err((
+                    -32602,
+                    "browser_upload: files must list staged file names".into(),
+                ));
+            }
+            vec![Action::Upload(s("ref")?, files)]
         }
         "browser_press" => vec![Action::Press(s("key")?)],
         "browser_select" => {

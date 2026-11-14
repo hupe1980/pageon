@@ -386,6 +386,10 @@ impl<E: Env> Env for Policy<E> {
         self.inner.secret(name, origin)
     }
 
+    fn file(&self, name: &str, origin: &str) -> Result<pageon_env::StagedFile, NetError> {
+        self.inner.file(name, origin)
+    }
+
     fn recorder(&self) -> Option<&dyn pageon_env::Recorder> {
         self.inner.recorder()
     }

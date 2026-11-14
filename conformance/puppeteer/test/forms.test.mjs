@@ -24,3 +24,24 @@ test('validity, :invalid and a blocked submission, then a component form submits
     await s.stop();
   }
 });
+
+test('uploadFile with a staged file; other paths are refused', async () => {
+  const { mkdtempSync, writeFileSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const dir = mkdtempSync(join(tmpdir(), 'pageon-up-'));
+  const cv = join(dir, 'cv.txt');
+  writeFileSync(cv, 'hello cv');
+  const s = await start(site(formsSite()), { args: ['--file', `cv@https://forms.test=${cv}`] });
+  try {
+    const page = await s.browser.newPage();
+    await page.goto('https://forms.test/upload');
+    const input = await page.$('#f');
+    await input.uploadFile(cv);
+    await page.waitForFunction(() => document.querySelector('#out').textContent !== '');
+    assert.equal(await page.$eval('#out', (e) => e.textContent), 'cv.txt:hello cv');
+    await assert.rejects(input.uploadFile(join(dir, 'other.txt')), /not staged|--file/);
+  } finally {
+    await s.stop();
+  }
+});

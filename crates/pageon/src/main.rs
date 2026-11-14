@@ -318,6 +318,11 @@ struct SessionArgs {
     /// PAGEON_SECRET_<NAME>; NAME:totp@ORIGIN for a TOTP seed (repeatable).
     #[arg(long, value_name = "NAME@ORIGIN")]
     secret: Vec<String>,
+    /// A file the agent may upload as NAME (`upload eN NAME`), to pages of ORIGIN (several
+    /// comma-separated): NAME@ORIGIN=PATH (repeatable). Read when uploaded; never a path the
+    /// agent chooses.
+    #[arg(long = "file", id = "staged_file", value_name = "NAME@ORIGIN=PATH")]
+    staged_file: Vec<String>,
     /// Send every request through this proxy (HTTP_PROXY / HTTPS_PROXY / NO_PROXY are used
     /// without it).
     #[arg(long, value_name = "URL", conflicts_with = "replay")]
@@ -457,6 +462,22 @@ fn parse_secret(spec: &str) -> Result<(String, Secret), String> {
     Ok((name.to_string(), secret.origins([origin.to_string()])))
 }
 
+/// `--file NAME@ORIGIN[,ORIGIN…]=PATH`.
+fn parse_file(spec: &str) -> Result<(String, std::path::PathBuf, Vec<String>), String> {
+    let help =
+        || format!("{spec:?}: expected NAME@ORIGIN=PATH, e.g. cv@https://jobs.example=./cv.pdf");
+    let (head, path) = spec.split_once('=').ok_or_else(help)?;
+    let (name, origins) = head.split_once('@').ok_or_else(help)?;
+    if name.is_empty() || path.is_empty() || name.starts_with("download:") {
+        return Err(help());
+    }
+    let origins: Vec<String> = origins.split(',').map(|o| o.trim().to_string()).collect();
+    for o in &origins {
+        pageon::check_origin(o).map_err(|e| format!("--file {name}: {e}"))?;
+    }
+    Ok((name.to_string(), path.into(), origins))
+}
+
 /// The session flags, checked: load options, secrets and the starting state.
 struct Prepared {
     options: LoadOptions,
@@ -472,6 +493,12 @@ fn prepare(s: &SessionArgs) -> Result<Prepared, ExitCode> {
                 return Err(ExitCode::from(2));
             }
         }
+    }
+    for spec in &s.staged_file {
+        parse_file(spec).map_err(|e| {
+            eprintln!("error: {e}");
+            ExitCode::from(2)
+        })?;
     }
     let mut secrets = Vec::new();
     for spec in &s.secret {
@@ -544,7 +571,14 @@ fn guarded<T>(
     for (name, secret) in secrets {
         vault = vault.with(name, secret.clone());
     }
-    let r = job(&vault);
+    let mut files = pageon::Files::new(&vault);
+    for spec in &s.staged_file {
+        // Checked in `prepare`.
+        if let Ok((name, path, origins)) = parse_file(spec) {
+            files = files.with(&name, path, origins);
+        }
+    }
+    let r = job(&files);
     (r, vault.values())
 }
 

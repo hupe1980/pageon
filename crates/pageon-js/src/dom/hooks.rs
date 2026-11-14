@@ -43,6 +43,7 @@ pub fn template(
         | Iface::HTMLOptionsCollection
         | Iface::DOMRectList
         | Iface::CSSStyleDeclaration
+        | Iface::FileList
         | Iface::NamedNodeMap => {
             proto.set_intrinsic_data_property(
                 iterator.into(),
@@ -59,6 +60,7 @@ pub fn template(
         | Iface::HTMLOptionsCollection
         | Iface::DOMTokenList
         | Iface::DOMRectList
+        | Iface::FileList
         | Iface::CSSStyleDeclaration => {
             inst.set_indexed_property_handler(
                 v8::IndexedPropertyHandlerConfiguration::new().getter(indexed_get),
@@ -160,6 +162,10 @@ fn indexed_get<'s>(
                 .flatten()
                 .map(Out::Str),
             Iface::DOMRectList => crate::dom::dom_rect_list::item(cx, obj, index)
+                .ok()
+                .flatten()
+                .map(Out::Obj),
+            Iface::FileList => crate::dom::file_list::item(cx, obj, index)
                 .ok()
                 .flatten()
                 .map(Out::Obj),
