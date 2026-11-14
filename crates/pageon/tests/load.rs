@@ -196,7 +196,7 @@ fn recording_a_live_load_replays_identically() {
         robots: false,
         ..LoadOptions::default()
     };
-    let live = load(&url, &rec, local).unwrap_or_else(|e| panic!("{e}"));
+    let live = load(&url, &rec, local.clone()).unwrap_or_else(|e| panic!("{e}"));
     assert!(
         live.dump(Dump::Text).contains("First bold paragraph."),
         "gzip was decompressed"

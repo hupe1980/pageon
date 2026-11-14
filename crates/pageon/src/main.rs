@@ -800,7 +800,7 @@ fn fetch(env: &dyn Env, f: Fetch<'_>) -> Result<Printed, ExitCode> {
     };
     let kind = dump_kind(dump.unwrap_or(DumpArg::Text));
     let acted_ax = matches!(kind, Dump::Ax) && !f.actions.is_empty();
-    let options = f.prepared.options;
+    let options = f.prepared.options.clone();
     if !f.session.no_sandbox {
         let mut sb = Sandbox::new(env, SandboxOptions::default()).map_err(broken)?;
         if std::io::IsTerminal::is_terminal(&std::io::stderr()) {
@@ -1032,7 +1032,7 @@ fn replay(
         };
         // Live, the operator's safety options replace the recorded ones.
         let operator = prepared.options;
-        let mut run_as = |d: &mut dyn pageon::replay::Driver| {
+        let run_as = |d: &mut dyn pageon::replay::Driver| {
             if live {
                 run(&mut pageon::replay::Operator::new(d, operator))
             } else {
@@ -1250,16 +1250,16 @@ fn cdp(port: u16, allow_origins: Vec<String>, discovery: bool, s: &SessionArgs) 
                 session.set_storage_state(st);
             }
             use pageon::cdp::server::{Input, Proto};
-            let mut cdp = Some(pageon::cdp::Session::new(&session, options));
+            let mut cdp = Some(pageon::cdp::Session::new(&session, options.clone()));
             let mut bidi: Option<pageon::bidi::Session<'_, _>> = None;
             eprintln!("DevTools listening on {}", server.ws_url());
             eprintln!("WebDriver BiDi listening on {}", server.bidi_url());
             server
                 .serve(&mut |proto, input| {
                     if proto == Proto::Bidi && bidi.is_none() {
-                        let c = cdp
-                            .take()
-                            .unwrap_or_else(|| pageon::cdp::Session::new(&session, options));
+                        let c = cdp.take().unwrap_or_else(|| {
+                            pageon::cdp::Session::new(&session, options.clone())
+                        });
                         bidi = Some(pageon::bidi::Session::over(c));
                     }
                     Ok(match (bidi.as_mut(), cdp.as_mut(), input) {
@@ -1288,9 +1288,9 @@ fn cdp(port: u16, allow_origins: Vec<String>, discovery: bool, s: &SessionArgs) 
                 .serve(&mut |proto, input| {
                     use pageon::cdp::server::{Input, Proto};
                     match (proto, input) {
-                        (Proto::Cdp, Input::Message(m)) => sb.cdp(m, options),
+                        (Proto::Cdp, Input::Message(m)) => sb.cdp(m, options.clone()),
                         (Proto::Cdp, Input::Idle(ms)) => sb.cdp_idle(ms),
-                        (Proto::Bidi, Input::Message(m)) => sb.bidi(m, options),
+                        (Proto::Bidi, Input::Message(m)) => sb.bidi(m, options.clone()),
                         (Proto::Bidi, Input::Idle(ms)) => sb.bidi_idle(ms),
                     }
                     .map_err(|e| e.to_string())

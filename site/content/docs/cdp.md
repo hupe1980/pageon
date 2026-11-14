@@ -68,8 +68,13 @@ own JavaScript context over the same document. A page that redefines `Array.prot
 `getBoundingClientRect` or `getComputedStyle` cannot falsify what locators, `isVisible` or
 `waitForSelector` compute. Objects never cross worlds.
 
+Init scripts run as in Chrome: `Page.addScriptToEvaluateOnNewDocument` (Puppeteer's
+`evaluateOnNewDocument`, Playwright's `addInitScript`) runs in every new document of the page,
+frames included, before the page's own scripts; with `worldName` it runs in that isolated world
+instead. Scripts last as long as the page and are never recorded or replayed.
+
 Methods pageon lacks fail at once with what to use instead, for example request interception
-(use `--origin` or a recorded session) or scripts that run before the page's own.
+(use `--origin` or a recorded session).
 
 ## Time
 

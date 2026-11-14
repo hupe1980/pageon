@@ -386,11 +386,11 @@ impl<'s, E: Env> Session<'s, E> {
 
     fn create_target(&mut self, url: &str) -> Reply {
         // Protocol tabs report no steps: CDP input is not an agent's step.
-        let tab = crate::Tab::open(self.session, url, self.options, false)
+        let tab = crate::Tab::open(self.session, url, self.options.clone(), false)
             .or_else(|e| {
                 // A page that fails to load still makes a target (Chrome shows an error page).
                 let _ = e;
-                crate::Tab::open(self.session, "about:blank", self.options, false)
+                crate::Tab::open(self.session, "about:blank", self.options.clone(), false)
             })
             .map_err(|e| CdpError::server(e.to_string()))?;
         let n = self.next_id();

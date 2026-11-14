@@ -112,7 +112,7 @@ impl<E: Env> Backend for Caged<E> {
         if let Some(t) = self.tab.take() {
             self.sandbox.close_tab(t);
         }
-        let (id, opened) = self.sandbox.open_tab(url, self.options)?;
+        let (id, opened) = self.sandbox.open_tab(url, self.options.clone())?;
         self.tab = Some(id);
         Ok(opened)
     }
@@ -199,7 +199,7 @@ struct Local<'s, E: Env> {
 impl<E: Env> Backend for Local<'_, E> {
     fn open(&mut self, url: &str) -> Result<Outcome, LoadError> {
         self.tab = None;
-        let mut tab = self.session.open(url, self.options)?;
+        let mut tab = self.session.open(url, self.options.clone())?;
         tab.set_view(self.budget, Mode::Diff);
         let opened = tab.opened().clone();
         self.tab = Some(tab);

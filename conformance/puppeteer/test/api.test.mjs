@@ -39,6 +39,8 @@ const pages = () => site([
     <script>setTimeout(() => { spin.style.display = 'none'; window.ready = true }, 3000)</script>`),
   html('https://shop.test/form', `<form action=/done><input id=f name=f></form>`),
   html('https://shop.test/done?f=hi', '<title>Done</title><p id=r>done</p>'),
+  html('https://shop.test/init', `<p id=seen></p><script>seen.textContent = 'sees ' + window.stub</script>`),
+  html('https://shop.test/init', `<p id=seen></p><script>seen.textContent = 'sees ' + window.stub</script>`),
 ]);
 
 let s, page;
@@ -206,7 +208,6 @@ test('pages: newPage, pages, close', async () => {
 test('unsupported methods fail at once and say what to do', { skip: cdpOnly }, async () => {
   const t = Date.now();
   await assert.rejects(page.setUserAgent('Mozilla/5.0'), /pageon/);
-  await assert.rejects(page.evaluateOnNewDocument(() => { window.x = 1; }), /before the page's own scripts/);
   const cdp = await page.createCDPSession();
   await assert.rejects(cdp.send('Page.printToPDF'), /printToPDF.*captureScreenshot/s);
   await assert.rejects(cdp.send('Animation.enable'), /'Animation\.enable' wasn't found/);
@@ -307,4 +308,15 @@ test('frames: one main frame with the page URL', async () => {
   assert.equal(frames.length, 1);
   assert.equal(frames[0], page.mainFrame());
   assert.equal(page.mainFrame().url(), page.url());
+});
+
+test('evaluateOnNewDocument runs before the page, until removed', async () => {
+  const p = await s.browser.newPage();
+  const { identifier } = await p.evaluateOnNewDocument((v) => { window.stub = v; }, 'stubbed');
+  await p.goto('https://shop.test/init');
+  assert.equal(await p.$eval('#seen', (e) => e.textContent), 'sees stubbed');
+  await p.removeScriptToEvaluateOnNewDocument(identifier);
+  await p.goto('https://shop.test/init');
+  assert.equal(await p.$eval('#seen', (e) => e.textContent), 'sees undefined');
+  await p.close();
 });

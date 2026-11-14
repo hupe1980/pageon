@@ -923,7 +923,7 @@ impl<'s, E: Env> Tab<'s, E> {
             keep: true,
             ..Start::default()
         };
-        let loaded = crate::load::open(input, session.env(), net, options, start);
+        let loaded = crate::load::open(input, session.env(), net, options.clone(), start);
         let requests = net.borrow_mut().take_log();
         let mut doc = match loaded? {
             Loaded::Page(d) => *d,
@@ -951,6 +951,7 @@ impl<'s, E: Env> Tab<'s, E> {
             ..Outcome::default()
         };
         doc.requests = requests;
+        let tab_options = options.clone();
         let tab = Self {
             session,
             options,
@@ -973,7 +974,7 @@ impl<'s, E: Env> Tab<'s, E> {
         tab.apply_history(&mut load_out);
         tab.record_step(
             format!("open {input}"),
-            serde_json::json!({"open": {"url": input, "options": options}}),
+            serde_json::json!({"open": {"url": input, "options": &tab_options}}),
             None,
         );
         Ok(tab)
@@ -1077,6 +1078,12 @@ impl<'s, E: Env> Tab<'s, E> {
     /// The page's status line (see [`Document::status_line`]), with secrets redacted.
     pub fn status_line(&self) -> String {
         self.redact(self.doc.status_line())
+    }
+
+    /// The init scripts every later document of this tab runs before its own (protocol
+    /// clients' `addScriptToEvaluateOnNewDocument` / `addPreloadScript`).
+    pub(crate) fn init_scripts_mut(&mut self) -> &mut Vec<crate::load::InitScript> {
+        &mut self.options.init_scripts
     }
 
     /// The page as it is now (every view: `ax`, `markdown`, `boxes`, …).
@@ -1916,7 +1923,7 @@ impl<'s, E: Env> Tab<'s, E> {
         let path = frame_path(&self.doc, frame).ok_or_else(|| {
             ActionError::Unsupported("acting in a frame that did not load".into())
         })?;
-        let options = self.options;
+        let options = self.options.clone();
         let env = self.session.env();
         let net = self.session.net().clone();
         let page = self.doc.page.clone();
@@ -2187,7 +2194,7 @@ impl<'s, E: Env> Tab<'s, E> {
             &nav.url,
             self.session.env(),
             self.session.net(),
-            self.options,
+            self.options.clone(),
             start,
         )
         .map_err(ActionError::Navigation)?;

@@ -515,23 +515,39 @@ impl<E: Env> Session<'_, E> {
                 Ok(json!({"executionContextId": id}))
             }
             "Page.addScriptToEvaluateOnNewDocument" => {
-                // Puppeteer registers its utility world this way, with an empty script.
                 let source = s("source");
+                let world = s("worldName");
+                if !world.is_empty() && !self.targets[ti].worlds.contains(&world) {
+                    self.targets[ti].worlds.push(world.clone());
+                }
+                let n = self.next_id().to_string();
+                // Puppeteer registers its utility world with an empty script: nothing to run.
                 let code = source
                     .lines()
                     .filter(|l| !l.trim_start().starts_with("//"))
                     .any(|l| !l.trim().is_empty());
                 if code {
-                    return Err(unsupported(method));
+                    let script = crate::load::InitScript {
+                        id: n.clone(),
+                        source,
+                        world: (!world.is_empty()).then_some(world),
+                    };
+                    if params.get("runImmediately").and_then(Json::as_bool) == Some(true) {
+                        self.run_init_now(ti, &script);
+                    }
+                    self.targets[ti].tab.init_scripts_mut().push(script);
                 }
-                let world = s("worldName");
-                if !world.is_empty() && !self.targets[ti].worlds.contains(&world) {
-                    self.targets[ti].worlds.push(world);
-                }
-                let n = self.next_id();
-                Ok(json!({"identifier": n.to_string()}))
+                Ok(json!({"identifier": n}))
             }
-            "Page.removeScriptToEvaluateOnNewDocument" => Ok(json!({})),
+            "Page.removeScriptToEvaluateOnNewDocument" => {
+                let id = s("identifier");
+                let scripts = self.targets[ti].tab.init_scripts_mut();
+                let before = scripts.len();
+                scripts.retain(|x| x.id != id);
+                // Puppeteer's world registrations have no script to remove.
+                let _ = before;
+                Ok(json!({}))
+            }
             "Network.setExtraHTTPHeaders" => {
                 let empty = params
                     .get("headers")

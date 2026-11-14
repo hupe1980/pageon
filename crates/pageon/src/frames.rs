@@ -241,7 +241,7 @@ pub(crate) fn load_all(
                                 parent,
                                 env,
                                 net,
-                                options,
+                                options.clone(),
                                 start,
                             )
                             .map_err(|e| e.to_string())
@@ -265,7 +265,7 @@ pub(crate) fn load_all(
                         delegate_tools,
                         ..start
                     };
-                    match crate::load::fetch(&url, env, net, options, start) {
+                    match crate::load::fetch(&url, env, net, options.clone(), start) {
                         Ok(crate::load::Loaded::Page(d)) => Ok(*d),
                         Ok(crate::load::Loaded::Download(_)) => Err("a download".to_string()),
                         Err(e) => Err(e.to_string()),
@@ -342,7 +342,7 @@ pub(crate) fn connect(
     if root.frames.is_empty() {
         return;
     }
-    join(root, page, env, net, options);
+    join(root, page, env, net, options.clone());
     fire_loads(root);
     let engines: Vec<_> = page.engines.borrow().values().cloned().collect();
     for e in engines {
@@ -367,14 +367,14 @@ fn join(
             .get(doc.context as usize)
             .map(|e| e.origin.clone());
         if origin.is_some_and(|o| page.engine(&o).is_some())
-            && let Ok(live) = crate::scripts::start_live(doc, env, net, options, Some(page))
+            && let Ok(live) = crate::scripts::start_live(doc, env, net, options.clone(), Some(page))
         {
             doc.live = Some(Rc::new(live));
         }
     }
     for f in &mut doc.frames {
         if let Some(d) = f.document.as_deref_mut() {
-            join(d, page, env, net, options);
+            join(d, page, env, net, options.clone());
         }
     }
 }

@@ -35,7 +35,7 @@ Any WebSocket client can speak it:
 | `session` | `status`, `new`, `end`, `subscribe`, `unsubscribe` |
 | `browser` | `close`, `getUserContexts`, `getClientWindows` |
 | `browsingContext` | `getTree`, `create`, `close`, `activate`, `navigate`, `reload`, `traverseHistory`, `captureScreenshot`, `setViewport`, `locateNodes` (css, context) |
-| `script` | `evaluate`, `callFunction`, `disown`, `getRealms`, with the spec's value serialization |
+| `script` | `evaluate`, `callFunction`, `disown`, `getRealms`, `addPreloadScript` (with `contexts` and `sandbox`), `removePreloadScript`, with the spec's value serialization |
 | `input` | `performActions`, `releaseActions` |
 | `storage` | `getCookies`, `setCookie`, `deleteCookies` |
 | `pageon:` | `pageon:observe {context}`, `pageon:act {context, action}` |

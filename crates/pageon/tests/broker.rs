@@ -80,7 +80,7 @@ fn http_only_sessions_work_caged_with_the_cookie_in_the_broker() {
     };
     let state = {
         let mut tab = sb
-            .open("https://bank.test/", opts)
+            .open("https://bank.test/", opts.clone())
             .unwrap_or_else(|e| panic!("{e}"));
         let obs = tab.observe().unwrap_or_else(|e| panic!("{e}"));
         tab.act(act(&format!("type {} ada", find(&obs, "textbox", "User"))))

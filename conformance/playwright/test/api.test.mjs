@@ -41,6 +41,8 @@ const pages = () => site([
   </script>`),
   html('https://shop.test/reload', '<title>R</title><h1>First</h1>'),
   html('https://shop.test/reload', '<title>R</title><h1>Second</h1>'),
+  html('https://shop.test/init', `<p id=seen></p><script>seen.textContent = 'sees ' + window.stub</script>`),
+  html('https://shop.test/init', `<p id=seen></p><script>seen.textContent = 'sees ' + window.stub</script>`),
 ]);
 
 let s, page;
@@ -261,4 +263,12 @@ test('fill replaces a value; keyboard.type types into the focused field', async 
 test('locator.evaluate and evaluateAll', async () => {
   assert.equal(await page.locator('h1').evaluate((e) => e.tagName), 'H1');
   assert.deepEqual(await page.locator('.item').evaluateAll((els) => els.length), 3);
+});
+
+test('addInitScript runs before the page', async () => {
+  const p = await page.context().newPage();
+  await p.addInitScript((v) => { window.stub = v; }, 'stubbed');
+  await p.goto('https://shop.test/init');
+  assert.equal(await p.locator('#seen').textContent(), 'sees stubbed');
+  await p.close();
 });

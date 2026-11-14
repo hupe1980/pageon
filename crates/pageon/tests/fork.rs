@@ -32,7 +32,9 @@ fn lookahead_vs_acting(
     pick: &dyn Fn(&str) -> String,
 ) {
     let mut a = sandbox(Replay::new(log.clone()));
-    let mut ta = a.open(url, options).unwrap_or_else(|e| panic!("{e}"));
+    let mut ta = a
+        .open(url, options.clone())
+        .unwrap_or_else(|e| panic!("{e}"));
     let obs = ta.observe().unwrap_or_else(|e| panic!("{e}"));
     let action = pick(&obs);
     let la = ta
@@ -367,7 +369,9 @@ fn lookahead_beats_act_then_reset() {
         };
         // L1: lookahead.
         let mut sb = sandbox(Replay::new(log.clone()));
-        let mut tab = sb.open(&url, options).unwrap_or_else(|e| panic!("{e}"));
+        let mut tab = sb
+            .open(&url, options.clone())
+            .unwrap_or_else(|e| panic!("{e}"));
         let obs = tab.observe().unwrap_or_else(|e| panic!("{e}"));
         for a in prefix(&obs) {
             tab.act(act(&a)).unwrap_or_else(|e| panic!("{e}"));
@@ -389,7 +393,8 @@ fn lookahead_beats_act_then_reset() {
             let rec = Recording::new(Replay::new(log.clone()));
             let mut sb = sandbox(&rec);
             let mut d = Caged::new(&mut sb);
-            pageon::replay::Driver::open(&mut d, &url, options).unwrap_or_else(|e| panic!("{e}"));
+            pageon::replay::Driver::open(&mut d, &url, options.clone())
+                .unwrap_or_else(|e| panic!("{e}"));
             let obs = pageon::replay::Driver::observe(&mut d).unwrap_or_else(|e| panic!("{e}"));
             for a in prefix(&obs) {
                 pageon::replay::Driver::act(&mut d, act(&a)).unwrap_or_else(|e| panic!("{e}"));

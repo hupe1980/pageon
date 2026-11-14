@@ -36,6 +36,20 @@ impl<E: Env> Session<'_, E> {
             }
         }
         self.targets[ti].contexts = contexts;
+        // World init scripts run in each new document's world (main-world ones ran before the
+        // document's own scripts, in the loader).
+        let scripts: Vec<crate::load::InitScript> = self.targets[ti]
+            .tab
+            .init_scripts_mut()
+            .iter()
+            .filter(|s| s.world.is_some())
+            .cloned()
+            .collect();
+        for frame in &loaded {
+            for script in &scripts {
+                self.run_init_in(ti, *frame, script);
+            }
+        }
         // Bindings live on each document's global: install them again.
         let names = self.targets[ti].bindings.clone();
         if !names.is_empty() {
@@ -47,6 +61,36 @@ impl<E: Env> Session<'_, E> {
                     }
                 }
             }
+        }
+    }
+
+    /// Runs an init script now in the target's current documents (`runImmediately`), in its
+    /// world or the main world.
+    pub(super) fn run_init_now(&mut self, ti: usize, script: &crate::load::InitScript) {
+        let frames: Vec<usize> = (0..self.targets[ti].frames.len())
+            .filter(|&f| self.targets[ti].frames[f].loaded)
+            .collect();
+        for frame in frames {
+            self.run_init_in(ti, frame, script);
+        }
+    }
+
+    /// Runs an init script in one frame's document (its world, created if needed).
+    fn run_init_in(&mut self, ti: usize, frame: usize, script: &crate::load::InitScript) {
+        let Ok(live) = self.targets[ti].tab.live_in(frame) else {
+            return;
+        };
+        let mut e = live.engine.borrow_mut();
+        let name = format!("pageon-init-script-{}", script.id);
+        match &script.world {
+            // A world's script: evaluated in it (its errors stay the client's, as for
+            // `Runtime.evaluate` there).
+            Some(w) => {
+                if let Ok(r) = e.world(live.realm, w) {
+                    let _ = e.evaluate(r, &format!("{}\n//# sourceURL={name}", script.source));
+                }
+            }
+            None => e.run_script(live.realm, &script.source, &name, None),
         }
     }
 

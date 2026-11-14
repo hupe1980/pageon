@@ -340,6 +340,11 @@ pub(crate) fn run(
 ) -> Result<Ran, pageon_env::NetError> {
     let settle_ms = options.settle_ms;
     let accept = options.dialogs == crate::DialogPolicy::Accept;
+    let init: Vec<&crate::load::InitScript> = options
+        .init_scripts
+        .iter()
+        .filter(|s| s.world.is_none())
+        .collect();
     let url = &client.url;
     let (doc_url, origin) = identity(client, &start);
     if let Some((p, context)) = start.page
@@ -352,6 +357,15 @@ pub(crate) fn run(
     parser.feed(text);
     let begin = |dom: &Rc<RefCell<Dom>>| -> Result<Run<'_>, pageon_env::NetError> {
         let (engine, realm) = realm(dom, client, env, net, accept, &start, (&doc_url, &origin))?;
+        // Client init scripts, before any of the document's own.
+        for s in &init {
+            engine.borrow_mut().run_script(
+                realm,
+                &s.source,
+                &format!("pageon-init-script-{}", s.id),
+                None,
+            );
+        }
         Ok(Run {
             engine,
             realm,
@@ -368,7 +382,7 @@ pub(crate) fn run(
             stylesheets_failed: 0,
         })
     };
-    let joins = start.page.is_some_and(|(p, _)| p.engine(&origin).is_some());
+    let joins = start.page.is_some_and(|(p, _)| p.engine(&origin).is_some()) || !init.is_empty();
     let mut run: Option<Run<'_>> = if joins { Some(begin(&dom)?) } else { None };
     while let Step::Script(node) = parser.step() {
         if run.is_none() {

@@ -174,7 +174,8 @@ Ids are stable and never reused. The fields are:
   - It ignores effective opacity, transforms, `-webkit-text-fill-color` and text inside images.
 - **P-11** The endpoint's per-run secret is in the WebSocket URL printed on stderr: a local
   process that can read the operator's terminal or process output, or reach `/json/*` when
-  `--discovery` is on, can still connect.
+  `--discovery` is on, can still connect. Such a client can also register init scripts; they
+  run only in that endpoint's pages, end with them, and are never recorded or replayed.
 - **P-13**
   - Writes are held by HTTP method only: a state-changing `GET` is sent (the summary counts
     it as a read).

@@ -467,9 +467,9 @@ fn errors_say_what_happened() {
     );
     let r = b.call(
         "script.addPreloadScript",
-        json!({"functionDeclaration": "() => {}"}),
+        json!({"functionDeclaration": "() => {}", "arguments": [{"type": "channel", "value": {"channel": "c"}}]}),
     );
-    assert_eq!(r["error"], "unsupported operation");
+    assert_eq!(r["error"], "unsupported operation", "channels: {r}");
     let r = b.call("browsingContext.navigate", json!({"context": a}));
     assert_eq!(r["error"], "invalid argument");
     let r = b.call(
@@ -498,6 +498,73 @@ fn errors_say_what_happened() {
     assert_eq!(out[0]["error"], "invalid argument");
     let out = b.raw(r#"{"method": "session.status"}"#);
     assert_eq!(out[0]["error"], "invalid argument");
+}
+
+#[test]
+fn preload_scripts_run_before_the_page() {
+    let session = Session::new(Replay::new(site(vec![
+        html(
+            "https://pre.test/",
+            "<p id=seen></p><script>seen.textContent = 'sees ' + window.stub</script>",
+        ),
+        html("https://pre.test/other", "<p>other</p>"),
+        html("https://pre.test/again", "<p>again</p>"),
+    ])));
+    let mut b = Bidi::started(&session);
+    let a = b.top();
+    let main = b.ok(
+        "script.addPreloadScript",
+        json!({"functionDeclaration": "() => { window.stub = 'stubbed' }"}),
+    );
+    let main = main["script"].as_str().unwrap_or_default().to_string();
+    assert!(main.starts_with("preload-"), "{main}");
+    b.ok(
+        "script.addPreloadScript",
+        json!({"functionDeclaration": "() => { window.helper = 'world' }", "sandbox": "helpers", "contexts": [a]}),
+    );
+    b.ok(
+        "browsingContext.navigate",
+        json!({"context": a, "url": "https://pre.test/", "wait": "complete"}),
+    );
+    let seen = b.eval(&a, "document.getElementById('seen').textContent");
+    assert_eq!(seen["value"], "sees stubbed", "{seen}");
+    assert_eq!(
+        b.eval(&a, "typeof window.helper")["value"],
+        "undefined",
+        "worlds stay apart"
+    );
+    let r = b.ok(
+        "script.evaluate",
+        json!({"expression": "window.helper", "target": {"context": a, "sandbox": "helpers"}, "awaitPromise": false}),
+    );
+    assert_eq!(r["result"]["value"], "world", "{r}");
+    // A second tab gets the unfiltered script, not the one scoped to the first.
+    let t = b.ok("browsingContext.create", json!({"type": "tab"}));
+    let t = t["context"].as_str().unwrap_or_default().to_string();
+    b.ok(
+        "browsingContext.navigate",
+        json!({"context": t, "url": "https://pre.test/other", "wait": "complete"}),
+    );
+    assert_eq!(b.eval(&t, "window.stub")["value"], "stubbed");
+    let r = b.ok(
+        "script.evaluate",
+        json!({"expression": "typeof window.helper", "target": {"context": t, "sandbox": "helpers"}, "awaitPromise": false}),
+    );
+    assert_eq!(r["result"]["value"], "undefined", "scoped to the first tab: {r}");
+    // Removed, it stops; unknown ids are named.
+    b.ok("script.removePreloadScript", json!({"script": main}));
+    b.ok(
+        "browsingContext.navigate",
+        json!({"context": a, "url": "https://pre.test/again", "wait": "complete"}),
+    );
+    assert_eq!(b.eval(&a, "typeof window.stub")["value"], "undefined");
+    let r = b.call("script.removePreloadScript", json!({"script": main}));
+    assert_eq!(r["error"], "no such script", "{r}");
+    let r = b.call(
+        "script.addPreloadScript",
+        json!({"functionDeclaration": "() => {}", "contexts": ["nope"]}),
+    );
+    assert_eq!(r["error"], "no such frame", "{r}");
 }
 
 #[test]

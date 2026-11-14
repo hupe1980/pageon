@@ -551,10 +551,10 @@ fn us2_storage_survives_loads_in_a_session() {
     let session = Session::new(&env);
     let opts = LoadOptions::default();
     session
-        .load("https://a.test/1", opts)
+        .load("https://a.test/1", opts.clone())
         .unwrap_or_else(|e| panic!("{e}"));
     let two = session
-        .load("https://a.test/2", opts)
+        .load("https://a.test/2", opts.clone())
         .unwrap_or_else(|e| panic!("{e}"));
     assert_eq!(out(&two), "v1 2 2 x k+n function");
     let other = session
@@ -615,7 +615,7 @@ fn us2_partitioned_cookies_stay_with_their_top_level_site() {
     let session = Session::new(&env);
     let opts = LoadOptions::default();
     let a = session
-        .load("https://a.test/", opts)
+        .load("https://a.test/", opts.clone())
         .unwrap_or_else(|e| panic!("{e}"));
     session
         .load("https://b.test/", opts)
@@ -787,8 +787,8 @@ fn us3_the_option_allows_private_destinations() {
     for target in PRIVATE {
         for (kind, body) in egress_pages(target) {
             let env = Capture::new(site(vec![html("http://pub.test/", &body)]));
-            let doc =
-                pageon::load("http://pub.test/", &env, allow).unwrap_or_else(|e| panic!("{e}"));
+            let doc = pageon::load("http://pub.test/", &env, allow.clone())
+                .unwrap_or_else(|e| panic!("{e}"));
             assert!(
                 !doc.requests()
                     .iter()

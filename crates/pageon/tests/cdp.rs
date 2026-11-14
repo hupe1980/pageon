@@ -1201,3 +1201,83 @@ fn allowing_every_origin_warns() {
     let err = String::from_utf8_lossy(&out.stderr);
     assert!(err.contains("warning: --allow-origin '*'"), "{err}");
 }
+
+/// Spec 033: init scripts run before the page's own scripts, in every new document and frame,
+/// script-less ones too; world scripts in their world; removal stops them (SR-001).
+#[test]
+fn init_scripts_run_before_the_page() {
+    let session = Session::new(Replay::new(site(vec![
+        html(
+            "https://init.test/",
+            "<p id=seen></p><iframe src=/frame></iframe><script>seen.textContent = 'first script sees ' + window.stub</script>",
+        ),
+        html("https://init.test/frame", "<p>frame</p>"),
+        html("https://init.test/static", "<p>no scripts</p>"),
+        html("https://init.test/after", "<p>after</p>"),
+    ])));
+    let mut c = Cdp::new(&session);
+    c.page("Page.enable", json!({}));
+    c.page("Runtime.enable", json!({}));
+    let r = c.page(
+        "Page.addScriptToEvaluateOnNewDocument",
+        json!({"source": "window.stub = 'stubbed'; window.runs = (window.runs || 0) + 1;"}),
+    );
+    let main = r["result"]["identifier"]
+        .as_str()
+        .unwrap_or_default()
+        .to_string();
+    assert!(!main.is_empty(), "{r}");
+    c.page(
+        "Page.addScriptToEvaluateOnNewDocument",
+        json!({"source": "throw new Error('init boom')"}),
+    );
+    c.page(
+        "Page.addScriptToEvaluateOnNewDocument",
+        json!({"source": "window.helper = 'world'", "worldName": "helpers"}),
+    );
+    c.page("Page.navigate", json!({"url": "https://init.test/"}));
+    let seen = c.eval("document.getElementById('seen').textContent");
+    assert_eq!(
+        seen["result"]["result"]["value"], "first script sees stubbed",
+        "{seen}"
+    );
+    let frame = c.eval("document.querySelector('iframe').contentWindow.stub");
+    assert_eq!(
+        frame["result"]["result"]["value"], "stubbed",
+        "the frame too: {frame}"
+    );
+    assert_eq!(
+        c.eval("window.helper === undefined")["result"]["result"]["value"],
+        true,
+        "worlds stay apart"
+    );
+    // The world's context has the helper.
+    let world = c
+        .events
+        .iter()
+        .filter(|e| e["method"] == "Runtime.executionContextCreated")
+        .filter(|e| e["params"]["context"]["name"] == "helpers")
+        .filter_map(|e| e["params"]["context"]["id"].as_i64())
+        .next_back()
+        .unwrap_or_else(|| panic!("no helpers context"));
+    let h = c.page(
+        "Runtime.evaluate",
+        json!({"expression": "window.helper", "contextId": world, "returnByValue": true}),
+    );
+    assert_eq!(h["result"]["result"]["value"], "world", "{h}");
+    c.page("Page.navigate", json!({"url": "https://init.test/static"}));
+    assert_eq!(
+        c.eval("window.stub")["result"]["result"]["value"],
+        "stubbed",
+        "script-less pages too"
+    );
+    c.page(
+        "Page.removeScriptToEvaluateOnNewDocument",
+        json!({"identifier": main}),
+    );
+    c.page("Page.navigate", json!({"url": "https://init.test/after"}));
+    assert_eq!(
+        c.eval("typeof window.stub")["result"]["result"]["value"],
+        "undefined"
+    );
+}

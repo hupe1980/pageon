@@ -27,7 +27,7 @@ export function site(exchanges) {
   return {
     version: 1, user_agent: '', exchanges,
     clock: Array.from({ length: 4096 }, (_, i) => 1_800_000_000_000 + i * 1000),
-    random: Array.from({ length: 64 }, (_, i) => i + 1),
+    random: Array.from({ length: 1024 }, (_, i) => i + 1),
   };
 }
 

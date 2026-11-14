@@ -166,14 +166,6 @@ const UNSUPPORTED: &[(&str, &str)] = &[
         "request interception is not available; limit where requests go with pageon's egress policy (--origin, --approve) or decide per request with --guard COMMAND",
     ),
     (
-        "script.addPreloadScript",
-        "running client code before the page's own scripts is not supported; evaluate after browsingContext.navigate",
-    ),
-    (
-        "script.removePreloadScript",
-        "preload scripts are not supported",
-    ),
-    (
         "browser.createUserContext",
         "pageon has one user context per process; start another `pageon cdp` for isolation",
     ),
@@ -230,6 +222,19 @@ pub struct Session<'s, E: Env> {
     requests: HashMap<String, Request>,
     input: HashMap<String, input::State>,
     out: Vec<String>,
+    /// Preload scripts, and where each is registered (CDP session, identifier).
+    preload: Vec<Preload>,
+    next_preload: u64,
+}
+
+/// A `script.addPreloadScript` registration.
+struct Preload {
+    id: String,
+    source: String,
+    sandbox: Option<String>,
+    /// Top-level contexts it is for (`None`: every one, later ones too).
+    contexts: Option<Vec<String>>,
+    applied: Vec<(String, String)>,
 }
 
 impl<'s, E: Env> Session<'s, E> {
@@ -254,6 +259,8 @@ impl<'s, E: Env> Session<'s, E> {
             requests: HashMap::new(),
             input: HashMap::new(),
             out: Vec::new(),
+            preload: Vec::new(),
+            next_preload: 0,
         }
     }
 
@@ -352,6 +359,8 @@ impl<'s, E: Env> Session<'s, E> {
             "script.evaluate" | "script.callFunction" => return self.run_script(id, method, p),
             "script.disown" => self.disown(p),
             "script.getRealms" => self.get_realms(p),
+            "script.addPreloadScript" => self.add_preload(p),
+            "script.removePreloadScript" => self.remove_preload(p),
             // As browsingContext.setViewport: Puppeteer sends it with every viewport.
             "emulation.setScreenOrientationOverride" => Ok(json!({})),
             "input.performActions" => self.perform_actions(p),
@@ -693,8 +702,108 @@ impl<'s, E: Env> Session<'s, E> {
     }
 
     /// A new tab: its context, its frames, then its realms.
+    /// `script.addPreloadScript`: the function runs as `(fn)()` in every new document of the
+    /// matching top-level contexts (and later ones without a filter), via CDP.
+    fn add_preload(&mut self, p: &Json) -> Answer {
+        let f = p["functionDeclaration"]
+            .as_str()
+            .ok_or_else(|| BidiError::invalid("functionDeclaration: a string is required"))?;
+        if p["arguments"].as_array().is_some_and(|a| !a.is_empty()) {
+            return Err(BidiError::unsupported(
+                "preload script arguments (channels) are not supported; expose data with script.callFunction after navigation instead",
+            ));
+        }
+        if let Some(u) = p["userContexts"].as_array()
+            && u.iter().any(|x| x != "default")
+        {
+            return Err(BidiError::invalid(
+                "userContexts: pageon has one user context, \"default\"",
+            ));
+        }
+        let contexts: Option<Vec<String>> = p["contexts"].as_array().map(|a| {
+            a.iter()
+                .filter_map(|c| c.as_str().map(str::to_string))
+                .collect()
+        });
+        if let Some(cs) = &contexts {
+            for c in cs {
+                if !self
+                    .contexts
+                    .iter()
+                    .any(|x| x.id == *c && x.parent.is_none())
+                {
+                    return Err(BidiError::no_frame(c));
+                }
+            }
+        }
+        self.next_preload += 1;
+        let mut pre = Preload {
+            id: format!("preload-{}", self.next_preload),
+            source: format!("({f})()"),
+            sandbox: p["sandbox"].as_str().map(str::to_string),
+            contexts,
+            applied: Vec::new(),
+        };
+        let sessions: Vec<String> = self
+            .contexts
+            .iter()
+            .filter(|c| {
+                c.parent.is_none() && pre.contexts.as_ref().is_none_or(|cs| cs.contains(&c.id))
+            })
+            .map(|c| c.session.clone())
+            .collect();
+        for s in sessions {
+            self.apply_preload(&mut pre, &s);
+        }
+        let id = pre.id.clone();
+        self.preload.push(pre);
+        Ok(json!({"script": id}))
+    }
+
+    fn apply_preload(&mut self, pre: &mut Preload, session: &str) {
+        let mut params = json!({"source": pre.source});
+        if let Some(w) = &pre.sandbox {
+            params["worldName"] = json!(w);
+        }
+        if let Cdp::Ok(r) = self.cdp(
+            "Page.addScriptToEvaluateOnNewDocument",
+            params,
+            Some(session),
+        ) && let Some(ident) = r["identifier"].as_str()
+        {
+            pre.applied.push((session.to_string(), ident.to_string()));
+        }
+    }
+
+    /// `script.removePreloadScript`.
+    fn remove_preload(&mut self, p: &Json) -> Answer {
+        let id = p["script"]
+            .as_str()
+            .ok_or_else(|| BidiError::invalid("script: a preload script id is required"))?;
+        let i = self
+            .preload
+            .iter()
+            .position(|x| x.id == id)
+            .ok_or_else(|| BidiError::new("no such script", format!("no preload script {id:?}")))?;
+        let pre = self.preload.remove(i);
+        for (session, ident) in pre.applied {
+            let _ = self.cdp(
+                "Page.removeScriptToEvaluateOnNewDocument",
+                json!({"identifier": ident}),
+                Some(&session),
+            );
+        }
+        Ok(json!({}))
+    }
+
     fn attached(&mut self, session: &str, target: &Json) {
         let id = target["targetId"].as_str().unwrap_or_default().to_string();
+        // Preload scripts without a context filter reach new tabs too.
+        let mut pending = std::mem::take(&mut self.preload);
+        for pre in pending.iter_mut().filter(|p| p.contexts.is_none()) {
+            self.apply_preload(pre, session);
+        }
+        self.preload = pending;
         self.add_context(Context {
             id: id.clone(),
             parent: None,

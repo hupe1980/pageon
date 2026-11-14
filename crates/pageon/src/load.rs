@@ -11,7 +11,7 @@ use url::Url;
 use crate::{Document, Encoding, LoadError, Summary};
 
 /// Options of a load.
-#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(default)]
 pub struct LoadOptions {
     /// Maximum redirects followed.
@@ -32,6 +32,22 @@ pub struct LoadOptions {
     /// file); the agent-facing servers turn it off unless started with `--allow-files`, so a
     /// hijacked agent cannot open the disk. Web pages never load `file:` URLs either way.
     pub allow_files: bool,
+    /// Client code run in every new document before its own scripts (CDP
+    /// `Page.addScriptToEvaluateOnNewDocument`, BiDi `script.addPreloadScript`), in order.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub init_scripts: Vec<InitScript>,
+}
+
+/// A script a protocol client registered to run in every new document.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct InitScript {
+    /// The registration's identifier.
+    pub id: String,
+    /// JavaScript source.
+    pub source: String,
+    /// The isolated world it runs in (`None`: the page's main world, before its scripts).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub world: Option<String>,
 }
 
 /// How page dialogs are answered.
@@ -54,6 +70,7 @@ impl Default for LoadOptions {
             dialogs: DialogPolicy::Dismiss,
             robots: true,
             allow_files: true,
+            init_scripts: Vec::new(),
         }
     }
 }
@@ -128,7 +145,7 @@ pub(crate) fn open(
         page: Some((&page, 0)),
         ..start
     };
-    let mut loaded = fetch(input, env, net, options, first)?;
+    let mut loaded = fetch(input, env, net, options.clone(), first)?;
     let mut chain = vec![input.to_string()];
     loop {
         let Loaded::Page(doc) = &mut loaded else {
@@ -150,10 +167,10 @@ pub(crate) fn open(
             page: Some((&page, 0)),
             ..start
         };
-        loaded = fetch(&nav.url, env, net, options, next)?;
+        loaded = fetch(&nav.url, env, net, options.clone(), next)?;
     }
     if let Loaded::Page(doc) = &mut loaded {
-        crate::frames::load_all(doc, Some(env), net, options, Some(&page));
+        crate::frames::load_all(doc, Some(env), net, options.clone(), Some(&page));
         crate::frames::connect(doc, &page, env, net, options);
         if start.keep {
             doc.page = Some(Rc::new(page));
