@@ -198,7 +198,9 @@ class Browser:
         self._stderr_done = threading.Thread(target=self._drain_stderr, daemon=True)
         self._stderr_done.start()
         self._next = 0
-        self._tab: Tab | None = None
+        # The open tabs by handle (t1, t2, …) and the one pageon acts on.
+        self._tabs: dict[str, Tab] = {}
+        self._current: str | None = None
         self._request(
             "initialize",
             {
@@ -212,11 +214,23 @@ class Browser:
         self._notify("notifications/initialized")
 
     def open(self, url: str) -> Tab:
-        """Load ``url`` in the tab (there is one per browser) and return it."""
+        """Load ``url`` in the current tab (the first one when none is open) and return it."""
         result = self._call("browser_open", {"url": url})
-        self._tab = Tab(self)
-        self._tab.opened = _outcome(result)
-        return self._tab
+        tab = self._tabs[result["structuredContent"]["tab"]]
+        tab.opened = _outcome(result)
+        return tab
+
+    def new_tab(self, url: str) -> Tab:
+        """Open ``url`` in a new tab (at most 8) and return it; the other tabs keep their pages."""
+        result = self._call("browser_tabs", {"action": "new", "url": url})
+        tab = self._tabs[result["structuredContent"]["tab"]]
+        tab.opened = _outcome(result)
+        return tab
+
+    @property
+    def tabs(self) -> list[Tab]:
+        """The open tabs, in opening order."""
+        return list(self._tabs.values())
 
     def close(self) -> None:
         """End the session; ``save_state`` is written now."""
@@ -302,29 +316,64 @@ class Browser:
         self._send({"jsonrpc": "2.0", "id": req["id"], "result": result})
 
     def _call(
-        self, tool: str, args: dict[str, Any], on_progress: Callable[[dict[str, Any]], None] | None = None
+        self,
+        tool: str,
+        args: dict[str, Any],
+        on_progress: Callable[[dict[str, Any]], None] | None = None,
+        tab: Tab | None = None,
     ) -> dict[str, Any]:
+        if tab is not None and tab.id != self._current:
+            if tab.id not in self._tabs:
+                raise ActionError("unknown_tab", f"tab {tab.id} is closed", "open one with browser.new_tab(url)")
+            self._call("browser_tabs", {"action": "select", "tab": tab.id})
         params: dict[str, Any] = {"name": tool, "arguments": args}
         if on_progress:
             params["_meta"] = {"progressToken": self._next + 1}
         result = self._request("tools/call", params, on_progress)
+        self._track(result)
         if result.get("isError"):
             e = result.get("structuredContent", {}).get("error", {})
             raise ActionError(e.get("kind", "engine"), e.get("message", _text(result)), e.get("guidance", ""))
         return result
 
 
+    def _track(self, result: dict[str, Any]) -> None:
+        """Follows pageon's tabs: every reply names the current one; a list names them all."""
+        sc = result.get("structuredContent", {})
+        if "tabs" in sc:
+            self._tabs = {t["id"]: self._tabs.get(t["id"]) or Tab(self, t["id"]) for t in sc["tabs"]}
+            self._current = next((t["id"] for t in sc["tabs"] if t["current"]), None)
+        if "tab" in sc:
+            self._tabs.setdefault(sc["tab"], Tab(self, sc["tab"]))
+            self._current = sc["tab"]
+
+
 class Tab:
-    """The page. Actions return an :class:`Outcome` or raise :class:`ActionError`."""
+    """A page in its own tab. Actions return an :class:`Outcome` or raise :class:`ActionError`."""
 
     opened: Outcome
 
-    def __init__(self, browser: Browser) -> None:
+    def __init__(self, browser: Browser, id: str) -> None:
         self._b = browser
+        self.id = id
+        """The tab's handle (``t1``, ``t2``, …), never reused in a session."""
+
+    def __repr__(self) -> str:
+        return f"<Tab {self.id}>"
+
+    def close(self) -> None:
+        """Close the tab; the most recently used other tab becomes current."""
+        if self.id in self._b._tabs:
+            self._b._call("browser_tabs", {"action": "close", "tab": self.id})
+
+    def _call(
+        self, tool: str, args: dict[str, Any], on_progress: Callable[[dict[str, Any]], None] | None = None
+    ) -> dict[str, Any]:
+        return self._b._call(tool, args, on_progress, tab=self)
 
     def observe(self, full: bool = False) -> str:
         """What changed since the last observation (``full=True``: the whole page)."""
-        return _text(self._b._call("browser_observe", {"full": full}))
+        return _text(self._call("browser_observe", {"full": full}))
 
     def click(self, ref: str) -> Outcome:
         return self._act("browser_click", {"ref": ref})
@@ -374,7 +423,7 @@ class Tab:
         """Goes back to an earlier step (default: undo the last one), exactly and without sending
         anything again; returns the observation there, with the refs you had then."""
         args: dict[str, Any] = {} if step is None else {"step": step}
-        return _text(self._b._call("browser_reset", args))
+        return _text(self._call("browser_reset", args))
 
     def call_tool(self, name: str, origin: str | None = None, **arguments: Any) -> Any:
         """Calls a tool the page declares (WebMCP), listed as ``tool "NAME"`` lines at
@@ -382,7 +431,7 @@ class Tab:
         args: dict[str, Any] = {"name": name, "arguments": arguments}
         if origin is not None:
             args["origin"] = origin
-        r = self._b._call("browser_call_tool", args)
+        r = self._call("browser_call_tool", args)
         if r.get("isError"):
             e = r.get("structuredContent", {}).get("error", {})
             raise ActionError(e.get("kind", "engine"), e.get("message", _text(r)), e.get("guidance", ""))
@@ -397,13 +446,13 @@ class Tab:
     def workflow_save(self) -> dict[str, Any]:
         """This session's steps as a workflow: elements named by role and name, typed
         values as parameters. Store it, then run it with :meth:`workflow_run`."""
-        return self._b._call("browser_workflow_save", {}).get("structuredContent", {}).get("workflow", {})
+        return self._call("browser_workflow_save", {}).get("structuredContent", {}).get("workflow", {})
 
     def workflow_run(self, workflow: dict[str, Any], **params: str) -> dict[str, Any]:
         """Runs a workflow without deciding each step; returns the report (``status`` is
         ``done`` or ``drifted``, with ``stop`` saying where, why and what the page offers).
         After a drift the page stays there: finish by hand, then :meth:`workflow_save`."""
-        r = self._b._call("browser_workflow_run", {"workflow": workflow, "params": params})
+        r = self._call("browser_workflow_run", {"workflow": workflow, "params": params})
         if r.get("isError"):
             e = r.get("structuredContent", {}).get("error", {})
             raise ActionError(e.get("kind", "engine"), e.get("message", _text(r)), e.get("guidance", ""))
@@ -413,7 +462,7 @@ class Tab:
         """Runs ``actions`` (pageon's action text: ``click e5``, ``type e3 "ada"``) on a fork of
         the page and returns what they would do; the page, its storage and your refs stay as
         they are, and a request that could change something is held, never sent."""
-        r = self._b._call("browser_lookahead", {"actions": list(actions)})
+        r = self._call("browser_lookahead", {"actions": list(actions)})
         d = r.get("structuredContent", {})
         return Lookahead(
             _text(r),
@@ -426,7 +475,7 @@ class Tab:
 
     def view(self, kind: str = "markdown") -> str:
         """The page as ``markdown``, ``text``, ``requests`` or ``errors``."""
-        return _text(self._b._call("browser_view", {"kind": kind}))
+        return _text(self._call("browser_view", {"kind": kind}))
 
     def screenshot(
         self, marks: bool = False, full_page: bool = False, format: str = "png", mask: bool = False
@@ -434,7 +483,7 @@ class Tab:
         """The page as an image; ``marks=True`` labels every visible element with its ref;
         ``mask=True`` paints over third-party frames and text a person cannot read."""
         args = {"marks": marks, "full_page": full_page, "format": format, "mask": mask}
-        return _screenshot(self._b._call("browser_screenshot", args))
+        return _screenshot(self._call("browser_screenshot", args))
 
     def takeover(self, reason: str, timeout_s: int = 600, on_url: Callable[[str], None] | None = None) -> Outcome:
         """Hands the page to a person (CAPTCHA, login, second factor) and waits until they
@@ -448,14 +497,14 @@ class Tab:
             if isinstance(url, str) and url.startswith("http://127.0.0.1:"):
                 (on_url or (lambda u: print(f"pageon needs you ({reason!r}): open {u}", flush=True)))(url)
 
-        return _outcome(self._b._call("browser_takeover", {"reason": reason, "timeout_s": timeout_s}, announce))
+        return _outcome(self._call("browser_takeover", {"reason": reason, "timeout_s": timeout_s}, announce))
 
     def crop(self, ref: str, format: str = "png") -> Screenshot:
         """One element's pixels, with ``provenance`` (where they come from)."""
-        return _screenshot(self._b._call("browser_screenshot", {"ref": ref, "format": format}))
+        return _screenshot(self._call("browser_screenshot", {"ref": ref, "format": format}))
 
     def _act(self, tool: str, args: dict[str, Any]) -> Outcome:
-        return _outcome(self._b._call(tool, args))
+        return _outcome(self._call(tool, args))
 
 
 def _screenshot(result: dict[str, Any]) -> Screenshot:

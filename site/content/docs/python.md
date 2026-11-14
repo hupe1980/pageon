@@ -67,6 +67,24 @@ message.
 | `call_tool(name, **arguments)` | The result of a page's [WebMCP](@/docs/webmcp.md) tool |
 | `workflow_save()`, `workflow_run(workflow, **params)` | [Workflows](@/docs/workflows.md) |
 | `takeover(reason)` | Waits while a person uses a live view |
+| `close()` | Closes the tab |
+
+## Several tabs
+
+`browser.open(url)` loads into the current tab; `browser.new_tab(url)` opens another (at most
+8) and returns it. Each `Tab` acts on its own page whichever was used last; `tab.id` is its
+handle (`t1`, `t2`, …) and `browser.tabs` lists the open ones.
+
+```python
+results = browser.open("https://shop.example/search?q=lamp")
+item = browser.new_tab("https://shop.example/item/42")
+print(item.observe())
+results.click("e7")                  # back on the results page, its refs intact
+item.close()
+```
+
+`reset` and `workflow_save` rebuild one tab, so they refuse once a session has had several tabs
+open.
 
 ## Without a browser
 

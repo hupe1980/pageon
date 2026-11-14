@@ -1,6 +1,6 @@
 +++
 title = "MCP server"
-description = "Use pageon as an MCP browser for Claude Code, Claude Desktop, Cursor or any MCP host: nineteen browser tools, typed outcomes, step numbers, reset, lookahead and human takeover."
+description = "Use pageon as an MCP browser for Claude Code, Claude Desktop, Cursor or any MCP host: twenty browser tools, typed outcomes, step numbers, reset, lookahead and human takeover."
 weight = 11
 [extra]
 group = "Interfaces"
@@ -54,6 +54,7 @@ progress. Clients on older revisions use stdio. `--save-state` needs stdio.
 | Group | Tools |
 | --- | --- |
 | Read | `browser_open`, `browser_observe`, `browser_view` (`markdown`, `text`, `requests`, `errors`), `browser_screenshot` |
+| Tabs | `browser_tabs` (`new`, `select`, `close`, `list`) |
 | Act | `browser_click`, `browser_type`, `browser_upload`, `browser_press`, `browser_select`, `browser_hover`, `browser_scroll`, `browser_wait`, `browser_back`, `browser_forward`, `browser_call_tool` |
 | Explore | `browser_lookahead`, `browser_reset` |
 | Reuse | `browser_workflow_save`, `browser_workflow_run` |
@@ -71,6 +72,18 @@ ok click e12 · 1 request(s) · settled idle after 40 ms
 ~ link e9 "Cart (1)"
 step 4
 ```
+
+## Several tabs
+
+Every tool acts on the current tab. `browser_tabs {"action": "new", "url": …}` opens another
+(at most 8) and makes it current; `select` switches back with what changed there since the agent
+last looked; `close` closes one; `list` shows them. Handles are `t1`, `t2`, … and never reused.
+While several tabs are open, every reply ends with its tab (`step 7 · tab t2`), and
+`structuredContent.tab` always names the current one. Refs belong to their tab.
+
+Popups (`window.open`, `target=_blank`) are reported, not opened: the reply says how to open
+one as a tab, so nothing loads that the agent did not choose. `browser_reset` and
+`browser_workflow_save` rebuild one tab, so they refuse once a session has had several tabs.
 
 ## Going back and looking ahead
 

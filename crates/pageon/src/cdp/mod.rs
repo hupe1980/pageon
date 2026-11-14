@@ -246,7 +246,7 @@ impl<'s, E: Env> Session<'s, E> {
     pub fn pages(&self) -> Vec<(String, String, String)> {
         self.targets
             .iter()
-            .map(|t| (t.id.clone(), title(&t.tab), t.tab.url().to_string()))
+            .map(|t| (t.id.clone(), t.tab.title(), t.tab.url().to_string()))
             .collect()
     }
 
@@ -376,7 +376,7 @@ impl<'s, E: Env> Session<'s, E> {
         json!({
             "targetId": t.id,
             "type": "page",
-            "title": title(&t.tab),
+            "title": t.tab.title(),
             "url": t.tab.url(),
             "attached": t.session_id.is_some(),
             "canAccessOpener": false,
@@ -851,24 +851,4 @@ fn unknown(method: &str) -> CdpError {
             "'{method}' wasn't found (pageon implements the CDP subset Puppeteer and Playwright use; see `pageon cdp --help`)"
         ),
     )
-}
-
-/// The document's title (`<title>` text, whitespace collapsed).
-fn title<E: Env>(tab: &Tab<'_, E>) -> String {
-    let dom = &tab.document().dom;
-    dom.traverse(dom.root())
-        .find_map(|e| match e {
-            pageon_dom::Edge::Enter(n) if dom.get(n).is_some_and(|x| x.is_html("title")) => Some(n),
-            _ => None,
-        })
-        .map(|t| {
-            let mut s = String::new();
-            for c in dom.children(t) {
-                if let Some(pageon_dom::NodeData::Text(x)) = dom.get(c).map(|n| &n.data) {
-                    s.push_str(x);
-                }
-            }
-            s.split_whitespace().collect::<Vec<_>>().join(" ")
-        })
-        .unwrap_or_default()
 }

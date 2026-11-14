@@ -352,3 +352,26 @@ def test_upload_a_staged_file(tmp_path: Path, sandbox: bool) -> None:
         with pytest.raises(ActionError) as err:
             tab.upload(ref(page, "button", "CV"), "/etc/passwd")
         assert "is not staged" in str(err.value)
+
+
+@pytest.mark.parametrize("sandbox", [True, False])
+def test_tabs_keep_their_pages(shop: Path, sandbox: bool) -> None:
+    with Browser(replay=shop, sandbox=sandbox, binary=BIN) as browser:
+        home = browser.open("https://shop.test/")
+        assert home.id == "t1"
+        size = ref(home.observe(full=True), "combobox", "Size")
+        home.select(size, "M")
+        login = browser.new_tab("https://shop.test/login")
+        assert login.id == "t2"
+        assert [t.id for t in browser.tabs] == ["t1", "t2"]
+        # Each Tab acts on its own page, whichever is current.
+        assert 'combobox' in home.observe(full=True) and '"M"' in home.observe(full=True)
+        user = ref(login.observe(full=True), "textbox", "User")
+        login.type(user, "ada")
+        assert "ada" in login.observe(full=True)
+        login.close()
+        assert [t.id for t in browser.tabs] == ["t1"]
+        with pytest.raises(ActionError) as e:
+            login.observe()
+        assert e.value.kind == "unknown_tab"
+        assert "Shop" in home.observe(full=True)

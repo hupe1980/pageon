@@ -34,7 +34,8 @@ page, call browser_screenshot (marks: true labels every element with its ref). T
 browser_reset: it rebuilds an earlier step exactly and never re-sends a request. To see what \
 actions would do without doing them, call browser_lookahead: the page is unchanged and writes are held. To \
 repeat a task without deciding each step, save it with browser_workflow_save and run it later \
-with browser_workflow_run; when a run drifts, finish the task by hand and save again. When the \
+with browser_workflow_run; when a run drifts, finish the task by hand and save again. To keep a \
+page while working in another (a popup, a second site), use browser_tabs. When the \
 page declares tools (`tool \"NAME\"` lines first in the view), call them with browser_call_tool \
 instead of operating the page's UI.";
 
@@ -60,6 +61,110 @@ trait Backend {
     fn fresh(&mut self) -> Result<(), String>;
     /// What `actions` would do, on a fork of the content process.
     fn lookahead(&mut self, actions: Vec<Action>) -> Result<crate::Lookahead, String>;
+    /// Opens `url` in a new tab, which becomes current.
+    fn new_tab(&mut self, url: &str) -> Result<Outcome, LoadError>;
+    /// The open tabs in opening order: handle, URL, title.
+    fn list(&mut self) -> Vec<(u32, String, String)>;
+    /// The tabs' handles and state.
+    fn tabs(&self) -> &dyn TabSet;
+    /// Makes tab `h` current.
+    fn select(&mut self, h: u32) -> bool;
+    /// Closes tab `h`; the most recently used other tab becomes current.
+    fn close(&mut self, h: u32) -> bool;
+}
+
+/// What the server reads about the tabs, whatever a backend keeps in them.
+trait TabSet {
+    fn current_id(&self) -> Option<u32>;
+    fn count(&self) -> usize;
+    /// The session has had more than one tab open at once.
+    fn several(&self) -> bool;
+}
+
+/// The session's tabs: handles `t1`, `t2`, … in opening order, never reused; the most
+/// recently used last, which is the current one.
+struct Tabs<T> {
+    list: Vec<(u32, T)>,
+    next: u32,
+    several: bool,
+    /// The handle of the tab a reset rebuilds (the next tab opened gets it back).
+    rebuilt: Option<u32>,
+}
+
+impl<T> Tabs<T> {
+    fn new() -> Self {
+        Self {
+            list: Vec::new(),
+            next: 0,
+            several: false,
+            rebuilt: None,
+        }
+    }
+
+    fn current(&self) -> Option<&T> {
+        self.list.last().map(|(_, t)| t)
+    }
+
+    fn current_mut(&mut self) -> Option<&mut T> {
+        self.list.last_mut().map(|(_, t)| t)
+    }
+
+    fn take_current(&mut self) -> Option<(u32, T)> {
+        self.list.pop()
+    }
+
+    /// Adds a tab as the current one, under `handle` or the next new handle.
+    fn put(&mut self, handle: Option<u32>, t: T) {
+        let h = handle.or(self.rebuilt.take()).unwrap_or_else(|| {
+            self.next += 1;
+            self.next
+        });
+        if !self.list.is_empty() {
+            self.several = true;
+        }
+        self.list.push((h, t));
+    }
+
+    fn select(&mut self, h: u32) -> bool {
+        let Some(i) = self.list.iter().position(|(x, _)| *x == h) else {
+            return false;
+        };
+        let t = self.list.remove(i);
+        self.list.push(t);
+        true
+    }
+
+    fn remove(&mut self, h: u32) -> Option<T> {
+        let i = self.list.iter().position(|(x, _)| *x == h)?;
+        Some(self.list.remove(i).1)
+    }
+
+    fn in_order(&self) -> Vec<(u32, &T)> {
+        let mut v: Vec<_> = self.list.iter().map(|(h, t)| (*h, t)).collect();
+        v.sort_by_key(|(h, _)| *h);
+        v
+    }
+
+    /// Drops every tab for a reset, which rebuilds the current one under its handle.
+    fn clear(&mut self) {
+        self.rebuilt = self.list.last().map(|(h, _)| *h);
+        self.list.clear();
+        self.several = false;
+    }
+}
+
+impl<T> TabSet for Tabs<T> {
+    fn current_id(&self) -> Option<u32> {
+        self.list.last().map(|(h, _)| *h)
+    }
+
+    fn count(&self) -> usize {
+        self.list.len()
+    }
+
+    fn several(&self) -> bool {
+        self.several
+    }
 }
 
 /// Re-runs steps through the backend (a reset).
@@ -109,7 +214,7 @@ impl crate::takeover::Driver for Drive<'_> {
 
 struct Caged<E: Env> {
     sandbox: Sandbox<E>,
-    tab: Option<u32>,
+    tabs: Tabs<u32>,
     options: LoadOptions,
     budget: Budget,
     state: Option<StorageState>,
@@ -117,35 +222,40 @@ struct Caged<E: Env> {
 
 impl<E: Env> Backend for Caged<E> {
     fn open(&mut self, url: &str) -> Result<Outcome, LoadError> {
-        if let Some(t) = self.tab.take() {
+        let handle = self.tabs.take_current().map(|(h, t)| {
             self.sandbox.close_tab(t);
-        }
+            h
+        });
         let (id, opened) = self.sandbox.open_tab(url, self.options.clone())?;
-        self.tab = Some(id);
+        self.tabs.put(handle, id);
         Ok(opened)
     }
 
     fn observe(&mut self, full: bool) -> Result<String, String> {
-        let t = self.tab.ok_or_else(no_page)?;
+        let t = self.tabs.current().copied().ok_or_else(no_page)?;
         self.sandbox.observe_tab(t, full).map_err(|e| e.to_string())
     }
 
     fn act(&mut self, action: Action) -> Result<Outcome, ActionError> {
         let t = self
-            .tab
+            .tabs
+            .current()
+            .copied()
             .ok_or_else(|| ActionError::Unsupported(no_page()))?;
         self.sandbox.act_tab(t, action)
     }
 
     fn input(&mut self, action: Action) -> Result<Outcome, ActionError> {
         let t = self
-            .tab
+            .tabs
+            .current()
+            .copied()
             .ok_or_else(|| ActionError::Unsupported(no_page()))?;
         self.sandbox.act_tab_as_person(t, action)
     }
 
     fn view(&mut self, kind: Dump) -> Result<String, String> {
-        let t = self.tab.ok_or_else(no_page)?;
+        let t = self.tabs.current().copied().ok_or_else(no_page)?;
         self.sandbox
             .view_tab(t, kind, Viewport::default(), self.budget)
             .map_err(|e| e.to_string())
@@ -156,11 +266,11 @@ impl<E: Env> Backend for Caged<E> {
     }
 
     fn has_tab(&self) -> bool {
-        self.tab.is_some()
+        self.tabs.current().is_some()
     }
 
     fn screenshot(&mut self, o: &crate::ScreenshotOptions) -> Result<crate::Image, PaintError> {
-        let t = self.tab.ok_or_else(no_page_paint)?;
+        let t = self.tabs.current().copied().ok_or_else(no_page_paint)?;
         let o = crate::ScreenshotOptions {
             budget: Some(self.budget),
             ..*o
@@ -169,7 +279,7 @@ impl<E: Env> Backend for Caged<E> {
     }
 
     fn crop(&mut self, r: &str, format: crate::Format) -> Result<crate::Image, PaintError> {
-        let t = self.tab.ok_or_else(no_page_paint)?;
+        let t = self.tabs.current().copied().ok_or_else(no_page_paint)?;
         self.sandbox.crop_tab(t, r, 8.0, format, 1.0)
     }
 
@@ -178,14 +288,14 @@ impl<E: Env> Backend for Caged<E> {
     }
 
     fn lookahead(&mut self, actions: Vec<Action>) -> Result<crate::Lookahead, String> {
-        let t = self.tab.ok_or_else(no_page)?;
+        let t = self.tabs.current().copied().ok_or_else(no_page)?;
         self.sandbox
             .lookahead_tab(t, actions)
             .map_err(|e| e.to_string())
     }
 
     fn fresh(&mut self) -> Result<(), String> {
-        self.tab = None;
+        self.tabs.clear();
         self.sandbox.clear().map_err(|e| e.to_string())?;
         if let Some(s) = &self.state {
             self.sandbox
@@ -194,11 +304,49 @@ impl<E: Env> Backend for Caged<E> {
         }
         Ok(())
     }
+    fn new_tab(&mut self, url: &str) -> Result<Outcome, LoadError> {
+        let (id, opened) = self.sandbox.open_tab(url, self.options.clone())?;
+        self.tabs.put(None, id);
+        Ok(opened)
+    }
+
+    fn list(&mut self) -> Vec<(u32, String, String)> {
+        let ids: Vec<(u32, u32)> = self
+            .tabs
+            .in_order()
+            .into_iter()
+            .map(|(h, t)| (h, *t))
+            .collect();
+        ids.into_iter()
+            .map(|(h, t)| {
+                let (url, title) = self.sandbox.page_tab(t).unwrap_or_default();
+                (h, url, title)
+            })
+            .collect()
+    }
+
+    fn tabs(&self) -> &dyn TabSet {
+        &self.tabs
+    }
+
+    fn select(&mut self, h: u32) -> bool {
+        self.tabs.select(h)
+    }
+
+    fn close(&mut self, h: u32) -> bool {
+        match self.tabs.remove(h) {
+            Some(t) => {
+                self.sandbox.close_tab(t);
+                true
+            }
+            None => false,
+        }
+    }
 }
 
 struct Local<'s, E: Env> {
     session: &'s Session<E>,
-    tab: Option<Tab<'s, E>>,
+    tabs: Tabs<Tab<'s, E>>,
     options: LoadOptions,
     budget: Budget,
     state: Option<StorageState>,
@@ -206,37 +354,37 @@ struct Local<'s, E: Env> {
 
 impl<E: Env> Backend for Local<'_, E> {
     fn open(&mut self, url: &str) -> Result<Outcome, LoadError> {
-        self.tab = None;
+        let handle = self.tabs.take_current().map(|(h, _)| h);
         let mut tab = self.session.open(url, self.options.clone())?;
         tab.set_view(self.budget, Mode::Diff);
         let opened = tab.opened().clone();
-        self.tab = Some(tab);
+        self.tabs.put(handle, tab);
         Ok(opened)
     }
 
     fn observe(&mut self, full: bool) -> Result<String, String> {
-        let t = self.tab.as_mut().ok_or_else(no_page)?;
+        let t = self.tabs.current_mut().ok_or_else(no_page)?;
         Ok(if full { t.observe_full() } else { t.observe() })
     }
 
     fn act(&mut self, action: Action) -> Result<Outcome, ActionError> {
         let t = self
-            .tab
-            .as_mut()
+            .tabs
+            .current_mut()
             .ok_or_else(|| ActionError::Unsupported(no_page()))?;
         t.act(action)
     }
 
     fn input(&mut self, action: Action) -> Result<Outcome, ActionError> {
         let t = self
-            .tab
-            .as_mut()
+            .tabs
+            .current_mut()
             .ok_or_else(|| ActionError::Unsupported(no_page()))?;
         t.act_as_person(action)
     }
 
     fn view(&mut self, kind: Dump) -> Result<String, String> {
-        let t = self.tab.as_ref().ok_or_else(no_page)?;
+        let t = self.tabs.current().ok_or_else(no_page)?;
         Ok(t.view(kind, Viewport::default(), self.budget))
     }
 
@@ -245,11 +393,11 @@ impl<E: Env> Backend for Local<'_, E> {
     }
 
     fn has_tab(&self) -> bool {
-        self.tab.is_some()
+        self.tabs.current().is_some()
     }
 
     fn screenshot(&mut self, o: &crate::ScreenshotOptions) -> Result<crate::Image, PaintError> {
-        let t = self.tab.as_mut().ok_or_else(no_page_paint)?;
+        let t = self.tabs.current_mut().ok_or_else(no_page_paint)?;
         t.screenshot(&crate::ScreenshotOptions {
             budget: Some(self.budget),
             ..*o
@@ -257,7 +405,7 @@ impl<E: Env> Backend for Local<'_, E> {
     }
 
     fn crop(&mut self, r: &str, format: crate::Format) -> Result<crate::Image, PaintError> {
-        let t = self.tab.as_mut().ok_or_else(no_page_paint)?;
+        let t = self.tabs.current_mut().ok_or_else(no_page_paint)?;
         t.crop(r, 8.0, format, 1.0)
     }
 
@@ -270,12 +418,39 @@ impl<E: Env> Backend for Local<'_, E> {
     }
 
     fn fresh(&mut self) -> Result<(), String> {
-        self.tab = None;
+        self.tabs.clear();
         self.session.clear();
         if let Some(s) = &self.state {
             self.session.set_storage_state(s);
         }
         Ok(())
+    }
+    fn new_tab(&mut self, url: &str) -> Result<Outcome, LoadError> {
+        let mut tab = self.session.open(url, self.options.clone())?;
+        tab.set_view(self.budget, Mode::Diff);
+        let opened = tab.opened().clone();
+        self.tabs.put(None, tab);
+        Ok(opened)
+    }
+
+    fn list(&mut self) -> Vec<(u32, String, String)> {
+        self.tabs
+            .in_order()
+            .into_iter()
+            .map(|(h, t)| (h, t.url().to_string(), t.title()))
+            .collect()
+    }
+
+    fn tabs(&self) -> &dyn TabSet {
+        &self.tabs
+    }
+
+    fn select(&mut self, h: u32) -> bool {
+        self.tabs.select(h)
+    }
+
+    fn close(&mut self, h: u32) -> bool {
+        self.tabs.remove(h).is_some()
     }
 }
 
@@ -333,7 +508,7 @@ pub fn serve<E: Env>(
         }
         let mut b = Caged {
             sandbox,
-            tab: None,
+            tabs: Tabs::new(),
             options: options.load,
             budget: options.budget,
             state: options.state.clone(),
@@ -342,7 +517,7 @@ pub fn serve<E: Env>(
             Some(h) => http::serve(&mut b, h)?,
             None => run(&mut b, input, output),
         }
-        b.tab = None;
+        b.tabs.clear();
         b.state()
     } else {
         let session = Session::new(env);
@@ -351,7 +526,7 @@ pub fn serve<E: Env>(
         }
         let mut b = Local {
             session: &session,
-            tab: None,
+            tabs: Tabs::new(),
             options: options.load,
             budget: options.budget,
             state: options.state.clone(),
@@ -360,7 +535,7 @@ pub fn serve<E: Env>(
             Some(h) => http::serve(&mut b, h)?,
             None => run(&mut b, input, output),
         }
-        b.tab = None;
+        b.tabs.clear();
         b.state()
     }
 }
@@ -846,6 +1021,18 @@ fn tools() -> Vec<Value> {
             act,
         ),
         tool(
+            "browser_tabs",
+            "Tabs",
+            "Several pages at once. new: open a URL in a new tab (or a reported popup) and make it current; select: switch to a tab (tN) and see what changed there; close: close a tab (default: the current one); list: the open tabs. Every other tool acts on the current tab, and while several are open each reply names its tab. Refs belong to their tab.",
+            json!({
+                "action": {"type": "string", "enum": ["list", "new", "select", "close"]},
+                "url": {"type": "string", "description": "new: an http(s) URL"},
+                "tab": {"type": "string", "description": "select, close: a tab handle such as t2"}
+            }),
+            &["action"],
+            json!({"readOnlyHint": false, "destructiveHint": false, "idempotentHint": false, "openWorldHint": true}),
+        ),
+        tool(
             "browser_screenshot",
             "See the page",
             "A screenshot of the page (viewport by default). marks: true outlines every visible element and labels it with its ref, and lists them, so you can act on what you see by ref. ref: only that element, with where its pixels come from (first- or third-party).",
@@ -1116,9 +1303,187 @@ fn takeover_message(why: &str) -> String {
 
 type Reply = Result<Value, (i64, String)>;
 
-/// One tool call. `elicit` is an elicitation id when the client takes URLs for its user
-/// (URL-mode elicitation); the takeover then sends its URL that way only.
+/// One tool call, its reply naming the tab while several are open. `elicit` is an
+/// elicitation id when the client takes URLs for its user (URL-mode elicitation); the takeover
+/// then sends its URL that way only.
 fn call(
+    b: &mut dyn Backend,
+    params: &Value,
+    elicit: Option<&str>,
+    notify: &mut dyn FnMut(Value),
+) -> Reply {
+    call_tool(b, params, elicit, notify).map(|r| tagged(b, r))
+}
+
+/// Most tabs a session holds (each holds a page in memory).
+const MAX_TABS: usize = 8;
+
+/// Adds `structuredContent.tab` (the current tab), the tab line while several tabs are open,
+/// and how to open reported popups.
+fn tagged(b: &dyn Backend, mut result: Value) -> Value {
+    let Some(i) = result["content"]
+        .as_array()
+        .and_then(|c| c.iter().position(|x| x["type"] == "text"))
+    else {
+        return result;
+    };
+    let mut text = result["content"][i]["text"]
+        .as_str()
+        .unwrap_or_default()
+        .to_string();
+    if let Some(p) = result
+        .pointer("/structuredContent/outcome/popups/0")
+        .and_then(Value::as_str)
+    {
+        text.push_str(&format!(
+            "\nopen a popup as a tab with browser_tabs {{\"action\": \"new\", \"url\": {}}}",
+            json!(p)
+        ));
+    }
+    if let Some(h) = b.tabs().current_id() {
+        if b.tabs().count() > 1 {
+            let ends_with_step = text
+                .rsplit('\n')
+                .next()
+                .is_some_and(|l| l.starts_with("step "));
+            text.push_str(&if ends_with_step {
+                format!(" · tab t{h}")
+            } else {
+                format!("\ntab t{h}")
+            });
+        }
+        if result["structuredContent"].is_object() {
+            result["structuredContent"]["tab"] = json!(format!("t{h}"));
+        }
+    }
+    result["content"][i]["text"] = json!(text);
+    result
+}
+
+/// `browser_tabs`: list, new, select, close.
+fn tabs_tool(b: &mut dyn Backend, args: &Value) -> Reply {
+    let arg = |k: &str| args.get(k).and_then(Value::as_str).map(str::to_string);
+    let need = |k: &str| {
+        arg(k).ok_or_else(|| {
+            (
+                -32602,
+                format!("browser_tabs: missing string argument {k:?}"),
+            )
+        })
+    };
+    let unknown = |b: &mut dyn Backend, t: &str| {
+        let open: Vec<String> = b.list().iter().map(|(h, _, _)| format!("t{h}")).collect();
+        tool_error(
+            "unknown_tab",
+            format!("no tab {t:?} is open"),
+            if open.is_empty() {
+                "no tabs are open: call browser_open with a URL".into()
+            } else {
+                format!("open tabs: {}", open.join(", "))
+            },
+        )
+    };
+    let handle = |t: &str| t.strip_prefix('t').and_then(|n| n.parse::<u32>().ok());
+    Ok(match need("action")?.as_str() {
+        "list" => tab_list(b, String::new()),
+        "new" => {
+            let url = need("url")?;
+            if b.tabs().count() >= MAX_TABS {
+                return Ok(tool_error(
+                    "too_many_tabs",
+                    format!("{MAX_TABS} tabs are open, the most a session holds"),
+                    "close one with browser_tabs {\"action\": \"close\", \"tab\": \"tN\"}".into(),
+                ));
+            }
+            match b.new_tab(&url) {
+                Ok(o) => {
+                    let obs = b.observe(false).unwrap_or_else(|e| e);
+                    stepped(
+                        b,
+                        text_result(
+                            format!("{o}\n\n{obs}"),
+                            json!({"outcome": o, "observation": obs}),
+                        ),
+                    )
+                }
+                Err(e) => tool_error("navigation", e.to_string(), e.guidance()),
+            }
+        }
+        "select" => {
+            let t = need("tab")?;
+            match handle(&t) {
+                Some(h) if b.select(h) => {
+                    let obs = b.observe(false).unwrap_or_else(|e| e);
+                    text_result(obs.clone(), json!({"observation": obs}))
+                }
+                _ => unknown(b, &t),
+            }
+        }
+        "close" => {
+            let t = match arg("tab") {
+                Some(t) => t,
+                None => match b.tabs().current_id() {
+                    Some(h) => format!("t{h}"),
+                    None => {
+                        return Ok(tool_error(
+                            "no_page",
+                            no_page(),
+                            "call browser_open with a URL".into(),
+                        ));
+                    }
+                },
+            };
+            match handle(&t) {
+                Some(h) if b.close(h) => tab_list(b, format!("closed {t}\n")),
+                _ => unknown(b, &t),
+            }
+        }
+        other => {
+            return Err((
+                -32602,
+                format!("browser_tabs: unknown action {other:?}; use list, new, select or close"),
+            ));
+        }
+    })
+}
+
+/// The open tabs, one line each, the current one marked.
+fn tab_list(b: &mut dyn Backend, head: String) -> Value {
+    let current = b.tabs().current_id();
+    let tabs = b.list();
+    let mut text = head;
+    if tabs.is_empty() {
+        text.push_str("no tabs are open: call browser_open with a URL");
+    }
+    let lines: Vec<String> = tabs
+        .iter()
+        .map(|(h, url, title)| {
+            let mark = if Some(*h) == current {
+                " (current)"
+            } else {
+                ""
+            };
+            format!("t{h} {} {url}{mark}", pageon_agent::quote::quote(title))
+        })
+        .collect();
+    text.push_str(&lines.join("\n"));
+    let list: Vec<Value> = tabs
+        .iter()
+        .map(|(h, url, title)| json!({"id": format!("t{h}"), "title": title, "url": url, "current": Some(*h) == current}))
+        .collect();
+    text_result(text, json!({"tabs": list}))
+}
+
+/// Why reset and workflows refuse once several tabs were open.
+fn several_tabs() -> Value {
+    tool_error(
+        "several_tabs",
+        "this session has had several tabs open, and its steps rebuild one tab".into(),
+        "start a fresh pageon mcp session for exact resets and workflows; browser_lookahead still works on the current tab".into(),
+    )
+}
+
+fn call_tool(
     b: &mut dyn Backend,
     params: &Value,
     elicit: Option<&str>,
@@ -1259,6 +1624,9 @@ fn call(
             }
             return Ok(takeover_done(b, r, secs));
         }
+        "browser_tabs" => return tabs_tool(b, &args),
+        "browser_reset" if b.tabs().several() => return Ok(several_tabs()),
+        "browser_workflow_save" if b.tabs().several() => return Ok(several_tabs()),
         "browser_reset" => {
             return Ok(reset(b, args.get("step").and_then(Value::as_u64)));
         }

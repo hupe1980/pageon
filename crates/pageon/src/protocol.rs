@@ -59,6 +59,7 @@ pub(crate) enum Op {
         format: crate::Format,
         scale: f32,
     },
+    /// The tab's URL and title.
     Url {
         tab: u32,
     },

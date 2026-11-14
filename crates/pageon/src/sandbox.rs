@@ -616,6 +616,11 @@ impl<E: Env> Sandbox<E> {
         self.call(Op::Status { tab: id })
     }
 
+    /// Tab `id`'s URL and title (secrets redacted).
+    pub fn page_tab(&mut self, id: u32) -> Result<(String, String), SandboxError> {
+        self.call(Op::Url { tab: id })
+    }
+
     /// Closes tab `id`.
     pub fn close_tab(&mut self, id: u32) {
         self.tabs.remove(&id);

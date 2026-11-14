@@ -370,7 +370,7 @@ fn serve_on(input: Box<dyn BufRead>, output: Box<dyn Write>) -> Result<(), Strin
                 .ok_or_else(|| no_tab(tab)),
             Op::Url { tab } => tabs
                 .get(&tab)
-                .map(|t| json(&t.url()))
+                .map(|t| json(&(t.url(), t.title())))
                 .ok_or_else(|| no_tab(tab)),
             Op::Close { tab } => {
                 tabs.remove(&tab);

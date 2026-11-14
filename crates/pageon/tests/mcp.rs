@@ -159,6 +159,7 @@ fn handshake_and_tools() {
             "browser_wait",
             "browser_back",
             "browser_forward",
+            "browser_tabs",
             "browser_screenshot",
             "browser_reset",
             "browser_lookahead",
@@ -1354,4 +1355,127 @@ fn http_streams_progress_for_a_takeover() {
     assert!(text(&last["result"]).starts_with("ok takeover"), "{last}");
     let _ = child.kill();
     let _ = child.wait();
+}
+
+fn tabs_site() -> std::path::PathBuf {
+    let mut pages = vec![
+        html(
+            "https://a.test/",
+            "<title>Search</title><input aria-label=Query><a href=/r target=_blank>Result</a>",
+        ),
+        html("https://b.test/", "<title>Mail</title><p>code 1234</p>"),
+        html("https://a.test/r", "<title>Result</title><p>detail</p>"),
+    ];
+    for n in 1..=6 {
+        pages.push(html(
+            &format!("https://c.test/{n}"),
+            &format!("<title>C{n}</title>"),
+        ));
+    }
+    file("mcp-tabs", &site(pages))
+}
+
+#[test]
+fn tabs_keep_their_pages() {
+    let rec = tabs_site();
+    for sandbox in [true, false] {
+        let extra: &[&str] = if sandbox { &[] } else { &["--no-sandbox"] };
+        let mut s = Server::start(&rec, extra, &[]);
+        s.init("2025-11-25");
+        let tabs = |s: &mut Server, args: Value| s.call("browser_tabs", args);
+        // One tab: replies as before.
+        let r = s.call("browser_open", json!({"url": "https://a.test/"}));
+        let t = text(&r);
+        assert!(t.ends_with("step 0"), "{t}");
+        assert_eq!(r["structuredContent"]["tab"], "t1", "{r}");
+        let query = find(&t, "textbox", "Query");
+        let link = find(&t, "link", "Result");
+        s.call("browser_type", json!({"ref": query, "text": "hello"}));
+        // A popup is reported with how to open it, and not loaded.
+        let r = s.call("browser_click", json!({"ref": link}));
+        let t = text(&r);
+        assert!(t.contains("popup \"https://a.test/r\""), "{t}");
+        assert!(
+            t.contains("browser_tabs {\"action\": \"new\", \"url\": \"https://a.test/r\"}"),
+            "{t}"
+        );
+        let l = tabs(&mut s, json!({"action": "list"}));
+        assert_eq!(
+            l["structuredContent"]["tabs"].as_array().map(Vec::len),
+            Some(1),
+            "{l}"
+        );
+        let req = s.call("browser_view", json!({"kind": "requests"}));
+        assert!(
+            !text(&req).contains("https://a.test/r"),
+            "the popup was not loaded: {}",
+            text(&req)
+        );
+        // A second tab: replies name it.
+        let r = tabs(&mut s, json!({"action": "new", "url": "https://b.test/"}));
+        let t = text(&r);
+        assert!(t.contains("code 1234"), "{t}");
+        assert!(
+            t.lines()
+                .last()
+                .is_some_and(|l| l.starts_with("step ") && l.ends_with(" · tab t2")),
+            "{t}"
+        );
+        assert_eq!(r["structuredContent"]["tab"], "t2");
+        let r = s.call("browser_observe", json!({}));
+        assert!(text(&r).ends_with("\ntab t2"), "{}", text(&r));
+        let l = tabs(&mut s, json!({"action": "list"}));
+        let t = text(&l);
+        assert!(t.contains("t1 \"Search\" https://a.test/\n"), "{t}");
+        assert!(t.contains("t2 \"Mail\" https://b.test/ (current)"), "{t}");
+        // Back to the first: its input and refs are intact.
+        let r = tabs(&mut s, json!({"action": "select", "tab": "t1"}));
+        assert_eq!(r["structuredContent"]["tab"], "t1", "{r}");
+        let full = text(&s.call("browser_observe", json!({"full": true})));
+        assert!(full.contains("hello"), "{full}");
+        let r = s.call("browser_click", json!({"ref": link}));
+        assert!(text(&r).starts_with("ok click"), "{}", text(&r));
+        // Reset and workflows rebuild one tab: refused.
+        for tool in ["browser_reset", "browser_workflow_save"] {
+            let r = s.call(tool, json!({}));
+            assert_eq!(
+                r["structuredContent"]["error"]["kind"], "several_tabs",
+                "{tool}: {r}"
+            );
+        }
+        // Close; handles are never reused; unknown handles name the open ones.
+        let r = tabs(&mut s, json!({"action": "close", "tab": "t2"}));
+        assert!(
+            text(&r).starts_with("closed t2\nt1 \"Search\""),
+            "{}",
+            text(&r)
+        );
+        let r = tabs(&mut s, json!({"action": "new", "url": "https://a.test/r"}));
+        assert_eq!(r["structuredContent"]["tab"], "t3", "{r}");
+        let r = tabs(&mut s, json!({"action": "select", "tab": "t2"}));
+        assert_eq!(r["structuredContent"]["error"]["kind"], "unknown_tab");
+        assert!(text(&r).contains("open tabs: t1, t3"), "{}", text(&r));
+        // At most 8.
+        for n in 1..=6 {
+            let r = tabs(
+                &mut s,
+                json!({"action": "new", "url": format!("https://c.test/{n}")}),
+            );
+            assert!(r.get("isError").is_none(), "{r}");
+        }
+        let r = tabs(&mut s, json!({"action": "new", "url": "https://b.test/"}));
+        assert_eq!(
+            r["structuredContent"]["error"]["kind"], "too_many_tabs",
+            "{r}"
+        );
+        // Closing the current tab makes the most recently used one current.
+        tabs(&mut s, json!({"action": "select", "tab": "t3"}));
+        tabs(&mut s, json!({"action": "select", "tab": "t9"}));
+        let r = tabs(&mut s, json!({"action": "close"}));
+        assert!(
+            text(&r).contains("t3 \"Result\" https://a.test/r (current)"),
+            "{}",
+            text(&r)
+        );
+    }
 }

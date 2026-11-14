@@ -105,6 +105,9 @@ impl Live {
         loop {
             match self.listener.accept() {
                 Ok((stream, _)) => {
+                    // Accepted sockets may inherit the listener's non-blocking mode (BSD, macOS):
+                    // a request whose bytes have not arrived yet would fail at once.
+                    let _ = stream.set_nonblocking(false);
                     // A broken request only affects its own connection.
                     let _ = self.view.handle(stream, driver);
                     if self.view.done {

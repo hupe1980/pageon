@@ -1096,6 +1096,30 @@ impl<'s, E: Env> Tab<'s, E> {
         &self.doc.final_url
     }
 
+    /// The document's title (`<title>` text, whitespace collapsed), with secrets redacted.
+    pub fn title(&self) -> String {
+        let dom = &self.doc.dom;
+        let title = dom
+            .traverse(dom.root())
+            .find_map(|e| match e {
+                pageon_dom::Edge::Enter(n) if dom.get(n).is_some_and(|x| x.is_html("title")) => {
+                    Some(n)
+                }
+                _ => None,
+            })
+            .map(|t| {
+                let mut s = String::new();
+                for c in dom.children(t) {
+                    if let Some(pageon_dom::NodeData::Text(x)) = dom.get(c).map(|n| &n.data) {
+                        s.push_str(x);
+                    }
+                }
+                s.split_whitespace().collect::<Vec<_>>().join(" ")
+            })
+            .unwrap_or_default();
+        self.redact(title)
+    }
+
     /// The history of this tab, and the index of the current entry.
     pub fn history(&self) -> (Vec<String>, usize) {
         (
