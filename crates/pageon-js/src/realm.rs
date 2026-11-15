@@ -624,6 +624,9 @@ pub struct Timer {
     pub frame: bool,
     /// An idle callback (gets an `IdleDeadline`; runs after other timers due at that time).
     pub idle: bool,
+    /// Set by the agent's current action, directly or through timers it set (see
+    /// [`crate::Engine::begin_action`]).
+    pub caused: bool,
 }
 
 /// What to do when a script request completes.
@@ -678,6 +681,9 @@ pub struct Shared {
     pub timers: BTreeMap<(u64, u64), Timer>,
     /// Next sequence number.
     pub seq: u64,
+    /// A timer set before the current action is running: timers it sets are not the
+    /// action's.
+    pub uncaused: bool,
     /// Next timer id.
     pub next_id: u32,
     /// Page errors.
@@ -727,6 +733,7 @@ impl Shared {
         if t.id == 0 {
             self.next_id += 1;
             t.id = self.next_id;
+            t.caused = !self.uncaused;
         }
         let id = t.id;
         let due = ((self.now + delay.max(0.0)) * 1000.0) as u64;

@@ -75,7 +75,9 @@ impl Env for Replay {
             .exchanges
             .iter()
             .enumerate()
-            .position(|(i, e)| !used[i] && e.method == req.method && e.url == req.url)
+            .position(|(i, e)| {
+                !used[i] && e.method == req.method && crate::redact::same_url(&e.url, &req.url)
+            })
             .ok_or_else(|| {
                 NetError::ReplayMiss(format!("response for {} {}", req.method, req.url))
             })?;

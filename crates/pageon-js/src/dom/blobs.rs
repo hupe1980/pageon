@@ -353,6 +353,7 @@ pub mod file_reader {
                 interval: None,
                 frame: false,
                 idle: false,
+                caused: false,
             },
             0.0,
         );

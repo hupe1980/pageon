@@ -140,6 +140,10 @@ enum Command {
         /// (http://localhost:4318); a client's `_meta.traceparent` becomes the parent.
         #[arg(long, value_name = "URL")]
         otlp: Option<String>,
+        /// How much views show at the start: full, or compact (no text runs; agents read
+        /// text with browser_view markdown). browser_observe changes it.
+        #[arg(long, value_name = "LEVEL", default_value = "full", value_parser = ["full", "compact"])]
+        detail: String,
         #[command(flatten)]
         session: SessionArgs,
     },
@@ -1172,6 +1176,7 @@ fn mcp(
     allow_origins: Vec<String>,
     allow_javascript_exec: bool,
     otlp: Option<String>,
+    detail: pageon_agent::Detail,
     s: &SessionArgs,
 ) -> ExitCode {
     if http.is_some() && s.save_state.is_some() {
@@ -1202,6 +1207,7 @@ fn mcp(
         }),
         allow_javascript_exec,
         otlp,
+        detail,
         ..pageon::mcp::McpOptions::default()
     };
     // The same assembly an embedder gets.
@@ -1319,8 +1325,19 @@ fn main() -> ExitCode {
             allow_origin,
             allow_javascript_exec,
             otlp,
+            detail,
             session,
-        } => return mcp(http, allow_origin, allow_javascript_exec, otlp, &session),
+        } => {
+            let detail = pageon_agent::Detail::parse(&detail).unwrap_or_default();
+            return mcp(
+                http,
+                allow_origin,
+                allow_javascript_exec,
+                otlp,
+                detail,
+                &session,
+            );
+        }
         Command::Replay {
             file,
             to,

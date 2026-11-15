@@ -15,6 +15,8 @@ from pathlib import Path
 import pageon
 
 FORMATS = ["pageon_full", "pageon_diff", "playwright_mcp", "browsergym", "browser_use"]
+# Not in the default comparison: run it with --formats to measure the compact view's success.
+EXTRA_FORMATS = ["pageon_compact"]
 CHARS_PER_TOKEN = 4  # browser-use's native budget is in characters
 
 
@@ -98,10 +100,10 @@ class Format:
 class Pageon(Format):
     example_id = "e12"
 
-    def __init__(self, budget: int, mode: str) -> None:
+    def __init__(self, budget: int, mode: str, detail: str = "full") -> None:
         super().__init__(budget)
-        self.name = f"pageon_{mode}"
-        self.episode = pageon.Episode(budget=budget, tokenizer="o200k", mode=mode)
+        self.name = f"pageon_{mode}" if detail == "full" else f"pageon_{detail}"
+        self.episode = pageon.Episode(budget=budget, tokenizer="o200k", mode=mode, detail=detail)
         self._cap = None
 
     def observe(self, capture: dict, path: Path) -> str:
@@ -237,13 +239,15 @@ def make(name: str, budget: int) -> Format:
             return Pageon(budget, "full")
         case "pageon_diff":
             return Pageon(budget, "diff")
+        case "pageon_compact":
+            return Pageon(budget, "diff", "compact")
         case "browsergym":
             return BrowserGym(budget)
         case "playwright_mcp":
             return PlaywrightMcp(budget)
         case "browser_use":
             return BrowserUse(budget)
-    raise ValueError(f"unknown format {name!r}; choose from {', '.join(FORMATS)}")
+    raise ValueError(f"unknown format {name!r}; choose from {', '.join(FORMATS + EXTRA_FORMATS)}")
 
 
 def observe_all(capture: dict, path: Path, budget: int) -> dict[str, str]:

@@ -332,8 +332,8 @@ impl<E: Env> Recording<E> {
         &self.inner
     }
 
-    /// The log so far (redacted: secret values, and the value of every `HttpOnly` cookie a
-    /// server set).
+    /// The log so far (redacted: secret values, credential URL parameters, and the value of
+    /// every `HttpOnly` cookie a server set).
     pub fn log(&self) -> Log {
         let mut log = self.log.borrow().clone();
         for ex in &mut log.exchanges {
@@ -349,16 +349,30 @@ impl<E: Env> Recording<E> {
             }
         }
         let values = self.redact.borrow();
-        if values.is_empty() {
-            return log;
-        }
-        let clean = |s: &mut String| {
+        let secrets = |s: &mut String| {
             for v in values.iter() {
                 if s.contains(v.as_str()) {
                     *s = s.replace(v.as_str(), "[redacted]");
                 }
             }
         };
+        let clean = |s: &mut String| {
+            secrets(s);
+            if let std::borrow::Cow::Owned(r) = crate::redact_params(s) {
+                *s = r;
+            }
+        };
+        for step in &mut log.steps {
+            clean(&mut step.action);
+            let original = step.input.to_string();
+            let mut input = original.clone();
+            clean(&mut input);
+            if input != original
+                && let Ok(v) = serde_json::from_str(&input)
+            {
+                step.input = v;
+            }
+        }
         for e in &mut log.realtime {
             match e {
                 crate::Rt::Sent { text: Some(t), .. }
@@ -372,8 +386,13 @@ impl<E: Env> Recording<E> {
         }
         for ex in &mut log.exchanges {
             clean(&mut ex.url);
-            for (_, h) in &mut ex.headers {
-                clean(h);
+            for (k, h) in &mut ex.headers {
+                // Cookies are not URL parameters: scripts read them back as they were.
+                if k.eq_ignore_ascii_case("set-cookie") || k.eq_ignore_ascii_case("cookie") {
+                    secrets(h);
+                } else {
+                    clean(h);
+                }
             }
             for b in [&mut ex.body, &mut ex.request_body, &mut ex.error]
                 .into_iter()
@@ -405,7 +424,9 @@ impl<E: Env> Env for Recording<E> {
                     let r = guard.as_mut().ok_or(NetError::ReplayMiss(String::new()))?;
                     let log = self.log.borrow();
                     let i = log.exchanges.iter().enumerate().position(|(i, e)| {
-                        !r.used[i] && e.method == req.method && e.url == req.url
+                        !r.used[i]
+                            && e.method == req.method
+                            && crate::redact::same_url(&e.url, &req.url)
                     });
                     i.map(|i| {
                         r.used[i] = true;

@@ -35,6 +35,12 @@ pub(crate) enum Op {
     Observe {
         tab: u32,
         full: bool,
+        /// How much the view shows from now on (unchanged when absent).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        detail: Option<pageon_agent::Detail>,
+        /// The view's budget from now on (unchanged when absent).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        budget: Option<crate::Budget>,
     },
     Read {
         tab: u32,

@@ -582,11 +582,38 @@ pub struct Settle {
     pub pending_timers: usize,
 }
 
+/// Whether an action's effect is known.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Status {
+    /// Done: what it did is in the outcome and the next view.
+    #[default]
+    Ok,
+    /// Nothing changed yet, and a timer the action set is still pending ([`Outcome::due_ms`]):
+    /// the page may still be working. Wait, then look again.
+    Unknown,
+}
+
+impl Status {
+    fn is_ok(&self) -> bool {
+        *self == Self::Ok
+    }
+}
+
+/// How far ahead an action's own timer still makes its outcome unknown (virtual ms).
+pub(crate) const UNKNOWN_HORIZON_MS: u64 = 10_000;
+
 /// What an action did.
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct Outcome {
     /// The action, as text (`click e5`).
     pub action: String,
+    /// Whether its effect is known.
+    #[serde(default, skip_serializing_if = "Status::is_ok")]
+    pub status: Status,
+    /// When unknown: virtual ms until the action's soonest pending timer.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub due_ms: Option<u64>,
     /// The URL the tab navigated to, if it did.
     pub navigated: Option<String>,
     /// The navigation stayed in the page (the history API, a fragment): no document loaded.
@@ -662,6 +689,26 @@ pub struct Outcome {
     pub downloads_more: usize,
 }
 
+impl Outcome {
+    /// Nothing the action did shows in the outcome itself.
+    fn quiet(&self) -> bool {
+        self.navigated.is_none()
+            && self.dialogs.is_empty()
+            && self.popups.is_empty()
+            && self.downloads.is_empty()
+            && self.errors.is_empty()
+            && self.requests.is_empty()
+            && self.refusal.is_none()
+            && self.tool_result.is_none()
+            && self.scrolled.is_empty()
+            && self.invalid.is_empty()
+            && self.file_chooser.is_none()
+            && self.value.is_none()
+            && self.copied.is_none()
+            && self.drag.is_none()
+    }
+}
+
 fn is_zero(n: &usize) -> bool {
     *n == 0
 }
@@ -686,7 +733,13 @@ const MAX_INVALID: usize = 5;
 impl fmt::Display for Outcome {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let q = |s: &str| pageon_agent::quote::quote(&pageon_agent::quote::clip(s, 300));
-        let mut parts = vec![format!("ok {}", self.action)];
+        let mut parts = vec![match (self.status, self.due_ms) {
+            (Status::Unknown, Some(ms)) => format!(
+                "unknown {} · nothing changed yet; the page set a timer due in {ms} ms (browser_wait {ms})",
+                self.action
+            ),
+            _ => format!("ok {}", self.action),
+        }];
         parts.extend(self.scrolled.iter().cloned());
         if let Some(u) = &self.navigated {
             parts.push(if self.same_document {
@@ -822,6 +875,9 @@ impl fmt::Display for Outcome {
         }
         if let Some(r) = &self.refusal {
             parts.push(format!("refused: {r}"));
+        }
+        if self.status == Status::Unknown {
+            return f.write_str(&parts.join(" · "));
         }
         parts.push(match self.settled.pending_timers {
             0 => format!("settled idle after {} ms", self.settled.virtual_ms),
@@ -1341,6 +1397,9 @@ impl<'s, E: Env> Tab<'s, E> {
             serde_json::json!({"open": {"url": input, "options": &tab_options}}),
             None,
         );
+        let mut opened = std::mem::take(&mut tab.opened);
+        tab.redact_outcome(&mut opened);
+        tab.opened = opened;
         Ok(tab)
     }
 
@@ -1396,14 +1455,18 @@ impl<'s, E: Env> Tab<'s, E> {
         });
     }
 
-    /// Replaces every secret value typed in this session by its handle.
+    /// Replaces every secret value typed in this session by its handle, and the value of
+    /// every credential URL parameter (`?token=…`) by `[redacted]`.
     pub(crate) fn redact(&self, mut s: String) -> String {
         for (value, handle) in self.session.secrets().iter() {
             if !value.is_empty() && s.contains(value.as_str()) {
                 s = s.replace(value.as_str(), handle);
             }
         }
-        s
+        match pageon_env::redact_params(&s) {
+            std::borrow::Cow::Borrowed(_) => s,
+            std::borrow::Cow::Owned(r) => r,
+        }
     }
 
     /// The console messages the main document logged since the tab last reported (at most
@@ -1471,9 +1534,6 @@ impl<'s, E: Env> Tab<'s, E> {
         for (_, text) in &mut o.console {
             *text = self.redact(std::mem::take(text));
         }
-        if self.session.secrets().is_empty() {
-            return;
-        }
         for d in &mut o.dialogs {
             d.message = self.redact(std::mem::take(&mut d.message));
         }
@@ -1488,6 +1548,10 @@ impl<'s, E: Env> Tab<'s, E> {
         o.tool_result = o.tool_result.take().map(|r| self.redact(r));
         o.copied = o.copied.take().map(|c| self.redact(c));
         o.popups = o.popups.drain(..).map(|u| self.redact(u)).collect();
+        o.action = self.redact(std::mem::take(&mut o.action));
+        for d in &mut o.downloads {
+            d.url = self.redact(std::mem::take(&mut d.url));
+        }
         for f in &mut o.invalid {
             f.message = self.redact(std::mem::take(&mut f.message));
             f.name = self.redact(std::mem::take(&mut f.name));
@@ -1570,6 +1634,16 @@ impl<'s, E: Env> Tab<'s, E> {
     /// Sets the observation budget and mode (starts a new episode: refs are reissued).
     pub fn set_view(&mut self, budget: Budget, mode: Mode) {
         self.episode = Episode::new(budget, mode);
+    }
+
+    /// How much observations show from now on (refs stay; a change sends a complete view).
+    pub fn set_detail(&mut self, detail: pageon_agent::Detail) {
+        self.episode.set_detail(detail);
+    }
+
+    /// The observation budget from now on (refs stay; a change sends a complete view).
+    pub fn set_budget(&mut self, budget: Budget) {
+        self.episode.set_budget(budget);
     }
 
     /// The complete agent view (refs kept), as on the first observation.
@@ -1697,6 +1771,14 @@ impl<'s, E: Env> Tab<'s, E> {
             ..Outcome::default()
         };
         let top = self.doc.js.scroll.viewport;
+        let engines = self.engines();
+        for e in &engines {
+            e.borrow_mut().begin_action();
+        }
+        let changes = |es: &[Rc<std::cell::RefCell<pageon_js::Engine>>]| -> u64 {
+            es.iter().map(|e| e.borrow().dom_changes()).sum()
+        };
+        let changed_before = changes(&engines);
         self.push_clipboard();
         let result = self.run(&action, &mut out);
         self.pull_clipboard(&mut out);
@@ -1718,6 +1800,17 @@ impl<'s, E: Env> Tab<'s, E> {
         }
         let mut requests = net.borrow_mut().take_log();
         out.requests.append(&mut requests);
+        // Nothing visible yet, but the page is still working on the action: say so.
+        if !person && result.is_ok() && out.quiet() && changes(&engines) == changed_before {
+            out.due_ms = engines
+                .iter()
+                .filter_map(|e| e.borrow().caused_due_ms())
+                .min()
+                .filter(|ms| *ms <= UNKNOWN_HORIZON_MS);
+            if out.due_ms.is_some() {
+                out.status = Status::Unknown;
+            }
+        }
         self.collect_console(&mut out);
         self.redact_outcome(&mut out);
         self.session.seen(self.doc.loaded_at.max(self.now()));
@@ -1863,6 +1956,22 @@ impl<'s, E: Env> Tab<'s, E> {
     /// The live state of frame `frame`, if its engine runs.
     pub(crate) fn live_if_started(&self, frame: usize) -> Option<Rc<LiveDoc>> {
         self.frame_document(frame)?.live.clone()
+    }
+
+    /// The page's running engines (one per origin).
+    fn engines(&self) -> Vec<Rc<std::cell::RefCell<pageon_js::Engine>>> {
+        let mut out: Vec<_> = self
+            .doc
+            .page
+            .as_ref()
+            .map(|p| p.engines.borrow().values().cloned().collect())
+            .unwrap_or_default();
+        if let Some(l) = &self.doc.live
+            && !out.iter().any(|e| Rc::ptr_eq(e, &l.engine))
+        {
+            out.push(l.engine.clone());
+        }
+        out
     }
 
     /// The live state of frame `frame` (its engine started if needed).

@@ -82,6 +82,17 @@ An outcome reports what actually happened, not what was attempted:
 - a tool's result, for tool calls;
 - how settling ended.
 
+When an action changed nothing yet and a timer it set (directly or through its own timers) is
+still due, within 10 seconds of virtual time, the outcome is `unknown` instead of `ok`, with
+the wait that lets the page finish (`status: "unknown"`, `due_ms` in JSON):
+
+```text
+unknown click e4 · nothing changed yet; the page set a timer due in 3000 ms (browser_wait 3000)
+```
+
+Timers the page set before the action (carousels, polling) never make an action unknown, and
+an action that sent a request or changed the page is `ok`.
+
 Forms validate as in Chrome: a required field left empty, an email without `@` or a number out
 of range blocks the submission, and the outcome says which fields and why (at most five):
 

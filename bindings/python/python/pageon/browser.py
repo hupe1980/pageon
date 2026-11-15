@@ -505,9 +505,19 @@ class Tab:
     ) -> dict[str, Any]:
         return self._b._call(tool, args, on_progress, tab=self)
 
-    def observe(self, full: bool = False) -> str:
-        """What changed since the last observation (``full=True``: the whole page)."""
-        return _text(self._call("browser_observe", {"full": full}))
+    def observe(self, full: bool = False, detail: str | None = None) -> str:
+        """What changed since the last observation (``full=True``: the whole page).
+
+        ``detail="compact"`` leaves text runs out of this and later views; ``"full"`` brings
+        them back."""
+        args: dict[str, Any] = {"full": full}
+        if detail is not None:
+            args["detail"] = detail
+        return _text(self._call("browser_observe", args))
+
+    def find(self, query: str, limit: int = 20) -> str:
+        """Elements matching the query's words anywhere on the page, equal ones told apart."""
+        return _text(self._call("browser_find", {"query": query, "limit": limit}))
 
     def click(self, ref: str) -> Outcome:
         return self._act("browser_click", {"ref": ref})

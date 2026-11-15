@@ -48,6 +48,38 @@ pub enum Mode {
     Diff,
 }
 
+/// How much of the page a view shows.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Detail {
+    /// Everything: elements, structure and text.
+    #[default]
+    Full,
+    /// Elements, landmarks, headings, alerts and status, frames and flags; no text runs
+    /// (read them with a markdown or text view).
+    Compact,
+}
+
+impl Detail {
+    /// `full` or `compact`.
+    pub fn parse(s: &str) -> Option<Self> {
+        match s {
+            "full" => Some(Self::Full),
+            "compact" => Some(Self::Compact),
+            _ => None,
+        }
+    }
+
+    /// Whether a line is shown at this level.
+    fn shows(self, l: &Line) -> bool {
+        self == Self::Full
+            || !matches!(
+                (l.kind, l.role.as_str()),
+                (ax::LineKind::Text, "text") | (ax::LineKind::HiddenText, _)
+            )
+    }
+}
+
 /// Share of the full observation above which a diff is replaced by the full observation.
 pub const DIFF_FALLBACK: f64 = 0.4;
 
@@ -165,6 +197,7 @@ pub struct Element {
 pub struct Episode {
     budget: Budget,
     mode: Mode,
+    detail: Detail,
     table: RefTable,
     step: u32,
     version: u64,
@@ -178,6 +211,7 @@ impl Episode {
         Self {
             budget,
             mode,
+            detail: Detail::Full,
             table: RefTable::default(),
             step: 0,
             version: 0,
@@ -202,6 +236,27 @@ impl Episode {
         self.pending.push(line);
     }
 
+    /// How much the next observations show; a change makes the next one complete.
+    pub fn set_detail(&mut self, detail: Detail) {
+        if detail != self.detail {
+            self.detail = detail;
+            self.last = None;
+        }
+    }
+
+    /// The token budget of the next observations; a change makes the next one complete.
+    pub fn set_budget(&mut self, budget: Budget) {
+        if budget != self.budget {
+            self.budget = budget;
+            self.last = None;
+        }
+    }
+
+    /// How much observations show.
+    pub fn detail(&self) -> Detail {
+        self.detail
+    }
+
     /// Makes the next observation complete again (refs stay as they are): for an agent that
     /// lost track of the page.
     pub fn reset_view(&mut self) {
@@ -220,10 +275,21 @@ impl Episode {
         let page = Page::build(capture);
         self.table
             .reconcile(&ax::collect(&page), page.nav, self.step);
-        let lines = ax::build(&page, &mut self.table);
+        let detail = self.detail;
+        let lines: Vec<Line> = ax::build(&page, &mut self.table)
+            .into_iter()
+            .filter(|l| detail.shows(l))
+            .collect();
         let prev_version = self.version;
+        let head = |version: u64, budget: Budget, fallback: bool| {
+            let mut h = ax::header(capture, version, budget, fallback);
+            if detail == Detail::Compact {
+                h.push_str(" detail:compact");
+            }
+            h
+        };
         // Fit with a provisional header; versions have a fixed width impact negligible here.
-        let probe = ax::header(capture, self.version + 1, self.budget, false);
+        let probe = head(self.version + 1, self.budget, false);
         let fitted = ax::fit_lines(&lines, &probe, self.budget);
         let changed = self.last.as_ref().is_none_or(|l| *l != fitted);
         if changed {
@@ -242,7 +308,7 @@ impl Episode {
             outcome = Some("refs-reset".into());
         }
         let full = |fallback: bool| {
-            let header = ax::header(capture, self.version, self.budget, fallback);
+            let header = head(self.version, self.budget, fallback);
             ax::render_lines(&header, &fitted)
         };
         let body = match (&self.last, self.mode) {
@@ -369,11 +435,14 @@ impl Episode {
 
     /// The elements whose role, name, value or nearby text contain the words of `query`
     /// (case-insensitive), most words first, then those in the viewport, then document
-    /// order; at most `limit`. A word match, not a model: the first line says so.
+    /// order; at most `limit`. A word match, not a model: the first line says so. Elements
+    /// that share role and name with others on the page are marked `(k of n, under "…")`:
+    /// their position among them and the heading or text just before each, when that tells
+    /// them apart.
     pub fn find(&mut self, capture: &Capture, query: &str, limit: usize) -> String {
         let page = Page::build(capture);
-        self.table
-            .reconcile(&ax::collect(&page), page.nav, self.step);
+        let collected = ax::collect(&page);
+        self.table.reconcile(&collected, page.nav, self.step);
         let lines = ax::build(&page, &mut self.table);
         let words: Vec<String> = query
             .to_lowercase()
@@ -381,12 +450,32 @@ impl Episode {
             .filter(|w| w.chars().count() >= 2 && !STOP_WORDS.contains(w))
             .map(str::to_string)
             .collect();
+        // Role and name of every element with a ref, from pageon's signatures (never parsed
+        // back from page text).
+        let sig: std::collections::HashMap<String, (&str, &str)> = collected
+            .iter()
+            .filter_map(|(k, s)| {
+                let r = self.table.get(k)?;
+                Some((ref_name(r), (s.role.as_str(), s.name.as_str())))
+            })
+            .collect();
         let mut scored: Vec<(usize, bool, usize, &Line)> = Vec::new();
         let mut context = String::new();
+        let mut before: Vec<Option<String>> = vec![None; lines.len()];
+        let mut groups: std::collections::HashMap<(&str, &str), Vec<usize>> =
+            std::collections::HashMap::new();
         for (i, l) in lines.iter().enumerate() {
             match l.kind {
-                ax::LineKind::Text | ax::LineKind::Heading => context = l.text.to_lowercase(),
+                ax::LineKind::Text | ax::LineKind::Heading => {
+                    context = l.text.to_lowercase();
+                    let shown = l.text.split_once(' ').map_or("", |(_, q)| q);
+                    let raw: Option<String> = serde_json::from_str(shown).ok();
+                    before[i] = raw;
+                }
                 ax::LineKind::Element | ax::LineKind::Container => {
+                    if let Some(&(role, name)) = sig.get(&l.key) {
+                        groups.entry((role, name)).or_default().push(i);
+                    }
                     let own = l.text.to_lowercase();
                     // Own words count twice, words of the text just before once.
                     let score: usize = words
@@ -406,6 +495,17 @@ impl Episode {
                 _ => {}
             }
         }
+        // The heading or text before each line.
+        let mut last: Option<String> = None;
+        let context_of: Vec<Option<String>> = before
+            .into_iter()
+            .map(|b| {
+                if b.is_some() {
+                    last = b;
+                }
+                last.clone()
+            })
+            .collect();
         scored.sort_by(|a, b| b.0.cmp(&a.0).then(b.1.cmp(&a.1)).then(a.2.cmp(&b.2)));
         let total = scored.len();
         let mut out = format!(
@@ -418,9 +518,30 @@ impl Episode {
                 n => format!("{n} matches"),
             }
         );
-        for (_, _, _, l) in scored.into_iter().take(limit) {
+        for (_, _, i, l) in scored.into_iter().take(limit) {
             out.push('\n');
             out.push_str(&l.text);
+            let Some(group) = sig.get(&l.key).and_then(|k| groups.get(k)) else {
+                continue;
+            };
+            if group.len() < 2 {
+                continue;
+            }
+            let k = group.iter().position(|&j| j == i).unwrap_or(0) + 1;
+            let here = context_of[i].as_deref();
+            let distinct = here.is_some()
+                && group
+                    .iter()
+                    .filter(|&&j| j != i)
+                    .all(|&j| context_of[j].as_deref() != here);
+            match here.filter(|_| distinct) {
+                Some(c) => out.push_str(&format!(
+                    " ({k} of {}, under {})",
+                    group.len(),
+                    quote::quote(&quote::clip(c, 40))
+                )),
+                None => out.push_str(&format!(" ({k} of {})", group.len())),
+            }
         }
         out
     }

@@ -1312,6 +1312,7 @@ pub mod abort_signal {
                 interval: None,
                 frame: false,
                 idle: false,
+                caused: false,
             },
             ms as f64,
         );

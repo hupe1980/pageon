@@ -30,6 +30,14 @@ All notable changes to this project are documented here. The format follows
 - `<iframe sandbox>`: sandboxed frames get an opaque origin without `allow-same-origin`, run no
   script without `allow-scripts`, and need `allow-forms`, `allow-popups` and `allow-modals` for
   forms, popups and dialogs.
+- `browser_find`: searches the whole page, including what the view's budget left out, and tells
+  elements with the same role and name apart (`(1 of 2, under "Ada")`).
+- Outcomes are `unknown` when nothing changed yet and a timer the action set is still due,
+  with the wait that lets the page finish.
+- Detail levels: `browser_observe {"detail": "compact"}` (and `pageon mcp --detail`,
+  `Episode(detail=)` in Python) leaves text runs out of the view.
+- Credential URL parameters (`token`, `code`, `sig`, session ids, …) are `[redacted]` in views,
+  outcomes, errors and saved recordings; recordings still replay exactly.
 
 ### Changed
 
@@ -39,6 +47,7 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- `pageon mcp --budget` applies in the sandbox (caged tabs kept the default 4,000).
 - `DOMException` is an `Error` (`instanceof Error`, `String(e)` gives its name and message).
 
 ## [0.2.0]

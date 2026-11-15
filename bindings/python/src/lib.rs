@@ -136,8 +136,8 @@ struct PyEpisode {
 #[pymethods]
 impl PyEpisode {
     #[new]
-    #[pyo3(signature = (budget = 4000, tokenizer = "o200k", mode = "full"))]
-    fn new(budget: usize, tokenizer: &str, mode: &str) -> PyResult<Self> {
+    #[pyo3(signature = (budget = 4000, tokenizer = "o200k", mode = "full", detail = "full"))]
+    fn new(budget: usize, tokenizer: &str, mode: &str, detail: &str) -> PyResult<Self> {
         let mode = match mode {
             "full" => Mode::Full,
             "diff" => Mode::Diff,
@@ -147,9 +147,14 @@ impl PyEpisode {
                 )));
             }
         };
-        Ok(Self {
-            inner: Episode::new(self::budget(budget, tokenizer)?, mode),
-        })
+        let detail = pageon_agent::Detail::parse(detail).ok_or_else(|| {
+            PageonError::new_err(format!(
+                "unknown detail {detail:?}; use \"full\" or \"compact\""
+            ))
+        })?;
+        let mut inner = Episode::new(self::budget(budget, tokenizer)?, mode);
+        inner.set_detail(detail);
+        Ok(Self { inner })
     }
 
     #[getter]

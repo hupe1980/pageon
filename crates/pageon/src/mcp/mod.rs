@@ -18,8 +18,8 @@ use pageon_env::Env;
 use serde_json::{Value, json};
 
 use crate::{
-    Action, ActionError, Budget, Dump, LoadError, LoadOptions, Mode, Outcome, PaintError, Sandbox,
-    SandboxOptions, Session, StorageState, Tab, Viewport,
+    Action, ActionError, Budget, Dump, LoadError, LoadOptions, Mode, Outcome, PaintError, Read,
+    Sandbox, SandboxOptions, Session, StorageState, Tab, Viewport,
 };
 
 /// Protocol versions served, newest first.
@@ -48,6 +48,8 @@ pages in-process (--no-sandbox)";
 trait Backend {
     fn open(&mut self, url: &str) -> Result<Outcome, LoadError>;
     fn observe(&mut self, full: bool) -> Result<String, String>;
+    /// How much views show from now on (every tab).
+    fn set_detail(&mut self, detail: pageon_agent::Detail);
     fn act(&mut self, action: Action) -> Result<Outcome, ActionError>;
     /// A person's input during a takeover: not the agent's step.
     fn input(&mut self, action: Action) -> Result<Outcome, ActionError>;
@@ -232,6 +234,7 @@ struct Caged<E: Env> {
     budget: Budget,
     state: Option<StorageState>,
     offer: toolset::Offer,
+    detail: pageon_agent::Detail,
 }
 
 impl<E: Env> Backend for Caged<E> {
@@ -247,7 +250,13 @@ impl<E: Env> Backend for Caged<E> {
 
     fn observe(&mut self, full: bool) -> Result<String, String> {
         let t = self.tabs.current().copied().ok_or_else(no_page)?;
-        self.sandbox.observe_tab(t, full).map_err(|e| e.to_string())
+        self.sandbox
+            .observe_tab_at(t, full, self.detail, self.budget)
+            .map_err(|e| e.to_string())
+    }
+
+    fn set_detail(&mut self, detail: pageon_agent::Detail) {
+        self.detail = detail;
     }
 
     fn act(&mut self, action: Action) -> Result<Outcome, ActionError> {
@@ -383,6 +392,7 @@ struct Local<'s, E: Env> {
     budget: Budget,
     state: Option<StorageState>,
     offer: toolset::Offer,
+    detail: pageon_agent::Detail,
 }
 
 impl<E: Env> Backend for Local<'_, E> {
@@ -397,7 +407,12 @@ impl<E: Env> Backend for Local<'_, E> {
 
     fn observe(&mut self, full: bool) -> Result<String, String> {
         let t = self.tabs.current_mut().ok_or_else(no_page)?;
+        t.set_detail(self.detail);
         Ok(if full { t.observe_full() } else { t.observe() })
+    }
+
+    fn set_detail(&mut self, detail: pageon_agent::Detail) {
+        self.detail = detail;
     }
 
     fn act(&mut self, action: Action) -> Result<Outcome, ActionError> {
@@ -528,6 +543,8 @@ pub struct McpOptions {
     pub staged_files: bool,
     /// Send one OpenTelemetry span per tool call to this OTLP/HTTP endpoint.
     pub otlp: Option<String>,
+    /// How much views show at the start (`browser_observe` changes it).
+    pub detail: pageon_agent::Detail,
 }
 
 impl Default for McpOptions {
@@ -542,6 +559,7 @@ impl Default for McpOptions {
             allow_javascript_exec: false,
             staged_files: false,
             otlp: None,
+            detail: pageon_agent::Detail::Full,
         }
     }
 }
@@ -593,6 +611,7 @@ pub fn serve<E: Env>(
             budget: options.budget,
             state: options.state.clone(),
             offer,
+            detail: options.detail,
         };
         match &options.http {
             Some(h) => http::serve(&mut b, h, otlp)?,
@@ -612,6 +631,7 @@ pub fn serve<E: Env>(
             budget: options.budget,
             state: options.state.clone(),
             offer,
+            detail: options.detail,
         };
         match &options.http {
             Some(h) => http::serve(&mut b, h, otlp)?,
@@ -1163,9 +1183,23 @@ fn tools() -> Vec<Value> {
         tool(
             "browser_observe",
             "Observe the page",
-            "Return what changed since the last view (or the whole view with full=true). Refs stay stable.",
-            json!({"full": {"type": "boolean", "description": "Return the complete view"}}),
+            "Return what changed since the last view (or the whole view with full=true). Refs stay stable. detail=compact leaves out text runs (elements, headings, alerts stay; read text with browser_view markdown) for this and later replies; detail=full brings them back.",
+            json!({
+                "full": {"type": "boolean", "description": "Return the complete view"},
+                "detail": {"type": "string", "enum": ["full", "compact"], "description": "How much views show from now on"}
+            }),
             &[],
+            read.clone(),
+        ),
+        tool(
+            "browser_find",
+            "Find elements",
+            "Search the whole page, including what the view left out, for elements whose role, name, value or the text before them contain the query's words. Elements that share role and name are marked (1 of 2, under \"…\") to tell them apart.",
+            json!({
+                "query": {"type": "string", "description": "Words to look for, e.g. \"delete ada\""},
+                "limit": {"type": "integer", "minimum": 1, "maximum": 100, "description": "At most this many (default 20)"}
+            }),
+            &["query"],
             read.clone(),
         ),
         tool(
@@ -1487,6 +1521,9 @@ fn image_result(img: &crate::Image) -> Value {
 }
 
 fn tool_error(kind: &str, message: String, guidance: String) -> Value {
+    // Errors quote URLs (a failed navigation): credential parameters stay out.
+    let message = pageon_env::redact_params(&message).into_owned();
+    let guidance = pageon_env::redact_params(&guidance).into_owned();
     json!({
         "content": [{"type": "text", "text": format!("error: {message}\n{guidance}")}],
         "structuredContent": {"error": {"kind": kind, "message": message, "guidance": guidance}},
@@ -1714,13 +1751,17 @@ fn tab_list(b: &mut dyn Backend, head: String) -> Value {
             } else {
                 ""
             };
-            format!("t{h} {} {url}{mark}", pageon_agent::quote::quote(title))
+            format!(
+                "t{h} {} {}{mark}",
+                pageon_agent::quote::quote(title),
+                pageon_env::redact_params(url)
+            )
         })
         .collect();
     text.push_str(&lines.join("\n"));
     let list: Vec<Value> = tabs
         .iter()
-        .map(|(h, url, title)| json!({"id": format!("t{h}"), "title": title, "url": url, "current": Some(*h) == current}))
+        .map(|(h, url, title)| json!({"id": format!("t{h}"), "title": title, "url": pageon_env::redact_params(url), "current": Some(*h) == current}))
         .collect();
     text_result(text, json!({"tabs": list}))
 }
@@ -1768,9 +1809,49 @@ fn call_tool(
         }
         "browser_observe" => {
             let full = args.get("full").and_then(Value::as_bool).unwrap_or(false);
+            if let Some(d) = args.get("detail") {
+                let detail = d
+                    .as_str()
+                    .and_then(pageon_agent::Detail::parse)
+                    .ok_or_else(|| {
+                        (
+                            -32602,
+                            format!("browser_observe: detail {d} is not \"full\" or \"compact\""),
+                        )
+                    })?;
+                b.set_detail(detail);
+            }
             return Ok(match b.observe(full) {
                 Ok(obs) => text_result(obs.clone(), json!({"observation": obs})),
                 Err(e) => tool_error("no_page", e, "call browser_open with a URL".into()),
+            });
+        }
+        "browser_find" => {
+            let query = s("query")?;
+            let limit = match args.get("limit") {
+                None => 20,
+                Some(v) => v
+                    .as_u64()
+                    .filter(|n| (1..=100).contains(n))
+                    .ok_or_else(|| (-32602, "browser_find: limit is 1 to 100".to_string()))?
+                    as usize,
+            };
+            if !query
+                .split(|c: char| !c.is_alphanumeric())
+                .any(|w| w.chars().count() >= 2)
+            {
+                return Err((
+                    -32602,
+                    "browser_find: the query needs a word of two letters or more, e.g. \"delete\""
+                        .into(),
+                ));
+            }
+            return Ok(match b.read(Read::Find { query, limit }) {
+                Ok(found) => text_result(found.clone(), json!({"found": found})),
+                Err(e) if kind_of(&e) == "no_page" => {
+                    tool_error("no_page", no_page(), "call browser_open with a URL".into())
+                }
+                Err(e) => tool_error(kind_of(&e), e.to_string(), e.guidance()),
             });
         }
         "browser_view" => {

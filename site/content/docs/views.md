@@ -74,6 +74,32 @@ Content an agent should treat with care is marked:
 Every view fits its budget. The viewport comes first, then the head and tail of long runs, and
 the view says what it left out, so the model can ask for more (`--budget`, or `browser_view`).
 
+## Detail levels
+
+`full` (the default) shows everything above. `compact` keeps every element, landmark,
+heading, alert, status line and frame, and leaves out text runs; the header ends in
+`detail:compact`. On the real pages of pageon's corpus it is 27 % smaller at the median and
+80 % smaller on documentation; the model reads text with the `markdown` view when it needs it.
+
+## Finding elements
+
+`browser_find {"query": "delete"}` searches the whole page, including what the budget left
+out, by the words of each element's role, name, value and the text before it. Elements that
+share role and name are told apart by position and the heading or text before them:
+
+```text
+find "delete": 2 matches (by the words in each element's role, name, value and the text before it)
+button e14 "Delete" (1 of 2, under "Ada")
+button e19 "Delete" (2 of 2, under "Bob")
+```
+
+## Credentials in URLs
+
+Values of URL parameters that carry credentials (`token`, `code`, `key`, `sig`,
+`X-Amz-Signature`, session ids and the like, 8 characters or more) appear as `[redacted]` in
+every view, outcome and error, and in saved recordings. Follow such links by ref; a recording
+still replays exactly.
+
 ## Diffs
 
 After the first observation, an agent can get only what changed:

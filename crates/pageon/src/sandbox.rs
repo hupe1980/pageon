@@ -554,7 +554,29 @@ impl<E: Env> Sandbox<E> {
 
     /// The agent view of tab `id` (`full`: complete, refs kept).
     pub fn observe_tab(&mut self, id: u32, full: bool) -> Result<String, SandboxError> {
-        self.call(Op::Observe { tab: id, full })
+        self.call(Op::Observe {
+            tab: id,
+            full,
+            detail: None,
+            budget: None,
+        })
+    }
+
+    /// [`observe_tab`](Self::observe_tab) at a detail level and budget, which stay for later
+    /// views.
+    pub fn observe_tab_at(
+        &mut self,
+        id: u32,
+        full: bool,
+        detail: pageon_agent::Detail,
+        budget: Budget,
+    ) -> Result<String, SandboxError> {
+        self.call(Op::Observe {
+            tab: id,
+            full,
+            detail: Some(detail),
+            budget: Some(budget),
+        })
     }
 
     /// Performs an action in tab `id`.
@@ -1302,6 +1324,8 @@ mod tests {
                 Op::Observe {
                     tab: 9,
                     full: false,
+                    detail: None,
+                    budget: None,
                 },
                 false,
             ),
@@ -1364,6 +1388,8 @@ mod tests {
             Op::Observe {
                 tab: 1,
                 full: false,
+                detail: None,
+                budget: None,
             },
             act(1, "click e1", false),
             act(1, "type e3 \"ada\"", false),
@@ -1447,6 +1473,8 @@ mod tests {
             Op::Observe {
                 tab: 1,
                 full: false,
+                detail: None,
+                budget: None,
             },
             act(1, "press Enter", true),
         ] {

@@ -431,6 +431,7 @@ fn schedule_reconnect(cx: &mut Cx<'_, '_, '_>, obj: u32) {
             interval: None,
             frame: false,
             idle: false,
+            caused: false,
         },
         retry as f64,
     );

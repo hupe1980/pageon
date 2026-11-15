@@ -24,6 +24,7 @@ mod live;
 mod profile;
 mod realtime;
 mod record;
+mod redact;
 mod replay;
 mod steps;
 
@@ -58,6 +59,7 @@ pub fn write_private(path: impl AsRef<std::path::Path>, bytes: &[u8]) -> std::io
 pub use live::Live;
 pub use profile::{Navigator, Platform, Profile, UaData, brand_header, chrome, chrome_brands};
 pub use record::{Exchange, Log, Recording};
+pub use redact::{REDACTED, redact_params};
 pub use replay::Replay;
 pub use steps::{Cursor, Divergence, Kind, Recorder, Step, Target, diff_lines, fnv64};
 

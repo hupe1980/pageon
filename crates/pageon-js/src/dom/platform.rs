@@ -771,6 +771,7 @@ pub(crate) fn request_idle_callback(
         interval: None,
         frame: false,
         idle: true,
+        caused: false,
     };
     Ok(cx.realm.shared.borrow_mut().schedule(timer, 0.0))
 }

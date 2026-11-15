@@ -283,6 +283,8 @@ pub struct Dom {
     pub(crate) adopted: std::collections::HashMap<NodeId, Vec<String>>,
     /// Live ranges and the selection (see [`crate::ranges`]).
     pub(crate) ranges: crate::ranges::Ranges,
+    /// Mutable accesses so far (see [`Dom::changes`]).
+    changes: u64,
 }
 
 /// A change to the tree, logged for `MutationObserver` while [`Dom::set_observing`] is on.
@@ -364,6 +366,7 @@ impl Dom {
             controls: std::collections::HashMap::new(),
             observing: false,
             mutations: Vec::new(),
+            changes: 0,
             shadow: std::collections::HashMap::new(),
             scopes: std::collections::HashMap::new(),
             internals: std::collections::HashMap::new(),
@@ -382,7 +385,14 @@ impl Dom {
 
     /// A form control's state, for changes.
     pub fn control_mut(&mut self, id: NodeId) -> &mut ControlState {
+        self.changes += 1;
         self.controls.entry(id).or_default()
+    }
+
+    /// A counter that grows with every change to the tree or a control (every mutable
+    /// access counts, so it may grow without a visible change, never the reverse).
+    pub fn changes(&self) -> u64 {
+        self.changes
     }
 
     /// The document node.
@@ -434,6 +444,7 @@ impl Dom {
 
     /// Mutable access to a node.
     pub fn get_mut(&mut self, id: NodeId) -> Option<&mut Node> {
+        self.changes += 1;
         self.slots
             .get_mut(id.index as usize)
             .filter(|s| s.generation == id.generation)

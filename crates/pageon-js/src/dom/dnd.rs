@@ -440,6 +440,7 @@ pub mod data_transfer_item {
                 interval: None,
                 frame: false,
                 idle: false,
+                caused: false,
             },
             0.0,
         );

@@ -76,8 +76,11 @@ class RefError(PageonError):
 class Episode:
     """One task played once: owns the refs and the last observation the agent saw."""
 
-    def __init__(self, budget: int = 4000, tokenizer: str = "o200k", mode: str = "full") -> None:
-        self._native = _Episode(budget, tokenizer, mode)
+    def __init__(
+        self, budget: int = 4000, tokenizer: str = "o200k", mode: str = "full", detail: str = "full"
+    ) -> None:
+        """``detail="compact"`` leaves text runs out of the view (elements, headings, alerts stay)."""
+        self._native = _Episode(budget, tokenizer, mode, detail)
 
     @property
     def version(self) -> int:

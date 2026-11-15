@@ -90,7 +90,7 @@ pub use sandbox::{Lookahead, Pending, RemoteTab, Sandbox, SandboxError, SandboxO
 pub use secrets::{Secret, Secrets};
 pub use session::Session;
 pub use tab::{
-    Action, ActionError, At, Direction, Download, Outcome, Reason, ScrollBy, Settle, Tab,
+    Action, ActionError, At, Direction, Download, Outcome, Reason, ScrollBy, Settle, Status, Tab,
 };
 
 use std::rc::Rc;

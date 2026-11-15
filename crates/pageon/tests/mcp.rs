@@ -149,6 +149,7 @@ fn handshake_and_tools() {
         [
             "browser_open",
             "browser_observe",
+            "browser_find",
             "browser_click",
             "browser_type",
             "browser_upload",

@@ -347,9 +347,22 @@ fn serve_on(input: Box<dyn BufRead>, output: Box<dyn Write>) -> Result<(), Strin
                     })
                 })
                 .ok_or_else(|| no_tab(tab)),
-            Op::Observe { tab, full } => tabs
+            Op::Observe {
+                tab,
+                full,
+                detail,
+                budget,
+            } => tabs
                 .get_mut(&tab)
-                .map(|t| json(&if full { t.observe_full() } else { t.observe() }))
+                .map(|t| {
+                    if let Some(d) = detail {
+                        t.set_detail(d);
+                    }
+                    if let Some(b) = budget {
+                        t.set_budget(b);
+                    }
+                    json(&if full { t.observe_full() } else { t.observe() })
+                })
                 .ok_or_else(|| no_tab(tab)),
             Op::Read { tab, read } => tabs
                 .get_mut(&tab)

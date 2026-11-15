@@ -379,6 +379,7 @@ pub mod window_or_worker_global_scope {
             interval: repeat.then_some(delay),
             frame: false,
             idle: false,
+            caused: false,
         };
         let id = cx.realm.shared.borrow_mut().schedule(t, delay);
         i32::try_from(id).unwrap_or(i32::MAX)
@@ -529,6 +530,7 @@ pub mod animation_frame_provider {
             interval: None,
             frame: true,
             idle: false,
+            caused: false,
         };
         Ok(sh.schedule(t, delay))
     }

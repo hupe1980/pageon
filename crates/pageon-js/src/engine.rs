@@ -1162,9 +1162,11 @@ impl Engine {
             let Some(timer) = next else { break };
             tasks += 1;
             let realm = timer.realm;
+            self.shared.borrow_mut().uncaused = !timer.caused;
             let (_, fired) = self.guarded(|e| {
                 e.with_cx(realm, |cx| run_timer(cx, &timer));
             });
+            self.shared.borrow_mut().uncaused = false;
             self.terminated(fired, "timer");
             self.shared.borrow_mut().tag_errors(realm);
             if let Some(every) = timer.interval {
@@ -1879,6 +1881,35 @@ impl Engine {
             sh.console[sh.console.len() - n..].to_vec(),
             sh.console_total,
         )
+    }
+
+    /// Starts an agent's action: timers pending now are the page's own; timers set from
+    /// here on, and timers those set, are the action's.
+    pub fn begin_action(&mut self) {
+        let mut sh = self.shared.borrow_mut();
+        sh.uncaused = false;
+        for t in sh.timers.values_mut() {
+            t.caused = false;
+        }
+    }
+
+    /// Changes to this engine's documents so far (see `Dom::changes`).
+    pub fn dom_changes(&self) -> u64 {
+        self.realms
+            .iter()
+            .map(|(_, r)| r.dom.try_borrow().map_or(0, |d| d.changes()))
+            .sum()
+    }
+
+    /// Virtual ms until the soonest pending timer the current action set (animation-frame
+    /// and idle callbacks aside), if any.
+    pub fn caused_due_ms(&self) -> Option<u64> {
+        let sh = self.shared.borrow();
+        let now_us = (sh.now * 1000.0) as u64;
+        sh.timers
+            .iter()
+            .find(|(_, t)| t.caused && !t.frame && !t.idle)
+            .map(|(&(due_us, _), _)| due_us.saturating_sub(now_us).div_ceil(1000))
     }
 
     /// Virtual ms until the next timer is due (`None` when no timer is pending).

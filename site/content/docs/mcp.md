@@ -73,7 +73,7 @@ a collector that is down costs a tool call nothing.
 
 | Group | Tools |
 | --- | --- |
-| Read | `browser_open`, `browser_observe`, `browser_view` (`markdown`, `text`, `requests`, `errors`), `browser_screenshot` |
+| Read | `browser_open`, `browser_observe`, `browser_find`, `browser_view` (`markdown`, `text`, `requests`, `errors`), `browser_screenshot` |
 | Tabs | `browser_tabs` (`new`, `select`, `close`, `list`) |
 | Act | `browser_click`, `browser_type`, `browser_upload`, `browser_press`, `browser_select`, `browser_paste`, `browser_hover`, `browser_drag`, `browser_scroll`, `browser_wait`, `browser_back`, `browser_forward`, `browser_call_tool` |
 | Explore | `browser_lookahead`, `browser_reset` |
@@ -92,6 +92,16 @@ ok click e12 · 1 request(s) · settled idle after 40 ms
 ~ link e9 "Cart (1)"
 step 4
 ```
+
+When the page is still working on an action (nothing changed yet, and a timer the action set
+is due), the outcome says so instead of `ok`, with the wait that lets it finish:
+
+```text
+unknown click e4 · nothing changed yet; the page set a timer due in 3000 ms (browser_wait 3000)
+```
+
+`browser_observe {"detail": "compact"}` leaves text runs out of this and later views (see
+[detail levels](@/docs/views.md#detail-levels)); `pageon mcp --detail compact` starts that way.
 
 ## Several tabs
 
