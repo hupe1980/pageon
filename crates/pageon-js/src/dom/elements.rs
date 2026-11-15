@@ -235,6 +235,32 @@ pub mod element {
             .map_err(|_| gone())
     }
 
+    /// `getAttributeNode(name)`: the attribute as an `Attr`, or `null`.
+    pub fn get_attribute_node(cx: &mut Cx<'_, '_, '_>, this: Obj, name: String) -> R<Option<Obj>> {
+        let id = this.node()?;
+        let name = attr_name(cx, id, &name);
+        let present = cx.dom().get(id).is_some_and(|n| n.attr(&name).is_some());
+        Ok(present.then(|| cx.alloc(crate::generated::Iface::Attr, Slot::Attr(id, name))))
+    }
+
+    /// `removeAttributeNode(attr)`: removes the attribute `attr` names from this element
+    /// (sanitizers such as DOMPurify remove attributes this way).
+    pub fn remove_attribute_node(cx: &mut Cx<'_, '_, '_>, this: Obj, attr: Obj) -> R<Obj> {
+        let id = this.node()?;
+        let (owner, name) = match cx.st().slot(attr.slab()?) {
+            Some(Slot::Attr(n, name)) => (*n, name.clone()),
+            _ => return Err(Error::Type("Failed to execute 'removeAttributeNode' on 'Element': parameter 1 is not of type 'Attr'.".into())),
+        };
+        if owner != id || cx.dom().get(id).is_none_or(|n| n.attr(&name).is_none()) {
+            return Err(Error::dom(
+                "NotFoundError",
+                "Failed to execute 'removeAttributeNode' on 'Element': The node provided is owned by another element.",
+            ));
+        }
+        cx.dom_mut().remove_attr(id, &name).map_err(|_| gone())?;
+        Ok(attr)
+    }
+
     pub fn remove_attribute(cx: &mut Cx<'_, '_, '_>, this: Obj, name: String) -> R<()> {
         let id = this.node()?;
         let name = attr_name(cx, id, &name);

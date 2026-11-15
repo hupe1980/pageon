@@ -16,6 +16,9 @@ All notable changes to this project are documented here. The format follows
 - `pageon::Config` and `pageon::mcp::serve_with`: embed a session configured as the CLI's
   flags configure it.
 - `pageon::threat_model` on docs.rs.
+- Web Crypto (`crypto.subtle`: SHA, HMAC, ECDSA P-256, Ed25519, AES-GCM), streams
+  (`ReadableStream`, `TransformStream`, `TextDecoderStream`, `Response.body`), `DOMParser`,
+  `NodeIterator`, `MessageChannel`, user timing, `screen`, `CSS.supports` and `InputEvent`.
 
 ### Changed
 

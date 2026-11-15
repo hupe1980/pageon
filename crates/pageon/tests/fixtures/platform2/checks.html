@@ -1,0 +1,152 @@
+<!doctype html>
+<html><head><meta charset=utf-8><title>Platform basics 2</title></head>
+<body><input id=f><pre id=out></pre>
+<script>
+// Known answers: FIPS 180 ("abc"), RFC 4231 (HMAC case 2), the GCM specification (test case 2),
+// RFC 8032 (Ed25519 test 1), RFC 6979 A.2.5 (P-256, SHA-256, "sample"). Behaviour derived from
+// the web-platform-tests of WebCryptoAPI, streams, domparsing, user-timing, webmessaging,
+// cssom and uievents.
+const results = [];
+const check = (name, ok) => results.push([name, !!ok]);
+const rejects = async (p, name) => { try { await p; return false; } catch (e) { return e.name === name; } };
+const throws = (f, name) => { try { f(); return false; } catch (e) { return e.name === name; } };
+const enc = new TextEncoder();
+const hex = (b) => [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, '0')).join('');
+const unhex = (h) => new Uint8Array(h.match(/../g).map((x) => parseInt(x, 16)));
+const b64u = (b) => btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const s = crypto.subtle;
+
+async function main() {
+  // ----- digest -----
+  check('SHA-1', hex(await s.digest('SHA-1', enc.encode('abc'))) === 'a9993e364706816aba3e25717850c26c9cd0d89d');
+  check('SHA-256', hex(await s.digest('SHA-256', enc.encode('abc'))) === 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad');
+  check('SHA-384', hex(await s.digest({ name: 'SHA-384' }, enc.encode('abc'))) === 'cb00753f45a35e8bb5a03d699ac65007272c32ab0eded1631a8b605a43ff5bed8086072ba1e7cc2358baeca134c825a7');
+  check('SHA-512', hex(await s.digest('sha-512', enc.encode('abc'))) === 'ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f');
+  check('unsupported digest rejects NotSupportedError', await rejects(s.digest('MD5', enc.encode('x')), 'NotSupportedError'));
+  check('RSA rejects NotSupportedError', await rejects(s.generateKey({ name: 'RSA-OAEP', modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: 'SHA-256' }, true, ['encrypt']), 'NotSupportedError'));
+  check('deriveBits is absent', typeof s.deriveBits === 'undefined');
+
+  // ----- HMAC -----
+  const hk = await s.importKey('raw', enc.encode('Jefe'), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']);
+  const mac = await s.sign('HMAC', hk, enc.encode('what do ya want for nothing?'));
+  check('HMAC-SHA-256 (RFC 4231)', hex(mac) === '5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843');
+  check('HMAC verifies', await s.verify('HMAC', hk, mac, enc.encode('what do ya want for nothing?')));
+  check('HMAC rejects a wrong message', !(await s.verify('HMAC', hk, mac, enc.encode('other'))));
+  check('CryptoKey shape', hk instanceof CryptoKey && hk.type === 'secret' && !hk.extractable && hk.algorithm.name === 'HMAC' && hk.algorithm.hash.name === 'SHA-256' && hk.usages.join() === 'sign,verify');
+  check('non-extractable keys do not export', await rejects(s.exportKey('raw', hk), 'InvalidAccessError'));
+  const gk = await s.generateKey({ name: 'HMAC', hash: 'SHA-512' }, true, ['sign']);
+  check('generated HMAC key: block size', gk.algorithm.length === 1024 && (await s.exportKey('raw', gk)).byteLength === 128);
+  const jwk = await s.exportKey('jwk', gk);
+  check('HMAC JWK', jwk.kty === 'oct' && jwk.alg === 'HS512' && typeof jwk.k === 'string');
+  check('usage outside the key rejects', await rejects(s.verify('HMAC', gk, mac, enc.encode('x')), 'InvalidAccessError'));
+
+  // ----- AES-GCM -----
+  const ak = await s.importKey('raw', new Uint8Array(16), 'AES-GCM', true, ['encrypt', 'decrypt']);
+  const ct = await s.encrypt({ name: 'AES-GCM', iv: new Uint8Array(12) }, ak, new Uint8Array(16));
+  check('AES-GCM (GCM test case 2)', hex(ct) === '0388dace60b6a392f328c2b971b2fe78ab6e47d42cec13bdf53a67b21257bddf');
+  check('AES-GCM decrypts', hex(await s.decrypt({ name: 'AES-GCM', iv: new Uint8Array(12) }, ak, ct)) === '00'.repeat(16));
+  const bad = new Uint8Array(ct); bad[0] ^= 1;
+  check('AES-GCM rejects a forged tag', await rejects(s.decrypt({ name: 'AES-GCM', iv: new Uint8Array(12) }, ak, bad), 'OperationError'));
+  const aad = await s.encrypt({ name: 'AES-GCM', iv: new Uint8Array(12), additionalData: enc.encode('hdr') }, ak, enc.encode('hello'));
+  check('AES-GCM with additional data round-trips', new TextDecoder().decode(await s.decrypt({ name: 'AES-GCM', iv: new Uint8Array(12), additionalData: enc.encode('hdr') }, ak, aad)) === 'hello');
+
+  // ----- Ed25519 (RFC 8032 test 1) -----
+  const pkcs8 = unhex('302e020100300506032b657004220420' + '9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60');
+  const ek = await s.importKey('pkcs8', pkcs8, 'Ed25519', false, ['sign']);
+  const esig = await s.sign('Ed25519', ek, new Uint8Array(0));
+  check('Ed25519 signature (RFC 8032)', hex(esig) === 'e5564300c360ac729086e2cc806e828a84877f1eb8e5d974d873e065224901555fb8821590a33bacc61e39701cf9b46bd25bf5f0595bbe24655141438e7a100b');
+  const epub = await s.importKey('raw', unhex('d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a'), 'Ed25519', true, ['verify']);
+  check('Ed25519 verifies', await s.verify('Ed25519', epub, esig, new Uint8Array(0)));
+  const ekp = await s.generateKey('Ed25519', true, ['sign', 'verify']);
+  check('generated Ed25519 pair', ekp.publicKey.type === 'public' && ekp.privateKey.type === 'private' && (await s.exportKey('raw', ekp.publicKey)).byteLength === 32);
+
+  // ----- ECDSA P-256 (RFC 6979 A.2.5) -----
+  const pk = { kty: 'EC', crv: 'P-256',
+    x: b64u(unhex('60fed4ba255a9d31c961eb74c6356d68c049b8923b61fa6ce669622e60f29fb6')),
+    y: b64u(unhex('7903fe1008b8bc99a41ae9e95628bc64f2f1b20c2d7e9f5177a3c294d4462299')) };
+  const sk = await s.importKey('jwk', { ...pk, d: b64u(unhex('c9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721')) }, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
+  const sig = await s.sign({ name: 'ECDSA', hash: 'SHA-256' }, sk, enc.encode('sample'));
+  check('ECDSA P-256 is deterministic (RFC 6979)', hex(sig) === 'efd48b2aacb6a8fd1140dd9cd45e81d69d2c877b56aaf991c34d0ea84eaf3716f7cb1c942d657c41d436c7a1b6e29f65f3e900dbb9aff4064dc4ab2f843acda8');
+  const vk = await s.importKey('jwk', pk, { name: 'ECDSA', namedCurve: 'P-256' }, true, ['verify']);
+  check('ECDSA verifies', await s.verify({ name: 'ECDSA', hash: 'SHA-256' }, vk, sig, enc.encode('sample')));
+  check('ECDSA rejects another message', !(await s.verify({ name: 'ECDSA', hash: 'SHA-256' }, vk, sig, enc.encode('other'))));
+  const spki = await s.exportKey('spki', vk);
+  const vk2 = await s.importKey('spki', spki, { name: 'ECDSA', namedCurve: 'P-256' }, true, ['verify']);
+  check('SPKI round-trips', hex(await s.exportKey('raw', vk2)) === hex(await s.exportKey('raw', vk)));
+  check('P-384 rejects NotSupportedError', await rejects(s.generateKey({ name: 'ECDSA', namedCurve: 'P-384' }, true, ['sign', 'verify']), 'NotSupportedError'));
+
+  // ----- streams -----
+  const rs = new ReadableStream({ start(c) { c.enqueue('a'); c.enqueue('b'); c.close(); } });
+  const got = [];
+  for await (const chunk of rs) got.push(chunk);
+  check('ReadableStream async iteration', got.join() === 'a,b');
+  const piped = new ReadableStream({ start(c) { c.enqueue(enc.encode('hé')); c.enqueue(enc.encode('llo')); c.close(); } })
+    .pipeThrough(new TextDecoderStream());
+  const reader = piped.getReader();
+  let text = '';
+  for (let r = await reader.read(); !r.done; r = await reader.read()) text += r.value;
+  check('pipeThrough(new TextDecoderStream())', text === 'héllo');
+  const ts = new TransformStream({ transform(ch, c) { c.enqueue(ch.toUpperCase()); } });
+  const w = ts.writable.getWriter(); w.write('x'); w.close();
+  check('TransformStream', (await ts.readable.getReader().read()).value === 'X');
+  check('TextEncoderStream encodes', (await new ReadableStream({ start(c) { c.enqueue('ok'); c.close(); } }).pipeThrough(new TextEncoderStream()).getReader().read()).value.length === 2);
+  check('WritableStream and strategies exist', typeof WritableStream === 'function' && new CountQueuingStrategy({ highWaterMark: 1 }).highWaterMark === 1);
+  const res = new Response('bytes!');
+  check('Response.body is a ReadableStream', res.body instanceof ReadableStream && res.body === res.body);
+  const br = res.body.getReader();
+  check('the body streams its bytes', new TextDecoder().decode((await br.read()).value) === 'bytes!' && (await br.read()).done);
+  check('arrayBuffer()', new TextDecoder().decode(await new Response('ab').arrayBuffer()) === 'ab');
+  check('bytes()', (await new Response('abc').bytes()) instanceof Uint8Array);
+  const used = new Response('x'); await used.text();
+  check('a used body errors its stream', await rejects(used.body.getReader().read(), 'TypeError'));
+
+  // ----- DOMParser, createHTMLDocument -----
+  window.ran = 0;
+  const pd = new DOMParser().parseFromString('<title>T</title><p id=x>hi<script>window.ran = 1<\/script><img src=/never.png onerror="window.ran = 2">', 'text/html');
+  check('DOMParser returns a document', pd instanceof Document && pd !== document && pd.title === 'T');
+  check('the parsed document has its own body', pd.body.firstChild.id === 'x' && pd.getElementById('x').firstChild.data === 'hi' && document.getElementById('x') === null);
+  check('querySelector works in it', pd.querySelectorAll('script, img').length === 2);
+  check('ownerDocument is the parsed one', pd.getElementById('x').ownerDocument === pd);
+  check('XML types reject NotSupportedError', throws(() => new DOMParser().parseFromString('<a/>', 'application/xml'), 'NotSupportedError'));
+  const hd = document.implementation.createHTMLDocument('New');
+  check('createHTMLDocument', hd.title === 'New' && hd.body !== null && hd.body !== document.body);
+
+  // ----- globals -----
+  check('screen', screen.width === innerWidth && screen.height === innerHeight && screen.colorDepth === 24);
+  check('visibility', document.hidden === false && document.visibilityState === 'visible');
+  check('CSS.escape', CSS.escape('1a') === '\\31 a' && CSS.escape('a b') === 'a\\ b' && CSS.escape('-') === '\\-');
+  check('CSS.supports', CSS.supports('display', 'grid') && CSS.supports('display: flex') && !CSS.supports('display', 'nope') && CSS.supports('(gap: 1px) and (display: flex)'));
+  reportError(new Error('reported'));
+
+  // ----- user timing -----
+  const m1 = performance.mark('a', { detail: { n: 1 } });
+  performance.mark('b');
+  const me = performance.measure('a-b', 'a', 'b');
+  const mo = performance.measure('opts', { start: 'a', duration: 5, detail: 'd' });
+  check('marks', m1 instanceof PerformanceMark && m1.entryType === 'mark' && m1.detail.n === 1);
+  check('measure by marks', me.entryType === 'measure' && me.duration >= 0);
+  check('measure with options', mo.duration === 5 && mo.detail === 'd');
+  check('getEntriesByType', performance.getEntriesByType('mark').length === 2 && performance.getEntriesByName('a-b').length === 1);
+  check('a missing mark is a SyntaxError', throws(() => performance.measure('x', 'nope'), 'SyntaxError'));
+  check('supportedEntryTypes', PerformanceObserver.supportedEntryTypes.join() === 'mark,measure');
+  const seen = [];
+  new PerformanceObserver((list) => { for (const e of list.getEntries()) seen.push(e.name); }).observe({ type: 'mark', buffered: true });
+  performance.clearMarks('b');
+  check('clearMarks', performance.getEntriesByType('mark').length === 1);
+
+  // ----- MessageChannel -----
+  const ch = new MessageChannel();
+  const message = await new Promise((resolve) => { ch.port2.onmessage = (e) => resolve(e.data); ch.port1.postMessage({ deep: [1, 2] }); });
+  check('MessageChannel delivers a structured clone', message.deep[1] === 2);
+  check('ports are not transferable', throws(() => ch.port1.postMessage(null, [ch.port2]), 'DataCloneError'));
+  check('a port inside a message is not cloneable', throws(() => ch.port1.postMessage({ p: ch.port2 }), 'DataCloneError'));
+  check('observers ran', seen.includes('a'));
+
+  // ----- InputEvent -----
+  const ie = new InputEvent('input', { inputType: 'insertText', data: 'a' });
+  check('InputEvent', ie instanceof InputEvent && ie.inputType === 'insertText' && ie.data === 'a');
+  document.getElementById('out').textContent = JSON.stringify(results);
+}
+main().catch((e) => { document.getElementById('out').textContent = JSON.stringify([['main threw ' + e, false]]); });
+</script>
+</body></html>

@@ -9,12 +9,31 @@ use crate::generated::Iface;
 use crate::realm::{Coll, EventData, Slot};
 
 fn root_element(cx: &Cx<'_, '_, '_>) -> Option<NodeId> {
-    let dom = cx.dom();
-    element_children(&dom, dom.root()).first().copied()
+    let root = cx.dom().root();
+    root_element_of(cx, root)
 }
 
 fn html_child(cx: &Cx<'_, '_, '_>, tag: &str) -> Option<NodeId> {
-    let root = root_element(cx)?;
+    let root = cx.dom().root();
+    html_child_of(cx, root, tag)
+}
+
+/// The document `this` is: a document `DOMParser` made, else the realm's own.
+pub(crate) fn doc_of(cx: &Cx<'_, '_, '_>, this: Obj) -> NodeId {
+    let dom = cx.dom();
+    match this {
+        Obj::Node(id) if matches!(dom.get(id).map(|n| &n.data), Some(NodeData::Document)) => id,
+        _ => dom.root(),
+    }
+}
+
+fn root_element_of(cx: &Cx<'_, '_, '_>, doc: NodeId) -> Option<NodeId> {
+    let dom = cx.dom();
+    element_children(&dom, doc).first().copied()
+}
+
+fn html_child_of(cx: &Cx<'_, '_, '_>, doc: NodeId, tag: &str) -> Option<NodeId> {
+    let root = root_element_of(cx, doc)?;
     let dom = cx.dom();
     element_children(&dom, root)
         .into_iter()
@@ -46,6 +65,16 @@ pub mod document {
     /// `document.elementFromPoint(x, y)`: the element painted at a viewport point (`null`
     /// outside the viewport).
     /// The document element: it scrolls the viewport (standards mode).
+    /// `hidden`: an agent's tab is the visible one.
+    pub fn get_hidden(_cx: &mut Cx<'_, '_, '_>, _this: Obj) -> R<bool> {
+        Ok(false)
+    }
+
+    /// `visibilityState`: `"visible"` (see `hidden`).
+    pub fn get_visibility_state(_cx: &mut Cx<'_, '_, '_>, _this: Obj) -> R<String> {
+        Ok("visible".into())
+    }
+
     pub fn get_scrolling_element(cx: &mut Cx<'_, '_, '_>, _this: Obj) -> R<Option<Obj>> {
         Ok(root_element(cx).map(Obj::Node))
     }
@@ -92,6 +121,16 @@ pub mod document {
         filter: Option<crate::cv::Value>,
     ) -> R<Obj> {
         crate::dom::traversal::create(cx, root, what_to_show, filter)
+    }
+
+    pub fn create_node_iterator(
+        cx: &mut Cx<'_, '_, '_>,
+        _this: Obj,
+        root: Obj,
+        what_to_show: u32,
+        filter: Option<crate::cv::Value>,
+    ) -> R<Obj> {
+        crate::dom::traversal::create_iterator(cx, root, what_to_show, filter)
     }
 
     /// `document.cookie`: the cookies of the document's URL that script may see (not
@@ -144,16 +183,18 @@ pub mod document {
         Ok("text/html".into())
     }
 
-    pub fn get_doctype(cx: &mut Cx<'_, '_, '_>, _this: Obj) -> R<Option<Obj>> {
+    pub fn get_doctype(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<Option<Obj>> {
+        let doc = doc_of(cx, this);
         let dom = cx.dom();
         Ok(dom
-            .children(dom.root())
+            .children(doc)
             .find(|&c| matches!(dom.get(c).map(|n| &n.data), Some(NodeData::Doctype { .. })))
             .map(Obj::Node))
     }
 
-    pub fn get_document_element(cx: &mut Cx<'_, '_, '_>, _this: Obj) -> R<Option<Obj>> {
-        Ok(root_element(cx).map(Obj::Node))
+    pub fn get_document_element(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<Option<Obj>> {
+        let doc = doc_of(cx, this);
+        Ok(root_element_of(cx, doc).map(Obj::Node))
     }
 
     pub fn get_elements_by_tag_name(cx: &mut Cx<'_, '_, '_>, this: Obj, name: String) -> R<Obj> {
@@ -282,7 +323,7 @@ pub mod document {
 
     pub fn adopt_node(cx: &mut Cx<'_, '_, '_>, _this: Obj, node: Obj) -> R<Obj> {
         let id = node.node()?;
-        if cx.dom().root() == id {
+        if matches!(cx.dom().get(id).map(|n| &n.data), Some(NodeData::Document)) {
             return Err(Error::dom(
                 "NotSupportedError",
                 "The node provided is a document, which may not be adopted.",
@@ -352,9 +393,10 @@ pub mod document {
         Ok(cx.st().ready_state.to_string())
     }
 
-    pub fn get_title(cx: &mut Cx<'_, '_, '_>, _this: Obj) -> R<String> {
+    pub fn get_title(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<String> {
+        let doc = doc_of(cx, this);
         let dom = cx.dom();
-        let title = dom.traverse(dom.root()).find_map(|e| match e {
+        let title = dom.traverse(doc).find_map(|e| match e {
             pageon_dom::Edge::Enter(n) if dom.get(n).is_some_and(|x| x.is_html("title")) => Some(n),
             _ => None,
         });
@@ -368,10 +410,11 @@ pub mod document {
             .unwrap_or_default())
     }
 
-    pub fn set_title(cx: &mut Cx<'_, '_, '_>, _this: Obj, v: String) -> R<()> {
+    pub fn set_title(cx: &mut Cx<'_, '_, '_>, this: Obj, v: String) -> R<()> {
+        let doc = doc_of(cx, this);
         let existing = {
             let dom = cx.dom();
-            dom.traverse(dom.root()).find_map(|e| match e {
+            dom.traverse(doc).find_map(|e| match e {
                 pageon_dom::Edge::Enter(n) if dom.get(n).is_some_and(|x| x.is_html("title")) => {
                     Some(n)
                 }
@@ -381,7 +424,7 @@ pub mod document {
         let title = match existing {
             Some(t) => t,
             None => {
-                let Some(head) = html_child(cx, "head") else {
+                let Some(head) = html_child_of(cx, doc, "head") else {
                     return Ok(());
                 };
                 let t = super::create_element(&mut cx.dom_mut(), ns!(html), "title");
@@ -392,8 +435,9 @@ pub mod document {
         super::super::node::replace_with_text(cx, title, &v)
     }
 
-    pub fn get_dir(cx: &mut Cx<'_, '_, '_>, _this: Obj) -> R<String> {
-        Ok(root_element(cx)
+    pub fn get_dir(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<String> {
+        let doc = doc_of(cx, this);
+        Ok(root_element_of(cx, doc)
             .and_then(|r| {
                 cx.dom()
                     .get(r)
@@ -403,16 +447,18 @@ pub mod document {
             .unwrap_or_default())
     }
 
-    pub fn set_dir(cx: &mut Cx<'_, '_, '_>, _this: Obj, v: String) -> R<()> {
-        if let Some(r) = root_element(cx) {
+    pub fn set_dir(cx: &mut Cx<'_, '_, '_>, this: Obj, v: String) -> R<()> {
+        let doc = doc_of(cx, this);
+        if let Some(r) = root_element_of(cx, doc) {
             cx.dom_mut().set_attr(r, "dir", &v).map_err(|_| gone())?;
         }
         Ok(())
     }
 
-    pub fn get_body(cx: &mut Cx<'_, '_, '_>, _this: Obj) -> R<Option<Obj>> {
-        Ok(html_child(cx, "body")
-            .or_else(|| html_child(cx, "frameset"))
+    pub fn get_body(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<Option<Obj>> {
+        let doc = doc_of(cx, this);
+        Ok(html_child_of(cx, doc, "body")
+            .or_else(|| html_child_of(cx, doc, "frameset"))
             .map(Obj::Node))
     }
 
@@ -424,7 +470,8 @@ pub mod document {
             ));
         };
         let new = new.node()?;
-        let Some(root) = root_element(cx) else {
+        let doc = doc_of(cx, this);
+        let Some(root) = root_element_of(cx, doc) else {
             return Ok(());
         };
         if let Some(Obj::Node(old)) = get_body(cx, this)? {
@@ -435,8 +482,9 @@ pub mod document {
         Ok(())
     }
 
-    pub fn get_head(cx: &mut Cx<'_, '_, '_>, _this: Obj) -> R<Option<Obj>> {
-        Ok(html_child(cx, "head").map(Obj::Node))
+    pub fn get_head(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<Option<Obj>> {
+        let doc = doc_of(cx, this);
+        Ok(html_child_of(cx, doc, "head").map(Obj::Node))
     }
 
     pub fn get_images(cx: &mut Cx<'_, '_, '_>, _this: Obj) -> R<Obj> {
@@ -623,6 +671,23 @@ pub mod non_element_parent_node {
 /// `DOMImplementation`.
 pub mod dom_implementation {
     use super::*;
+
+    /// `createHTMLDocument(title)`: an inert document (as `DOMParser` makes) with a doctype,
+    /// `<html>`, `<head>` with the title when given, and `<body>`.
+    pub fn create_html_document(
+        cx: &mut Cx<'_, '_, '_>,
+        _this: Obj,
+        title: Option<String>,
+    ) -> R<Obj> {
+        let t = title
+            .map(|t| {
+                let t = t.replace('&', "&amp;").replace('<', "&lt;");
+                format!("<title>{t}</title>")
+            })
+            .unwrap_or_default();
+        let html = format!("<!DOCTYPE html><html><head>{t}</head><body></body></html>");
+        Ok(Obj::Node(crate::dom::basics::inert_document(cx, &html)))
+    }
 
     /// Historical; always `true`, as the DOM standard says.
     pub fn has_feature(_cx: &mut Cx<'_, '_, '_>, _this: Obj) -> R<bool> {

@@ -67,6 +67,26 @@ pub fn template(
                 v8::IndexedPropertyHandlerConfiguration::new().getter(indexed_get),
             );
         }
+        Iface::MessagePort => {
+            // `postMessage(message, transfer)` and `postMessage(message, options)`.
+            cv::method(
+                scope,
+                proto.into(),
+                "postMessage",
+                crate::dom::message_port::post_message_any,
+                1,
+            );
+        }
+        Iface::Performance => {
+            // `measure` takes a mark name or an options object: one method reads both.
+            cv::method(
+                scope,
+                proto.into(),
+                "measure",
+                crate::dom::timing::measure_any,
+                1,
+            );
+        }
         Iface::DataTransferItemList => {
             inst.set_indexed_property_handler(
                 v8::IndexedPropertyHandlerConfiguration::new().getter(indexed_get),

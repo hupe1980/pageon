@@ -27,6 +27,9 @@ serde_json.workspace = true
 encoding_rs = "0.8"
 chacha20 = { version = "0.10", default-features = false, features = ["rng"] }
 rand_core = "0.10"
+aws-lc-rs = "1.19"
+base64 = "0.22"
+p256 = { version = "0.14", default-features = false, features = ["ecdsa", "pkcs8", "alloc"] }
 
 [dev-dependencies]
 pageon-dom.workspace = true

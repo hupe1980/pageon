@@ -69,7 +69,7 @@ check('getRandomValues refuses DataView', throws(() => crypto.getRandomValues(ne
 check('getRandomValues quota', throws(() => crypto.getRandomValues(new Uint8Array(65537)), 'QuotaExceededError') && crypto.getRandomValues(new Uint8Array(65536)).length === 65536);
 check('randomUUID is a version 4 UUID', /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(crypto.randomUUID()));
 check('randomUUID differs', crypto.randomUUID() !== crypto.randomUUID());
-check('no crypto.subtle', !('subtle' in crypto));
+check('crypto.subtle exists', typeof crypto.subtle === 'object');
 
 // ----- Encoding -----
 const enc = new TextEncoder();

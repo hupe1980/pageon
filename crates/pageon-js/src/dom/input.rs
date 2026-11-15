@@ -977,9 +977,43 @@ fn input_event(cx: &mut Cx<'_, '_, '_>, el: NodeId, ty: &str, cancelable: bool) 
     dispatch(cx, Target::Node(el), e)
 }
 
+/// A trusted `beforeinput` or `input` `InputEvent` of an edit (`insertText`,
+/// `deleteContentBackward`, …).
+fn edit_event(
+    cx: &mut Cx<'_, '_, '_>,
+    el: NodeId,
+    ty: &str,
+    cancelable: bool,
+    input_type: &str,
+    data: Option<String>,
+) -> R<bool> {
+    if ty == "input" {
+        cx.dom_mut().control_mut(el).user_edited = true;
+    }
+    let ev = EventData {
+        ty: ty.into(),
+        bubbles: true,
+        cancelable,
+        composed: true,
+        initialized: true,
+        trusted: true,
+        time: now(cx),
+        input_kind: Some(Box::new((input_type.to_string(), data, false))),
+        ..EventData::default()
+    };
+    let e = cx.alloc(Iface::InputEvent, Slot::Event(Box::new(ev)));
+    dispatch(cx, Target::Node(el), e)
+}
+
 /// Inserts one character the way a keystroke does (respecting `maxlength`).
 fn insert(cx: &mut Cx<'_, '_, '_>, el: NodeId, ch: char) -> R<()> {
-    if !input_event(cx, el, "beforeinput", true)? {
+    let kind = if ch == '\n' {
+        "insertLineBreak"
+    } else {
+        "insertText"
+    };
+    let data = (ch != '\n').then(|| ch.to_string());
+    if !edit_event(cx, el, "beforeinput", true, kind, data.clone())? {
         return Ok(());
     }
     // A selected value is replaced by what is typed.
@@ -994,7 +1028,7 @@ fn insert(cx: &mut Cx<'_, '_, '_>, el: NodeId, ch: char) -> R<()> {
     }
     v.push(ch);
     set_value(cx, el, &v);
-    input_event(cx, el, "input", false).map(|_| ())
+    edit_event(cx, el, "input", false, kind, data).map(|_| ())
 }
 
 /// Replaces an editable element's text with `text`, typed key by key.
@@ -1003,7 +1037,7 @@ pub fn type_text(cx: &mut Cx<'_, '_, '_>, el: NodeId, text: &str) -> R<()> {
     let initial = value_of(cx, el)?;
     if !initial.is_empty() {
         set_value(cx, el, "");
-        input_event(cx, el, "input", false)?;
+        edit_event(cx, el, "input", false, "deleteContentBackward", None)?;
     }
     for ch in text.chars() {
         let key = if ch == '\n' {
@@ -1034,7 +1068,7 @@ pub fn fill(cx: &mut Cx<'_, '_, '_>, el: NodeId, value: &str) -> R<()> {
         return Ok(());
     }
     set_value(cx, el, value);
-    input_event(cx, el, "input", false)?;
+    edit_event(cx, el, "input", false, "insertReplacementText", None)?;
     input_event(cx, el, "change", false).map(|_| ())
 }
 
@@ -1269,7 +1303,12 @@ fn press_key(cx: &mut Cx<'_, '_, '_>, key: &str) -> R<()> {
                 };
                 if changed {
                     set_value(cx, t, &v);
-                    input_event(cx, t, "input", false)?;
+                    let kind = if key == "Delete" {
+                        "deleteContentForward"
+                    } else {
+                        "deleteContentBackward"
+                    };
+                    edit_event(cx, t, "input", false, kind, None)?;
                 }
             }
             "Escape" => {

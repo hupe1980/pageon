@@ -171,7 +171,10 @@ pub(crate) fn fresh_signal(cx: &mut Cx<'_, '_, '_>) -> Obj {
 }
 
 /// A promise already resolved (`Ok`) or rejected (`Err`).
-fn settled(cx: &mut Cx<'_, '_, '_>, result: Result<v8::Local<'_, v8::Value>, Error>) -> R<Value> {
+pub(crate) fn settled(
+    cx: &mut Cx<'_, '_, '_>,
+    result: Result<v8::Local<'_, v8::Value>, Error>,
+) -> R<Value> {
     let (resolver, p) = promise(cx)?;
     match result {
         Ok(v) => settle_promise(cx, &resolver, Ok(v)),
@@ -860,6 +863,33 @@ pub mod body {
             Ok(b) => {
                 let s = cx.str(&utf8(&b));
                 settled(cx, Ok(s.into()))
+            }
+            Err(e) => settled(cx, Err(e)),
+        }
+    }
+
+    /// `arrayBuffer()`: the body's bytes.
+    pub fn array_buffer(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<Value> {
+        match take(cx, this)? {
+            Ok(b) => {
+                let ab = crate::dom::blobs::array_buffer(cx, &b);
+                let ab = cx.local(&ab);
+                settled(cx, Ok(ab))
+            }
+            Err(e) => settled(cx, Err(e)),
+        }
+    }
+
+    /// `bytes()`: the body's bytes as a `Uint8Array`.
+    pub fn bytes(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<Value> {
+        match take(cx, this)? {
+            Ok(b) => {
+                let ab = crate::dom::blobs::array_buffer(cx, &b);
+                let ab = cx.local(&ab);
+                let ab =
+                    v8::Local::<v8::ArrayBuffer>::try_from(ab).map_err(|_| Error::Terminated)?;
+                let u8a = v8::Uint8Array::new(cx.scope, ab, 0, b.len()).ok_or(Error::Terminated)?;
+                settled(cx, Ok(u8a.into()))
             }
             Err(e) => settled(cx, Err(e)),
         }

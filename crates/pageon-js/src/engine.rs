@@ -230,6 +230,77 @@ const PRELUDE: &str = r#"(() => {
   Date.UTC = NativeDate.UTC;
   Object.defineProperty(globalThis, 'Date', { value: Date, writable: true, configurable: true });
   Object.defineProperty(Math, 'random', { value: host.random, writable: true, configurable: true });
+  // Streams: loaded on first use (see streams.rs).
+  let streams = null;
+  const loadStreams = () => {
+    if (streams) return streams;
+    const m = host.streams();
+    const decode = Symbol(), encode = Symbol();
+    class TextDecoderStream extends m.TransformStream {
+      constructor(label = 'utf-8', options = {}) {
+        const decoder = new TextDecoder(label, options);
+        super({
+          transform(chunk, c) { const s = decoder.decode(chunk, { stream: true }); if (s) c.enqueue(s); },
+          flush(c) { const s = decoder.decode(); if (s) c.enqueue(s); },
+        });
+        this[decode] = decoder;
+      }
+      get encoding() { return this[decode].encoding; }
+      get fatal() { return this[decode].fatal; }
+      get ignoreBOM() { return this[decode].ignoreBOM; }
+    }
+    class TextEncoderStream extends m.TransformStream {
+      constructor() {
+        const encoder = new TextEncoder();
+        super({ transform(chunk, c) { const b = encoder.encode(String(chunk)); if (b.length) c.enqueue(b); } });
+        this[encode] = encoder;
+      }
+      get encoding() { return 'utf-8'; }
+    }
+    streams = { ...m, TextDecoderStream, TextEncoderStream };
+    return streams;
+  };
+  const names = ['ReadableStream', 'ReadableStreamDefaultReader', 'ReadableStreamBYOBReader',
+    'ReadableStreamDefaultController', 'ReadableByteStreamController', 'ReadableStreamBYOBRequest',
+    'WritableStream', 'WritableStreamDefaultWriter', 'WritableStreamDefaultController',
+    'TransformStream', 'TransformStreamDefaultController', 'ByteLengthQueuingStrategy',
+    'CountQueuingStrategy', 'TextDecoderStream', 'TextEncoderStream'];
+  const settle = (n, v) => Object.defineProperty(globalThis, n, { value: v, writable: true, configurable: true });
+  for (const n of names) {
+    Object.defineProperty(globalThis, n, {
+      configurable: true,
+      get() { const m = loadStreams(); for (const k of names) settle(k, m[k]); return m[n]; },
+      set(v) { settle(n, v); },
+    });
+  }
+  // A body as a stream of its bytes (whole, in one chunk: responses arrive whole).
+  const bodies = new WeakMap();
+  for (const C of [globalThis.Response, globalThis.Request]) {
+    if (!C) continue;
+    const arrayBuffer = C.prototype.arrayBuffer;
+    Object.defineProperty(C.prototype, 'body', {
+      configurable: true,
+      enumerable: true,
+      get() {
+        if (bodies.has(this)) return bodies.get(this);
+        if (C === globalThis.Response && (this.status === 204 || this.status === 304)) return null;
+        const self = this;
+        const s = new (loadStreams().ReadableStream)({
+          async pull(c) {
+            const b = new Uint8Array(await arrayBuffer.call(self));
+            if (b.byteLength) c.enqueue(b);
+            c.close();
+          },
+        });
+        bodies.set(this, s);
+        return s;
+      },
+    });
+  }
+  if (globalThis.PerformanceObserver) {
+    const types = Object.freeze(['mark', 'measure']);
+    Object.defineProperty(PerformanceObserver, 'supportedEntryTypes', { get() { return types; }, configurable: true, enumerable: true });
+  }
 })();"#;
 
 impl Engine {
@@ -328,6 +399,9 @@ impl Engine {
                 hovered: None,
                 pressed: None,
                 mods: Default::default(),
+                timing: Vec::new(),
+                perf_observers: Vec::new(),
+                iterators: Vec::new(),
                 button: Default::default(),
                 click_count: 0,
                 drag: None,
@@ -460,6 +534,7 @@ impl Engine {
         if !secure {
             hide(scope, global, "Document", "modelContext");
             hide(scope, global, "Crypto", "randomUUID");
+            hide(scope, global, "Crypto", "subtle");
         }
         // The clock and RNG seam, then the prelude that rebinds Date and Math.random to it.
         let host = v8::Object::new(scope);
@@ -472,6 +547,12 @@ impl Engine {
         if let (Some(k), Some(func)) = (
             v8::String::new(scope, "random"),
             v8::Function::new(scope, host_random),
+        ) {
+            host.set(scope, k.into(), func.into());
+        }
+        if let (Some(k), Some(func)) = (
+            v8::String::new(scope, "streams"),
+            v8::Function::new(scope, crate::streams::load),
         ) {
             host.set(scope, k.into(), func.into());
         }
@@ -801,6 +882,16 @@ impl Engine {
             let delivered = self.deliver_mail();
             if delivered > 0 {
                 tasks += delivered;
+                continue;
+            }
+            // `MessagePort` messages, in posting order.
+            let mail = self.shared.borrow_mut().port_mail.pop_front();
+            if let Some((realm, to, data)) = mail {
+                tasks += 1;
+                let (_, fired) = self.guarded(|e| {
+                    e.with_cx(realm, |cx| crate::dom::basics::deliver(cx, to, data));
+                });
+                self.terminated(fired, "message");
                 continue;
             }
             let due_now = {
@@ -1680,6 +1771,7 @@ fn notify_observers(cx: &mut Cx<'_, '_, '_>) {
         let intersections = crate::dom::intersection::deliver(cx);
         let media = crate::dom::platform::deliver_media(cx);
         let resized = crate::dom::platform::deliver_resize(cx, resize_pass);
+        let timed = crate::dom::timing::deliver(cx);
         if matches!(resized, Ok(true)) {
             resize_pass += 1;
         }
@@ -1688,6 +1780,7 @@ fn notify_observers(cx: &mut Cx<'_, '_, '_>) {
             || matches!(scrolled, Ok(true))
             || matches!(intersections, Ok(true))
             || matches!(media, Ok(true))
+            || matches!(timed, Ok(true))
             || matches!(resized, Ok(true));
         if !ran || cx.scope.is_execution_terminating() {
             break;

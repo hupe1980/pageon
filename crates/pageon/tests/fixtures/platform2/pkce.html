@@ -1,0 +1,11 @@
+<!doctype html><title>Sign in</title><button id=go>Sign in with Example</button>
+<script>
+// An OAuth authorization request with PKCE, as oidc-client-ts and Auth0's SPA SDK build it.
+const b64u = (b) => btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+go.addEventListener('click', async () => {
+  const verifier = b64u(crypto.getRandomValues(new Uint8Array(32)));
+  const challenge = b64u(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier)));
+  sessionStorage.setItem('verifier', verifier);
+  location.href = 'https://auth.test/authorize?response_type=code&client_id=app&code_challenge=' + challenge + '&code_challenge_method=S256&state=' + verifier;
+});
+</script>

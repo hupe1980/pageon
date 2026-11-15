@@ -1,0 +1,17 @@
+<!doctype html><title>DPoP</title><pre id=out></pre>
+<script>
+// A DPoP proof (RFC 9449): an ECDSA P-256 key pair, the public JWK in the header, a signature.
+(async () => {
+  const s = crypto.subtle;
+  const b64u = (b) => btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const kp = await s.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign', 'verify']);
+  const jwk = await s.exportKey('jwk', kp.publicKey);
+  const enc = (o) => b64u(new TextEncoder().encode(JSON.stringify(o)));
+  const input = enc({ typ: 'dpop+jwt', alg: 'ES256', jwk: { kty: jwk.kty, crv: jwk.crv, x: jwk.x, y: jwk.y } }) + '.' + enc({ htm: 'POST', htu: 'https://api.test/token', jti: crypto.randomUUID() });
+  const sig = await s.sign({ name: 'ECDSA', hash: 'SHA-256' }, kp.privateKey, new TextEncoder().encode(input));
+  const ok = await s.verify({ name: 'ECDSA', hash: 'SHA-256' }, kp.publicKey, sig, new TextEncoder().encode(input));
+  const proof = input + '.' + b64u(sig);
+  await fetch('https://api.test/token', { method: 'POST', headers: { DPoP: proof } });
+  out.textContent = JSON.stringify({ ok, x: jwk.x, proof });
+})();
+</script>

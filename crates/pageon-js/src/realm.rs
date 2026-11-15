@@ -179,6 +179,8 @@ pub struct EventData {
     pub close: Option<Box<(bool, u16, String)>>,
     /// `DragEvent`: its `DataTransfer` (slab id).
     pub drag: Option<u32>,
+    /// `InputEvent`: `inputType`, `data`, `isComposing`.
+    pub input_kind: Option<Box<(String, Option<String>, bool)>>,
 }
 
 /// Mouse and keyboard event fields.
@@ -297,6 +299,22 @@ pub enum Slot {
     CustomElements,
     /// `performance`.
     Performance,
+    /// `screen`.
+    Screen,
+    /// `crypto.subtle`.
+    Subtle,
+    /// A Web Crypto key.
+    CryptoKey(Box<crate::dom::subtle::Key>),
+    /// A `MessagePort` of a `MessageChannel`.
+    Port(Box<crate::dom::basics::Port>),
+    /// A `MessageChannel`: its two ports.
+    Channel(u32, u32),
+    /// A `PerformanceMark` or `PerformanceMeasure`.
+    PerfEntry(Box<crate::dom::timing::Entry>),
+    /// A `PerformanceObserver`.
+    PerfObserver(Box<crate::dom::timing::ObserverData>),
+    /// A `PerformanceObserverEntryList`.
+    PerfEntryList(Vec<u32>),
     /// A `DOMRect`: x, y, width, height.
     Rect([f64; 4]),
     /// `History`.
@@ -491,6 +509,12 @@ pub struct State {
     pub pressed: Option<crate::dom::input::Press>,
     /// An HTML drag and drop in progress.
     pub drag: Option<crate::dom::input::DragSession>,
+    /// Marks and measures on the performance timeline (slab ids, in order).
+    pub timing: Vec<u32>,
+    /// `PerformanceObserver`s observing (slab ids).
+    pub perf_observers: Vec<u32>,
+    /// `NodeIterator`s (slab ids), adjusted when nodes are removed.
+    pub iterators: Vec<u32>,
     /// The modifier keys held during the current input action.
     pub mods: crate::dom::input::Mods,
     /// The mouse button of the current input action.
@@ -601,6 +625,8 @@ pub struct Shared {
     pub requests: std::collections::VecDeque<Pending>,
     /// Realtime connections (`WebSocket`, `EventSource`) and what documents asked of them.
     pub streams: crate::dom::realtime::Streams,
+    /// Messages for `MessagePort`s (realm, port, data), in posting order.
+    pub port_mail: std::collections::VecDeque<(usize, u32, Value)>,
     /// Inserted scripts and dynamic imports, run before other tasks.
     pub scripts: std::collections::VecDeque<crate::modules::ScriptJob>,
     /// Virtual time in ms since the Unix epoch.

@@ -217,6 +217,16 @@ pub mod crypto {
         Ok(array)
     }
 
+    /// `subtle`: Web Crypto ([SecureContext]: hidden on insecure pages).
+    pub fn get_subtle(cx: &mut Cx<'_, '_, '_>, _this: Obj) -> R<Obj> {
+        Ok(crate::dom::window_same(
+            cx,
+            "subtle",
+            Iface::SubtleCrypto,
+            Slot::Subtle,
+        ))
+    }
+
     /// `randomUUID()`: a version 4 UUID.
     pub fn random_uuid(cx: &mut Cx<'_, '_, '_>, _this: Obj) -> R<String> {
         let mut b = [0u8; 16];

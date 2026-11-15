@@ -14,6 +14,8 @@ pub enum Iface {
     AbortController,
     /// `Blob`.
     Blob,
+    /// `CSS`.
+    CSS,
     /// `CSSStyleDeclaration`.
     CSSStyleDeclaration,
     /// `CSSStyleProperties`.
@@ -22,6 +24,8 @@ pub enum Iface {
     CanvasRenderingContext2D,
     /// `Crypto`.
     Crypto,
+    /// `CryptoKey`.
+    CryptoKey,
     /// `CustomElementRegistry`.
     CustomElementRegistry,
     /// `CustomStateSet`.
@@ -30,6 +34,8 @@ pub enum Iface {
     DOMException,
     /// `DOMImplementation`.
     DOMImplementation,
+    /// `DOMParser`.
+    DOMParser,
     /// `DOMRectList`.
     DOMRectList,
     /// `DOMRectReadOnly`.
@@ -80,8 +86,12 @@ pub enum Iface {
     MediaQueryList,
     /// `MediaQueryListEvent`.
     MediaQueryListEvent,
+    /// `MessageChannel`.
+    MessageChannel,
     /// `MessageEvent`.
     MessageEvent,
+    /// `MessagePort`.
+    MessagePort,
     /// `ModelContext`.
     ModelContext,
     /// `MutationObserver`.
@@ -98,10 +108,22 @@ pub enum Iface {
     Node,
     /// `NodeFilter`.
     NodeFilter,
+    /// `NodeIterator`.
+    NodeIterator,
     /// `NodeList`.
     NodeList,
     /// `Performance`.
     Performance,
+    /// `PerformanceEntry`.
+    PerformanceEntry,
+    /// `PerformanceMark`.
+    PerformanceMark,
+    /// `PerformanceMeasure`.
+    PerformanceMeasure,
+    /// `PerformanceObserver`.
+    PerformanceObserver,
+    /// `PerformanceObserverEntryList`.
+    PerformanceObserverEntryList,
     /// `PopStateEvent`.
     PopStateEvent,
     /// `ProgressEvent`.
@@ -116,10 +138,14 @@ pub enum Iface {
     ResizeObserverSize,
     /// `Response`.
     Response,
+    /// `Screen`.
+    Screen,
     /// `Storage`.
     Storage,
     /// `StyleSheet`.
     StyleSheet,
+    /// `SubtleCrypto`.
+    SubtleCrypto,
     /// `TextDecoder`.
     TextDecoder,
     /// `TextEncoder`.
@@ -288,6 +314,8 @@ pub enum Iface {
     HTMLUnknownElement,
     /// `HTMLVideoElement`.
     HTMLVideoElement,
+    /// `InputEvent`.
+    InputEvent,
     /// `KeyboardEvent`.
     KeyboardEvent,
     /// `MouseEvent`.
@@ -342,21 +370,24 @@ pub enum Iface {
 
 impl Iface {
     /// All interfaces.
-    pub const ALL: &'static [Iface] = &[Iface::AbortController, Iface::Blob, Iface::CSSStyleDeclaration, Iface::CSSStyleProperties, Iface::CanvasRenderingContext2D, Iface::Crypto, Iface::CustomElementRegistry, Iface::CustomStateSet, Iface::DOMException, Iface::DOMImplementation, Iface::DOMRectList, Iface::DOMRectReadOnly, Iface::DOMStringMap, Iface::DOMTokenList, Iface::DataTransfer, Iface::DataTransferItem, Iface::DataTransferItemList, Iface::ElementInternals, Iface::Event, Iface::EventTarget, Iface::File, Iface::FileList, Iface::FileReader, Iface::FormData, Iface::HTMLCollection, Iface::HTMLFormControlsCollection, Iface::HTMLOptionsCollection, Iface::Headers, Iface::History, Iface::IdleDeadline, Iface::IntersectionObserver, Iface::IntersectionObserverEntry, Iface::Location, Iface::MediaQueryList, Iface::MediaQueryListEvent, Iface::MessageEvent, Iface::ModelContext, Iface::MutationObserver, Iface::MutationRecord, Iface::NamedNodeMap, Iface::Navigator, Iface::NavigatorUAData, Iface::Node, Iface::NodeFilter, Iface::NodeList, Iface::Performance, Iface::PopStateEvent, Iface::ProgressEvent, Iface::Request, Iface::ResizeObserver, Iface::ResizeObserverEntry, Iface::ResizeObserverSize, Iface::Response, Iface::Storage, Iface::StyleSheet, Iface::TextDecoder, Iface::TextEncoder, Iface::TreeWalker, Iface::UIEvent, Iface::URL, Iface::URLSearchParams, Iface::ValidityState, Iface::VisualViewport, Iface::WebSocket, Iface::Window, Iface::XMLHttpRequestEventTarget, Iface::XMLSerializer, Iface::console, Iface::AbortSignal, Iface::Attr, Iface::CSSStyleSheet, Iface::CharacterData, Iface::CloseEvent, Iface::Comment, Iface::CustomEvent, Iface::DOMRect, Iface::Document, Iface::DocumentFragment, Iface::DocumentType, Iface::Element, Iface::EventSource, Iface::FocusEvent, Iface::HTMLElement, Iface::HTMLEmbedElement, Iface::HTMLFieldSetElement, Iface::HTMLFontElement, Iface::HTMLFormElement, Iface::HTMLFrameElement, Iface::HTMLFrameSetElement, Iface::HTMLHRElement, Iface::HTMLHeadElement, Iface::HTMLHeadingElement, Iface::HTMLHtmlElement, Iface::HTMLIFrameElement, Iface::HTMLImageElement, Iface::HTMLInputElement, Iface::HTMLLIElement, Iface::HTMLLabelElement, Iface::HTMLLegendElement, Iface::HTMLLinkElement, Iface::HTMLMapElement, Iface::HTMLMarqueeElement, Iface::HTMLMediaElement, Iface::HTMLMenuElement, Iface::HTMLMetaElement, Iface::HTMLMeterElement, Iface::HTMLModElement, Iface::HTMLOListElement, Iface::HTMLObjectElement, Iface::HTMLOptGroupElement, Iface::HTMLOptionElement, Iface::HTMLOutputElement, Iface::HTMLParagraphElement, Iface::HTMLParamElement, Iface::HTMLPictureElement, Iface::HTMLPreElement, Iface::HTMLProgressElement, Iface::HTMLQuoteElement, Iface::HTMLScriptElement, Iface::HTMLSelectElement, Iface::HTMLSelectedContentElement, Iface::HTMLSlotElement, Iface::HTMLSourceElement, Iface::HTMLSpanElement, Iface::HTMLStyleElement, Iface::HTMLTableCaptionElement, Iface::HTMLTableCellElement, Iface::HTMLTableColElement, Iface::HTMLTableElement, Iface::HTMLTableRowElement, Iface::HTMLTableSectionElement, Iface::HTMLTemplateElement, Iface::HTMLTextAreaElement, Iface::HTMLTimeElement, Iface::HTMLTitleElement, Iface::HTMLTrackElement, Iface::HTMLUListElement, Iface::HTMLUnknownElement, Iface::HTMLVideoElement, Iface::KeyboardEvent, Iface::MouseEvent, Iface::PointerEvent, Iface::SVGElement, Iface::SVGGraphicsElement, Iface::ShadowRoot, Iface::Text, Iface::WheelEvent, Iface::XMLHttpRequest, Iface::DragEvent, Iface::HTMLAnchorElement, Iface::HTMLAreaElement, Iface::HTMLAudioElement, Iface::HTMLBRElement, Iface::HTMLBaseElement, Iface::HTMLBodyElement, Iface::HTMLButtonElement, Iface::HTMLCanvasElement, Iface::HTMLDListElement, Iface::HTMLDataElement, Iface::HTMLDataListElement, Iface::HTMLDetailsElement, Iface::HTMLDialogElement, Iface::HTMLDirectoryElement, Iface::HTMLDivElement];
+    pub const ALL: &'static [Iface] = &[Iface::AbortController, Iface::Blob, Iface::CSS, Iface::CSSStyleDeclaration, Iface::CSSStyleProperties, Iface::CanvasRenderingContext2D, Iface::Crypto, Iface::CryptoKey, Iface::CustomElementRegistry, Iface::CustomStateSet, Iface::DOMException, Iface::DOMImplementation, Iface::DOMParser, Iface::DOMRectList, Iface::DOMRectReadOnly, Iface::DOMStringMap, Iface::DOMTokenList, Iface::DataTransfer, Iface::DataTransferItem, Iface::DataTransferItemList, Iface::ElementInternals, Iface::Event, Iface::EventTarget, Iface::File, Iface::FileList, Iface::FileReader, Iface::FormData, Iface::HTMLCollection, Iface::HTMLFormControlsCollection, Iface::HTMLOptionsCollection, Iface::Headers, Iface::History, Iface::IdleDeadline, Iface::IntersectionObserver, Iface::IntersectionObserverEntry, Iface::Location, Iface::MediaQueryList, Iface::MediaQueryListEvent, Iface::MessageChannel, Iface::MessageEvent, Iface::MessagePort, Iface::ModelContext, Iface::MutationObserver, Iface::MutationRecord, Iface::NamedNodeMap, Iface::Navigator, Iface::NavigatorUAData, Iface::Node, Iface::NodeFilter, Iface::NodeIterator, Iface::NodeList, Iface::Performance, Iface::PerformanceEntry, Iface::PerformanceMark, Iface::PerformanceMeasure, Iface::PerformanceObserver, Iface::PerformanceObserverEntryList, Iface::PopStateEvent, Iface::ProgressEvent, Iface::Request, Iface::ResizeObserver, Iface::ResizeObserverEntry, Iface::ResizeObserverSize, Iface::Response, Iface::Screen, Iface::Storage, Iface::StyleSheet, Iface::SubtleCrypto, Iface::TextDecoder, Iface::TextEncoder, Iface::TreeWalker, Iface::UIEvent, Iface::URL, Iface::URLSearchParams, Iface::ValidityState, Iface::VisualViewport, Iface::WebSocket, Iface::Window, Iface::XMLHttpRequestEventTarget, Iface::XMLSerializer, Iface::console, Iface::AbortSignal, Iface::Attr, Iface::CSSStyleSheet, Iface::CharacterData, Iface::CloseEvent, Iface::Comment, Iface::CustomEvent, Iface::DOMRect, Iface::Document, Iface::DocumentFragment, Iface::DocumentType, Iface::Element, Iface::EventSource, Iface::FocusEvent, Iface::HTMLElement, Iface::HTMLEmbedElement, Iface::HTMLFieldSetElement, Iface::HTMLFontElement, Iface::HTMLFormElement, Iface::HTMLFrameElement, Iface::HTMLFrameSetElement, Iface::HTMLHRElement, Iface::HTMLHeadElement, Iface::HTMLHeadingElement, Iface::HTMLHtmlElement, Iface::HTMLIFrameElement, Iface::HTMLImageElement, Iface::HTMLInputElement, Iface::HTMLLIElement, Iface::HTMLLabelElement, Iface::HTMLLegendElement, Iface::HTMLLinkElement, Iface::HTMLMapElement, Iface::HTMLMarqueeElement, Iface::HTMLMediaElement, Iface::HTMLMenuElement, Iface::HTMLMetaElement, Iface::HTMLMeterElement, Iface::HTMLModElement, Iface::HTMLOListElement, Iface::HTMLObjectElement, Iface::HTMLOptGroupElement, Iface::HTMLOptionElement, Iface::HTMLOutputElement, Iface::HTMLParagraphElement, Iface::HTMLParamElement, Iface::HTMLPictureElement, Iface::HTMLPreElement, Iface::HTMLProgressElement, Iface::HTMLQuoteElement, Iface::HTMLScriptElement, Iface::HTMLSelectElement, Iface::HTMLSelectedContentElement, Iface::HTMLSlotElement, Iface::HTMLSourceElement, Iface::HTMLSpanElement, Iface::HTMLStyleElement, Iface::HTMLTableCaptionElement, Iface::HTMLTableCellElement, Iface::HTMLTableColElement, Iface::HTMLTableElement, Iface::HTMLTableRowElement, Iface::HTMLTableSectionElement, Iface::HTMLTemplateElement, Iface::HTMLTextAreaElement, Iface::HTMLTimeElement, Iface::HTMLTitleElement, Iface::HTMLTrackElement, Iface::HTMLUListElement, Iface::HTMLUnknownElement, Iface::HTMLVideoElement, Iface::InputEvent, Iface::KeyboardEvent, Iface::MouseEvent, Iface::PointerEvent, Iface::SVGElement, Iface::SVGGraphicsElement, Iface::ShadowRoot, Iface::Text, Iface::WheelEvent, Iface::XMLHttpRequest, Iface::DragEvent, Iface::HTMLAnchorElement, Iface::HTMLAreaElement, Iface::HTMLAudioElement, Iface::HTMLBRElement, Iface::HTMLBaseElement, Iface::HTMLBodyElement, Iface::HTMLButtonElement, Iface::HTMLCanvasElement, Iface::HTMLDListElement, Iface::HTMLDataElement, Iface::HTMLDataListElement, Iface::HTMLDetailsElement, Iface::HTMLDialogElement, Iface::HTMLDirectoryElement, Iface::HTMLDivElement];
 
     /// The interface name.
     pub fn name(self) -> &'static str {
         match self {
             Iface::AbortController => "AbortController",
             Iface::Blob => "Blob",
+            Iface::CSS => "CSS",
             Iface::CSSStyleDeclaration => "CSSStyleDeclaration",
             Iface::CSSStyleProperties => "CSSStyleProperties",
             Iface::CanvasRenderingContext2D => "CanvasRenderingContext2D",
             Iface::Crypto => "Crypto",
+            Iface::CryptoKey => "CryptoKey",
             Iface::CustomElementRegistry => "CustomElementRegistry",
             Iface::CustomStateSet => "CustomStateSet",
             Iface::DOMException => "DOMException",
             Iface::DOMImplementation => "DOMImplementation",
+            Iface::DOMParser => "DOMParser",
             Iface::DOMRectList => "DOMRectList",
             Iface::DOMRectReadOnly => "DOMRectReadOnly",
             Iface::DOMStringMap => "DOMStringMap",
@@ -382,7 +413,9 @@ impl Iface {
             Iface::Location => "Location",
             Iface::MediaQueryList => "MediaQueryList",
             Iface::MediaQueryListEvent => "MediaQueryListEvent",
+            Iface::MessageChannel => "MessageChannel",
             Iface::MessageEvent => "MessageEvent",
+            Iface::MessagePort => "MessagePort",
             Iface::ModelContext => "ModelContext",
             Iface::MutationObserver => "MutationObserver",
             Iface::MutationRecord => "MutationRecord",
@@ -391,8 +424,14 @@ impl Iface {
             Iface::NavigatorUAData => "NavigatorUAData",
             Iface::Node => "Node",
             Iface::NodeFilter => "NodeFilter",
+            Iface::NodeIterator => "NodeIterator",
             Iface::NodeList => "NodeList",
             Iface::Performance => "Performance",
+            Iface::PerformanceEntry => "PerformanceEntry",
+            Iface::PerformanceMark => "PerformanceMark",
+            Iface::PerformanceMeasure => "PerformanceMeasure",
+            Iface::PerformanceObserver => "PerformanceObserver",
+            Iface::PerformanceObserverEntryList => "PerformanceObserverEntryList",
             Iface::PopStateEvent => "PopStateEvent",
             Iface::ProgressEvent => "ProgressEvent",
             Iface::Request => "Request",
@@ -400,8 +439,10 @@ impl Iface {
             Iface::ResizeObserverEntry => "ResizeObserverEntry",
             Iface::ResizeObserverSize => "ResizeObserverSize",
             Iface::Response => "Response",
+            Iface::Screen => "Screen",
             Iface::Storage => "Storage",
             Iface::StyleSheet => "StyleSheet",
+            Iface::SubtleCrypto => "SubtleCrypto",
             Iface::TextDecoder => "TextDecoder",
             Iface::TextEncoder => "TextEncoder",
             Iface::TreeWalker => "TreeWalker",
@@ -486,6 +527,7 @@ impl Iface {
             Iface::HTMLUListElement => "HTMLUListElement",
             Iface::HTMLUnknownElement => "HTMLUnknownElement",
             Iface::HTMLVideoElement => "HTMLVideoElement",
+            Iface::InputEvent => "InputEvent",
             Iface::KeyboardEvent => "KeyboardEvent",
             Iface::MouseEvent => "MouseEvent",
             Iface::PointerEvent => "PointerEvent",
@@ -519,14 +561,17 @@ impl Iface {
         match self {
             Iface::AbortController => None,
             Iface::Blob => None,
+            Iface::CSS => None,
             Iface::CSSStyleDeclaration => None,
             Iface::CSSStyleProperties => Some(Iface::CSSStyleDeclaration),
             Iface::CanvasRenderingContext2D => None,
             Iface::Crypto => None,
+            Iface::CryptoKey => None,
             Iface::CustomElementRegistry => None,
             Iface::CustomStateSet => None,
             Iface::DOMException => None,
             Iface::DOMImplementation => None,
+            Iface::DOMParser => None,
             Iface::DOMRectList => None,
             Iface::DOMRectReadOnly => None,
             Iface::DOMStringMap => None,
@@ -552,7 +597,9 @@ impl Iface {
             Iface::Location => None,
             Iface::MediaQueryList => Some(Iface::EventTarget),
             Iface::MediaQueryListEvent => Some(Iface::Event),
+            Iface::MessageChannel => None,
             Iface::MessageEvent => Some(Iface::Event),
+            Iface::MessagePort => Some(Iface::EventTarget),
             Iface::ModelContext => Some(Iface::EventTarget),
             Iface::MutationObserver => None,
             Iface::MutationRecord => None,
@@ -561,8 +608,14 @@ impl Iface {
             Iface::NavigatorUAData => None,
             Iface::Node => Some(Iface::EventTarget),
             Iface::NodeFilter => None,
+            Iface::NodeIterator => None,
             Iface::NodeList => None,
             Iface::Performance => Some(Iface::EventTarget),
+            Iface::PerformanceEntry => None,
+            Iface::PerformanceMark => Some(Iface::PerformanceEntry),
+            Iface::PerformanceMeasure => Some(Iface::PerformanceEntry),
+            Iface::PerformanceObserver => None,
+            Iface::PerformanceObserverEntryList => None,
             Iface::PopStateEvent => Some(Iface::Event),
             Iface::ProgressEvent => Some(Iface::Event),
             Iface::Request => None,
@@ -570,8 +623,10 @@ impl Iface {
             Iface::ResizeObserverEntry => None,
             Iface::ResizeObserverSize => None,
             Iface::Response => None,
+            Iface::Screen => None,
             Iface::Storage => None,
             Iface::StyleSheet => None,
+            Iface::SubtleCrypto => None,
             Iface::TextDecoder => None,
             Iface::TextEncoder => None,
             Iface::TreeWalker => None,
@@ -656,6 +711,7 @@ impl Iface {
             Iface::HTMLUListElement => Some(Iface::HTMLElement),
             Iface::HTMLUnknownElement => Some(Iface::HTMLElement),
             Iface::HTMLVideoElement => Some(Iface::HTMLMediaElement),
+            Iface::InputEvent => Some(Iface::UIEvent),
             Iface::KeyboardEvent => Some(Iface::UIEvent),
             Iface::MouseEvent => Some(Iface::UIEvent),
             Iface::PointerEvent => Some(Iface::MouseEvent),
@@ -797,6 +853,29 @@ fn ctor__Blob(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut
         let a0: Option<Vec<Value>> = { let v = args.get(0); if v.is_undefined() { None } else { Some(cv::seq(cx, v, |cx, v| Ok(cv::value(cx, v)))?) } };
         let a1: BlobPropertyBag = { let v = args.get(1); if v.is_undefined() { BlobPropertyBag::default() } else { dict_blob_property_bag(cx, v)? } };
         let r: Obj = crate::dom::blob::constructor(cx, a0, a1)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__CSS__supports(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = Obj::Window; let _ = this;
+        if args.length() <= 0 { return Err(cv::Error::args("CSS.supports", 0)); }
+        let a0: String = { let v = args.get(0); cv::string(cx, v)? };
+        let a1: Option<String> = { let v = args.get(1); if v.is_undefined() { None } else { Some(cv::string(cx, v)?) } };
+        let r: bool = crate::dom::css::supports(cx, this, a0, a1)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__CSS__escape(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = Obj::Window; let _ = this;
+        if args.length() <= 0 { return Err(cv::Error::args("CSS.escape", 0)); }
+        let a0: String = { let v = args.get(0); cv::string(cx, v)? };
+        let r: String = crate::dom::css::escape(cx, this, a0)?;
         cx.ret(r)
     });
 }
@@ -1292,6 +1371,15 @@ fn op__CanvasRenderingContext2D__arc(scope: &mut v8::PinScope, args: v8::Functio
 }
 
 #[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Crypto__subtle(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Crypto)?;
+        let r: Obj = crate::dom::crypto::get_subtle(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
 fn op__Crypto__getRandomValues(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::Crypto)?;
@@ -1307,6 +1395,42 @@ fn op__Crypto__randomUUID(scope: &mut v8::PinScope, args: v8::FunctionCallbackAr
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::Crypto)?;
         let r: String = crate::dom::crypto::random_uuid(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__CryptoKey__type(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::CryptoKey)?;
+        let r: String = crate::dom::crypto_key::get_type_(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__CryptoKey__extractable(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::CryptoKey)?;
+        let r: bool = crate::dom::crypto_key::get_extractable(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__CryptoKey__algorithm(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::CryptoKey)?;
+        let r: Value = crate::dom::crypto_key::get_algorithm(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__CryptoKey__usages(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::CryptoKey)?;
+        let r: Value = crate::dom::crypto_key::get_usages(cx, this)?;
         cx.ret(r)
     });
 }
@@ -1486,10 +1610,42 @@ fn ctor__DOMException(scope: &mut v8::PinScope, args: v8::FunctionCallbackArgume
 }
 
 #[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__DOMImplementation__createHTMLDocument(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::DOMImplementation)?;
+        let a0: Option<String> = { let v = args.get(0); if v.is_undefined() { None } else { Some(cv::string(cx, v)?) } };
+        let r: Obj = crate::dom::dom_implementation::create_html_document(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
 fn op__DOMImplementation__hasFeature(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::DOMImplementation)?;
         let r: bool = crate::dom::dom_implementation::has_feature(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__DOMParser__parseFromString(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::DOMParser)?;
+        if args.length() <= 0 { return Err(cv::Error::args("DOMParser.parseFromString", 0)); }
+        let a0: String = { let v = args.get(0); cv::string_nte(cx, v)? };
+        if args.length() <= 1 { return Err(cv::Error::args("DOMParser.parseFromString", 1)); }
+        let a1: String = { let v = args.get(1); cv::string(cx, v)? };
+        let r: Obj = crate::dom::dom_parser::parse_from_string(cx, this, a0, a1)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn ctor__DOMParser(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        if args.new_target().is_undefined() { return Err(cv::Error::Type("Failed to construct 'DOMParser': Please use the 'new' operator.".into())); }
+        let r: Obj = crate::dom::dom_parser::constructor(cx, )?;
         cx.ret(r)
     });
 }
@@ -4177,6 +4333,33 @@ fn ctor__MediaQueryListEvent(scope: &mut v8::PinScope, args: v8::FunctionCallbac
 }
 
 #[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__MessageChannel__port1(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::MessageChannel)?;
+        let r: Obj = crate::dom::message_channel::get_port1(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__MessageChannel__port2(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::MessageChannel)?;
+        let r: Obj = crate::dom::message_channel::get_port2(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn ctor__MessageChannel(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        if args.new_target().is_undefined() { return Err(cv::Error::Type("Failed to construct 'MessageChannel': Please use the 'new' operator.".into())); }
+        let r: Obj = crate::dom::message_channel::constructor(cx, )?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
 fn get__MessageEvent__data(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::MessageEvent)?;
@@ -4207,7 +4390,7 @@ fn get__MessageEvent__lastEventId(scope: &mut v8::PinScope, args: v8::FunctionCa
 fn get__MessageEvent__source(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::MessageEvent)?;
-        let r: Option<Obj> = crate::dom::message_event::get_source(cx, this)?;
+        let r: Option<Value> = crate::dom::message_event::get_source(cx, this)?;
         cx.ret(r)
     });
 }
@@ -4221,6 +4404,64 @@ fn ctor__MessageEvent(scope: &mut v8::PinScope, args: v8::FunctionCallbackArgume
         let a1: MessageEventInit = { let v = args.get(1); if v.is_undefined() { MessageEventInit::default() } else { dict_message_event_init(cx, v)? } };
         let r: Obj = crate::dom::message_event::constructor(cx, a0, a1)?;
         cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__MessagePort__start(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::MessagePort)?;
+        let r: () = crate::dom::message_port::start(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__MessagePort__close(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::MessagePort)?;
+        let r: () = crate::dom::message_port::close(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__MessagePort__onmessage(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::MessagePort)?;
+        let r: Option<Value> = crate::dom::message_event_target::get_onmessage(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__MessagePort__onmessage(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::MessagePort)?;
+        let v = args.get(0);
+        let a0: Option<Value> = cv::opt_value(cx, v);
+        crate::dom::message_event_target::set_onmessage(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__MessagePort__onmessageerror(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::MessagePort)?;
+        let r: Option<Value> = crate::dom::message_event_target::get_onmessageerror(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__MessagePort__onmessageerror(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::MessagePort)?;
+        let v = args.get(0);
+        let a0: Option<Value> = cv::opt_value(cx, v);
+        crate::dom::message_event_target::set_onmessageerror(cx, this, a0)?;
+        cx.ret(())
     });
 }
 
@@ -4920,6 +5161,78 @@ fn op__Node__removeChild(scope: &mut v8::PinScope, args: v8::FunctionCallbackArg
 }
 
 #[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__NodeIterator__root(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::NodeIterator)?;
+        let r: Obj = crate::dom::node_iterator::get_root(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__NodeIterator__referenceNode(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::NodeIterator)?;
+        let r: Obj = crate::dom::node_iterator::get_reference_node(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__NodeIterator__pointerBeforeReferenceNode(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::NodeIterator)?;
+        let r: bool = crate::dom::node_iterator::get_pointer_before_reference_node(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__NodeIterator__whatToShow(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::NodeIterator)?;
+        let r: u32 = crate::dom::node_iterator::get_what_to_show(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__NodeIterator__filter(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::NodeIterator)?;
+        let r: Option<Value> = crate::dom::node_iterator::get_filter(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__NodeIterator__nextNode(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::NodeIterator)?;
+        let r: Option<Obj> = crate::dom::node_iterator::next_node(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__NodeIterator__previousNode(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::NodeIterator)?;
+        let r: Option<Obj> = crate::dom::node_iterator::previous_node(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__NodeIterator__detach(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::NodeIterator)?;
+        let r: () = crate::dom::node_iterator::detach(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
 fn op__NodeList__item(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::NodeList)?;
@@ -4953,6 +5266,216 @@ fn get__Performance__timeOrigin(scope: &mut v8::PinScope, args: v8::FunctionCall
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::Performance)?;
         let r: f64 = crate::dom::performance::get_time_origin(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Performance__getEntries(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Performance)?;
+        let r: Vec<Obj> = crate::dom::performance::get_entries(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Performance__getEntriesByType(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Performance)?;
+        if args.length() <= 0 { return Err(cv::Error::args("Performance.getEntriesByType", 0)); }
+        let a0: String = { let v = args.get(0); cv::string(cx, v)? };
+        let r: Vec<Obj> = crate::dom::performance::get_entries_by_type(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Performance__getEntriesByName(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Performance)?;
+        if args.length() <= 0 { return Err(cv::Error::args("Performance.getEntriesByName", 0)); }
+        let a0: String = { let v = args.get(0); cv::string(cx, v)? };
+        let a1: Option<String> = { let v = args.get(1); if v.is_undefined() { None } else { Some(cv::string(cx, v)?) } };
+        let r: Vec<Obj> = crate::dom::performance::get_entries_by_name(cx, this, a0, a1)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Performance__mark(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Performance)?;
+        if args.length() <= 0 { return Err(cv::Error::args("Performance.mark", 0)); }
+        let a0: String = { let v = args.get(0); cv::string(cx, v)? };
+        let a1: PerformanceMarkOptions = { let v = args.get(1); if v.is_undefined() { PerformanceMarkOptions::default() } else { dict_performance_mark_options(cx, v)? } };
+        let r: Obj = crate::dom::performance::mark(cx, this, a0, a1)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Performance__clearMarks(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Performance)?;
+        let a0: Option<String> = { let v = args.get(0); if v.is_undefined() { None } else { Some(cv::string(cx, v)?) } };
+        let r: () = crate::dom::performance::clear_marks(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Performance__clearMeasures(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Performance)?;
+        let a0: Option<String> = { let v = args.get(0); if v.is_undefined() { None } else { Some(cv::string(cx, v)?) } };
+        let r: () = crate::dom::performance::clear_measures(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__PerformanceEntry__name(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::PerformanceEntry)?;
+        let r: String = crate::dom::performance_entry::get_name(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__PerformanceEntry__entryType(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::PerformanceEntry)?;
+        let r: String = crate::dom::performance_entry::get_entry_type(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__PerformanceEntry__startTime(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::PerformanceEntry)?;
+        let r: f64 = crate::dom::performance_entry::get_start_time(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__PerformanceEntry__duration(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::PerformanceEntry)?;
+        let r: f64 = crate::dom::performance_entry::get_duration(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__PerformanceEntry__toJSON(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::PerformanceEntry)?;
+        let r: Value = crate::dom::performance_entry::to_json(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__PerformanceMark__detail(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::PerformanceMark)?;
+        let r: Value = crate::dom::performance_mark::get_detail(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn ctor__PerformanceMark(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        if args.new_target().is_undefined() { return Err(cv::Error::Type("Failed to construct 'PerformanceMark': Please use the 'new' operator.".into())); }
+        if args.length() <= 0 { return Err(cv::Error::args("PerformanceMark constructor", 0)); }
+        let a0: String = { let v = args.get(0); cv::string(cx, v)? };
+        let a1: PerformanceMarkOptions = { let v = args.get(1); if v.is_undefined() { PerformanceMarkOptions::default() } else { dict_performance_mark_options(cx, v)? } };
+        let r: Obj = crate::dom::performance_mark::constructor(cx, a0, a1)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__PerformanceMeasure__detail(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::PerformanceMeasure)?;
+        let r: Value = crate::dom::performance_measure::get_detail(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__PerformanceObserver__observe(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::PerformanceObserver)?;
+        let a0: PerformanceObserverInit = { let v = args.get(0); if v.is_undefined() { PerformanceObserverInit::default() } else { dict_performance_observer_init(cx, v)? } };
+        let r: () = crate::dom::performance_observer::observe(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__PerformanceObserver__disconnect(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::PerformanceObserver)?;
+        let r: () = crate::dom::performance_observer::disconnect(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__PerformanceObserver__takeRecords(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::PerformanceObserver)?;
+        let r: Vec<Obj> = crate::dom::performance_observer::take_records(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn ctor__PerformanceObserver(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        if args.new_target().is_undefined() { return Err(cv::Error::Type("Failed to construct 'PerformanceObserver': Please use the 'new' operator.".into())); }
+        if args.length() <= 0 { return Err(cv::Error::args("PerformanceObserver constructor", 0)); }
+        let a0: Value = { let v = args.get(0); cv::value(cx, v) };
+        let r: Obj = crate::dom::performance_observer::constructor(cx, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__PerformanceObserverEntryList__getEntries(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::PerformanceObserverEntryList)?;
+        let r: Vec<Obj> = crate::dom::performance_observer_entry_list::get_entries(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__PerformanceObserverEntryList__getEntriesByType(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::PerformanceObserverEntryList)?;
+        if args.length() <= 0 { return Err(cv::Error::args("PerformanceObserverEntryList.getEntriesByType", 0)); }
+        let a0: String = { let v = args.get(0); cv::string(cx, v)? };
+        let r: Vec<Obj> = crate::dom::performance_observer_entry_list::get_entries_by_type(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__PerformanceObserverEntryList__getEntriesByName(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::PerformanceObserverEntryList)?;
+        if args.length() <= 0 { return Err(cv::Error::args("PerformanceObserverEntryList.getEntriesByName", 0)); }
+        let a0: String = { let v = args.get(0); cv::string(cx, v)? };
+        let a1: Option<String> = { let v = args.get(1); if v.is_undefined() { None } else { Some(cv::string(cx, v)?) } };
+        let r: Vec<Obj> = crate::dom::performance_observer_entry_list::get_entries_by_name(cx, this, a0, a1)?;
         cx.ret(r)
     });
 }
@@ -5126,10 +5649,28 @@ fn get__Request__bodyUsed(scope: &mut v8::PinScope, args: v8::FunctionCallbackAr
 }
 
 #[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Request__arrayBuffer(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Request)?;
+        let r: Value = crate::dom::body::array_buffer(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
 fn op__Request__blob(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::Request)?;
         let r: Value = crate::dom::body::blob(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Request__bytes(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Request)?;
+        let r: Value = crate::dom::body::bytes(cx, this)?;
         cx.ret(r)
     });
 }
@@ -5382,10 +5923,28 @@ fn get__Response__bodyUsed(scope: &mut v8::PinScope, args: v8::FunctionCallbackA
 }
 
 #[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Response__arrayBuffer(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Response)?;
+        let r: Value = crate::dom::body::array_buffer(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
 fn op__Response__blob(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::Response)?;
         let r: Value = crate::dom::body::blob(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Response__bytes(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Response)?;
+        let r: Value = crate::dom::body::bytes(cx, this)?;
         cx.ret(r)
     });
 }
@@ -5415,6 +5974,60 @@ fn ctor__Response(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments,
         let a0: Option<Value> = { let v = args.get(0); if v.is_undefined() { None } else { if v.is_null_or_undefined() { None } else { Some(cv::value(cx, v)) } } };
         let a1: ResponseInit = { let v = args.get(1); if v.is_undefined() { ResponseInit::default() } else { dict_response_init(cx, v)? } };
         let r: Obj = crate::dom::response::constructor(cx, a0, a1)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Screen__availWidth(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Screen)?;
+        let r: i32 = crate::dom::screen::get_avail_width(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Screen__availHeight(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Screen)?;
+        let r: i32 = crate::dom::screen::get_avail_height(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Screen__width(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Screen)?;
+        let r: i32 = crate::dom::screen::get_width(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Screen__height(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Screen)?;
+        let r: i32 = crate::dom::screen::get_height(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Screen__colorDepth(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Screen)?;
+        let r: u32 = crate::dom::screen::get_color_depth(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Screen__pixelDepth(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Screen)?;
+        let r: u32 = crate::dom::screen::get_pixel_depth(cx, this)?;
         cx.ret(r)
     });
 }
@@ -5479,6 +6092,128 @@ fn op__Storage__clear(scope: &mut v8::PinScope, args: v8::FunctionCallbackArgume
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::Storage)?;
         let r: () = crate::dom::storage::clear(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__SubtleCrypto__encrypt(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SubtleCrypto)?;
+        if args.length() <= 0 { return Err(cv::Error::args("SubtleCrypto.encrypt", 0)); }
+        let a0: Value = { let v = args.get(0); cv::value(cx, v) };
+        if args.length() <= 1 { return Err(cv::Error::args("SubtleCrypto.encrypt", 1)); }
+        let a1: Obj = { let v = args.get(1); cv::obj(cx, v, Iface::CryptoKey)? };
+        if args.length() <= 2 { return Err(cv::Error::args("SubtleCrypto.encrypt", 2)); }
+        let a2: Value = { let v = args.get(2); cv::value(cx, v) };
+        let r: Value = crate::dom::subtle_crypto::encrypt(cx, this, a0, a1, a2)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__SubtleCrypto__decrypt(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SubtleCrypto)?;
+        if args.length() <= 0 { return Err(cv::Error::args("SubtleCrypto.decrypt", 0)); }
+        let a0: Value = { let v = args.get(0); cv::value(cx, v) };
+        if args.length() <= 1 { return Err(cv::Error::args("SubtleCrypto.decrypt", 1)); }
+        let a1: Obj = { let v = args.get(1); cv::obj(cx, v, Iface::CryptoKey)? };
+        if args.length() <= 2 { return Err(cv::Error::args("SubtleCrypto.decrypt", 2)); }
+        let a2: Value = { let v = args.get(2); cv::value(cx, v) };
+        let r: Value = crate::dom::subtle_crypto::decrypt(cx, this, a0, a1, a2)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__SubtleCrypto__sign(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SubtleCrypto)?;
+        if args.length() <= 0 { return Err(cv::Error::args("SubtleCrypto.sign", 0)); }
+        let a0: Value = { let v = args.get(0); cv::value(cx, v) };
+        if args.length() <= 1 { return Err(cv::Error::args("SubtleCrypto.sign", 1)); }
+        let a1: Obj = { let v = args.get(1); cv::obj(cx, v, Iface::CryptoKey)? };
+        if args.length() <= 2 { return Err(cv::Error::args("SubtleCrypto.sign", 2)); }
+        let a2: Value = { let v = args.get(2); cv::value(cx, v) };
+        let r: Value = crate::dom::subtle_crypto::sign(cx, this, a0, a1, a2)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__SubtleCrypto__verify(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SubtleCrypto)?;
+        if args.length() <= 0 { return Err(cv::Error::args("SubtleCrypto.verify", 0)); }
+        let a0: Value = { let v = args.get(0); cv::value(cx, v) };
+        if args.length() <= 1 { return Err(cv::Error::args("SubtleCrypto.verify", 1)); }
+        let a1: Obj = { let v = args.get(1); cv::obj(cx, v, Iface::CryptoKey)? };
+        if args.length() <= 2 { return Err(cv::Error::args("SubtleCrypto.verify", 2)); }
+        let a2: Value = { let v = args.get(2); cv::value(cx, v) };
+        if args.length() <= 3 { return Err(cv::Error::args("SubtleCrypto.verify", 3)); }
+        let a3: Value = { let v = args.get(3); cv::value(cx, v) };
+        let r: Value = crate::dom::subtle_crypto::verify(cx, this, a0, a1, a2, a3)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__SubtleCrypto__digest(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SubtleCrypto)?;
+        if args.length() <= 0 { return Err(cv::Error::args("SubtleCrypto.digest", 0)); }
+        let a0: Value = { let v = args.get(0); cv::value(cx, v) };
+        if args.length() <= 1 { return Err(cv::Error::args("SubtleCrypto.digest", 1)); }
+        let a1: Value = { let v = args.get(1); cv::value(cx, v) };
+        let r: Value = crate::dom::subtle_crypto::digest(cx, this, a0, a1)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__SubtleCrypto__generateKey(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SubtleCrypto)?;
+        if args.length() <= 0 { return Err(cv::Error::args("SubtleCrypto.generateKey", 0)); }
+        let a0: Value = { let v = args.get(0); cv::value(cx, v) };
+        if args.length() <= 1 { return Err(cv::Error::args("SubtleCrypto.generateKey", 1)); }
+        let a1: bool = { let v = args.get(1); cv::boolean(cx, v) };
+        if args.length() <= 2 { return Err(cv::Error::args("SubtleCrypto.generateKey", 2)); }
+        let a2: Vec<String> = { let v = args.get(2); cv::seq(cx, v, |cx, v| Ok(cv::string(cx, v)?))? };
+        let r: Value = crate::dom::subtle_crypto::generate_key(cx, this, a0, a1, a2)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__SubtleCrypto__importKey(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SubtleCrypto)?;
+        if args.length() <= 0 { return Err(cv::Error::args("SubtleCrypto.importKey", 0)); }
+        let a0: String = { let v = args.get(0); cv::string(cx, v)? };
+        if args.length() <= 1 { return Err(cv::Error::args("SubtleCrypto.importKey", 1)); }
+        let a1: Value = { let v = args.get(1); cv::value(cx, v) };
+        if args.length() <= 2 { return Err(cv::Error::args("SubtleCrypto.importKey", 2)); }
+        let a2: Value = { let v = args.get(2); cv::value(cx, v) };
+        if args.length() <= 3 { return Err(cv::Error::args("SubtleCrypto.importKey", 3)); }
+        let a3: bool = { let v = args.get(3); cv::boolean(cx, v) };
+        if args.length() <= 4 { return Err(cv::Error::args("SubtleCrypto.importKey", 4)); }
+        let a4: Vec<String> = { let v = args.get(4); cv::seq(cx, v, |cx, v| Ok(cv::string(cx, v)?))? };
+        let r: Value = crate::dom::subtle_crypto::import_key(cx, this, a0, a1, a2, a3, a4)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__SubtleCrypto__exportKey(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SubtleCrypto)?;
+        if args.length() <= 0 { return Err(cv::Error::args("SubtleCrypto.exportKey", 0)); }
+        let a0: String = { let v = args.get(0); cv::string(cx, v)? };
+        if args.length() <= 1 { return Err(cv::Error::args("SubtleCrypto.exportKey", 1)); }
+        let a1: Obj = { let v = args.get(1); cv::obj(cx, v, Iface::CryptoKey)? };
+        let r: Value = crate::dom::subtle_crypto::export_key(cx, this, a0, a1)?;
         cx.ret(r)
     });
 }
@@ -6744,6 +7479,15 @@ fn op__Window__matchMedia(scope: &mut v8::PinScope, args: v8::FunctionCallbackAr
         if args.length() <= 0 { return Err(cv::Error::args("Window.matchMedia", 0)); }
         let a0: String = { let v = args.get(0); cv::string(cx, v)? };
         let r: Obj = crate::dom::window::match_media(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Window__screen(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = Obj::Window;
+        let r: Obj = crate::dom::window::get_screen(cx, this)?;
         cx.ret(r)
     });
 }
@@ -8962,6 +9706,17 @@ fn get__Window__isSecureContext(scope: &mut v8::PinScope, args: v8::FunctionCall
 }
 
 #[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Window__reportError(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = Obj::Window;
+        if args.length() <= 0 { return Err(cv::Error::args("Window.reportError", 0)); }
+        let a0: Value = { let v = args.get(0); cv::value(cx, v) };
+        let r: () = crate::dom::window_or_worker_global_scope::report_error(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
 fn op__Window__btoa(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = Obj::Window;
@@ -10022,6 +10777,19 @@ fn op__Document__createEvent(scope: &mut v8::PinScope, args: v8::FunctionCallbac
 }
 
 #[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Document__createNodeIterator(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Document)?;
+        if args.length() <= 0 { return Err(cv::Error::args("Document.createNodeIterator", 0)); }
+        let a0: Obj = { let v = args.get(0); cv::obj(cx, v, Iface::Node)? };
+        let a1: u32 = { let v = args.get(1); if v.is_undefined() { 0xFFFFFFFF } else { cv::int::<u32>(cx, v)? } };
+        let a2: Option<Value> = { let v = args.get(2); if v.is_undefined() { None } else { cv::opt_value(cx, v) } };
+        let r: Obj = crate::dom::document::create_node_iterator(cx, this, a0, a1, a2)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
 fn op__Document__createTreeWalker(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::Document)?;
@@ -10292,6 +11060,24 @@ fn op__Document__hasFocus(scope: &mut v8::PinScope, args: v8::FunctionCallbackAr
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::Document)?;
         let r: bool = crate::dom::document::has_focus(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Document__hidden(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Document)?;
+        let r: bool = crate::dom::document::get_hidden(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Document__visibilityState(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Document)?;
+        let r: String = crate::dom::document::get_visibility_state(cx, this)?;
         cx.ret(r)
     });
 }
@@ -12555,6 +13341,28 @@ fn op__Element__hasAttributeNS(scope: &mut v8::PinScope, args: v8::FunctionCallb
         if args.length() <= 1 { return Err(cv::Error::args("Element.hasAttributeNS", 1)); }
         let a1: String = { let v = args.get(1); cv::string(cx, v)? };
         let r: bool = crate::dom::element::has_attribute_ns(cx, this, a0, a1)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Element__getAttributeNode(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        if args.length() <= 0 { return Err(cv::Error::args("Element.getAttributeNode", 0)); }
+        let a0: String = { let v = args.get(0); cv::string(cx, v)? };
+        let r: Option<Obj> = crate::dom::element::get_attribute_node(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Element__removeAttributeNode(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Element)?;
+        if args.length() <= 0 { return Err(cv::Error::args("Element.removeAttributeNode", 0)); }
+        let a0: Obj = { let v = args.get(0); cv::obj(cx, v, Iface::Attr)? };
+        let r: Obj = crate::dom::element::remove_attribute_node(cx, this, a0)?;
         cx.ret(r)
     });
 }
@@ -21559,6 +22367,45 @@ fn set__HTMLVideoElement__playsInline(scope: &mut v8::PinScope, args: v8::Functi
 }
 
 #[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__InputEvent__data(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::InputEvent)?;
+        let r: Option<String> = crate::dom::input_event::get_data(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__InputEvent__isComposing(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::InputEvent)?;
+        let r: bool = crate::dom::input_event::get_is_composing(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__InputEvent__inputType(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::InputEvent)?;
+        let r: String = crate::dom::input_event::get_input_type(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn ctor__InputEvent(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        if args.new_target().is_undefined() { return Err(cv::Error::Type("Failed to construct 'InputEvent': Please use the 'new' operator.".into())); }
+        if args.length() <= 0 { return Err(cv::Error::args("InputEvent constructor", 0)); }
+        let a0: String = { let v = args.get(0); cv::string(cx, v)? };
+        let a1: InputEventInit = { let v = args.get(1); if v.is_undefined() { InputEventInit::default() } else { dict_input_event_init(cx, v)? } };
+        let r: Obj = crate::dom::input_event::constructor(cx, a0, a1)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
 fn get__KeyboardEvent__key(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::KeyboardEvent)?;
@@ -26351,6 +27198,63 @@ fn dict_import_node_options(cx: &mut Cx<'_, '_, '_>, v: v8::Local<'_, v8::Value>
     Ok(d)
 }
 
+/// The `InputEventInit` dictionary.
+#[derive(Debug, Clone)]
+#[allow(missing_docs)]
+pub struct InputEventInit {
+    /// `bubbles`.
+    pub bubbles: bool,
+    /// `cancelable`.
+    pub cancelable: bool,
+    /// `composed`.
+    pub composed: bool,
+    /// `data`.
+    pub data: Option<String>,
+    /// `detail`.
+    pub detail: i32,
+    /// `inputType`.
+    pub input_type: String,
+    /// `isComposing`.
+    pub is_composing: bool,
+    /// `view`.
+    pub view: Option<Obj>,
+    /// `which`.
+    pub which: u32,
+}
+
+impl Default for InputEventInit {
+    fn default() -> Self {
+        Self {
+            bubbles: false,
+            cancelable: false,
+            composed: false,
+            data: None,
+            detail: 0,
+            input_type: "".to_string(),
+            is_composing: false,
+            view: None,
+            which: 0,
+        }
+    }
+}
+
+#[allow(unused_variables, unused_mut, clippy::all)]
+fn dict_input_event_init(cx: &mut Cx<'_, '_, '_>, v: v8::Local<'_, v8::Value>) -> R<InputEventInit> {
+    let mut d = InputEventInit::default();
+    if v.is_null_or_undefined() { return Ok(d); }
+    let obj = cv::object(cx, v, "InputEventInit")?;
+    { let v = cv::get(cx, obj, "bubbles")?; if !v.is_undefined() { d.bubbles = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "cancelable")?; if !v.is_undefined() { d.cancelable = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "composed")?; if !v.is_undefined() { d.composed = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "data")?; if !v.is_undefined() { d.data = if v.is_null_or_undefined() { None } else { Some(cv::string(cx, v)?) }; } }
+    { let v = cv::get(cx, obj, "detail")?; if !v.is_undefined() { d.detail = cv::int::<i32>(cx, v)?; } }
+    { let v = cv::get(cx, obj, "inputType")?; if !v.is_undefined() { d.input_type = cv::string(cx, v)?; } }
+    { let v = cv::get(cx, obj, "isComposing")?; if !v.is_undefined() { d.is_composing = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "view")?; if !v.is_undefined() { d.view = if v.is_null_or_undefined() { None } else { Some(cv::obj(cx, v, Iface::Window)?) }; } }
+    { let v = cv::get(cx, obj, "which")?; if !v.is_undefined() { d.which = cv::int::<u32>(cx, v)?; } }
+    Ok(d)
+}
+
 /// The `IntersectionObserverInit` dictionary.
 #[derive(Debug, Clone)]
 #[allow(missing_docs)]
@@ -26582,6 +27486,8 @@ pub struct MessageEventInit {
     pub last_event_id: String,
     /// `origin`.
     pub origin: String,
+    /// `ports`.
+    pub ports: Vec<Obj>,
     /// `source`.
     pub source: Option<Value>,
 }
@@ -26595,6 +27501,7 @@ impl Default for MessageEventInit {
             data: None,
             last_event_id: "".to_string(),
             origin: "".to_string(),
+            ports: Vec::new(),
             source: None,
         }
     }
@@ -26611,6 +27518,7 @@ fn dict_message_event_init(cx: &mut Cx<'_, '_, '_>, v: v8::Local<'_, v8::Value>)
     { let v = cv::get(cx, obj, "data")?; if !v.is_undefined() { d.data = Some(cv::value(cx, v)); } }
     { let v = cv::get(cx, obj, "lastEventId")?; if !v.is_undefined() { d.last_event_id = cv::string(cx, v)?; } }
     { let v = cv::get(cx, obj, "origin")?; if !v.is_undefined() { d.origin = cv::string(cx, v)?; } }
+    { let v = cv::get(cx, obj, "ports")?; if !v.is_undefined() { d.ports = cv::seq(cx, v, |cx, v| Ok(cv::obj(cx, v, Iface::MessagePort)?))?; } }
     { let v = cv::get(cx, obj, "source")?; if !v.is_undefined() { d.source = if v.is_null_or_undefined() { None } else { Some(cv::value(cx, v)) }; } }
     Ok(d)
 }
@@ -26868,6 +27776,68 @@ fn dict_mutation_observer_init(cx: &mut Cx<'_, '_, '_>, v: v8::Local<'_, v8::Val
     { let v = cv::get(cx, obj, "characterDataOldValue")?; if !v.is_undefined() { d.character_data_old_value = Some(cv::boolean(cx, v)); } }
     { let v = cv::get(cx, obj, "childList")?; if !v.is_undefined() { d.child_list = cv::boolean(cx, v); } }
     { let v = cv::get(cx, obj, "subtree")?; if !v.is_undefined() { d.subtree = cv::boolean(cx, v); } }
+    Ok(d)
+}
+
+/// The `PerformanceMarkOptions` dictionary.
+#[derive(Debug, Clone)]
+#[allow(missing_docs)]
+pub struct PerformanceMarkOptions {
+    /// `detail`.
+    pub detail: Option<Value>,
+    /// `startTime`.
+    pub start_time: Option<f64>,
+}
+
+impl Default for PerformanceMarkOptions {
+    fn default() -> Self {
+        Self {
+            detail: None,
+            start_time: None,
+        }
+    }
+}
+
+#[allow(unused_variables, unused_mut, clippy::all)]
+fn dict_performance_mark_options(cx: &mut Cx<'_, '_, '_>, v: v8::Local<'_, v8::Value>) -> R<PerformanceMarkOptions> {
+    let mut d = PerformanceMarkOptions::default();
+    if v.is_null_or_undefined() { return Ok(d); }
+    let obj = cv::object(cx, v, "PerformanceMarkOptions")?;
+    { let v = cv::get(cx, obj, "detail")?; if !v.is_undefined() { d.detail = Some(cv::value(cx, v)); } }
+    { let v = cv::get(cx, obj, "startTime")?; if !v.is_undefined() { d.start_time = Some(cv::float(cx, v, true)?); } }
+    Ok(d)
+}
+
+/// The `PerformanceObserverInit` dictionary.
+#[derive(Debug, Clone)]
+#[allow(missing_docs)]
+pub struct PerformanceObserverInit {
+    /// `buffered`.
+    pub buffered: Option<bool>,
+    /// `entryTypes`.
+    pub entry_types: Option<Vec<String>>,
+    /// `type`.
+    pub type_: Option<String>,
+}
+
+impl Default for PerformanceObserverInit {
+    fn default() -> Self {
+        Self {
+            buffered: None,
+            entry_types: None,
+            type_: None,
+        }
+    }
+}
+
+#[allow(unused_variables, unused_mut, clippy::all)]
+fn dict_performance_observer_init(cx: &mut Cx<'_, '_, '_>, v: v8::Local<'_, v8::Value>) -> R<PerformanceObserverInit> {
+    let mut d = PerformanceObserverInit::default();
+    if v.is_null_or_undefined() { return Ok(d); }
+    let obj = cv::object(cx, v, "PerformanceObserverInit")?;
+    { let v = cv::get(cx, obj, "buffered")?; if !v.is_undefined() { d.buffered = Some(cv::boolean(cx, v)); } }
+    { let v = cv::get(cx, obj, "entryTypes")?; if !v.is_undefined() { d.entry_types = Some(cv::seq(cx, v, |cx, v| Ok(cv::string(cx, v)?))?); } }
+    { let v = cv::get(cx, obj, "type")?; if !v.is_undefined() { d.type_ = Some(cv::string(cx, v)?); } }
     Ok(d)
 }
 
@@ -27831,6 +28801,14 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         crate::dom::hooks::template(scope, Iface::Blob, f);
         out.push(v8::Global::new(scope, f));
     }
+    { // CSS
+        let f = v8::FunctionTemplate::new(scope, cv::illegal_constructor);
+        let inst = f.instance_template(scope);
+        let proto = f.prototype_template(scope);
+        cv::method(scope, inst.into(), "supports", op__CSS__supports, 1);
+        cv::method(scope, inst.into(), "escape", op__CSS__escape, 1);
+        out.push(v8::Global::new(scope, f));
+    }
     { // CSSStyleDeclaration
         let f = cv::interface(scope, "CSSStyleDeclaration", cv::illegal_constructor);
         let inst = f.instance_template(scope);
@@ -27895,9 +28873,22 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         let inst = f.instance_template(scope);
         inst.set_internal_field_count(cv::FIELDS);
         let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "subtle", get__Crypto__subtle, None);
         cv::method(scope, proto.into(), "getRandomValues", op__Crypto__getRandomValues, 1);
         cv::method(scope, proto.into(), "randomUUID", op__Crypto__randomUUID, 0);
         crate::dom::hooks::template(scope, Iface::Crypto, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // CryptoKey
+        let f = cv::interface(scope, "CryptoKey", cv::illegal_constructor);
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "type", get__CryptoKey__type, None);
+        cv::accessor(scope, proto, "extractable", get__CryptoKey__extractable, None);
+        cv::accessor(scope, proto, "algorithm", get__CryptoKey__algorithm, None);
+        cv::accessor(scope, proto, "usages", get__CryptoKey__usages, None);
+        crate::dom::hooks::template(scope, Iface::CryptoKey, f);
         out.push(v8::Global::new(scope, f));
     }
     { // CustomElementRegistry
@@ -27966,8 +28957,18 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         let inst = f.instance_template(scope);
         inst.set_internal_field_count(cv::FIELDS);
         let proto = f.prototype_template(scope);
+        cv::method(scope, proto.into(), "createHTMLDocument", op__DOMImplementation__createHTMLDocument, 0);
         cv::method(scope, proto.into(), "hasFeature", op__DOMImplementation__hasFeature, 0);
         crate::dom::hooks::template(scope, Iface::DOMImplementation, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // DOMParser
+        let f = cv::interface(scope, "DOMParser", ctor__DOMParser);
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::method(scope, proto.into(), "parseFromString", op__DOMParser__parseFromString, 2);
+        crate::dom::hooks::template(scope, Iface::DOMParser, f);
         out.push(v8::Global::new(scope, f));
     }
     { // DOMRectList
@@ -28372,6 +29373,16 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         crate::dom::hooks::template(scope, Iface::MediaQueryListEvent, f);
         out.push(v8::Global::new(scope, f));
     }
+    { // MessageChannel
+        let f = cv::interface(scope, "MessageChannel", ctor__MessageChannel);
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "port1", get__MessageChannel__port1, None);
+        cv::accessor(scope, proto, "port2", get__MessageChannel__port2, None);
+        crate::dom::hooks::template(scope, Iface::MessageChannel, f);
+        out.push(v8::Global::new(scope, f));
+    }
     { // MessageEvent
         let f = cv::interface(scope, "MessageEvent", ctor__MessageEvent);
         f.inherit(v8::Local::new(scope, &out[Iface::Event as usize]));
@@ -28383,6 +29394,19 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::accessor(scope, proto, "lastEventId", get__MessageEvent__lastEventId, None);
         cv::accessor(scope, proto, "source", get__MessageEvent__source, None);
         crate::dom::hooks::template(scope, Iface::MessageEvent, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // MessagePort
+        let f = cv::interface(scope, "MessagePort", cv::illegal_constructor);
+        f.inherit(v8::Local::new(scope, &out[Iface::EventTarget as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::method(scope, proto.into(), "start", op__MessagePort__start, 0);
+        cv::method(scope, proto.into(), "close", op__MessagePort__close, 0);
+        cv::accessor(scope, proto, "onmessage", get__MessagePort__onmessage, Some(set__MessagePort__onmessage.map_fn_to()));
+        cv::accessor(scope, proto, "onmessageerror", get__MessagePort__onmessageerror, Some(set__MessagePort__onmessageerror.map_fn_to()));
+        crate::dom::hooks::template(scope, Iface::MessagePort, f);
         out.push(v8::Global::new(scope, f));
     }
     { // ModelContext
@@ -28549,6 +29573,22 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::constant(scope, f, proto, "SHOW_NOTATION", 0x800_u64 as f64);
         out.push(v8::Global::new(scope, f));
     }
+    { // NodeIterator
+        let f = cv::interface(scope, "NodeIterator", cv::illegal_constructor);
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "root", get__NodeIterator__root, None);
+        cv::accessor(scope, proto, "referenceNode", get__NodeIterator__referenceNode, None);
+        cv::accessor(scope, proto, "pointerBeforeReferenceNode", get__NodeIterator__pointerBeforeReferenceNode, None);
+        cv::accessor(scope, proto, "whatToShow", get__NodeIterator__whatToShow, None);
+        cv::accessor(scope, proto, "filter", get__NodeIterator__filter, None);
+        cv::method(scope, proto.into(), "nextNode", op__NodeIterator__nextNode, 0);
+        cv::method(scope, proto.into(), "previousNode", op__NodeIterator__previousNode, 0);
+        cv::method(scope, proto.into(), "detach", op__NodeIterator__detach, 0);
+        crate::dom::hooks::template(scope, Iface::NodeIterator, f);
+        out.push(v8::Global::new(scope, f));
+    }
     { // NodeList
         let f = cv::interface(scope, "NodeList", cv::illegal_constructor);
         let inst = f.instance_template(scope);
@@ -28567,7 +29607,68 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         let proto = f.prototype_template(scope);
         cv::method(scope, proto.into(), "now", op__Performance__now, 0);
         cv::accessor(scope, proto, "timeOrigin", get__Performance__timeOrigin, None);
+        cv::method(scope, proto.into(), "getEntries", op__Performance__getEntries, 0);
+        cv::method(scope, proto.into(), "getEntriesByType", op__Performance__getEntriesByType, 1);
+        cv::method(scope, proto.into(), "getEntriesByName", op__Performance__getEntriesByName, 1);
+        cv::method(scope, proto.into(), "mark", op__Performance__mark, 1);
+        cv::method(scope, proto.into(), "clearMarks", op__Performance__clearMarks, 0);
+        cv::method(scope, proto.into(), "clearMeasures", op__Performance__clearMeasures, 0);
         crate::dom::hooks::template(scope, Iface::Performance, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // PerformanceEntry
+        let f = cv::interface(scope, "PerformanceEntry", cv::illegal_constructor);
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "name", get__PerformanceEntry__name, None);
+        cv::accessor(scope, proto, "entryType", get__PerformanceEntry__entryType, None);
+        cv::accessor(scope, proto, "startTime", get__PerformanceEntry__startTime, None);
+        cv::accessor(scope, proto, "duration", get__PerformanceEntry__duration, None);
+        cv::method(scope, proto.into(), "toJSON", op__PerformanceEntry__toJSON, 0);
+        crate::dom::hooks::template(scope, Iface::PerformanceEntry, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // PerformanceMark
+        let f = cv::interface(scope, "PerformanceMark", ctor__PerformanceMark);
+        f.inherit(v8::Local::new(scope, &out[Iface::PerformanceEntry as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "detail", get__PerformanceMark__detail, None);
+        crate::dom::hooks::template(scope, Iface::PerformanceMark, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // PerformanceMeasure
+        let f = cv::interface(scope, "PerformanceMeasure", cv::illegal_constructor);
+        f.inherit(v8::Local::new(scope, &out[Iface::PerformanceEntry as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "detail", get__PerformanceMeasure__detail, None);
+        crate::dom::hooks::template(scope, Iface::PerformanceMeasure, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // PerformanceObserver
+        let f = cv::interface(scope, "PerformanceObserver", ctor__PerformanceObserver);
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::method(scope, proto.into(), "observe", op__PerformanceObserver__observe, 0);
+        cv::method(scope, proto.into(), "disconnect", op__PerformanceObserver__disconnect, 0);
+        cv::method(scope, proto.into(), "takeRecords", op__PerformanceObserver__takeRecords, 0);
+        crate::dom::hooks::template(scope, Iface::PerformanceObserver, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // PerformanceObserverEntryList
+        let f = cv::interface(scope, "PerformanceObserverEntryList", cv::illegal_constructor);
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::method(scope, proto.into(), "getEntries", op__PerformanceObserverEntryList__getEntries, 0);
+        cv::method(scope, proto.into(), "getEntriesByType", op__PerformanceObserverEntryList__getEntriesByType, 1);
+        cv::method(scope, proto.into(), "getEntriesByName", op__PerformanceObserverEntryList__getEntriesByName, 1);
+        crate::dom::hooks::template(scope, Iface::PerformanceObserverEntryList, f);
         out.push(v8::Global::new(scope, f));
     }
     { // PopStateEvent
@@ -28609,7 +29710,9 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::accessor(scope, proto, "signal", get__Request__signal, None);
         cv::method(scope, proto.into(), "clone", op__Request__clone, 0);
         cv::accessor(scope, proto, "bodyUsed", get__Request__bodyUsed, None);
+        cv::method(scope, proto.into(), "arrayBuffer", op__Request__arrayBuffer, 0);
         cv::method(scope, proto.into(), "blob", op__Request__blob, 0);
+        cv::method(scope, proto.into(), "bytes", op__Request__bytes, 0);
         cv::method(scope, proto.into(), "json", op__Request__json, 0);
         cv::method(scope, proto.into(), "text", op__Request__text, 0);
         crate::dom::hooks::template(scope, Iface::Request, f);
@@ -28666,10 +29769,26 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::accessor(scope, proto, "headers", get__Response__headers, None);
         cv::method(scope, proto.into(), "clone", op__Response__clone, 0);
         cv::accessor(scope, proto, "bodyUsed", get__Response__bodyUsed, None);
+        cv::method(scope, proto.into(), "arrayBuffer", op__Response__arrayBuffer, 0);
         cv::method(scope, proto.into(), "blob", op__Response__blob, 0);
+        cv::method(scope, proto.into(), "bytes", op__Response__bytes, 0);
         cv::method(scope, proto.into(), "json", op__Response__json, 0);
         cv::method(scope, proto.into(), "text", op__Response__text, 0);
         crate::dom::hooks::template(scope, Iface::Response, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // Screen
+        let f = cv::interface(scope, "Screen", cv::illegal_constructor);
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "availWidth", get__Screen__availWidth, None);
+        cv::accessor(scope, proto, "availHeight", get__Screen__availHeight, None);
+        cv::accessor(scope, proto, "width", get__Screen__width, None);
+        cv::accessor(scope, proto, "height", get__Screen__height, None);
+        cv::accessor(scope, proto, "colorDepth", get__Screen__colorDepth, None);
+        cv::accessor(scope, proto, "pixelDepth", get__Screen__pixelDepth, None);
+        crate::dom::hooks::template(scope, Iface::Screen, f);
         out.push(v8::Global::new(scope, f));
     }
     { // Storage
@@ -28692,6 +29811,22 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         inst.set_internal_field_count(cv::FIELDS);
         let proto = f.prototype_template(scope);
         crate::dom::hooks::template(scope, Iface::StyleSheet, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // SubtleCrypto
+        let f = cv::interface(scope, "SubtleCrypto", cv::illegal_constructor);
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::method(scope, proto.into(), "encrypt", op__SubtleCrypto__encrypt, 3);
+        cv::method(scope, proto.into(), "decrypt", op__SubtleCrypto__decrypt, 3);
+        cv::method(scope, proto.into(), "sign", op__SubtleCrypto__sign, 3);
+        cv::method(scope, proto.into(), "verify", op__SubtleCrypto__verify, 4);
+        cv::method(scope, proto.into(), "digest", op__SubtleCrypto__digest, 2);
+        cv::method(scope, proto.into(), "generateKey", op__SubtleCrypto__generateKey, 3);
+        cv::method(scope, proto.into(), "importKey", op__SubtleCrypto__importKey, 5);
+        cv::method(scope, proto.into(), "exportKey", op__SubtleCrypto__exportKey, 2);
+        crate::dom::hooks::template(scope, Iface::SubtleCrypto, f);
         out.push(v8::Global::new(scope, f));
     }
     { // TextDecoder
@@ -28880,6 +30015,7 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::method(scope, inst.into(), "prompt", op__Window__prompt, 0);
         cv::method(scope, inst.into(), "postMessage", op__Window__postMessage, 2);
         cv::method(scope, inst.into(), "matchMedia", op__Window__matchMedia, 1);
+        cv::accessor(scope, inst, "screen", get__Window__screen, None);
         cv::accessor(scope, inst, "visualViewport", get__Window__visualViewport, None);
         cv::accessor(scope, inst, "innerWidth", get__Window__innerWidth, None);
         cv::accessor(scope, inst, "innerHeight", get__Window__innerHeight, None);
@@ -29005,6 +30141,7 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::accessor(scope, inst, "performance", get__Window__performance, None);
         cv::accessor(scope, inst, "origin", get__Window__origin, None);
         cv::accessor(scope, inst, "isSecureContext", get__Window__isSecureContext, None);
+        cv::method(scope, inst.into(), "reportError", op__Window__reportError, 1);
         cv::method(scope, inst.into(), "btoa", op__Window__btoa, 1);
         cv::method(scope, inst.into(), "atob", op__Window__atob, 1);
         cv::method(scope, inst.into(), "setTimeout", op__Window__setTimeout, 1);
@@ -29198,6 +30335,7 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::method(scope, proto.into(), "importNode", op__Document__importNode, 1);
         cv::method(scope, proto.into(), "adoptNode", op__Document__adoptNode, 1);
         cv::method(scope, proto.into(), "createEvent", op__Document__createEvent, 1);
+        cv::method(scope, proto.into(), "createNodeIterator", op__Document__createNodeIterator, 1);
         cv::method(scope, proto.into(), "createTreeWalker", op__Document__createTreeWalker, 1);
         cv::method(scope, proto.into(), "elementFromPoint", op__Document__elementFromPoint, 2);
         cv::method(scope, proto.into(), "elementsFromPoint", op__Document__elementsFromPoint, 2);
@@ -29220,6 +30358,8 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::accessor(scope, proto, "currentScript", get__Document__currentScript, None);
         cv::accessor(scope, proto, "defaultView", get__Document__defaultView, None);
         cv::method(scope, proto.into(), "hasFocus", op__Document__hasFocus, 0);
+        cv::accessor(scope, proto, "hidden", get__Document__hidden, None);
+        cv::accessor(scope, proto, "visibilityState", get__Document__visibilityState, None);
         cv::accessor(scope, proto, "onreadystatechange", get__Document__onreadystatechange, Some(set__Document__onreadystatechange.map_fn_to()));
         cv::accessor(scope, proto, "onvisibilitychange", get__Document__onvisibilitychange, Some(set__Document__onvisibilitychange.map_fn_to()));
         cv::accessor(scope, proto, "modelContext", get__Document__modelContext, None);
@@ -29386,6 +30526,8 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::method(scope, proto.into(), "toggleAttribute", op__Element__toggleAttribute, 1);
         cv::method(scope, proto.into(), "hasAttribute", op__Element__hasAttribute, 1);
         cv::method(scope, proto.into(), "hasAttributeNS", op__Element__hasAttributeNS, 2);
+        cv::method(scope, proto.into(), "getAttributeNode", op__Element__getAttributeNode, 1);
+        cv::method(scope, proto.into(), "removeAttributeNode", op__Element__removeAttributeNode, 1);
         cv::method(scope, proto.into(), "attachShadow", op__Element__attachShadow, 1);
         cv::accessor(scope, proto, "shadowRoot", get__Element__shadowRoot, None);
         cv::method(scope, proto.into(), "closest", op__Element__closest, 1);
@@ -30476,6 +31618,18 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         crate::dom::hooks::template(scope, Iface::HTMLVideoElement, f);
         out.push(v8::Global::new(scope, f));
     }
+    { // InputEvent
+        let f = cv::interface(scope, "InputEvent", ctor__InputEvent);
+        f.inherit(v8::Local::new(scope, &out[Iface::UIEvent as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "data", get__InputEvent__data, None);
+        cv::accessor(scope, proto, "isComposing", get__InputEvent__isComposing, None);
+        cv::accessor(scope, proto, "inputType", get__InputEvent__inputType, None);
+        crate::dom::hooks::template(scope, Iface::InputEvent, f);
+        out.push(v8::Global::new(scope, f));
+    }
     { // KeyboardEvent
         let f = cv::interface(scope, "KeyboardEvent", ctor__KeyboardEvent);
         f.inherit(v8::Local::new(scope, &out[Iface::UIEvent as usize]));
@@ -30972,14 +32126,17 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
 pub fn expose(scope: &mut v8::PinScope<'_, '_>, global: v8::Local<'_, v8::Object>, t: &[v8::Global<v8::FunctionTemplate>]) {
     cv::expose(scope, global, &t[Iface::AbortController as usize], "AbortController");
     cv::expose(scope, global, &t[Iface::Blob as usize], "Blob");
+    cv::expose_namespace(scope, global, &t[Iface::CSS as usize], "CSS");
     cv::expose(scope, global, &t[Iface::CSSStyleDeclaration as usize], "CSSStyleDeclaration");
     cv::expose(scope, global, &t[Iface::CSSStyleProperties as usize], "CSSStyleProperties");
     cv::expose(scope, global, &t[Iface::CanvasRenderingContext2D as usize], "CanvasRenderingContext2D");
     cv::expose(scope, global, &t[Iface::Crypto as usize], "Crypto");
+    cv::expose(scope, global, &t[Iface::CryptoKey as usize], "CryptoKey");
     cv::expose(scope, global, &t[Iface::CustomElementRegistry as usize], "CustomElementRegistry");
     cv::expose(scope, global, &t[Iface::CustomStateSet as usize], "CustomStateSet");
     cv::expose(scope, global, &t[Iface::DOMException as usize], "DOMException");
     cv::expose(scope, global, &t[Iface::DOMImplementation as usize], "DOMImplementation");
+    cv::expose(scope, global, &t[Iface::DOMParser as usize], "DOMParser");
     cv::expose(scope, global, &t[Iface::DOMRectList as usize], "DOMRectList");
     cv::expose(scope, global, &t[Iface::DOMRectReadOnly as usize], "DOMRectReadOnly");
     cv::expose(scope, global, &t[Iface::DOMStringMap as usize], "DOMStringMap");
@@ -31005,7 +32162,9 @@ pub fn expose(scope: &mut v8::PinScope<'_, '_>, global: v8::Local<'_, v8::Object
     cv::expose(scope, global, &t[Iface::Location as usize], "Location");
     cv::expose(scope, global, &t[Iface::MediaQueryList as usize], "MediaQueryList");
     cv::expose(scope, global, &t[Iface::MediaQueryListEvent as usize], "MediaQueryListEvent");
+    cv::expose(scope, global, &t[Iface::MessageChannel as usize], "MessageChannel");
     cv::expose(scope, global, &t[Iface::MessageEvent as usize], "MessageEvent");
+    cv::expose(scope, global, &t[Iface::MessagePort as usize], "MessagePort");
     cv::expose(scope, global, &t[Iface::ModelContext as usize], "ModelContext");
     cv::expose(scope, global, &t[Iface::MutationObserver as usize], "MutationObserver");
     cv::expose(scope, global, &t[Iface::MutationRecord as usize], "MutationRecord");
@@ -31014,8 +32173,14 @@ pub fn expose(scope: &mut v8::PinScope<'_, '_>, global: v8::Local<'_, v8::Object
     cv::expose(scope, global, &t[Iface::NavigatorUAData as usize], "NavigatorUAData");
     cv::expose(scope, global, &t[Iface::Node as usize], "Node");
     cv::expose(scope, global, &t[Iface::NodeFilter as usize], "NodeFilter");
+    cv::expose(scope, global, &t[Iface::NodeIterator as usize], "NodeIterator");
     cv::expose(scope, global, &t[Iface::NodeList as usize], "NodeList");
     cv::expose(scope, global, &t[Iface::Performance as usize], "Performance");
+    cv::expose(scope, global, &t[Iface::PerformanceEntry as usize], "PerformanceEntry");
+    cv::expose(scope, global, &t[Iface::PerformanceMark as usize], "PerformanceMark");
+    cv::expose(scope, global, &t[Iface::PerformanceMeasure as usize], "PerformanceMeasure");
+    cv::expose(scope, global, &t[Iface::PerformanceObserver as usize], "PerformanceObserver");
+    cv::expose(scope, global, &t[Iface::PerformanceObserverEntryList as usize], "PerformanceObserverEntryList");
     cv::expose(scope, global, &t[Iface::PopStateEvent as usize], "PopStateEvent");
     cv::expose(scope, global, &t[Iface::ProgressEvent as usize], "ProgressEvent");
     cv::expose(scope, global, &t[Iface::Request as usize], "Request");
@@ -31023,8 +32188,10 @@ pub fn expose(scope: &mut v8::PinScope<'_, '_>, global: v8::Local<'_, v8::Object
     cv::expose(scope, global, &t[Iface::ResizeObserverEntry as usize], "ResizeObserverEntry");
     cv::expose(scope, global, &t[Iface::ResizeObserverSize as usize], "ResizeObserverSize");
     cv::expose(scope, global, &t[Iface::Response as usize], "Response");
+    cv::expose(scope, global, &t[Iface::Screen as usize], "Screen");
     cv::expose(scope, global, &t[Iface::Storage as usize], "Storage");
     cv::expose(scope, global, &t[Iface::StyleSheet as usize], "StyleSheet");
+    cv::expose(scope, global, &t[Iface::SubtleCrypto as usize], "SubtleCrypto");
     cv::expose(scope, global, &t[Iface::TextDecoder as usize], "TextDecoder");
     cv::expose(scope, global, &t[Iface::TextEncoder as usize], "TextEncoder");
     cv::expose(scope, global, &t[Iface::TreeWalker as usize], "TreeWalker");
@@ -31110,6 +32277,7 @@ pub fn expose(scope: &mut v8::PinScope<'_, '_>, global: v8::Local<'_, v8::Object
     cv::expose(scope, global, &t[Iface::HTMLUListElement as usize], "HTMLUListElement");
     cv::expose(scope, global, &t[Iface::HTMLUnknownElement as usize], "HTMLUnknownElement");
     cv::expose(scope, global, &t[Iface::HTMLVideoElement as usize], "HTMLVideoElement");
+    cv::expose(scope, global, &t[Iface::InputEvent as usize], "InputEvent");
     cv::expose(scope, global, &t[Iface::KeyboardEvent as usize], "KeyboardEvent");
     cv::expose(scope, global, &t[Iface::MouseEvent as usize], "MouseEvent");
     cv::expose(scope, global, &t[Iface::PointerEvent as usize], "PointerEvent");

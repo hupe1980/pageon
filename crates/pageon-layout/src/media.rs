@@ -55,3 +55,36 @@ pub fn media_query(viewport: Viewport, query: &str) -> (String, bool) {
     });
     (media, matches)
 }
+
+/// `CSS.supports`: whether Stylo supports a condition (`display: grid`, `(gap: 1px) and
+/// selector(:has(a))`), as `@supports` evaluates it; a bare declaration is a condition too.
+pub fn css_supports(condition: &str) -> bool {
+    // Stylo's feature preferences are set when the engine creates a document (blitz does it):
+    // make sure one exists, so `@supports` and `CSS.supports` agree.
+    DEVICE.with(|d| {
+        let mut d = d.borrow_mut();
+        if d.is_none() {
+            let v = Viewport::default();
+            *d = Some((v, crate::mirror::empty(v)));
+        }
+    });
+    let url = UrlExtraData(ServoArc::new(
+        url::Url::parse("about:blank").unwrap_or_else(|_| unreachable!("a valid URL")),
+    ));
+    let context = ParserContext::new(
+        Origin::Author,
+        &url,
+        Some(CssRuleType::Style),
+        ParsingMode::DEFAULT,
+        QuirksMode::NoQuirks,
+        Default::default(),
+        None,
+        None,
+        Default::default(),
+    );
+    let mut parser = Parser::new(condition);
+    style::stylesheets::supports_rule::parse_condition_or_declaration(&mut parser)
+        .ok()
+        .filter(|_| parser.is_exhausted())
+        .is_some_and(|c| c.eval(&context))
+}

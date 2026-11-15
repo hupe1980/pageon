@@ -1,0 +1,9 @@
+<!doctype html><title>Comments</title><div id=comment></div>
+<script src=/purify.min.js></script>
+<script>
+// A comment rendered through DOMPurify (the real library): markup kept, scripts and handlers gone.
+window.ran = 0;
+const dirty = '<b>bold</b><img src=x onerror="window.ran=1"><script>window.ran=2<\/script><a href="javascript:window.ran=3">link</a>';
+document.getElementById('comment').innerHTML = DOMPurify.sanitize(dirty);
+document.title = 'Comments ' + (DOMPurify.isSupported ? 'sanitized' : 'UNSUPPORTED');
+</script>

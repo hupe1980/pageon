@@ -2,6 +2,7 @@
 //! named after the interface or mixin that declares the members (the generated code calls
 //! `crate::dom::<owner>::<member>`).
 
+pub(crate) mod basics;
 pub mod blobs;
 mod canvas;
 mod collections;
@@ -24,6 +25,8 @@ pub(crate) mod scroll;
 pub(crate) mod session;
 pub(crate) mod shadow;
 pub(crate) mod sheets;
+pub(crate) mod subtle;
+pub(crate) mod timing;
 pub(crate) mod traversal;
 pub(crate) mod urls;
 pub(crate) mod validation;
@@ -76,9 +79,12 @@ pub use platform::{
 };
 pub use session::{history, pop_state_event};
 pub use shadow::{html_slot_element, shadow_root, slottable};
-pub use traversal::tree_walker;
+pub use traversal::{node_iterator, tree_walker};
 pub use xml::xml_serializer;
 
+pub use basics::{
+    css, dom_parser, input_event, message_channel, message_event_target, message_port, screen,
+};
 pub use blobs::{blob, file, file_list, file_reader};
 pub use dnd::{data_transfer, data_transfer_item, data_transfer_item_list};
 pub use internals::{aria_mixin, custom_state_set, element_internals};
@@ -88,6 +94,11 @@ pub use net::{
 };
 pub use realtime::{close_event, event_source, web_socket};
 pub use sheets::css_style_sheet;
+pub use subtle::{crypto_key, subtle_crypto};
+pub use timing::{
+    performance_entry, performance_mark, performance_measure, performance_observer,
+    performance_observer_entry_list,
+};
 pub use urls::{form_data, url, url_search_params};
 pub use validation::{html_field_set_element, html_output_element, validity_state};
 pub use webmcp::model_context;
@@ -313,7 +324,7 @@ pub(crate) fn copy_started(cx: &Cx<'_, '_, '_>, original: NodeId, copy: NodeId) 
 }
 
 /// Scripts inserted through markup never run: mark them as already started.
-fn mark_scripts_started(cx: &Cx<'_, '_, '_>, roots: &[NodeId]) {
+pub(crate) fn mark_scripts_started(cx: &Cx<'_, '_, '_>, roots: &[NodeId]) {
     let dom = cx.dom();
     let mut started = Vec::new();
     for &r in roots {
@@ -429,6 +440,7 @@ pub(crate) fn detach(cx: &Cx<'_, '_, '_>, node: NodeId) -> R<()> {
     if cx.dom().parent(node).is_none() {
         return Ok(());
     }
+    crate::dom::traversal::pre_removing(cx, node);
     cx.dom_mut().detach(node).map_err(|_| gone())?;
     let mut st = cx.st();
     if st.focused.is_some_and(|f| {

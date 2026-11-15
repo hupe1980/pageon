@@ -181,8 +181,19 @@ pub mod node {
 
     pub fn get_owner_document(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<Option<Obj>> {
         let id = this.node()?;
-        let root = cx.dom().root();
-        Ok((id != root).then_some(Obj::Node(root)))
+        let dom = cx.dom();
+        let is_doc = |n| {
+            matches!(
+                dom.get(n).map(|x| &x.data),
+                Some(pageon_dom::NodeData::Document)
+            )
+        };
+        if is_doc(id) {
+            return Ok(None);
+        }
+        // A node of a document DOMParser made belongs to it; every other node to the realm's.
+        let top = dom.root_of(id);
+        Ok(Some(Obj::Node(if is_doc(top) { top } else { dom.root() })))
     }
 
     /// The root of the node's tree; with `composed`, through shadow hosts.

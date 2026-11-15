@@ -981,7 +981,11 @@ pub mod message_event {
         })
     }
 
-    pub fn get_source(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<Option<Obj>> {
-        fields(cx, this, |e| e.message.as_ref().and_then(|m| m.2))
+    pub fn get_source(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<Option<Value>> {
+        let source = fields(cx, this, |e| e.message.as_ref().and_then(|m| m.2))?;
+        Ok(source.map(|o| {
+            let w: v8::Local<v8::Value> = cx.wrap(o).into();
+            cx.keep(w)
+        }))
     }
 }

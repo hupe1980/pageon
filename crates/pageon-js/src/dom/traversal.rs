@@ -1,5 +1,6 @@
-//! `TreeWalker` and `document.createTreeWalker` (DOM §6): the standard's traversal algorithms,
-//! with `whatToShow` and a filter (a function, or an object with `acceptNode`).
+//! `TreeWalker`, `NodeIterator`, `document.createTreeWalker` and `createNodeIterator` (DOM §6):
+//! the standard's traversal algorithms, with `whatToShow` and a filter (a function, or an object
+//! with `acceptNode`). A node iterator follows removals (its pre-removing steps).
 
 use pageon_dom::{NodeData, NodeId};
 
@@ -19,6 +20,9 @@ pub struct WalkerData {
     filter: Option<Value>,
     current: NodeId,
     active: bool,
+    /// A `NodeIterator`'s `pointerBeforeReferenceNode` (`current` is its reference node);
+    /// `None` for a `TreeWalker`.
+    before: Option<bool>,
 }
 
 fn walker(cx: &Cx<'_, '_, '_>, this: Obj) -> R<(u32, WalkerData)> {
@@ -345,6 +349,185 @@ pub(crate) fn create(
             filter,
             current: root,
             active: false,
+            before: None,
         })),
     ))
+}
+
+/// `createNodeIterator(root, whatToShow, filter)`.
+pub(crate) fn create_iterator(
+    cx: &mut Cx<'_, '_, '_>,
+    root: Obj,
+    what_to_show: u32,
+    filter: Option<Value>,
+) -> R<Obj> {
+    let root = root.node()?;
+    let filter = filter.filter(|f| !cx.local(f).is_null_or_undefined());
+    let o = cx.alloc(
+        Iface::NodeIterator,
+        Slot::Walker(Box::new(WalkerData {
+            root,
+            what_to_show,
+            filter,
+            current: root,
+            active: false,
+            before: Some(true),
+        })),
+    );
+    if let Ok(id) = o.slab() {
+        cx.st().iterators.push(id);
+    }
+    Ok(o)
+}
+
+/// The node after `n` in tree order, within `root`.
+fn following(cx: &Cx<'_, '_, '_>, root: NodeId, n: NodeId) -> Option<NodeId> {
+    let dom = cx.dom();
+    if let Some(c) = dom.first_child(n) {
+        return Some(c);
+    }
+    let mut cur = n;
+    loop {
+        if cur == root {
+            return None;
+        }
+        if let Some(s) = dom.next_sibling(cur) {
+            return Some(s);
+        }
+        cur = dom.parent(cur)?;
+    }
+}
+
+/// The last inclusive descendant of `n` in tree order.
+fn last_descendant(cx: &Cx<'_, '_, '_>, mut n: NodeId) -> NodeId {
+    let dom = cx.dom();
+    while let Some(c) = dom.last_child(n) {
+        n = c;
+    }
+    n
+}
+
+/// The node before `n` in tree order, within `root`.
+fn preceding(cx: &Cx<'_, '_, '_>, root: NodeId, n: NodeId) -> Option<NodeId> {
+    if n == root {
+        return None;
+    }
+    match cx.dom().prev_sibling(n) {
+        Some(s) => Some(last_descendant(cx, s)),
+        None => cx.dom().parent(n),
+    }
+}
+
+/// The node iterators' pre-removing steps (DOM §6.1), before `removed` leaves its parent.
+pub(crate) fn pre_removing(cx: &Cx<'_, '_, '_>, removed: NodeId) {
+    let ids = cx.st().iterators.clone();
+    for id in ids {
+        let Some(w) = (match cx.st().slot(id) {
+            Some(Slot::Walker(w)) => Some((**w).clone()),
+            _ => None,
+        }) else {
+            continue;
+        };
+        let Some(mut before) = w.before else { continue };
+        if removed == w.root || !cx.dom().is_inclusive_ancestor(removed, w.current) {
+            continue;
+        }
+        let mut reference = None;
+        if before {
+            // The first node after the removed subtree, if it is still within the root.
+            let last = last_descendant(cx, removed);
+            match following(cx, w.root, last) {
+                Some(x) => reference = Some(x),
+                None => before = false,
+            }
+        }
+        let reference = reference.or_else(|| match cx.dom().prev_sibling(removed) {
+            Some(s) => Some(last_descendant(cx, s)),
+            None => cx.dom().parent(removed),
+        });
+        if let (Some(r), Some(Slot::Walker(d))) = (reference, cx.st().slot_mut(id)) {
+            d.current = r;
+            d.before = Some(before);
+        }
+    }
+}
+
+pub mod node_iterator {
+    use super::*;
+
+    fn iter(cx: &Cx<'_, '_, '_>, this: Obj) -> R<(u32, WalkerData)> {
+        let (id, w) = walker(cx, this)?;
+        if w.before.is_none() {
+            return Err(Error::Type("Illegal invocation".into()));
+        }
+        Ok((id, w))
+    }
+
+    /// "Traverse" (DOM §6.1).
+    fn traverse(cx: &mut Cx<'_, '_, '_>, this: Obj, next: bool) -> R<Option<Obj>> {
+        let (id, w) = iter(cx, this)?;
+        let mut node = w.current;
+        let mut before = w.before.unwrap_or(true);
+        loop {
+            if next {
+                if before {
+                    before = false;
+                } else {
+                    match following(cx, w.root, node) {
+                        Some(n) => node = n,
+                        None => return Ok(None),
+                    }
+                }
+            } else if !before {
+                before = true;
+            } else {
+                match preceding(cx, w.root, node) {
+                    Some(n) => node = n,
+                    None => return Ok(None),
+                }
+            }
+            let w = walker(cx, this)?.1;
+            if filter(cx, id, &w, node)? == ACCEPT {
+                break;
+            }
+        }
+        if let Some(Slot::Walker(d)) = cx.st().slot_mut(id) {
+            d.current = node;
+            d.before = Some(before);
+        }
+        Ok(Some(Obj::Node(node)))
+    }
+
+    pub fn next_node(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<Option<Obj>> {
+        traverse(cx, this, true)
+    }
+
+    pub fn previous_node(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<Option<Obj>> {
+        traverse(cx, this, false)
+    }
+
+    pub fn get_root(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<Obj> {
+        Ok(Obj::Node(iter(cx, this)?.1.root))
+    }
+
+    pub fn get_reference_node(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<Obj> {
+        Ok(Obj::Node(iter(cx, this)?.1.current))
+    }
+
+    pub fn get_pointer_before_reference_node(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<bool> {
+        Ok(iter(cx, this)?.1.before.unwrap_or(true))
+    }
+
+    pub fn get_what_to_show(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<u32> {
+        Ok(iter(cx, this)?.1.what_to_show)
+    }
+
+    pub fn get_filter(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<Option<Value>> {
+        Ok(iter(cx, this)?.1.filter)
+    }
+
+    /// `detach()`: does nothing (DOM).
+    pub fn detach(_cx: &mut Cx<'_, '_, '_>, _this: Obj) -> R<()> {
+        Ok(())
+    }
 }

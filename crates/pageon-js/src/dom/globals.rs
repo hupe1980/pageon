@@ -124,6 +124,15 @@ pub mod window {
         ))
     }
 
+    pub fn get_screen(cx: &mut Cx<'_, '_, '_>, _this: Obj) -> R<Obj> {
+        Ok(super::super::window_same(
+            cx,
+            "screen",
+            Iface::Screen,
+            Slot::Screen,
+        ))
+    }
+
     pub fn get_navigator(cx: &mut Cx<'_, '_, '_>, _this: Obj) -> R<Obj> {
         Ok(super::super::window_same(
             cx,
@@ -415,6 +424,14 @@ pub mod window_or_worker_global_scope {
     pub fn get_is_secure_context(cx: &mut Cx<'_, '_, '_>, _this: Obj) -> R<bool> {
         let o = cx.st().origin.clone();
         Ok(o.starts_with("https:") || o.contains("://localhost") || o.contains("://127.0.0.1"))
+    }
+
+    /// `reportError(e)`: reported as an uncaught exception is (a page error).
+    pub fn report_error(cx: &mut Cx<'_, '_, '_>, _this: Obj, e: Value) -> R<()> {
+        let ex = cx.local(&e);
+        let err = crate::engine::page_error(cx.scope, ex, None);
+        cx.realm.shared.borrow_mut().errors.push(err);
+        Ok(())
     }
 
     pub fn get_performance(cx: &mut Cx<'_, '_, '_>, _this: Obj) -> R<Obj> {
@@ -824,6 +841,46 @@ pub mod performance {
 
     pub fn get_time_origin(cx: &mut Cx<'_, '_, '_>, _this: Obj) -> R<f64> {
         Ok(cx.realm.shared.borrow().origin)
+    }
+
+    pub fn mark(
+        cx: &mut Cx<'_, '_, '_>,
+        _this: Obj,
+        name: String,
+        options: crate::generated::PerformanceMarkOptions,
+    ) -> R<Obj> {
+        crate::dom::timing::mark(cx, name, options)
+    }
+
+    pub fn clear_marks(cx: &mut Cx<'_, '_, '_>, _this: Obj, name: Option<String>) -> R<()> {
+        crate::dom::timing::clear(cx, "mark", name);
+        Ok(())
+    }
+
+    pub fn clear_measures(cx: &mut Cx<'_, '_, '_>, _this: Obj, name: Option<String>) -> R<()> {
+        crate::dom::timing::clear(cx, "measure", name);
+        Ok(())
+    }
+
+    pub fn get_entries(cx: &mut Cx<'_, '_, '_>, _this: Obj) -> R<Vec<Obj>> {
+        Ok(crate::dom::timing::get_entries(cx, None, None))
+    }
+
+    pub fn get_entries_by_type(cx: &mut Cx<'_, '_, '_>, _this: Obj, ty: String) -> R<Vec<Obj>> {
+        Ok(crate::dom::timing::get_entries(cx, None, Some(&ty)))
+    }
+
+    pub fn get_entries_by_name(
+        cx: &mut Cx<'_, '_, '_>,
+        _this: Obj,
+        name: String,
+        ty: Option<String>,
+    ) -> R<Vec<Obj>> {
+        Ok(crate::dom::timing::get_entries(
+            cx,
+            Some(&name),
+            ty.as_deref(),
+        ))
     }
 }
 

@@ -274,7 +274,8 @@ impl Gen<'_> {
                 }
                 ("Value".into(), "cv::value(cx, v)".into())
             }
-            Ty::Other(o) if o.starts_with("RecordType") => {
+            // Records, and buffer sources (bytes are read by the implementation).
+            Ty::Other(o) if o.starts_with("RecordType") || o.starts_with("BufferSource") => {
                 ("Value".into(), "cv::value(cx, v)".into())
             }
             other => {

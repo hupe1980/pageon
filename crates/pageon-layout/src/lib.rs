@@ -32,7 +32,7 @@ use pageon_dom::{Dom, NodeId};
 
 pub use actionability::Visibility;
 pub use images::{Images, MAX_BYTES as MAX_IMAGE_BYTES, MAX_SIDE as MAX_IMAGE_SIDE};
-pub use media::media_query;
+pub use media::{css_supports, media_query};
 pub use paint::Pixmap;
 
 /// The viewport in CSS pixels (scroll position 0,0).

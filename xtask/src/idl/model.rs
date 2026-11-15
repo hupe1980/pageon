@@ -693,6 +693,27 @@ pub fn load(dir: &std::path::Path) -> Result<Model, String> {
                         }
                     }
                 }
+                Definition::PartialNamespace(n) => {
+                    let name = n.identifier.0.to_string();
+                    let entry = model.interfaces.entry(name.clone()).or_default();
+                    entry.name = name.clone();
+                    entry.namespace = true;
+                    for m in &n.members.body {
+                        if let NamespaceMember::Operation(o) = m
+                            && let Some(id) = o.identifier
+                        {
+                            entry.members.push(Owned {
+                                owner: name.clone(),
+                                member: Member::Op {
+                                    name: id.0.to_string(),
+                                    args: args(&o.args.body),
+                                    ret: ret(&o.return_type),
+                                    is_static: false,
+                                },
+                            });
+                        }
+                    }
+                }
                 Definition::Dictionary(d) => {
                     let entry = model
                         .dictionaries

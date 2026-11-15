@@ -108,7 +108,7 @@ fn concat(cx: &mut Cx<'_, '_, '_>, parts: Option<Vec<Value>>) -> R<Vec<u8>> {
     Ok(out)
 }
 
-fn array_buffer(cx: &mut Cx<'_, '_, '_>, bytes: &[u8]) -> Value {
+pub(crate) fn array_buffer(cx: &mut Cx<'_, '_, '_>, bytes: &[u8]) -> Value {
     let store = v8::ArrayBuffer::new_backing_store_from_vec(bytes.to_vec()).make_shared();
     let ab: v8::Local<v8::Value> = v8::ArrayBuffer::with_backing_store(cx.scope, &store).into();
     cx.keep(ab)

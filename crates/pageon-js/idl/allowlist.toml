@@ -85,12 +85,12 @@ members = [
   "createTextNode", "createComment", "importNode", "adoptNode", "createEvent", "modelContext",
   "location", "domain", "referrer", "lastModified", "readyState", "title", "dir", "body", "head",
   "images", "links", "forms", "scripts", "getElementsByName", "currentScript", "defaultView",
-  "hasFocus", "implementation", "cookie", "createTreeWalker", "elementFromPoint", "elementsFromPoint",
-  "scrollingElement",
+  "hasFocus", "implementation", "cookie", "createTreeWalker", "createNodeIterator", "elementFromPoint", "elementsFromPoint",
+  "scrollingElement", "hidden", "visibilityState",
 ]
 
 [DOMImplementation]
-members = ["hasFeature"]
+members = ["createHTMLDocument", "hasFeature"]
 
 [NamedNodeMap]
 members = ["length", "item", "getNamedItem", "getNamedItemNS"]
@@ -114,7 +114,7 @@ members = ["constructor"]
 members = [
   "namespaceURI", "prefix", "localName", "tagName", "id", "className", "classList", "attributes", "hasAttributes",
   "getAttributeNames", "getAttribute", "getAttributeNS", "setAttribute", "setAttributeNS",
-  "removeAttribute", "removeAttributeNS", "toggleAttribute", "hasAttribute", "hasAttributeNS",
+  "removeAttribute", "getAttributeNode", "removeAttributeNode", "removeAttributeNS", "toggleAttribute", "hasAttribute", "hasAttributeNS",
   "closest", "matches", "webkitMatchesSelector", "getElementsByTagName", "getElementsByTagNameNS",
   "getElementsByClassName", "insertAdjacentElement", "insertAdjacentText",
   "innerHTML", "outerHTML", "insertAdjacentHTML",
@@ -201,7 +201,7 @@ members = [
   "innerWidth", "innerHeight", "outerWidth", "outerHeight", "scrollX", "scrollY", "pageXOffset",
   "pageYOffset", "devicePixelRatio", "alert", "confirm", "prompt", "open", "visualViewport",
   "scroll", "scrollTo", "scrollBy", "customElements", "history", "matchMedia",
-  "requestIdleCallback", "cancelIdleCallback",
+  "requestIdleCallback", "cancelIdleCallback", "screen",
 ]
 
 # The visual viewport: the layout viewport at its scroll position, at scale 1.
@@ -211,7 +211,7 @@ members = ["offsetLeft", "offsetTop", "pageLeft", "pageTop", "width", "height", 
 [WindowOrWorkerGlobalScope]
 members = [
   "setTimeout", "clearTimeout", "setInterval", "clearInterval", "queueMicrotask", "origin", "btoa",
-  "atob", "isSecureContext", "performance", "fetch", "crypto", "structuredClone",
+  "atob", "isSecureContext", "performance", "fetch", "crypto", "structuredClone", "reportError",
 ]
 
 [AnimationFrameProvider]
@@ -254,7 +254,25 @@ members = ["registerTool"]
 members = ["brands", "mobile", "platform", "getHighEntropyValues", "toJSON"]
 
 [Performance]
-members = ["now", "timeOrigin"]
+members = [
+  "now", "timeOrigin", "mark", "clearMarks", "clearMeasures", "getEntries",
+  "getEntriesByType", "getEntriesByName",
+]
+
+[PerformanceEntry]
+members = ["name", "entryType", "startTime", "duration", "toJSON"]
+
+[PerformanceMark]
+members = ["constructor", "detail"]
+
+[PerformanceMeasure]
+members = ["detail"]
+
+[PerformanceObserver]
+members = ["constructor", "observe", "disconnect", "takeRecords"]
+
+[PerformanceObserverEntryList]
+members = ["getEntries", "getEntriesByType", "getEntriesByName"]
 
 [NodeList]
 members = ["length", "item"]
@@ -331,7 +349,7 @@ members = ["closePath", "moveTo", "lineTo", "quadraticCurveTo", "bezierCurveTo",
 members = ["constructor", "append", "delete", "get", "getSetCookie", "has", "set", "iterable"]
 
 [Body]
-members = ["bodyUsed", "json", "text", "blob"]
+members = ["bodyUsed", "arrayBuffer", "bytes", "json", "text", "blob"]
 
 [Request]
 members = [
@@ -490,7 +508,13 @@ members = ["media", "matches", "addListener", "removeListener"]
 members = ["constructor", "media", "matches"]
 
 [Crypto]
-members = ["getRandomValues", "randomUUID"]
+members = ["subtle", "getRandomValues", "randomUUID"]
+
+[SubtleCrypto]
+members = ["encrypt", "decrypt", "sign", "verify", "digest", "generateKey", "importKey", "exportKey"]
+
+[CryptoKey]
+members = ["type", "extractable", "algorithm", "usages"]
 
 [TextEncoder]
 members = ["constructor", "encode", "encodeInto"]
@@ -550,3 +574,27 @@ members = ["kind", "type", "getAsString", "getAsFile"]
 
 [DragEvent]
 members = ["constructor", "dataTransfer"]
+
+[DOMParser]
+members = ["constructor", "parseFromString"]
+
+[Screen]
+members = ["availWidth", "availHeight", "width", "height", "colorDepth", "pixelDepth"]
+
+[CSS]
+members = ["escape", "supports"]
+
+[MessageChannel]
+members = ["constructor", "port1", "port2"]
+
+[MessagePort]
+members = ["start", "close", "onmessage", "onmessageerror"]
+
+[InputEvent]
+members = ["constructor", "data", "isComposing", "inputType"]
+
+[NodeIterator]
+members = [
+  "root", "referenceNode", "pointerBeforeReferenceNode", "whatToShow", "filter", "nextNode",
+  "previousNode", "detach",
+]

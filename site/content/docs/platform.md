@@ -1,6 +1,6 @@
 +++
 title = "Web platform"
-description = "What pages can use on pageon: scripts and modules, the DOM and CSS, forms, web components, frames, networking, WebSockets, files and drag and drop."
+description = "What pages can use on pageon: scripts and modules, the DOM and CSS, forms, web components, frames, networking, streams, Web Crypto, files and drag and drop."
 weight = 53
 [extra]
 group = "Reference"
@@ -16,23 +16,27 @@ and `pageon fetch URL --dump errors` names what a page tried to use.
 | Area | What pages get |
 | --- | --- |
 | Scripts | Classic and module scripts, `defer`/`async`, import maps, dynamic `import()`, top-level `await`, JSON modules, script loaders and bundler chunks (Vite, esbuild, webpack) |
-| DOM | The DOM standard's tree, events (capture, bubble, handlers), selectors, `innerHTML`, live collections, `MutationObserver`, `IntersectionObserver`, `ResizeObserver`, `TreeWalker` |
-| CSS and layout | The cascade (Stylo), block, flex and grid (Taffy), text (Parley) with bundled fonts, computed style, geometry (`getBoundingClientRect`), `matchMedia`, scrolling of the page and of containers |
+| DOM | The DOM standard's tree, events (capture, bubble, handlers), selectors, `innerHTML`, live collections, `MutationObserver`, `IntersectionObserver`, `ResizeObserver`, `TreeWalker`, `NodeIterator`, `DOMParser` and `createHTMLDocument` (HTML, inert: nothing in them runs or loads) |
+| CSS and layout | The cascade (Stylo), block, flex and grid (Taffy), text (Parley, with dictionary line breaking for Chinese, Japanese, Thai, Lao, Khmer and Burmese) and bundled fonts, computed style, geometry (`getBoundingClientRect`), `matchMedia`, `CSS.supports`, `CSS.escape`, scrolling of the page and of containers |
 | Forms | Every control as form state, constraint validation with Chrome's messages, `:invalid`/`:user-invalid`, form-associated custom elements, `FormData`, multipart submission |
 | Web components | Shadow DOM (open, closed, declarative), slots, custom elements, `ElementInternals`, adopted stylesheets |
-| Frames | Same- and cross-origin iframes, `postMessage`, `contentWindow`/`contentDocument` across same-origin frames |
+| Frames and messaging | Same- and cross-origin iframes, `postMessage`, `contentWindow`/`contentDocument` across same-origin frames, `MessageChannel` within a document (ports are not transferable) |
 | Networking | `fetch`, `XMLHttpRequest`, `AbortController`, CORS, cookies (`SameSite`, CHIPS), `localStorage`, `sessionStorage`, `document.cookie` |
+| Streams | `ReadableStream`, `WritableStream`, `TransformStream`, `TextDecoderStream`, `TextEncoderStream`, `Response.body` (a body arrives whole, in one chunk), `arrayBuffer()`, `bytes()` |
+| Web Crypto | `crypto.subtle` on secure pages: SHA digests; HMAC, ECDSA P-256 and Ed25519 keys, signatures and verification; AES-GCM. Keys come from the session's randomness and ECDSA signs deterministically, so replays match. Other algorithms reject with `NotSupportedError` |
 | Realtime | `WebSocket` and `EventSource`, held by the broker, under the same policy as requests |
 | Files | `Blob`, `File`, `FileList`, `FileReader`, file inputs and drop zones (with staged files only), downloads |
 | Drag and drop | Trusted pointer drags, HTML drag and drop, `DataTransfer`, `DragEvent` |
 | History | `history.pushState`, `popstate`, fragments, `back`/`forward` with saved state |
-| Other | Timers and `requestAnimationFrame` on the virtual clock, `crypto.getRandomValues`/`randomUUID`, `TextEncoder`/`TextDecoder`, `URL`, Canvas 2D drawing, SVG elements, `<dialog>` with a modal top layer, WebMCP (`document.modelContext`) |
+| Other | Timers and `requestAnimationFrame` on the virtual clock, `crypto.getRandomValues`/`randomUUID`, `TextEncoder`/`TextDecoder`, `URL`, user timing (`performance.mark`/`measure`, `PerformanceObserver`), `screen`, `document.visibilityState`, `InputEvent`, `reportError`, Canvas 2D drawing, SVG elements, `<dialog>` with a modal top layer, WebMCP (`document.modelContext`) |
 
 ## Not supported
 
-`MessageChannel` and `BroadcastChannel`, iframes a script inserts after load, `blob:` URLs,
-`IndexedDB`, workers and service workers, Selection and `Range`, the Navigation API,
-`crypto.subtle`, `document.write`, canvas text and readback, WebRTC and WebTransport, HTTP/3.
+`BroadcastChannel`, iframes a script inserts after load, `blob:` URLs, `IndexedDB`, workers and
+service workers, Selection and `Range`, `contenteditable` editing, the Navigation API, Web
+Animations (`Element.animate`), `document.write`, XML parsing (`DOMParser` takes HTML only),
+canvas text and readback, the Clipboard, Permissions and Notifications APIs, WebRTC and
+WebTransport, HTTP/3.
 For automation clients: WebDriver classic and request interception (use origin sets or a
 recorded session instead).
 
