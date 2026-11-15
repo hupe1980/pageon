@@ -582,7 +582,7 @@ fn main(
         // Request headers: the page's, then the browser's. Under the browser-compatible
         // profile, Chrome's: client hints first, its document `accept`.
         let profile = run.env.profile();
-        let chrome = profile == pageon_env::Profile::BrowserCompatible;
+        let chrome = matches!(profile, pageon_env::Profile::BrowserCompatible(_));
         let mut headers: Vec<(String, String)> = Vec::new();
         let has =
             |h: &[(String, String)], n: &str| h.iter().any(|(k, _)| k.eq_ignore_ascii_case(n));

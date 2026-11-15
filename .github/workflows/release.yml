@@ -73,8 +73,9 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: rustup toolchain install && rustup target add "$TARGET"
-      # Whole-program LTO, one codegen unit, no symbols (the `dist` profile).
-      - run: cargo build --profile dist --locked -p pageon --target "$TARGET"
+      # Whole-program LTO, one codegen unit, no symbols (the `dist` profile), with the Chrome
+      # profile (BoringSSL: cmake and clang are on the runners).
+      - run: cargo build --profile dist --locked -p pageon --features chrome --target "$TARGET"
       # The binary on its own: its version, and a page in the sandbox.
       - name: Smoke
         run: |
@@ -82,6 +83,7 @@ jobs:
           [ "$("$bin" --version)" = "pageon $VERSION" ] || { "$bin" --version; exit 1; }
           printf '<h1>Hello</h1><button>Go</button>' > "$RUNNER_TEMP/page.html"
           "$bin" fetch "$RUNNER_TEMP/page.html" --dump ax | grep -q 'button e1 "Go"'
+          "$bin" fetch "$RUNNER_TEMP/page.html" --profile chrome --dump ax | grep -q 'button e1 "Go"'
       - name: Archive
         run: |
           name="pageon-$VERSION-$TARGET"

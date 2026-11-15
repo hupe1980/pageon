@@ -60,8 +60,9 @@ Screenshot options: `--screenshot FILE` (`.png`, `.jpg`), `--full-page`, `--mark
 | `--private-network allow` | Let pages reach localhost and private ranges (refused by default) |
 | `--allow-files` | Let agents open `file:` pages (`mcp`, `cdp`, `bidi` refuse them by default) |
 | `--proxy URL` | Send requests through a proxy (`HTTP(S)_PROXY` is honoured otherwise) |
-| `--identity FILE` | Sign every request ([identity](@/docs/identity.md)) |
-| `--profile browser-compatible` | One coherent Chrome identity (build with `--features chrome`) |
+| `--identity FILE` · `--signature-tag TAG` | Sign every request, with a tag ([identity](@/docs/identity.md)) |
+| `--profile chrome` · `--platform windows` | One coherent Chrome, on this machine's platform or another |
+| `--passkeys FILE` | Sign in with [passkeys](@/docs/secrets.md#passkeys) held by the broker |
 | `--robots ignore` | Skip robots.txt, for sessions a person directs |
 | `--timeout SECS` · `--max-bytes BYTES` | Network limits |
 

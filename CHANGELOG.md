@@ -15,10 +15,15 @@ All notable changes to this project are documented here. The format follows
   copied.
 - Passkeys: sites' WebAuthn sign-in and registration answered from a store the broker holds
   (`--passkeys FILE`); keys never reach the page process.
+- `--profile chrome` in the release binaries, on the machine's own platform (`--platform` picks
+  another); `--signature-tag` for agent programs that verify their own tag; a site asking for a
+  signature (`Accept-Signature`) is reported as `signature required`.
 
 ### Changed
 
 - `type REF` into an editor types over its content key by key instead of replacing it.
+- `--profile browser-compatible` is now `--profile chrome` (the old name still works) and
+  reports the host's platform instead of Linux.
 
 ## [0.2.0]
 

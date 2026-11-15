@@ -156,6 +156,8 @@ class Browser:
         record: str | os.PathLike[str] | None = None,
         budget: int = 4000,
         profile: str = "agent",
+        platform: str | None = None,
+        signature_tag: str | None = None,
         identity: str | os.PathLike[str] | None = None,
         passkeys: str | os.PathLike[str] | None = None,
         robots: str = "respect",
@@ -170,6 +172,10 @@ class Browser:
             args.append("--allow-javascript-exec")
         if guard is not None:
             args += ["--guard", guard]
+        if platform is not None:
+            args += ["--platform", platform]
+        if signature_tag is not None:
+            args += ["--signature-tag", signature_tag]
         if private_network:
             args += ["--private-network", "allow"]
         if allow_files:

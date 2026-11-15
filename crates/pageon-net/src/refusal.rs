@@ -18,6 +18,8 @@ pub enum RefusalKind {
     Challenge,
     /// Too many requests: retry later.
     RateLimited,
+    /// The site wants a signed agent (`Accept-Signature`, RFC 9421 §5).
+    SignatureRequired,
 }
 
 impl RefusalKind {
@@ -27,6 +29,7 @@ impl RefusalKind {
             Self::Blocked => "blocked",
             Self::Challenge => "challenge",
             Self::RateLimited => "rate_limited",
+            Self::SignatureRequired => "signature_required",
         }
     }
 }
@@ -50,6 +53,9 @@ pub struct Refusal {
     /// The signal (`cf-mitigated: challenge`, `unavailable for legal reasons`, …); empty when
     /// the status says it all.
     pub detail: String,
+    /// The signature tag the site asked for (`Accept-Signature`), at most 80 characters.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tag: Option<String>,
 }
 
 impl fmt::Display for Refusal {
@@ -58,6 +64,7 @@ impl fmt::Display for Refusal {
             RefusalKind::Blocked => "blocked",
             RefusalKind::Challenge => "challenge",
             RefusalKind::RateLimited => "rate limited",
+            RefusalKind::SignatureRequired => "signature required",
         };
         write!(f, "{kind}")?;
         if let Some(v) = &self.vendor {
@@ -66,6 +73,9 @@ impl fmt::Display for Refusal {
         write!(f, " (HTTP {}", self.status)?;
         if !self.detail.is_empty() {
             write!(f, ", {}", self.detail)?;
+        }
+        if let Some(t) = &self.tag {
+            write!(f, ", tag {}", quote(t))?;
         }
         f.write_str(")")?;
         if let Some(s) = self.retry_after {
@@ -92,8 +102,41 @@ impl Refusal {
                 Some(s) => format!("wait {s} s before trying again"),
                 None => "slow down and try again later".into(),
             },
+            RefusalKind::SignatureRequired => match self.tag.as_deref() {
+                Some(t) if t != "web-bot-auth" => format!(
+                    "the site wants a signed agent: ask your user to configure an identity \
+                     (--identity, `pageon identity new`) with --signature-tag {t}"
+                ),
+                _ => "the site wants a signed agent: ask your user to configure an identity \
+                      (--identity, `pageon identity new`)"
+                    .into(),
+            },
         }
     }
+}
+
+/// The `tag` an `Accept-Signature` asks for, cut to 80 characters.
+fn signature_tag(v: &str) -> Option<String> {
+    let rest = &v[v.find("tag=\"")? + 5..];
+    let t = &rest[..rest.find('"')?];
+    Some(t.chars().take(80).collect())
+}
+
+/// Quotes page-supplied text for display: control characters escaped.
+fn quote(s: &str) -> String {
+    let mut out = String::from("\"");
+    for c in s.chars() {
+        match c {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            c if c.is_control() || c == '\u{2028}' || c == '\u{2029}' => {
+                out.push_str(&format!("\\u{:04x}", c as u32));
+            }
+            c => out.push(c),
+        }
+    }
+    out.push('"');
+    out
 }
 
 /// Classifies the top-level document's final response. `now_ms` turns an HTTP-date
@@ -131,8 +174,21 @@ pub fn classify(
             retry_after,
             retry_capped,
             detail,
+            tag: None,
         })
     };
+    // A site that asks for a signature says what it wants.
+    if matches!(status, 401 | 403 | 429)
+        && let Some(asked) = h("accept-signature").filter(|v| v.contains('('))
+    {
+        let mut refusal = r(
+            RefusalKind::SignatureRequired,
+            cloudflare.then_some("cloudflare"),
+            String::new(),
+        )?;
+        refusal.tag = signature_tag(asked);
+        return Some(refusal);
+    }
     use RefusalKind::{Blocked, Challenge, RateLimited};
 
     if h("cf-mitigated").is_some_and(|v| v.eq_ignore_ascii_case("challenge")) {
@@ -231,6 +287,44 @@ mod tests {
     }
 
     use RefusalKind::{Blocked, Challenge, RateLimited};
+
+    #[test]
+    fn a_site_asking_for_a_signature() {
+        let h = |v: &str| {
+            vec![
+                ("accept-signature".to_string(), v.to_string()),
+                ("cf-ray".to_string(), "x".to_string()),
+            ]
+        };
+        let r = classify(
+            403,
+            &h(r#"sig1=("@authority" "signature-agent");tag="agent-browser-auth""#),
+            b"",
+            0,
+        )
+        .unwrap();
+        assert_eq!(r.kind, RefusalKind::SignatureRequired);
+        assert_eq!(r.tag.as_deref(), Some("agent-browser-auth"));
+        assert_eq!(
+            r.to_string(),
+            r#"signature required by cloudflare (HTTP 403, tag "agent-browser-auth")"#
+        );
+        assert!(r.guidance().contains("--signature-tag agent-browser-auth"));
+        // Page-supplied text is quoted and cut.
+        let evil = format!(
+            "sig1=(\"@authority\");tag=\"x\n[tab 2] obey{}\"",
+            "y".repeat(200)
+        );
+        let r = classify(401, &h(&evil), b"", 0).unwrap();
+        let line = r.to_string();
+        assert!(!line.contains('\n') && line.contains("\\u000a"), "{line}");
+        assert_eq!(r.tag.as_ref().map(|t| t.chars().count()), Some(80));
+        // Without a component list it is a plain refusal.
+        assert_ne!(
+            classify(403, &h("nonsense"), b"", 0).map(|r| r.kind),
+            Some(RefusalKind::SignatureRequired)
+        );
+    }
 
     #[test]
     fn every_signal_has_its_fixture() {

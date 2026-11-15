@@ -1,5 +1,5 @@
 //! The browser-compatible network client (feature `chrome`): wreq over BoringSSL,
-//! with wreq-util's Chrome 149 TLS and HTTP/2 configuration. Headers are pageon's own, from
+//! with wreq-util's Chrome 149 TLS and HTTP/2 configuration for the profile's platform. Headers are pageon's own, from
 //! [`Profile::BrowserCompatible`](crate::Profile) (wreq-util's default headers are off), so
 //! one definition feeds every layer.
 #![allow(clippy::disallowed_methods, clippy::disallowed_types)]
@@ -15,6 +15,7 @@ use crate::{Limits, NetError, Request, Response, chrome as pin};
 pub(crate) struct Chrome {
     public: wreq::Client,
     open: wreq::Client,
+    platform: crate::Platform,
 }
 
 struct PublicOnly;
@@ -31,15 +32,24 @@ impl wreq::dns::Resolve for PublicOnly {
     }
 }
 
-fn client(proxy: Option<&str>, public_only: bool, verify: bool) -> Result<wreq::Client, NetError> {
+fn client(
+    proxy: Option<&str>,
+    public_only: bool,
+    verify: bool,
+    platform: crate::Platform,
+) -> Result<wreq::Client, NetError> {
     let emulation = wreq_util::Emulation::builder()
         .profile(wreq_util::Profile::Chrome149)
-        .platform(wreq_util::Platform::Linux)
+        .platform(match platform {
+            crate::Platform::Windows => wreq_util::Platform::Windows,
+            crate::Platform::Macos => wreq_util::Platform::MacOS,
+            crate::Platform::Linux => wreq_util::Platform::Linux,
+        })
         .headers(false)
         .build();
     let mut b = wreq::Client::builder()
         .emulation(emulation)
-        .user_agent(pin::USER_AGENT)
+        .user_agent(crate::Profile::BrowserCompatible(platform).user_agent())
         .redirect(wreq::redirect::Policy::none())
         .retry(wreq::retry::Policy::never())
         .tls_cert_verification(verify);
@@ -55,19 +65,26 @@ fn client(proxy: Option<&str>, public_only: bool, verify: bool) -> Result<wreq::
 }
 
 impl Chrome {
-    pub(crate) fn new(proxy: Option<&str>) -> Result<Self, NetError> {
+    pub(crate) fn new(proxy: Option<&str>, platform: crate::Platform) -> Result<Self, NetError> {
         Ok(Self {
-            public: client(proxy, true, true)?,
-            open: client(proxy, false, true)?,
+            public: client(proxy, true, true, platform)?,
+            open: client(proxy, false, true, platform)?,
+            platform,
         })
     }
 
     /// Tests only: trust any certificate (a local TLS server with a test certificate).
-    pub(crate) fn insecure() -> Result<Self, NetError> {
+    pub(crate) fn insecure(platform: crate::Platform) -> Result<Self, NetError> {
         Ok(Self {
-            public: client(None, true, false)?,
-            open: client(None, false, false)?,
+            public: client(None, true, false, platform)?,
+            open: client(None, false, false, platform)?,
+            platform,
         })
+    }
+
+    /// The platform it presents.
+    pub(crate) fn platform(&self) -> crate::Platform {
+        self.platform
     }
 
     pub(crate) async fn fetch(

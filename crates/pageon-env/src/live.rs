@@ -102,16 +102,17 @@ impl Live {
     /// A live environment that connects as the pinned Chrome of
     /// [`Profile::BrowserCompatible`]: its TLS ClientHello and HTTP/2 settings. Needs
     /// the `chrome` feature; without it this says how to get it.
-    pub fn browser_compatible(limits: Limits) -> Result<Self, String> {
+    pub fn browser_compatible(limits: Limits, platform: crate::Platform) -> Result<Self, String> {
         #[cfg(feature = "chrome")]
         {
             let mut live = Self::new(limits);
-            live.chrome = Some(crate::chrome_client::Chrome::new(None).map_err(|e| e.to_string())?);
+            live.chrome =
+                Some(crate::chrome_client::Chrome::new(None, platform).map_err(|e| e.to_string())?);
             Ok(live)
         }
         #[cfg(not(feature = "chrome"))]
         {
-            let _ = limits;
+            let _ = (limits, platform);
             Err(
                 "this build has no browser-compatible profile\n  install one with \
                  `cargo install pageon --features chrome` (building it needs cmake and clang)"
@@ -126,7 +127,9 @@ impl Live {
     #[cfg(feature = "chrome")]
     pub fn browser_compatible_trusting_any(limits: Limits) -> Result<Self, NetError> {
         let mut live = Self::new(limits);
-        live.chrome = Some(crate::chrome_client::Chrome::insecure()?);
+        live.chrome = Some(crate::chrome_client::Chrome::insecure(
+            crate::Platform::host(),
+        )?);
         Ok(live)
     }
 
@@ -174,8 +177,9 @@ impl Live {
         self.open = client(Some(&p), false);
         self.proxied = true;
         #[cfg(feature = "chrome")]
-        if self.chrome.is_some() {
-            self.chrome = Some(crate::chrome_client::Chrome::new(Some(url))?);
+        if let Some(c) = &self.chrome {
+            let platform = c.platform();
+            self.chrome = Some(crate::chrome_client::Chrome::new(Some(url), platform)?);
         }
         Ok(self)
     }
@@ -314,8 +318,8 @@ impl Env for Live {
 
     fn profile(&self) -> Profile {
         #[cfg(feature = "chrome")]
-        if self.chrome.is_some() {
-            return Profile::BrowserCompatible;
+        if let Some(c) = &self.chrome {
+            return Profile::BrowserCompatible(c.platform());
         }
         Profile::Agent
     }

@@ -293,6 +293,18 @@ fn refusals_site() -> pageon_env::Log {
             "slow down",
         ),
         page(
+            "https://shop.test/signed",
+            403,
+            &[
+                ("content-type", "text/html"),
+                (
+                    "accept-signature",
+                    r#"sig1=("@authority" "signature-agent");tag="agent-browser-auth""#,
+                ),
+            ],
+            "Signature required",
+        ),
+        page(
             "https://shop.test/dd",
             403,
             &[("content-type", "text/html"), ("x-datadome", "protected")],
@@ -320,6 +332,7 @@ fn refusals_are_typed_everywhere() {
         ("/cf", Some((RefusalKind::Challenge, Some("cloudflare")))),
         ("/busy", Some((RefusalKind::RateLimited, None))),
         ("/dd", Some((RefusalKind::Challenge, Some("datadome")))),
+        ("/signed", Some((RefusalKind::SignatureRequired, None))),
         ("/login", None),
     ];
     for (path, want) in expect {
@@ -337,6 +350,13 @@ fn refusals_are_typed_everywhere() {
             want.is_some(),
             "{path}: {obs}"
         );
+        if path == "/signed" {
+            assert!(
+                obs.contains("signature required (HTTP 403, tag \"agent-browser-auth\")")
+                    && obs.contains("--signature-tag agent-browser-auth"),
+                "{obs}"
+            );
+        }
         if path == "/busy" {
             assert_eq!(
                 tab.document().refusal().and_then(|r| r.retry_after),
@@ -535,39 +555,48 @@ fn scripts_and_servers_see_one_identity() {
         !headers.iter().any(|(k, _)| k.starts_with("sec-ch-ua")),
         "{headers:?}"
     );
-    // browser-compatible: every value scripts read agrees with the headers sent.
-    let (v, title, headers) = probe(Profile::BrowserCompatible);
-    let h = |n: &str| headers.iter().find(|(k, _)| k == n).map(|(_, v)| v.clone());
-    assert_eq!(v["webdriver"], false);
-    assert_eq!(v["ua"], pageon_env::chrome::USER_AGENT);
-    assert_eq!(v["platform"], "Linux x86_64");
-    assert_eq!(v["vendor"], "Google Inc.");
-    let brands: Vec<(String, String)> = v["data"]["brands"]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .map(|b| {
-            (
-                b["brand"].as_str().unwrap_or_default().into(),
-                b["version"].as_str().unwrap_or_default().into(),
-            )
-        })
-        .collect();
-    assert_eq!(h("sec-ch-ua"), Some(pageon_env::brand_header(&brands)));
-    assert_eq!(
-        h("sec-ch-ua-platform"),
-        Some(format!(
-            "\"{}\"",
-            v["data"]["platform"].as_str().unwrap_or_default()
-        ))
-    );
-    assert_eq!(h("sec-ch-ua-mobile").as_deref(), Some("?0"));
-    assert_eq!(v["data"]["mobile"], false);
-    assert_eq!(
-        h("accept").as_deref(),
-        Some(pageon_env::chrome::ACCEPT_DOCUMENT)
-    );
-    assert_eq!(title, "x86 3");
+    // chrome, on each platform: every value scripts read agrees with the headers sent.
+    for platform in [
+        pageon::Platform::Windows,
+        pageon::Platform::Macos,
+        pageon::Platform::Linux,
+    ] {
+        let p = Profile::BrowserCompatible(platform);
+        let (v, title, headers) = probe(p);
+        let h = |n: &str| headers.iter().find(|(k, _)| k == n).map(|(_, v)| v.clone());
+        let nav = p.navigator();
+        assert_eq!(v["webdriver"], false);
+        assert_eq!(v["ua"], p.user_agent());
+        assert_eq!(v["platform"], nav.platform);
+        assert_eq!(v["vendor"], "Google Inc.");
+        let brands: Vec<(String, String)> = v["data"]["brands"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .map(|b| {
+                (
+                    b["brand"].as_str().unwrap_or_default().into(),
+                    b["version"].as_str().unwrap_or_default().into(),
+                )
+            })
+            .collect();
+        assert_eq!(h("sec-ch-ua"), Some(pageon_env::brand_header(&brands)));
+        let ch = nav.ua_data.as_ref().map(|d| d.platform).unwrap_or_default();
+        assert_eq!(v["data"]["platform"], ch);
+        assert_eq!(h("sec-ch-ua-platform"), Some(format!("\"{ch}\"")));
+        assert_eq!(h("sec-ch-ua-mobile").as_deref(), Some("?0"));
+        assert_eq!(v["data"]["mobile"], false);
+        assert_eq!(
+            h("accept").as_deref(),
+            Some(pageon_env::chrome::ACCEPT_DOCUMENT)
+        );
+        let arch = nav
+            .ua_data
+            .as_ref()
+            .map(|d| d.architecture)
+            .unwrap_or_default();
+        assert_eq!(title, format!("{arch} 3"), "{platform:?}");
+    }
 }
 
 #[test]

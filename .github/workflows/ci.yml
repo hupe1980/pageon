@@ -50,6 +50,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          arguments: --all-features
+
+  # The Chrome profile ships in every release archive: it builds and stays coherent here.
+  chrome:
+    name: Chrome profile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.99.0
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: chrome
+      - name: Restore the prebuilt V8
+        shell: bash
+        run: |
+          if ! ls target/debug/gn_out/obj/*rusty_v8* >/dev/null 2>&1; then
+            rm -rf target/debug/build/v8-* target/debug/.fingerprint/v8-*
+          fi
+      - run: cargo test --locked -p pageon --features chrome --test chrome --test identity
 
   bench:
     name: Bench unit tests (${{ matrix.os }})

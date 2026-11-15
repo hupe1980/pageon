@@ -21,6 +21,27 @@ pub struct Identity {
     seed: [u8; 32],
     keyid: String,
     agent: String,
+    tag: String,
+}
+
+/// The tag request signatures carry unless told otherwise.
+pub const DEFAULT_TAG: &str = "web-bot-auth";
+
+/// Whether `tag` may be a signature's `tag`: a token of letters, digits, `-` and `_` (at most
+/// 64), so it cannot change the signature's other parameters.
+pub fn check_tag(tag: &str) -> Result<(), String> {
+    let ok = !tag.is_empty()
+        && tag.len() <= 64
+        && tag
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_');
+    if ok {
+        Ok(())
+    } else {
+        Err(format!(
+            "signature tag {tag:?}: use letters, digits, '-' and '_' (at most 64), e.g. agent-browser-auth"
+        ))
+    }
 }
 
 impl std::fmt::Debug for Identity {
@@ -41,6 +62,8 @@ struct KeyFile {
     #[serde(default)]
     kid: Option<String>,
     agent: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    tag: Option<String>,
 }
 
 /// The RFC 7638 JWK thumbprint of an Ed25519 public key (RFC 8037 A.3), base64url.
@@ -100,7 +123,21 @@ impl Identity {
             seed,
             keyid,
             agent,
+            tag: DEFAULT_TAG.into(),
         })
+    }
+
+    /// Signs with `tag` instead of `web-bot-auth` (a payment network's agent program may name
+    /// another, e.g. `agent-browser-auth`).
+    pub fn with_tag(mut self, tag: &str) -> Result<Self, String> {
+        check_tag(tag)?;
+        self.tag = tag.to_string();
+        Ok(self)
+    }
+
+    /// The tag request signatures carry.
+    pub fn tag(&self) -> &str {
+        &self.tag
     }
 
     /// Reads a key file written by [`Identity::save`] (a private JWK plus `agent`).
@@ -122,7 +159,13 @@ impl Identity {
             .ok()
             .and_then(|d| d.try_into().ok())
             .ok_or_else(|| format!("{}: \"d\" is not a 32-byte key", path.display()))?;
-        let id = Self::from_seed(seed, &f.agent).map_err(|e| format!("{}: {e}", path.display()))?;
+        let mut id =
+            Self::from_seed(seed, &f.agent).map_err(|e| format!("{}: {e}", path.display()))?;
+        if let Some(t) = &f.tag {
+            id = id
+                .with_tag(t)
+                .map_err(|e| format!("{}: {e}", path.display()))?;
+        }
         if URL_SAFE_NO_PAD.encode(id.public_key()) != f.x.trim_end_matches('=') {
             return Err(format!(
                 "{}: \"x\" does not match the private key",
@@ -149,6 +192,7 @@ impl Identity {
             d: URL_SAFE_NO_PAD.encode(self.seed),
             kid: Some(self.keyid.clone()),
             agent: self.agent.clone(),
+            tag: (self.tag != DEFAULT_TAG).then(|| self.tag.clone()),
         };
         let json = serde_json::to_string_pretty(&f).map_err(|e| e.to_string())?;
         let mut o = std::fs::OpenOptions::new();
@@ -210,10 +254,11 @@ impl Identity {
             ("\"signature-agent\"", &agent),
         ];
         let tail = format!(
-            ";created={created};keyid=\"{}\";alg=\"ed25519\";expires={};nonce=\"{}\";tag=\"web-bot-auth\"",
+            ";created={created};keyid=\"{}\";alg=\"ed25519\";expires={};nonce=\"{}\";tag=\"{}\"",
             self.keyid,
             created + VALIDITY_S,
-            STANDARD.encode(nonce)
+            STANDARD.encode(nonce),
+            self.tag
         );
         let params = signature_params(&components, &tail);
         let sig = self.sign_base(&signature_base(&components, &params));
@@ -264,6 +309,23 @@ impl Identity {
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn tags_are_tokens_and_signed() {
+        let id = Identity::from_seed([7; 32], "https://bot.test")
+            .unwrap()
+            .with_tag("agent-browser-auth")
+            .unwrap();
+        let [_, input, _] = id.sign("shop.test", 1_700_000_000, &[1; 32]);
+        assert!(
+            input.1.ends_with(";tag=\"agent-browser-auth\""),
+            "{}",
+            input.1
+        );
+        assert!(check_tag("a\";keyid=\"x").is_err());
+        assert!(check_tag("").is_err() && check_tag(&"a".repeat(65)).is_err());
+    }
+
     use super::*;
 
     /// RFC 9421 B.1.4 `test-key-ed25519`.

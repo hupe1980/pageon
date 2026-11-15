@@ -356,10 +356,16 @@ struct SessionArgs {
     /// creates are added). Keys never reach the page process.
     #[arg(long, value_name = "FILE", env = "PAGEON_PASSKEYS")]
     passkeys: Option<PathBuf>,
-    /// Who pageon says it is: an automated agent, or a pinned, coherent Chrome (needs a build
-    /// with `--features chrome`).
-    #[arg(long, value_enum, value_name = "PROFILE", default_value_t = ProfileArg::Agent)]
+    /// Who pageon says it is: an automated agent, or a pinned, coherent Chrome.
+    #[arg(long, value_enum, value_name = "PROFILE", default_value_t = ProfileArg::Agent, env = "PAGEON_PROFILE")]
     profile: ProfileArg,
+    /// The Chrome profile's platform: the machine's own (`host`), or another.
+    #[arg(long, value_enum, value_name = "PLATFORM", env = "PAGEON_PLATFORM")]
+    platform: Option<PlatformArg>,
+    /// The tag request signatures carry (`web-bot-auth`; a payment network's agent program may
+    /// name another, e.g. `agent-browser-auth`).
+    #[arg(long, value_name = "TAG", env = "PAGEON_SIGNATURE_TAG")]
+    signature_tag: Option<String>,
     /// Whether to honour robots.txt for the pages the agent opens. `ignore` is for sessions a
     /// person directs.
     #[arg(long, value_enum, value_name = "POLICY", default_value_t = RobotsArg::Respect)]
@@ -370,8 +376,21 @@ struct SessionArgs {
 enum ProfileArg {
     /// pageon, an automated agent (honest user agent, navigator.webdriver true).
     Agent,
-    /// Chrome 149 on Linux, coherent across TLS, HTTP/2, headers, client hints and scripts.
-    BrowserCompatible,
+    /// Chrome 149, coherent across TLS, HTTP/2, headers, client hints and scripts.
+    #[value(alias = "browser-compatible")]
+    Chrome,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum PlatformArg {
+    /// This machine's operating system.
+    Host,
+    /// Windows 11.
+    Windows,
+    /// macOS.
+    Macos,
+    /// Linux.
+    Linux,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -467,13 +486,28 @@ struct Prepared {
 }
 
 fn prepare(s: &SessionArgs) -> Result<Prepared, ExitCode> {
+    let platform = match s.platform {
+        None | Some(PlatformArg::Host) => pageon::Platform::host(),
+        Some(PlatformArg::Windows) => pageon::Platform::Windows,
+        Some(PlatformArg::Macos) => pageon::Platform::Macos,
+        Some(PlatformArg::Linux) => pageon::Platform::Linux,
+    };
+    if s.platform.is_some() && s.profile == ProfileArg::Agent {
+        eprintln!(
+            "error: --platform applies to --profile chrome\n  add --profile chrome, or drop --platform"
+        );
+        return Err(ExitCode::from(2));
+    }
     let mut config = pageon::Config::new()
         .timeout(Duration::from_secs(s.timeout))
         .max_bytes(s.max_bytes)
         .profile(match s.profile {
             ProfileArg::Agent => pageon::Profile::Agent,
-            ProfileArg::BrowserCompatible => pageon::Profile::BrowserCompatible,
+            ProfileArg::Chrome => pageon::Profile::BrowserCompatible(platform),
         });
+    if let Some(t) = &s.signature_tag {
+        config = config.signature_tag(t);
+    }
     for o in &s.origin {
         config = config.origin(o);
     }

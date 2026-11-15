@@ -36,10 +36,21 @@ pageon mcp --identity pageon-identity.json                # or PAGEON_IDENTITY=â
 Documents, scripts, styles, frames, `fetch` and redirects are all signed, in the sandbox too.
 Signatures never end up in recordings.
 
+Signatures carry the tag `web-bot-auth`. An agent program that verifies another tag (Visa's
+Trusted Agent Protocol uses `agent-browser-auth` and `agent-payer-auth`) gets it with
+`--signature-tag TAG`, or a `"tag"` in the identity file.
+
+A site that wants a signed agent and gets none answers with `Accept-Signature`; the outcome says
+`refused: signature required (HTTP 403, tag "â€¦")` and how to configure an identity. pageon
+never signs where you did not configure it.
+
 ## Opt-in: a coherent Chrome
 
-Some sites only work with a mainstream browser. A build with `--features chrome` adds
-`--profile browser-compatible`: one pinned Chrome version on Linux, coherent at every layer (the
-TLS ClientHello, HTTP/2 settings, headers, client hints and `navigator.userAgentData`), and
-tested for that coherence. It is a choice for sessions a person stands behind; the default stays
-honest.
+Some sites only work with a mainstream browser. `--profile chrome` is one pinned Chrome version,
+coherent at every layer (the TLS ClientHello, HTTP/2 settings, headers, client hints and
+`navigator.userAgentData`), and tested for that coherence. It runs on the machine's own
+platform; `--platform windows|macos|linux` picks another. It is a choice for sessions a person
+stands behind; the default stays honest, and signing works with either profile.
+
+The release binaries (Homebrew, the GitHub archives) include it. `cargo install pageon` adds it
+with `--features chrome` (building it needs cmake and clang).

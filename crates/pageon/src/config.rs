@@ -122,6 +122,7 @@ pub struct Config {
     replay: Option<PathBuf>,
     identity: Option<PathBuf>,
     passkeys: Option<PathBuf>,
+    signature_tag: Option<String>,
     profile: Profile,
     proxy: Option<String>,
     timeout: Duration,
@@ -144,6 +145,7 @@ impl Default for Config {
             replay: None,
             identity: None,
             passkeys: None,
+            signature_tag: None,
             profile: Profile::Agent,
             proxy: None,
             timeout: Duration::from_secs(30),
@@ -269,6 +271,12 @@ impl Config {
         self
     }
 
+    /// The tag request signatures carry (default `web-bot-auth`, or the identity file's).
+    pub fn signature_tag(mut self, tag: impl Into<String>) -> Self {
+        self.signature_tag = Some(tag.into());
+        self
+    }
+
     /// Signs in with the passkeys in this store (created with mode 0600 when missing; new
     /// passkeys a site creates are added). Keys never leave the broker.
     pub fn passkeys(mut self, path: impl Into<PathBuf>) -> Self {
@@ -320,6 +328,12 @@ impl Config {
             ));
         }
         let mut warnings = Vec::new();
+        if let Some(t) = &self.signature_tag {
+            pageon_env::check_tag(t).map_err(ConfigError::Identity)?;
+            if self.identity.is_none() {
+                warnings.push("--signature-tag has no effect without --identity".into());
+            }
+        }
         if let Some(p) = &self.passkeys {
             crate::passkeys::check_store(p).map_err(|e| ConfigError::Passkeys(e.to_string()))?;
             if crate::Passkeys::<pageon_env::Replay>::exposed(p) {
@@ -470,9 +484,8 @@ impl Config {
         };
         let mut live = match self.profile {
             Profile::Agent => Live::new(limits),
-            Profile::BrowserCompatible => {
-                Live::browser_compatible(limits).map_err(|e| ConfigError::Profile(e.to_string()))?
-            }
+            Profile::BrowserCompatible(platform) => Live::browser_compatible(limits, platform)
+                .map_err(|e| ConfigError::Profile(e.to_string()))?,
         };
         if let Some(p) = &self.proxy {
             live = live
@@ -480,7 +493,12 @@ impl Config {
                 .map_err(|e| ConfigError::Proxy(e.to_string()))?;
         }
         if let Some(path) = &self.identity {
-            let id = Identity::load(path).map_err(|e| ConfigError::Identity(e.to_string()))?;
+            let mut id = Identity::load(path).map_err(|e| ConfigError::Identity(e.to_string()))?;
+            if let Some(t) = &self.signature_tag {
+                id = id
+                    .with_tag(t)
+                    .map_err(|e| ConfigError::Identity(e.to_string()))?;
+            }
             live = live.with_identity(id);
         }
         Ok(live)

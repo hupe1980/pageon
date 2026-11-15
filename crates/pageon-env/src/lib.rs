@@ -31,7 +31,7 @@ use std::fmt;
 use std::time::Duration;
 
 pub use addr::{is_private_host, is_public, private_host_of};
-pub use identity::Identity;
+pub use identity::{DEFAULT_TAG, Identity, check_tag};
 pub use realtime::{
     EVENTSOURCE, HANDSHAKE, MAX_MESSAGE, MAX_STREAMS, Rt, StreamCall, StreamEvent, StreamKind,
     StreamReply, WEBSOCKET,
@@ -56,7 +56,7 @@ pub fn write_private(path: impl AsRef<std::path::Path>, bytes: &[u8]) -> std::io
     options.open(path)?.write_all(bytes)
 }
 pub use live::Live;
-pub use profile::{Navigator, Profile, UaData, brand_header, chrome, chrome_brands};
+pub use profile::{Navigator, Platform, Profile, UaData, brand_header, chrome, chrome_brands};
 pub use record::{Exchange, Log, Recording};
 pub use replay::Replay;
 pub use steps::{Cursor, Divergence, Kind, Recorder, Step, Target, diff_lines, fnv64};

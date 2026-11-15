@@ -325,7 +325,7 @@ fn one_chrome_at_every_layer() {
         }
     });
     let live = chrome();
-    assert_eq!(live.profile(), Profile::BrowserCompatible);
+    assert_eq!(live.profile(), Profile::chrome());
     let session = Session::new(&live);
     let options = LoadOptions {
         allow_private_network: true,
@@ -341,7 +341,7 @@ fn one_chrome_at_every_layer() {
     let (print, headers) = seen.first().cloned().unwrap_or_default();
     assert_eq!(print, JA4, "TLS: the ClientHello is not Chrome 149's");
     let h = |n: &str| headers.iter().find(|(k, _)| k == n).map(|(_, v)| v.clone());
-    let p = Profile::BrowserCompatible;
+    let p = Profile::chrome();
     assert_eq!(h("user-agent"), Some(p.user_agent()), "{headers:?}");
     for (k, want) in p.client_hints() {
         assert_eq!(h(k), Some(want), "{k}");
@@ -357,7 +357,7 @@ fn one_chrome_at_every_layer() {
     // Scripts read what the headers said.
     assert_eq!(v["ua"], p.user_agent());
     assert_eq!(v["webdriver"], false);
-    assert_eq!(v["platform"], "Linux x86_64");
+    assert_eq!(v["platform"], p.navigator().platform);
     let brands: Vec<(String, String)> = v["data"]["brands"]
         .as_array()
         .into_iter()

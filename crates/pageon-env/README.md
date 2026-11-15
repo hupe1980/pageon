@@ -18,8 +18,8 @@ and `Replay` serves them offline in order.
 `Live` speaks for one of two identities:
 - **`agent`** (default): an honest pageon user agent; with an `Identity`, every request is signed
   with Web Bot Auth (RFC 9421, Ed25519) so sites can verify who is calling;
-- **`browser-compatible`** (feature `chrome`): one pinned Chrome, coherent across the TLS
-  ClientHello, HTTP/2 settings, headers and client hints.
+- **`chrome`** (feature `chrome`): one pinned Chrome on a desktop platform (the host's by
+  default), coherent across the TLS ClientHello, HTTP/2 settings, headers and client hints.
 
 `Env` is also the place to intercept or mock requests: wrap any implementation and answer, block
 or rewrite what it is asked for. [`pageon-net`](../pageon-net) applies the browser's rules

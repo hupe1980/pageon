@@ -72,7 +72,7 @@ pub use load::{DialogPolicy, LoadOptions, load};
 pub use pageon_agent::Filter;
 pub use pageon_agent::{Budget, Capture, Episode, Mode, Target, Tokenizer};
 pub use pageon_dom::{Namespace, NodeId, QuirksMode};
-pub use pageon_env::{Env, Identity, Limits, Live, Profile, Recording, Replay, Request};
+pub use pageon_env::{Env, Identity, Limits, Live, Platform, Profile, Recording, Replay, Request};
 pub use pageon_js::Dialog;
 pub use pageon_js::{DragKind, Dragged};
 pub use pageon_js::{PageError, PageErrorKind};
