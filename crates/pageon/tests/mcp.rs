@@ -383,6 +383,24 @@ fn round_trip_is_fast() {
     let ms = t.elapsed().as_secs_f64() * 100.0;
     println!("mcp click round trip: {ms:.1} ms");
     assert!(ms < 15.0, "a caged MCP round trip");
+    // The same with a span per call (`--otlp`): what tracing adds.
+    let (url, _spans) = collector();
+    let mut o = Server::start(&path, &["--otlp", &url], &[]);
+    o.init("2025-06-18");
+    o.call(
+        "browser_open",
+        json!({"url": format!("{MINIWOB_ORIGIN}miniwob/click-button.html")}),
+    );
+    let t = std::time::Instant::now();
+    for _ in 0..10 {
+        o.call("browser_click", json!({"ref": r}));
+    }
+    let traced = t.elapsed().as_secs_f64() * 100.0;
+    println!(
+        "mcp click round trip with --otlp: {traced:.1} ms (+{:.3} ms)",
+        traced - ms
+    );
+    assert!(traced - ms < 1.0, "--otlp adds to a tool call");
     // A caged screenshot with marks, through MCP (image tokens included).
     s.call("browser_screenshot", json!({"marks": true}));
     let t = std::time::Instant::now();
@@ -1480,4 +1498,149 @@ fn tabs_keep_their_pages() {
             text(&r)
         );
     }
+}
+
+/// A collector on loopback: the JSON bodies of the OTLP requests it receives.
+fn collector() -> (String, std::sync::mpsc::Receiver<Value>) {
+    use std::io::Read;
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap_or_else(|e| panic!("{e}"));
+    let url = format!(
+        "http://{}",
+        listener.local_addr().unwrap_or_else(|e| panic!("{e}"))
+    );
+    let (tx, rx) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        for mut stream in listener.incoming().flatten() {
+            let mut reader = BufReader::new(stream.try_clone().unwrap_or_else(|e| panic!("{e}")));
+            let mut head = String::new();
+            let mut length = 0;
+            let mut path = String::new();
+            loop {
+                let mut line = String::new();
+                if reader.read_line(&mut line).unwrap_or(0) == 0 || line == "\r\n" {
+                    break;
+                }
+                if path.is_empty() {
+                    path = line
+                        .split_whitespace()
+                        .nth(1)
+                        .unwrap_or_default()
+                        .to_string();
+                }
+                if let Some(v) = line.to_ascii_lowercase().strip_prefix("content-length:") {
+                    length = v.trim().parse().unwrap_or(0);
+                }
+                head.push_str(&line);
+            }
+            let mut body = vec![0; length];
+            let _ = reader.read_exact(&mut body);
+            let _ = stream.write_all(
+                b"HTTP/1.1 200 OK\r\ncontent-length: 2\r\ncontent-type: application/json\r\n\r\n{}",
+            );
+            let v: Value = serde_json::from_slice(&body).unwrap_or(Value::Null);
+            let _ = tx.send(json!({"path": path, "body": v}));
+        }
+    });
+    (url, rx)
+}
+
+#[test]
+#[allow(clippy::disallowed_methods)] // waits for the exporter in real time
+fn tool_calls_become_opentelemetry_spans() {
+    let rec = shop();
+    let (url, rx) = collector();
+    let mut s = Server::start(&rec, &["--otlp", &url], &[]);
+    s.init("2025-06-18");
+    let parent = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01";
+    let r = s.request(
+        "tools/call",
+        json!({"name": "browser_open", "arguments": {"url": "https://shop.test/"}, "_meta": {"traceparent": parent}}),
+    );
+    let t = text(&r["result"]);
+    let r = s.call("browser_click", json!({"ref": find(&t, "button", "Buy")}));
+    assert_eq!(r["isError"], true);
+    let mut spans = Vec::new();
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    while spans.len() < 2 && std::time::Instant::now() < deadline {
+        if let Ok(m) = rx.recv_timeout(std::time::Duration::from_millis(200)) {
+            assert_eq!(m["path"], "/v1/traces");
+            let body = &m["body"]["resourceSpans"][0];
+            assert!(
+                body["resource"]["attributes"]
+                    .to_string()
+                    .contains("\"pageon\"")
+            );
+            spans.extend(
+                body["scopeSpans"][0]["spans"]
+                    .as_array()
+                    .cloned()
+                    .unwrap_or_default(),
+            );
+        }
+    }
+    assert_eq!(spans.len(), 2, "{spans:#?}");
+    let attr = |s: &Value, k: &str| {
+        s["attributes"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .find(|a| a["key"] == k)
+            .map(|a| {
+                a["value"]["stringValue"]
+                    .as_str()
+                    .unwrap_or_default()
+                    .to_string()
+            })
+    };
+    let (open, click) = (&spans[0], &spans[1]);
+    assert_eq!(open["name"], "tools/call browser_open");
+    assert_eq!(open["kind"], 2);
+    assert_eq!(open["traceId"], "4bf92f3577b34da6a3ce929d0e0e4736");
+    assert_eq!(open["parentSpanId"], "00f067aa0ba902b7");
+    assert_eq!(attr(open, "mcp.method.name").as_deref(), Some("tools/call"));
+    assert_eq!(
+        attr(open, "gen_ai.tool.name").as_deref(),
+        Some("browser_open")
+    );
+    assert_eq!(
+        attr(open, "gen_ai.operation.name").as_deref(),
+        Some("execute_tool")
+    );
+    assert_eq!(
+        attr(open, "mcp.protocol.version").as_deref(),
+        Some("2025-06-18")
+    );
+    assert_eq!(attr(open, "network.transport").as_deref(), Some("pipe"));
+    assert_eq!(
+        attr(open, "pageon.url.origin").as_deref(),
+        Some("https://shop.test")
+    );
+    assert_eq!(open["status"]["code"], 0);
+    // A tool error: its own trace, error.type tool_error, status ERROR.
+    assert_ne!(click["traceId"], open["traceId"]);
+    assert!(click.get("parentSpanId").is_none());
+    assert_eq!(attr(click, "error.type").as_deref(), Some("tool_error"));
+    assert_eq!(click["status"]["code"], 2);
+    // No arguments, results or page text.
+    let all = serde_json::to_string(&spans).unwrap_or_default();
+    assert!(
+        !all.contains("Sign in") && !all.contains("arguments") && !all.contains("Buy"),
+        "{all}"
+    );
+}
+
+#[test]
+fn an_absent_collector_costs_tool_calls_nothing() {
+    let rec = shop();
+    // Nothing listens on this port: export fails in the background.
+    let port = std::net::TcpListener::bind("127.0.0.1:0")
+        .and_then(|l| l.local_addr())
+        .map(|a| a.port())
+        .unwrap_or_else(|e| panic!("{e}"));
+    let mut s = Server::start(&rec, &["--otlp", &format!("http://127.0.0.1:{port}")], &[]);
+    s.init("2025-06-18");
+    let r = s.call("browser_open", json!({"url": "https://shop.test/"}));
+    assert!(text(&r).starts_with("ok open"), "{r}");
+    let r = s.call("browser_observe", json!({}));
+    assert!(r["isError"] != true, "{r}");
 }

@@ -21,6 +21,10 @@ All notable changes to this project are documented here. The format follows
 - Writes carry `read-from:<site>` labels for guards and approvers; `--cross-site-writes refuse`
   refuses a write to a site after the agent read another site's content, unless approved.
 - IndexedDB, kept per origin for the session across reloads and tabs.
+- `pageon replay ep.json --trace trace.zip`: a recorded run in Playwright's trace viewer
+  (actions, the page after each, console, network).
+- `pageon mcp --otlp URL`: one OpenTelemetry span per tool call, under the client's
+  `traceparent`.
 - Dedicated workers (classic and module) on the page's virtual clock, with `ArrayBuffer`
   transfer, `importScripts` and `blob:` worker scripts (`URL.createObjectURL`).
 - `<iframe sandbox>`: sandboxed frames get an opaque origin without `allow-same-origin`, run no

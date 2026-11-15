@@ -73,6 +73,7 @@ enum Command {
     ///   pageon replay ep.json              # ✓ per step; exit 0 identical, 5 diverged
     ///   pageon replay ep.json --to 1       # the agent view at step 1
     ///   pageon replay ep.json --live       # against the live site: has it changed since?
+    ///   pageon replay ep.json --trace trace.zip && npx playwright show-trace trace.zip
     ///
     /// Offline replays serve every request from the recording; nothing leaves the machine.
     #[command(verbatim_doc_comment)]
@@ -93,6 +94,9 @@ enum Command {
         /// With --to: what to print [default: ax].
         #[arg(long, value_enum)]
         dump: Option<DumpArg>,
+        /// Also write a Playwright trace of the replay (actions, pages, network, console).
+        #[arg(long, value_name = "FILE")]
+        trace: Option<PathBuf>,
         #[command(flatten)]
         session: SessionArgs,
     },
@@ -132,6 +136,10 @@ enum Command {
         /// isolated world over the page (its DOM, cookies and same-origin requests).
         #[arg(long)]
         allow_javascript_exec: bool,
+        /// Send one OpenTelemetry span per tool call to this OTLP/HTTP collector
+        /// (http://localhost:4318); a client's `_meta.traceparent` becomes the parent.
+        #[arg(long, value_name = "URL")]
+        otlp: Option<String>,
         #[command(flatten)]
         session: SessionArgs,
     },
@@ -887,6 +895,7 @@ fn replay(
     live: bool,
     approve: bool,
     dump: Option<DumpArg>,
+    trace: Option<&std::path::Path>,
     s: &SessionArgs,
 ) -> ExitCode {
     let log: pageon_env::Log = match std::fs::read_to_string(file)
@@ -937,6 +946,7 @@ fn replay(
         Box::new(Replay::new(log.clone()))
     };
     let steps = log.steps.clone();
+    let traced = trace.map(|_| log.clone());
     let rec = match Recording::resume(log, upto, base, !live) {
         Ok(r) => r,
         Err(e) => {
@@ -956,7 +966,27 @@ fn replay(
     let job = |env: &dyn Env| -> Result<u8, ExitCode> {
         let mut progress = |i: usize, st: &pageon_env::Step| say(format!("✓ {i} {}", st.action));
         let mut run = |d: &mut dyn pageon::replay::Driver| -> Result<u8, ExitCode> {
-            match pageon::replay::rerun(d, &steps, upto, &mut progress) {
+            let ran = match (trace, &traced) {
+                (Some(path), Some(log)) => {
+                    match pageon::trace::write(d, log, upto, path, &mut progress) {
+                        Ok(None) => Ok(()),
+                        Ok(Some(div)) => Err(div),
+                        Err(e) => {
+                            eprintln!("error: cannot write the trace {}: {e}", path.display());
+                            return Err(ExitCode::from(2));
+                        }
+                    }
+                }
+                _ => pageon::replay::rerun(d, &steps, upto, &mut progress),
+            };
+            if let Some(path) = trace {
+                eprintln!(
+                    "trace: {} (open it with `npx playwright show-trace {}`)",
+                    path.display(),
+                    path.display()
+                );
+            }
+            match ran {
                 Err(div) => {
                     say(pageon::replay::report(&div));
                     say(format!("diverged at step {} of {}", div.step, steps.len()));
@@ -1141,6 +1171,7 @@ fn mcp(
     http: Option<u16>,
     allow_origins: Vec<String>,
     allow_javascript_exec: bool,
+    otlp: Option<String>,
     s: &SessionArgs,
 ) -> ExitCode {
     if http.is_some() && s.save_state.is_some() {
@@ -1170,6 +1201,7 @@ fn mcp(
             allow_origins: allow_origins.clone(),
         }),
         allow_javascript_exec,
+        otlp,
         ..pageon::mcp::McpOptions::default()
     };
     // The same assembly an embedder gets.
@@ -1286,16 +1318,18 @@ fn main() -> ExitCode {
             http,
             allow_origin,
             allow_javascript_exec,
+            otlp,
             session,
-        } => return mcp(http, allow_origin, allow_javascript_exec, &session),
+        } => return mcp(http, allow_origin, allow_javascript_exec, otlp, &session),
         Command::Replay {
             file,
             to,
             live,
             approve,
             dump,
+            trace,
             session,
-        } => return replay(&file, to, live, approve, dump, &session),
+        } => return replay(&file, to, live, approve, dump, trace.as_deref(), &session),
         Command::Cdp {
             port,
             allow_origin,

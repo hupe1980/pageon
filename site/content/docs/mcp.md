@@ -54,6 +54,21 @@ printed URL private. Requests from web pages (with an `Origin`) are refused unle
 `--allow-origin` names them. Replies are JSON, or a short event stream when a call sends
 progress. Clients on older revisions use stdio. `--save-state` needs stdio.
 
+### OpenTelemetry
+
+```sh
+pageon mcp --otlp http://localhost:4318
+```
+
+Every tool call becomes a span on your collector (Langfuse, Phoenix, Tempo, Honeycomb, …), as
+the OpenTelemetry MCP conventions describe a server span (in development; pageon follows them
+at the 1.45 line): `tools/call browser_click`, kind SERVER, with `gen_ai.tool.name`,
+`gen_ai.operation.name` (`execute_tool`), `mcp.method.name`, `mcp.protocol.version`,
+`jsonrpc.request.id`, `error.type` (`tool_error` when the tool reports one) and
+`pageon.url.origin`. A client that sends `traceparent` in `params._meta` gets pageon's span
+under its own. Spans carry no arguments, results or page text, and are sent in the background:
+a collector that is down costs a tool call nothing.
+
 ## Tools
 
 | Group | Tools |

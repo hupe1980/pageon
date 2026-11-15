@@ -19,6 +19,18 @@ pub trait Driver {
     fn view(&mut self, kind: Dump) -> Result<String, String>;
     /// The first divergence the session's recording found.
     fn divergence(&self) -> Option<Divergence>;
+    /// The viewport as a JPEG: bytes, width, height (for traces).
+    fn screenshot(&mut self) -> Result<(Vec<u8>, u32, u32), String> {
+        Err("this driver does not paint".into())
+    }
+}
+
+/// What a trace's screencast frames are painted with.
+fn frame_options() -> crate::ScreenshotOptions {
+    crate::ScreenshotOptions {
+        format: crate::Format::Jpeg { quality: 60 },
+        ..crate::ScreenshotOptions::default()
+    }
 }
 
 /// A driver whose pages open under the operator's safety options rather than the ones a
@@ -61,6 +73,10 @@ impl Driver for Operator<'_> {
 
     fn divergence(&self) -> Option<Divergence> {
         self.inner.divergence()
+    }
+
+    fn screenshot(&mut self) -> Result<(Vec<u8>, u32, u32), String> {
+        self.inner.screenshot()
     }
 }
 
@@ -213,6 +229,12 @@ impl<E: Env> Driver for InProcess<'_, E> {
             k => t.view(k, Viewport::default(), Budget::o200k(100_000)),
         })
     }
+
+    fn screenshot(&mut self) -> Result<(Vec<u8>, u32, u32), String> {
+        let t = self.tab.as_mut().ok_or("no page is open")?;
+        let i = t.screenshot(&frame_options()).map_err(|e| e.to_string())?;
+        Ok((i.bytes, i.width, i.height))
+    }
 }
 
 /// Runs steps in a caged content process.
@@ -268,5 +290,14 @@ impl<E: Env> Driver for Caged<'_, E> {
                 .view_tab(t, k, Viewport::default(), Budget::o200k(100_000)),
         }
         .map_err(|e| e.to_string())
+    }
+
+    fn screenshot(&mut self) -> Result<(Vec<u8>, u32, u32), String> {
+        let t = self.tab.ok_or("no page is open")?;
+        let i = self
+            .sandbox
+            .screenshot_tab(t, &frame_options())
+            .map_err(|e| e.to_string())?;
+        Ok((i.bytes, i.width, i.height))
     }
 }

@@ -70,6 +70,14 @@ trait Backend {
     fn new_tab(&mut self, url: &str) -> Result<Outcome, LoadError>;
     /// The open tabs in opening order: handle, URL, title.
     fn list(&mut self) -> Vec<(u32, String, String)>;
+    /// The current tab's URL.
+    fn current_url(&mut self) -> Option<String> {
+        let c = self.tabs().current_id();
+        self.list()
+            .into_iter()
+            .find(|t| Some(t.0) == c)
+            .map(|t| t.1)
+    }
     /// The tabs' handles and state.
     fn tabs(&self) -> &dyn TabSet;
     /// Makes tab `h` current.
@@ -329,6 +337,11 @@ impl<E: Env> Backend for Caged<E> {
         Ok(opened)
     }
 
+    fn current_url(&mut self) -> Option<String> {
+        let t = *self.tabs.current()?;
+        self.sandbox.page_tab(t).ok().map(|(url, _)| url)
+    }
+
     fn list(&mut self) -> Vec<(u32, String, String)> {
         let ids: Vec<(u32, u32)> = self
             .tabs
@@ -513,6 +526,8 @@ pub struct McpOptions {
     pub allow_javascript_exec: bool,
     /// Files are staged for uploads (`--file`), so the toolsets offer `file_upload`.
     pub staged_files: bool,
+    /// Send one OpenTelemetry span per tool call to this OTLP/HTTP endpoint.
+    pub otlp: Option<String>,
 }
 
 impl Default for McpOptions {
@@ -526,6 +541,7 @@ impl Default for McpOptions {
             http: None,
             allow_javascript_exec: false,
             staged_files: false,
+            otlp: None,
         }
     }
 }
@@ -559,6 +575,11 @@ pub fn serve<E: Env>(
         file_upload: options.staged_files,
         ..toolset::Offer::default()
     };
+    let otlp = options
+        .otlp
+        .as_deref()
+        .map(crate::otlp::Exporter::new)
+        .transpose()?;
     if options.sandbox {
         let mut sandbox = Sandbox::new(env, options.sandbox_options.clone())
             .map_err(|e| format!("{e}; {}", e.guidance()))?;
@@ -574,8 +595,8 @@ pub fn serve<E: Env>(
             offer,
         };
         match &options.http {
-            Some(h) => http::serve(&mut b, h)?,
-            None => run(&mut b, input, output),
+            Some(h) => http::serve(&mut b, h, otlp)?,
+            None => run(&mut b, input, output, otlp),
         }
         b.tabs.clear();
         b.state()
@@ -593,8 +614,8 @@ pub fn serve<E: Env>(
             offer,
         };
         match &options.http {
-            Some(h) => http::serve(&mut b, h)?,
-            None => run(&mut b, input, output),
+            Some(h) => http::serve(&mut b, h, otlp)?,
+            None => run(&mut b, input, output, otlp),
         }
         b.tabs.clear();
         b.state()
@@ -653,8 +674,13 @@ fn read_line_bounded(input: &mut impl BufRead, line: &mut String, max: usize) ->
     Some(!over)
 }
 
-fn run(b: &mut dyn Backend, mut input: impl BufRead, mut output: impl Write) {
-    let mut server = Server::new(false);
+fn run(
+    b: &mut dyn Backend,
+    mut input: impl BufRead,
+    mut output: impl Write,
+    otlp: Option<crate::otlp::Exporter>,
+) {
+    let mut server = Server::new(false, otlp);
     let mut line = String::new();
     loop {
         line.clear();
@@ -697,6 +723,78 @@ const META_SERVER: &str = "io.modelcontextprotocol/serverInfo";
 /// How long clients may cache the tool list and discovery: it never changes while we run.
 const TTL_MS: u64 = 3_600_000;
 
+/// The OpenTelemetry server span of one `tools/call` (MCP conventions): no arguments,
+/// results or page text.
+fn span(
+    b: &mut dyn Backend,
+    id: &Value,
+    params: &Value,
+    reply: &Result<Value, Value>,
+    version: &str,
+    http: bool,
+    start: u64,
+) -> crate::otlp::Span {
+    let tool = params["name"].as_str().unwrap_or_default().to_string();
+    let parent = params
+        .pointer("/_meta/traceparent")
+        .and_then(Value::as_str)
+        .and_then(crate::otlp::parent);
+    let (trace_id, parent) = match parent {
+        Some((t, p)) => (t, Some(p)),
+        None => (crate::otlp::random_id(16), None),
+    };
+    let request_id = match id {
+        Value::String(s) => s.clone(),
+        other => other.to_string(),
+    };
+    let mut attributes = vec![
+        ("mcp.method.name", "tools/call".to_string()),
+        ("gen_ai.tool.name", tool.clone()),
+        ("gen_ai.operation.name", "execute_tool".to_string()),
+        ("jsonrpc.request.id", request_id),
+        ("mcp.protocol.version", version.to_string()),
+        (
+            "network.transport",
+            if http { "tcp" } else { "pipe" }.to_string(),
+        ),
+    ];
+    if http {
+        attributes.push(("network.protocol.name", "http".to_string()));
+    }
+    let error = match reply {
+        Err(e) => {
+            let code = e["code"].as_i64().unwrap_or_default();
+            attributes.push(("error.type", code.to_string()));
+            attributes.push(("rpc.response.status_code", code.to_string()));
+            Some(e["message"].as_str().unwrap_or_default().to_string())
+        }
+        Ok(r) if r["isError"] == true => {
+            attributes.push(("error.type", "tool_error".to_string()));
+            Some("the tool reported an error".to_string())
+        }
+        Ok(_) => None,
+    };
+    if let Some(url) = b.current_url()
+        && let Ok(u) = url::Url::parse(&url)
+    {
+        attributes.push(("pageon.url.origin", u.origin().ascii_serialization()));
+    }
+    crate::otlp::Span {
+        trace_id,
+        span_id: crate::otlp::random_id(8),
+        parent,
+        name: if tool.is_empty() {
+            "tools/call".into()
+        } else {
+            format!("tools/call {tool}")
+        },
+        start,
+        end: crate::otlp::now_ns(),
+        attributes,
+        error,
+    }
+}
+
 fn server_info() -> Value {
     json!({"name": "pageon", "title": "pageon", "version": env!("CARGO_PKG_VERSION")})
 }
@@ -720,16 +818,22 @@ struct Server {
     url_elicitation: bool,
     elicitations: u64,
     pending: Option<Pending>,
+    /// Spans for tool calls (`--otlp`).
+    otlp: Option<crate::otlp::Exporter>,
+    /// The protocol version the legacy handshake agreed on.
+    version: &'static str,
 }
 
 impl Server {
-    fn new(modern_only: bool) -> Self {
+    fn new(modern_only: bool, otlp: Option<crate::otlp::Exporter>) -> Self {
         Self {
             modern_only,
             toolset: toolset::State::default(),
             url_elicitation: false,
             elicitations: 0,
             pending: None,
+            otlp,
+            version: VERSIONS[0],
         }
     }
 
@@ -773,13 +877,28 @@ impl Server {
             .get("_meta")
             .and_then(|m| m.get(META_VERSION))
             .map(|v| v.as_str().unwrap_or_default().to_string());
-        let reply = match version {
-            Some(v) => self.modern(b, method, &params, &v, notify),
+        let start = crate::otlp::now_ns();
+        let reply = match &version {
+            Some(v) => self.modern(b, method, &params, v, notify),
             None if self.modern_only => Err(self.legacy_refused(method, &params)),
             None => self
                 .legacy(b, method, &params, notify)
                 .map_err(|(c, m)| json!({"code": c, "message": m})),
         };
+        if method == "tools/call"
+            && let Some(otlp) = &self.otlp
+        {
+            let version = version.as_deref().unwrap_or(self.version);
+            otlp.send(span(
+                b,
+                &id,
+                &params,
+                &reply,
+                version,
+                self.modern_only,
+                start,
+            ));
+        }
         Some(match reply {
             Ok(result) => json!({"jsonrpc": "2.0", "id": id, "result": result}),
             Err(e) => json!({"jsonrpc": "2.0", "id": id, "error": e}),
@@ -854,6 +973,7 @@ impl Server {
                     .iter()
                     .find(|v| **v == asked)
                     .unwrap_or(&VERSIONS[0]);
+                self.version = version;
                 self.url_elicitation = *version == "2025-11-25"
                     && params
                         .pointer("/capabilities/elicitation/url")

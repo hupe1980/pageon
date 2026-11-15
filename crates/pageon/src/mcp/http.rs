@@ -28,7 +28,11 @@ pub struct HttpOptions {
 const DEADLINE: Duration = Duration::from_secs(2);
 
 /// Binds, prints the endpoint URL on stderr, and serves until the process ends.
-pub(super) fn serve(b: &mut dyn Backend, options: &HttpOptions) -> Result<(), String> {
+pub(super) fn serve(
+    b: &mut dyn Backend,
+    options: &HttpOptions,
+    otlp: Option<crate::otlp::Exporter>,
+) -> Result<(), String> {
     let listener = TcpListener::bind(("127.0.0.1", options.port)).map_err(|e| {
         format!(
             "cannot listen on 127.0.0.1:{}: {e}; pick another port, or 0 for a free one",
@@ -39,7 +43,7 @@ pub(super) fn serve(b: &mut dyn Backend, options: &HttpOptions) -> Result<(), St
     let token = crate::takeover::token()?;
     let path = format!("/mcp/{token}");
     eprintln!("MCP endpoint: http://127.0.0.1:{port}{path}");
-    let mut server = Server::new(true);
+    let mut server = Server::new(true, otlp);
     for stream in listener.incoming().flatten() {
         handle(b, &mut server, &stream, &path, &options.allow_origins);
     }

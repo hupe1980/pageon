@@ -506,11 +506,7 @@ pub mod error_event {
         Ok(cx.alloc(Iface::ErrorEvent, Slot::Event(Box::new(ev))))
     }
 
-    fn field<T>(
-        cx: &Cx<'_, '_, '_>,
-        this: Obj,
-        f: impl FnOnce(&ErrorInfo) -> T,
-    ) -> R<T> {
+    fn field<T>(cx: &Cx<'_, '_, '_>, this: Obj, f: impl FnOnce(&ErrorInfo) -> T) -> R<T> {
         match cx.st().slot(this.slab()?) {
             Some(Slot::Event(e)) => e
                 .error

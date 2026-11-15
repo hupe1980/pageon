@@ -46,6 +46,19 @@ Realtime connections replay offline too: messages arrive at their recorded times
 waits until the replayed page has sent its question. A connection still open when a reset or
 replay ends is closed: a live socket cannot be resumed.
 
+## Open a run in Playwright's trace viewer
+
+```sh
+pageon replay ep.json --trace trace.zip
+npx playwright show-trace trace.zip      # or drop it on trace.playwright.dev
+```
+
+The trace shows each step as an action, the page after it (DOM snapshot and screenshot), its
+console messages and page errors, and every recorded request with its body. Times are the
+page's virtual time. It is written from the replay, which the recording makes identical to the
+original run, so a diverging replay ends with the divergence as the last action's error.
+Secrets stay redacted, as in the recording.
+
 `pageon fetch URL --replay ep.json` serves a recording to any command, and `pageon cdp
 --replay` serves it to Puppeteer and Playwright: deterministic test fixtures from real sites.
 
