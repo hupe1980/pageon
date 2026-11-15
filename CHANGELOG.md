@@ -18,6 +18,8 @@ All notable changes to this project are documented here. The format follows
 - `--profile chrome` in the release binaries, on the machine's own platform (`--platform` picks
   another); `--signature-tag` for agent programs that verify their own tag; a site asking for a
   signature (`Accept-Signature`) is reported as `signature required`.
+- Writes carry `read-from:<site>` labels for guards and approvers; `--cross-site-writes refuse`
+  refuses a write to a site after the agent read another site's content, unless approved.
 
 ### Changed
 

@@ -362,6 +362,10 @@ struct SessionArgs {
     /// The Chrome profile's platform: the machine's own (`host`), or another.
     #[arg(long, value_enum, value_name = "PLATFORM", env = "PAGEON_PLATFORM")]
     platform: Option<PlatformArg>,
+    /// Writes to a site after the agent read another site's content: `allow` (labelled for
+    /// the guard and the approver) or `refuse` (unless the approver approves).
+    #[arg(long, value_enum, value_name = "POLICY", default_value_t = CrossSiteArg::Allow, env = "PAGEON_CROSS_SITE_WRITES")]
+    cross_site_writes: CrossSiteArg,
     /// The tag request signatures carry (`web-bot-auth`; a payment network's agent program may
     /// name another, e.g. `agent-browser-auth`).
     #[arg(long, value_name = "TAG", env = "PAGEON_SIGNATURE_TAG")]
@@ -379,6 +383,14 @@ enum ProfileArg {
     /// Chrome 149, coherent across TLS, HTTP/2, headers, client hints and scripts.
     #[value(alias = "browser-compatible")]
     Chrome,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum CrossSiteArg {
+    /// Allow them; the guard and the approver see which sites were read.
+    Allow,
+    /// Refuse them unless the approver approves.
+    Refuse,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -508,6 +520,7 @@ fn prepare(s: &SessionArgs) -> Result<Prepared, ExitCode> {
     if let Some(t) = &s.signature_tag {
         config = config.signature_tag(t);
     }
+    config = config.cross_site_writes(s.cross_site_writes == CrossSiteArg::Refuse);
     for o in &s.origin {
         config = config.origin(o);
     }

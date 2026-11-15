@@ -171,7 +171,14 @@ pub struct Policy<E: Env> {
     hold_writes: bool,
     /// Origins requests went to (and were allowed) in this session.
     contacted: std::cell::RefCell<std::collections::HashSet<String>>,
+    /// Sites whose content entered a page this session (not the read-write origins').
+    read: std::cell::RefCell<std::collections::BTreeSet<String>>,
+    /// Refuse writes to a site after reading another, unless the approver approves.
+    cross_site: bool,
 }
+
+/// Most `read-from:` labels a write carries before `read-from:+N`.
+const MAX_READ_LABELS: usize = 5;
 
 impl<E: Env> fmt::Debug for Policy<E> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -194,6 +201,48 @@ impl<E: Env> Policy<E> {
             hold_writes: false,
             guard: None,
             contacted: std::cell::RefCell::default(),
+            read: std::cell::RefCell::default(),
+            cross_site: false,
+        }
+    }
+
+    /// Refuses a write to a site after the agent read another site's content (a page, a
+    /// frame, a `fetch` response from it), unless the approver approves it: the agent cannot
+    /// carry one site's content to another. Sites of the read-write origins are trusted.
+    pub fn cross_site_writes(mut self, refuse: bool) -> Self {
+        self.cross_site = refuse;
+        self
+    }
+
+    /// The sites whose content the agent read this session.
+    pub fn read_sites(&self) -> Vec<String> {
+        self.read.borrow().iter().cloned().collect()
+    }
+
+    /// Records the site of a response that brought content into a page: documents, frames,
+    /// `fetch`/XHR and event streams (by the request's fetch destination); not scripts,
+    /// styles, images or fonts, nor redirects.
+    fn record_read(&self, req: &Request, status: u16) {
+        let dest = req
+            .headers
+            .iter()
+            .find(|(k, _)| k.eq_ignore_ascii_case("sec-fetch-dest"))
+            .map(|(_, v)| v.as_str());
+        if !matches!(
+            dest,
+            Some("document" | "iframe" | "frame" | "empty" | "websocket")
+        ) || (300..400).contains(&status)
+        {
+            return;
+        }
+        let Ok(u) = Url::parse(&req.url) else { return };
+        if !matches!(u.scheme(), "http" | "https") || self.read_write.iter().any(|p| p.matches(&u))
+        {
+            return;
+        }
+        let site = pageon_net::site::site(&u);
+        if !self.read.borrow().contains(&site) {
+            self.read.borrow_mut().insert(site);
         }
     }
 
@@ -257,7 +306,7 @@ impl<E: Env> Policy<E> {
     /// origin sets, then the guard, then the approver.
     fn judge(&self, req: &Request) -> Option<String> {
         let sets = !(self.read_write.is_empty() && self.read_only.is_empty());
-        if !sets && self.guard.is_none() && !self.hold_writes {
+        if !sets && self.guard.is_none() && !self.hold_writes && !self.cross_site {
             return None;
         }
         let Ok(u) = Url::parse(&req.url) else {
@@ -292,6 +341,25 @@ impl<E: Env> Policy<E> {
         if first {
             labels.push("first-contact".into());
         }
+        // The sites whose content the agent read, other than this write's own.
+        let read_from: Vec<String> = if write {
+            let own = pageon_net::site::site(&u);
+            self.read
+                .borrow()
+                .iter()
+                .filter(|s| **s != own)
+                .cloned()
+                .collect()
+        } else {
+            Vec::new()
+        };
+        for s in read_from.iter().take(MAX_READ_LABELS) {
+            labels.push(format!("read-from:{s}"));
+        }
+        if read_from.len() > MAX_READ_LABELS {
+            labels.push(format!("read-from:+{}", read_from.len() - MAX_READ_LABELS));
+        }
+        let cross = self.cross_site && !read_from.is_empty();
         // What the guard and the approver see: the URL with vault secrets as handles,
         // page-authored text clipped and marked.
         let effect = Effect {
@@ -324,7 +392,7 @@ impl<E: Env> Policy<E> {
                 Verdict::Ask => ask = true,
             }
         }
-        if ask || held || (sets && class == EffectClass::Write) {
+        if ask || held || cross || (sets && class == EffectClass::Write) {
             match &self.approver {
                 Some(approve) => {
                     let ok =
@@ -341,6 +409,14 @@ impl<E: Env> Policy<E> {
                     return Some(format!(
                         "guard: {} {} needs approval, and no approver is configured",
                         req.method, req.url
+                    ));
+                }
+                None if cross => {
+                    return Some(format!(
+                        "policy: {} {} after reading {} (--cross-site-writes refuse; an approver may allow it)",
+                        req.method,
+                        req.url,
+                        read_from.join(", ")
                     ));
                 }
                 None if held => {
@@ -370,7 +446,13 @@ impl<E: Env> Env for Policy<E> {
         }
         match self.judge(req) {
             Some(why) => Err(NetError::Blocked(why)),
-            None => self.inner.fetch(req),
+            None => {
+                let r = self.inner.fetch(req);
+                if let Ok(resp) = &r {
+                    self.record_read(req, resp.status);
+                }
+                r
+            }
         }
     }
 
@@ -384,7 +466,13 @@ impl<E: Env> Env for Policy<E> {
         {
             return Err(NetError::Blocked(why));
         }
-        self.inner.stream(call)
+        let r = self.inner.stream(call);
+        if r.is_ok()
+            && let StreamCall::Open { req, .. } = call
+        {
+            self.record_read(req, 200);
+        }
+        r
     }
 
     fn now_ms(&self) -> Result<u64, NetError> {

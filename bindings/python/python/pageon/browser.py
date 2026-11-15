@@ -158,6 +158,7 @@ class Browser:
         profile: str = "agent",
         platform: str | None = None,
         signature_tag: str | None = None,
+        cross_site_writes: str = "allow",
         identity: str | os.PathLike[str] | None = None,
         passkeys: str | os.PathLike[str] | None = None,
         robots: str = "respect",
@@ -176,6 +177,8 @@ class Browser:
             args += ["--platform", platform]
         if signature_tag is not None:
             args += ["--signature-tag", signature_tag]
+        if cross_site_writes != "allow":
+            args += ["--cross-site-writes", cross_site_writes]
         if private_network:
             args += ["--private-network", "allow"]
         if allow_files:

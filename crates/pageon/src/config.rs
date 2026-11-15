@@ -118,6 +118,7 @@ pub struct Config {
     guard: Option<String>,
     approver: Option<Approver>,
     hold_writes: bool,
+    cross_site_writes: bool,
     record: Option<PathBuf>,
     replay: Option<PathBuf>,
     identity: Option<PathBuf>,
@@ -141,6 +142,7 @@ impl Default for Config {
             guard: None,
             approver: None,
             hold_writes: false,
+            cross_site_writes: false,
             record: None,
             replay: None,
             identity: None,
@@ -268,6 +270,13 @@ impl Config {
     /// Signs every request with this identity (Web Bot Auth; `pageon identity new`).
     pub fn identity(mut self, path: impl Into<PathBuf>) -> Self {
         self.identity = Some(path.into());
+        self
+    }
+
+    /// Refuses a write to a site after the agent read another site's content, unless the
+    /// approver approves it (see [`Policy::cross_site_writes`]).
+    pub fn cross_site_writes(mut self, refuse: bool) -> Self {
+        self.cross_site_writes = refuse;
         self
     }
 
@@ -453,6 +462,7 @@ impl Config {
         if self.hold_writes {
             policy = policy.hold_writes();
         }
+        policy = policy.cross_site_writes(self.cross_site_writes);
         if let Some(cmd) = &self.guard {
             let guard = crate::CommandGuard::new(cmd.clone());
             policy = policy.guard(move |e| guard.verdict(e));

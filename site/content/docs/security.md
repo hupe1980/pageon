@@ -108,7 +108,29 @@ an origin still carries `first-contact`.
 
 Labels help guards decide: `secret:<name>` (the request carries that secret to its own origin),
 `first-contact` (no request went to this origin before), `tool:<name>` and `consequential` (a
-[WebMCP](@/docs/webmcp.md) tool caused it).
+[WebMCP](@/docs/webmcp.md) tool caused it), `read-from:<site>` (see below).
+
+## Cross-site writes
+
+Browsers keep one site from reading another's data; an agent can carry it across. A forum post
+tells the agent to send something to another site, and the agent's write takes it there.
+
+The broker records every site whose content entered a page in the session: documents, frames,
+`fetch` and event-stream responses (not scripts, styles or images). Every write then carries a
+`read-from:<site>` label for each other site read, for the guard and the approver. With
+
+```sh
+pageon mcp --cross-site-writes refuse --approve
+```
+
+a write to a site after reading another is refused unless the approver approves it, and the
+agent is told which sites it read: `policy: POST https://evil.example/collect after reading
+https://forum.example`.
+
+Sites of read-write origins (`--origin`) are trusted sources and not recorded: put identity
+providers there, and keep sites that hold other people's content (forums, shared documents) in
+the read-only set (`--read-origin`). A third-party frame counts as a read, since its text reaches
+the agent; with origin sets, content from outside them never loads.
 
 ## The private network
 
