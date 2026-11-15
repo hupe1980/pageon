@@ -119,6 +119,15 @@ println!("{}", tab.observe());
 println!("{}", tab.act("click e1".parse()?)?);
 ```
 
+**🤝 Claude's and OpenAI's browser tools** run on pageon: declare its definition, hand it the
+model's calls ([details](https://hupe1980.github.io/pageon/docs/toolsets/)).
+
+```python
+ts = browser.toolset("browser_toolset_20260801")   # or "computer_toolset_20260801", "computer"
+r = client.messages.create(model="claude-opus-5-5", tools=[ts.definition], messages=messages, max_tokens=16000)
+messages += [{"role": "assistant", "content": r.content}, {"role": "user", "content": ts.run(r.content)}]
+```
+
 **🏋️ BrowserGym and AgentLab** run on pageon with one line:
 `pageon.browsergym.register(replace=True)`.
 

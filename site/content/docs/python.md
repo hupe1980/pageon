@@ -51,9 +51,16 @@ with Browser(origins=["https://shop.example"], secrets=["shop@https://shop.examp
 | `budget` | Token budget of the views |
 | `sandbox`, `private_network`, `binary` | Process and network settings |
 | `allow_files` | Let the agent open `file:` pages (off by default) |
+| `allow_javascript_exec` | Let the vendor toolsets run `javascript_exec` (off by default; see [Claude & OpenAI tools](@/docs/toolsets.md)) |
 
 An invalid argument (an origin without its scheme, say) raises `PageonError` with pageon's
 message.
+
+## Claude's and OpenAI's tools
+
+`browser.toolset(name)` runs a vendor's browser tool on this browser: `definition` is the tool to
+send, `run(response_content)` returns the results to send back. See
+[Claude & OpenAI tools](@/docs/toolsets.md).
 
 ## Tab
 

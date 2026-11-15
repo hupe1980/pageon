@@ -65,6 +65,7 @@ pub use files::{Files, mime_type};
 pub use frames::{Frame, FrameState, MAX_DEPTH, MAX_FRAMES};
 pub use guard::{CommandGuard, GUARD_TIMEOUT};
 pub use load::{DialogPolicy, LoadOptions, load};
+pub use pageon_agent::Filter;
 pub use pageon_agent::{Budget, Capture, Episode, Mode, Target, Tokenizer};
 pub use pageon_dom::{Namespace, NodeId, QuirksMode};
 pub use pageon_env::{Env, Identity, Limits, Live, Profile, Recording, Replay, Request};
@@ -81,7 +82,9 @@ pub use policy::{Effect, EffectClass, Policy, Verdict, check_origin};
 pub use sandbox::{Lookahead, Pending, RemoteTab, Sandbox, SandboxError, SandboxOptions};
 pub use secrets::{Secret, Secrets};
 pub use session::Session;
-pub use tab::{Action, ActionError, Direction, Download, Outcome, Reason, ScrollBy, Settle, Tab};
+pub use tab::{
+    Action, ActionError, At, Direction, Download, Outcome, Reason, ScrollBy, Settle, Tab,
+};
 
 use std::rc::Rc;
 
@@ -282,6 +285,36 @@ impl<'a> NodeRef<'a> {
             _ => None,
         }
     }
+}
+
+/// A read of a tab with the agent's refs, for the vendor toolsets (`read_page`, `find`).
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Read {
+    /// The `ax` view filtered (viewport, interactive, all), `depth` levels deep, below `root`.
+    Page {
+        /// Which elements.
+        filter: pageon_agent::Filter,
+        /// Levels of the accessibility tree.
+        depth: u32,
+        /// A ref whose subtree alone is read.
+        root: Option<String>,
+        /// The view's budget.
+        budget: Budget,
+    },
+    /// Elements matching the words of a query, at most `limit`.
+    Find {
+        /// The query.
+        query: String,
+        /// At most this many.
+        limit: usize,
+    },
+    /// One element's line, by ref.
+    Line(String),
+    /// What is at a viewport point.
+    At(f64, f64),
+    /// The page as Markdown within a budget.
+    Markdown(Budget),
 }
 
 /// Dump formats.

@@ -327,6 +327,9 @@ impl Engine {
                 modules_loaded: 0,
                 hovered: None,
                 pressed: None,
+                mods: Default::default(),
+                button: Default::default(),
+                click_count: 0,
                 drag: None,
                 accept_dialogs: cfg.accept_dialogs,
                 observers: Vec::new(),
@@ -1157,6 +1160,95 @@ impl Engine {
         let _ = self.input(realm, "press", |cx| crate::dom::input::press(cx, key));
     }
 
+    /// A trusted click with a button, a click count (1–3) and modifiers (see
+    /// [`crate::dom::input::click_ex`]).
+    pub fn click_ex(
+        &mut self,
+        realm: usize,
+        node: NodeId,
+        point: Option<(f64, f64)>,
+        kind: crate::dom::input::ClickKind,
+    ) {
+        self.activate(realm);
+        let _ = self.input(realm, "click", |cx| {
+            crate::dom::input::click_ex(cx, node, point, kind)
+        });
+    }
+
+    /// Presses a chord (modifiers and a key) on the focused element.
+    pub fn press_chord(&mut self, realm: usize, mods: crate::dom::input::Mods, key: &str) {
+        self.activate(realm);
+        let _ = self.input(realm, "press", |cx| {
+            crate::dom::input::press_chord(cx, mods, key)
+        });
+    }
+
+    /// Holds a chord down (`repeat`: an auto-repeat `keydown`) or releases it.
+    pub fn key_hold(
+        &mut self,
+        realm: usize,
+        mods: crate::dom::input::Mods,
+        key: &str,
+        down: bool,
+        repeat: bool,
+    ) {
+        if down && !repeat {
+            self.activate(realm);
+        }
+        let _ = self.input(realm, "press", |cx| {
+            crate::dom::input::key_hold(cx, mods, key, down, repeat)
+        });
+    }
+
+    /// Fills an editable element at once, as a password manager does (see
+    /// [`crate::dom::input::fill`]).
+    pub fn fill(&mut self, realm: usize, node: NodeId, value: &str) {
+        self.activate(realm);
+        let _ = self.input(realm, "fill", |cx| crate::dom::input::fill(cx, node, value));
+    }
+
+    /// The focused element of a realm, if any.
+    pub fn focused(&self, realm: usize) -> Option<NodeId> {
+        self.realm(realm).and_then(|r| r.st.borrow().focused)
+    }
+
+    /// Whether the focused element of a realm takes text.
+    pub fn focused_editable(&self, realm: usize) -> bool {
+        self.realm(realm).is_some_and(|r| {
+            let focused = r.st.borrow().focused;
+            focused.is_some_and(|f| {
+                let dom = r.dom.borrow();
+                dom.get(f).is_some_and(|n| {
+                    n.is_html("textarea")
+                        || (n.is_html("input")
+                            && !matches!(
+                                pageon_dom::forms::input_type(&dom, f).as_str(),
+                                "checkbox"
+                                    | "radio"
+                                    | "submit"
+                                    | "button"
+                                    | "reset"
+                                    | "file"
+                                    | "image"
+                                    | "hidden"
+                                    | "range"
+                                    | "color"
+                            ))
+                        || n.attr("contenteditable").is_some_and(|v| v != "false")
+                })
+            })
+        })
+    }
+
+    /// Types text at the end of the focused element; `false` when nothing editable is focused.
+    pub fn type_focused(&mut self, realm: usize, text: &str) -> bool {
+        self.activate(realm);
+        self.input(realm, "type", |cx| {
+            crate::dom::input::type_focused(cx, text)
+        })
+        .unwrap_or(false)
+    }
+
     /// Selects the options of a `<select>` by value or label; returns the values that matched
     /// no option (then nothing changed).
     pub fn select(&mut self, realm: usize, node: NodeId, values: &[String]) -> Vec<String> {
@@ -1402,6 +1494,18 @@ impl Engine {
     /// Console messages (level, text) since the last call.
     pub fn take_console(&mut self) -> Vec<(String, String)> {
         std::mem::take(&mut self.shared.borrow_mut().console)
+    }
+
+    /// The console messages recorded since `seen` messages (still kept; at most the latest
+    /// 1,000), and the new count to pass next time.
+    pub fn console_since(&self, seen: u64) -> (Vec<(String, String)>, u64) {
+        let sh = self.shared.borrow();
+        let new = usize::try_from(sh.console_total.saturating_sub(seen)).unwrap_or(usize::MAX);
+        let n = new.min(sh.console.len());
+        (
+            sh.console[sh.console.len() - n..].to_vec(),
+            sh.console_total,
+        )
     }
 
     /// Virtual ms until the next timer is due (`None` when no timer is pending).

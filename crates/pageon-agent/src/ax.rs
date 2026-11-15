@@ -129,7 +129,7 @@ pub enum LineKind {
 }
 
 /// One observation line.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct Line {
     /// Stable key: the ref for elements, a hidden key otherwise.
     pub key: String,
@@ -144,6 +144,24 @@ pub struct Line {
     /// Rendered text without indentation.
     pub text: String,
     pub(crate) block: Option<(usize, usize)>,
+    /// The accessibility node the line was built from (frame, index), for scoped reads.
+    pub(crate) at: Option<(usize, usize)>,
+    /// The line's element is in the viewport.
+    pub(crate) in_view: bool,
+}
+
+// Where a line came from and whether it is in view do not make it another line: the diff
+// compares what the agent reads.
+impl PartialEq for Line {
+    fn eq(&self, o: &Self) -> bool {
+        self.key == o.key
+            && self.depth == o.depth
+            && self.kind == o.kind
+            && self.role == o.role
+            && self.priority == o.priority
+            && self.text == o.text
+            && self.block == o.block
+    }
 }
 
 impl Line {
@@ -310,6 +328,8 @@ fn assemble(lines: &[Line], keep: &[bool]) -> Vec<Line> {
                 parts.join(" ")
             ),
             block: None,
+            at: None,
+            in_view: true,
         });
     }
     out
@@ -344,6 +364,8 @@ struct Walker<'a, 'b> {
     collected: Vec<(NodeKey, Signature)>,
     control_names: HashSet<String>,
     path: Vec<(String, String)>,
+    /// The accessibility node being walked (frame, index).
+    current: Option<(usize, usize)>,
 }
 
 fn role_of(n: &AxNode) -> String {
@@ -388,6 +410,7 @@ impl<'a, 'b> Walker<'a, 'b> {
             collected: Vec::new(),
             control_names: HashSet::new(),
             path: Vec::new(),
+            current: None,
         }
     }
 
@@ -415,6 +438,7 @@ impl<'a, 'b> Walker<'a, 'b> {
     }
 
     fn push(&mut self, ctx: &Ctx, mut line: Line, in_view: bool) {
+        line.in_view = in_view || ctx.in_modal;
         line.priority = match line.kind {
             _ if ctx.in_modal => 1,
             LineKind::HiddenText => 6,
@@ -472,6 +496,8 @@ impl<'a, 'b> Walker<'a, 'b> {
             priority: 5,
             text,
             block,
+            at: self.current,
+            in_view: false,
         }
     }
 
@@ -479,6 +505,12 @@ impl<'a, 'b> Walker<'a, 'b> {
         if guard > 400 {
             return;
         }
+        let outer = self.current.replace((f, ax));
+        self.walk_node(f, ax, ctx, guard);
+        self.current = outer;
+    }
+
+    fn walk_node(&mut self, f: usize, ax: usize, ctx: &Ctx, guard: u32) {
         let page = self.page;
         let frame = &page.frames[f];
         let node = &frame.ax[ax];
@@ -1174,6 +1206,8 @@ impl Line {
             priority: 5,
             text: String::new(),
             block: None,
+            at: None,
+            in_view: true,
         }
     }
 }

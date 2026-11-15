@@ -48,3 +48,7 @@ rustc-ice-*.txt
 
 # The website build
 /site/public/
+
+# Native build artifacts of the Python package
+bindings/python/python/pageon/*.so
+bindings/python/python/pageon/*.dSYM/

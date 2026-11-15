@@ -336,6 +336,7 @@ impl View {
                             dx.as_f64().filter(|v| v.is_finite()).unwrap_or(0.0),
                             dy.as_f64().filter(|v| v.is_finite()).unwrap_or(0.0),
                         ),
+                        point: None,
                     }]
                 } else if let Some(k) = v.get("key").and_then(serde_json::Value::as_str) {
                     vec![Action::Press(k.to_string())]

@@ -128,6 +128,10 @@ enum Command {
         /// an Origin, other clients do not.
         #[arg(long, value_name = "ORIGIN", requires = "http")]
         allow_origin: Vec<String>,
+        /// Let the vendor toolsets run `javascript_exec`: model-written expressions, in an
+        /// isolated world over the page (its DOM, cookies and same-origin requests).
+        #[arg(long)]
+        allow_javascript_exec: bool,
         #[command(flatten)]
         session: SessionArgs,
     },
@@ -1199,7 +1203,12 @@ fn workflow(command: WorkflowCommand) -> ExitCode {
     }
 }
 
-fn mcp(http: Option<u16>, allow_origins: Vec<String>, s: &SessionArgs) -> ExitCode {
+fn mcp(
+    http: Option<u16>,
+    allow_origins: Vec<String>,
+    allow_javascript_exec: bool,
+    s: &SessionArgs,
+) -> ExitCode {
     if http.is_some() && s.save_state.is_some() {
         eprintln!(
             "error: --save-state needs pageon mcp over stdio (the HTTP server runs until it is stopped)\n  drop --http, or drop --save-state"
@@ -1227,6 +1236,8 @@ fn mcp(http: Option<u16>, allow_origins: Vec<String>, s: &SessionArgs) -> ExitCo
                 port,
                 allow_origins: allow_origins.clone(),
             }),
+            allow_javascript_exec,
+            staged_files: !s.staged_file.is_empty(),
             ..pageon::mcp::McpOptions::default()
         };
         let stdin = std::io::stdin();
@@ -1342,8 +1353,9 @@ fn main() -> ExitCode {
         Command::Mcp {
             http,
             allow_origin,
+            allow_javascript_exec,
             session,
-        } => return mcp(http, allow_origin, &session),
+        } => return mcp(http, allow_origin, allow_javascript_exec, &session),
         Command::Replay {
             file,
             to,

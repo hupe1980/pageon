@@ -28,7 +28,7 @@ from typing import Any
 
 from ._native import PageonError
 
-__all__ = ["ActionError", "Browser", "Lookahead", "Outcome", "Screenshot", "Tab"]
+__all__ = ["ActionError", "Browser", "Lookahead", "Outcome", "Screenshot", "Tab", "Toolset"]
 
 _PROTOCOL = "2025-11-25"
 
@@ -159,11 +159,14 @@ class Browser:
         identity: str | os.PathLike[str] | None = None,
         robots: str = "respect",
         guard: str | None = None,
+        allow_javascript_exec: bool = False,
         binary: str | os.PathLike[str] | None = None,
     ) -> None:
         args = [_binary(binary), "mcp", "--budget", str(budget), "--profile", profile, "--robots", robots]
         if not sandbox:
             args.append("--no-sandbox")
+        if allow_javascript_exec:
+            args.append("--allow-javascript-exec")
         if guard is not None:
             args += ["--guard", guard]
         if private_network:
@@ -278,6 +281,14 @@ class Browser:
         except BrokenPipeError:
             raise self._exited() from None
 
+    def toolset(self, name: str, *, console: bool = False, network: bool = False) -> Toolset:
+        """A vendor's browser tool executed on this browser: ``"browser_toolset_20260801"`` and
+        ``"computer_toolset_20260801"`` (Anthropic), ``"computer"`` (OpenAI). Send
+        ``toolset.definition`` as a tool and give ``toolset.run(...)`` each response; its results
+        are the next user message (Anthropic) or input items (OpenAI). ``console`` and
+        ``network`` offer ``read_console`` and ``read_network``."""
+        return Toolset(self, name, console=console, network=network)
+
     def _notify(self, method: str) -> None:
         self._send({"jsonrpc": "2.0", "method": method})
 
@@ -345,6 +356,119 @@ class Browser:
         if "tab" in sc:
             self._tabs.setdefault(sc["tab"], Tab(self, sc["tab"]))
             self._current = sc["tab"]
+
+
+# The members that may change a page, or send something: confirmed before they run.
+_WRITES = frozenset(
+    {
+        "navigate",
+        "left_click",
+        "right_click",
+        "middle_click",
+        "double_click",
+        "triple_click",
+        "left_click_drag",
+        "left_mouse_down",
+        "left_mouse_up",
+        "type",
+        "key",
+        "hold_key",
+        "form_input",
+        "file_upload",
+        "javascript_exec",
+        "scroll",
+    }
+)
+
+
+def _plain(block: Any) -> Any:
+    """A response block as a dict (SDK objects have ``model_dump``)."""
+    dump = getattr(block, "model_dump", None)
+    return dump(exclude_none=True) if callable(dump) else block
+
+
+def _stopped(calls: list[dict[str, Any]], toolset: str, first: str | None) -> list[dict[str, Any]]:
+    """Results for calls a stopped turn does not run (the first one with ``first`` if given)."""
+    skipped = (
+        "Not executed: an earlier action in this turn failed."
+        if toolset == "browser"
+        else "Not executed: an earlier computer action in this turn failed."
+    )
+    return [
+        {
+            "type": "tool_result",
+            "tool_use_id": c["id"],
+            "toolset_name": toolset,
+            "content": [{"type": "text", "text": first if first is not None and i == 0 else skipped}],
+            "is_error": True,
+        }
+        for i, c in enumerate(calls)
+    ]
+
+
+class Toolset:
+    """A vendor's browser tool run by pageon. Results follow the vendor's contract: calls run
+    in order and the first failure stops the turn.
+
+        ts = browser.toolset("browser_toolset_20260801")
+        r = client.messages.create(..., tools=[ts.definition], messages=messages)
+        messages += [{"role": "assistant", "content": r.content},
+                     {"role": "user", "content": ts.run(r.content)}]
+    """
+
+    def __init__(self, browser: Browser, name: str, *, console: bool, network: bool) -> None:
+        self._browser = browser
+        self.name = name
+        self._flags = {"console": console, "network": network}
+        self.definition: dict[str, Any] = browser._request(
+            "pageon/toolset/definition", {"toolset": name, **self._flags}
+        )
+
+    def run(
+        self,
+        blocks: Iterable[Any],
+        confirm: Callable[[str, dict[str, Any]], bool] | None = None,
+    ) -> list[dict[str, Any]]:
+        """Runs this toolset's calls among ``blocks`` (a response's content or output) and returns
+        their results. ``confirm(member, input)`` is asked before each call that may write (for
+        OpenAI: before calls with pending safety checks); ``False`` stops the turn there."""
+        items = [_plain(b) for b in blocks]
+        if self.name == "computer":
+            calls = [c for c in items if c.get("type") == "computer_call"]
+            confirmed = [
+                c["call_id"] for c in calls if c.get("pending_safety_checks") and confirm and confirm("computer", c)
+            ]
+            return self._run(calls, confirmed)
+        toolset = "browser" if self.name.startswith("browser") else "computer"
+        calls = [c for c in items if c.get("type") == "tool_use" and c.get("toolset_name", toolset) == toolset]
+        if confirm is None:
+            return self._run(calls, [])
+        # Ask before each writing call; a refusal stops the turn as a failure does.
+        results: list[dict[str, Any]] = []
+        for i, c in enumerate(calls):
+            if c.get("name") in _WRITES and not confirm(c["name"], c.get("input", {})):
+                return results + _stopped(calls[i:], toolset, "Error: the user declined this action.")
+            out = self._run([c], [])
+            results += out
+            if out and out[0].get("is_error"):
+                return results + _stopped(calls[i + 1 :], toolset, None)
+        return results
+
+    def _run(self, calls: list[dict[str, Any]], confirmed: list[str]) -> list[dict[str, Any]]:
+        if not calls:
+            return []
+        r = self._browser._request(
+            "pageon/toolset/run", {"toolset": self.name, "calls": calls, "confirmed": confirmed, **self._flags}
+        )
+        results: list[dict[str, Any]] = r["results"]
+        # Keep the browser's tabs in step with what the toolset opened or closed.
+        for res in results:
+            for block in res.get("content", []) if isinstance(res.get("content"), list) else []:
+                if block.get("type") == "browser_state":
+                    b = self._browser
+                    b._tabs = {t["tab_id"]: b._tabs.get(t["tab_id"]) or Tab(b, t["tab_id"]) for t in block["tabs"]}
+                    b._current = next((t["tab_id"] for t in block["tabs"] if t.get("active")), None)
+        return results
 
 
 class Tab:

@@ -598,6 +598,13 @@ impl<E: Env> Sandbox<E> {
         })
     }
 
+    /// A read of tab `id` with the agent's refs (see [`crate::Tab::read`]).
+    pub fn read_tab(&mut self, id: u32, read: crate::Read) -> Result<String, ActionError> {
+        let r: Result<Result<String, ActionError>, SandboxError> =
+            self.call(Op::Read { tab: id, read });
+        r.map_err(|e| ActionError::Engine(e.to_string()))?
+    }
+
     /// Paints tab `id` (see [`crate::Tab::screenshot`]).
     pub fn screenshot_tab(
         &mut self,
@@ -842,7 +849,9 @@ fn uploaded(action: &Action) -> Vec<String> {
 /// The `secret://` handle a type action types, if any.
 fn typed_secret(action: &Action) -> Option<String> {
     match action {
-        Action::Type(_, text) => text.strip_prefix("secret://").map(str::to_string),
+        Action::Type(_, text) | Action::TypeFocused(text) => {
+            text.strip_prefix("secret://").map(str::to_string)
+        }
         _ => None,
     }
 }
@@ -907,6 +916,7 @@ impl Serving {
             },
             Op::Observe { tab: t, .. }
             | Op::View { tab: t, .. }
+            | Op::Read { tab: t, .. }
             | Op::Status { tab: t }
             | Op::Screenshot { tab: t, .. }
             | Op::Crop { tab: t, .. }

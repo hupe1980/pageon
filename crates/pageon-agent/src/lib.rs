@@ -76,6 +76,66 @@ pub fn ref_map(capture: &Capture) -> Vec<(page::NodeKey, String)> {
         .collect()
 }
 
+/// Which elements [`Episode::read`] shows.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Filter {
+    /// What is in the viewport.
+    #[default]
+    Visible,
+    /// The interactive elements in the viewport.
+    Interactive,
+    /// The whole page.
+    All,
+}
+
+/// Words a search ignores.
+const STOP_WORDS: &[&str] = &[
+    "the", "an", "of", "to", "in", "on", "for", "and", "or", "with", "at", "by", "is", "it",
+    "this", "that",
+];
+
+/// Each accessibility node's level below the start (the frames' roots, or one node), frames
+/// counting from their owner `<iframe>`; nodes outside a start's subtree are absent.
+fn ax_levels(
+    page: &Page,
+    start: Option<(usize, usize)>,
+) -> std::collections::HashMap<(usize, usize), u32> {
+    let mut levels = std::collections::HashMap::new();
+    let mut queue = std::collections::VecDeque::new();
+    match start {
+        Some(s) => queue.push_back((s, 0)),
+        None => {
+            if let Some(r) = page.frames.first().and_then(|f| f.ax_root) {
+                queue.push_back(((0, r), 0));
+            }
+        }
+    }
+    while let Some(((f, i), level)) = queue.pop_front() {
+        if levels.contains_key(&(f, i)) || levels.len() > 200_000 {
+            continue;
+        }
+        levels.insert((f, i), level);
+        let frame = &page.frames[f];
+        let node = &frame.ax[i];
+        // Ignored nodes (wrappers a reader never sees) add no level.
+        let below = level + u32::from(!node.ignored);
+        for c in &node.child_ids {
+            if let Some(&ci) = frame.ax_by_id.get(c) {
+                queue.push_back(((f, ci), below));
+            }
+        }
+        // An <iframe>'s document continues below it.
+        if let Some(b) = node.backend_dom_node_id
+            && let Some(cf) = page.child_frame(f, b)
+            && let Some(r) = page.frames[cf].ax_root
+        {
+            queue.push_back(((cf, r), below));
+        }
+    }
+    levels
+}
+
 /// The element an action targets.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Target {
@@ -241,6 +301,128 @@ impl Episode {
         let header = ax::header(capture, self.version, self.budget, false);
         let fitted = ax::fit_lines(&lines, &header, self.budget);
         ax::render_lines(&header, &fitted)
+    }
+
+    /// A read of the page with this episode's refs (reconciled as [`Episode::observe`] does,
+    /// without changing the version or the last view): the elements in the viewport
+    /// ([`Filter::Visible`]), only its interactive ones, or the whole page; at most `depth`
+    /// levels of the accessibility tree below the document or below `root` (a ref, whose
+    /// subtree alone is read); fitted to `budget`. A `root` the episode does not know is an
+    /// error.
+    pub fn read(
+        &mut self,
+        capture: &Capture,
+        filter: Filter,
+        depth: u32,
+        root: Option<&str>,
+        budget: Budget,
+    ) -> Result<String, RefError> {
+        let page = Page::build(capture);
+        self.table
+            .reconcile(&ax::collect(&page), page.nav, self.step);
+        let lines = ax::build(&page, &mut self.table);
+        let start = match root {
+            Some(r) => {
+                let key = self
+                    .table
+                    .lookup(parse_ref(r).ok_or(RefError::Unknown)?)?
+                    .clone();
+                let f = page
+                    .frames
+                    .iter()
+                    .position(|fr| fr.frame_id == key.frame_id)
+                    .ok_or(RefError::Unknown)?;
+                let ax = page.frames[f]
+                    .ax
+                    .iter()
+                    .position(|n| n.backend_dom_node_id == Some(key.backend_id))
+                    .ok_or(RefError::Stale {
+                        since_step: self.step,
+                    })?;
+                Some((f, ax))
+            }
+            None => None,
+        };
+        let levels = ax_levels(&page, start);
+        let kept: Vec<Line> = lines
+            .into_iter()
+            .filter(|l| {
+                let Some(at) = l.at else { return false };
+                let Some(&level) = levels.get(&at) else {
+                    return false;
+                };
+                let shown = match filter {
+                    Filter::Visible => l.in_view,
+                    Filter::Interactive => {
+                        l.in_view
+                            && matches!(l.kind, ax::LineKind::Element | ax::LineKind::Container)
+                    }
+                    Filter::All => true,
+                };
+                shown && level < depth.max(1)
+            })
+            .collect();
+        let header = ax::header(capture, self.version, budget, false);
+        let fitted = ax::fit_lines(&kept, &header, budget);
+        Ok(ax::render_lines(&header, &fitted))
+    }
+
+    /// The elements whose role, name, value or nearby text contain the words of `query`
+    /// (case-insensitive), most words first, then those in the viewport, then document
+    /// order; at most `limit`. A word match, not a model: the first line says so.
+    pub fn find(&mut self, capture: &Capture, query: &str, limit: usize) -> String {
+        let page = Page::build(capture);
+        self.table
+            .reconcile(&ax::collect(&page), page.nav, self.step);
+        let lines = ax::build(&page, &mut self.table);
+        let words: Vec<String> = query
+            .to_lowercase()
+            .split(|c: char| !c.is_alphanumeric())
+            .filter(|w| w.chars().count() >= 2 && !STOP_WORDS.contains(w))
+            .map(str::to_string)
+            .collect();
+        let mut scored: Vec<(usize, bool, usize, &Line)> = Vec::new();
+        let mut context = String::new();
+        for (i, l) in lines.iter().enumerate() {
+            match l.kind {
+                ax::LineKind::Text | ax::LineKind::Heading => context = l.text.to_lowercase(),
+                ax::LineKind::Element | ax::LineKind::Container => {
+                    let own = l.text.to_lowercase();
+                    // Own words count twice, words of the text just before once.
+                    let score: usize = words
+                        .iter()
+                        .map(|w| {
+                            if own.contains(w.as_str()) {
+                                2
+                            } else {
+                                usize::from(context.contains(w.as_str()))
+                            }
+                        })
+                        .sum();
+                    if score > 0 {
+                        scored.push((score, l.in_view, i, l));
+                    }
+                }
+                _ => {}
+            }
+        }
+        scored.sort_by(|a, b| b.0.cmp(&a.0).then(b.1.cmp(&a.1)).then(a.2.cmp(&b.2)));
+        let total = scored.len();
+        let mut out = format!(
+            "find {}: {} (by the words in each element's role, name, value and the text before it)",
+            quote::quote(query),
+            match total {
+                0 => "no match".to_string(),
+                1 => "1 match".to_string(),
+                n if n > limit => format!("{n} matches, the best {limit}"),
+                n => format!("{n} matches"),
+            }
+        );
+        for (_, _, _, l) in scored.into_iter().take(limit) {
+            out.push('\n');
+            out.push_str(&l.text);
+        }
+        out
     }
 
     /// The lines the agent last saw (for tests of diff exactness).

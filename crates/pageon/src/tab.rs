@@ -57,6 +57,34 @@ pub enum Action {
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
         items: Vec<(String, String)>,
     },
+    /// Click with a button, a click count (1–3) and modifiers, on an element or at a viewport
+    /// point (`click e12 right`, `click 640,380 double ctrl+shift`).
+    ClickWith {
+        /// The element or the point.
+        at: At,
+        /// The button.
+        #[serde(default)]
+        button: pageon_js::Button,
+        /// Clicks (1 single, 2 double, 3 triple).
+        #[serde(default = "one")]
+        count: u8,
+        /// Modifier keys held.
+        #[serde(default)]
+        mods: pageon_js::Mods,
+        /// Only the `count`-th click of a sequence the protocol client drives press by press
+        /// (CDP sends a double click as two clicks, the second with `clickCount` 2).
+        #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+        nth: bool,
+    },
+    /// Hold a chord down for a time (ms of virtual time), as a person holding a key: `keydown`,
+    /// repeats every 33 ms after 500 ms, `keyup` (`hold shift 2000`).
+    Hold(String, u64),
+    /// Type text at the end of the focused element, as keystrokes (`type "hello"`).
+    TypeFocused(String),
+    /// Evaluate a JavaScript expression in an isolated world over the page's document (its DOM,
+    /// cookies and same-origin `fetch`, not its script globals); the value is the outcome's
+    /// `value`. Only when the operator allows it (`--allow-javascript-exec`).
+    Eval(String),
     /// Let virtual time pass (ms).
     Wait(u64),
     /// Load a URL in this tab.
@@ -74,6 +102,9 @@ pub enum Action {
         target: Option<String>,
         /// How far.
         by: ScrollBy,
+        /// The viewport point the wheel turns at (without a target).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        point: Option<(f64, f64)>,
     },
     /// Call a tool the page registered (WebMCP) with a JSON object; `origin` picks
     /// among frames that registered the same name.
@@ -86,6 +117,47 @@ pub enum Action {
         /// The input object.
         input: serde_json::Value,
     },
+}
+
+/// Where a [`Action::ClickWith`] lands: an element (by ref) or a viewport point.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum At {
+    /// An element.
+    Ref(String),
+    /// A viewport point (CSS pixels).
+    Point(f64, f64),
+}
+
+impl fmt::Display for At {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Ref(r) => f.write_str(r),
+            Self::Point(x, y) => write!(f, "{x},{y}"),
+        }
+    }
+}
+
+fn one() -> u8 {
+    1
+}
+
+/// `ctrl+shift` for modifiers (empty for none).
+fn mods_text(m: pageon_js::Mods) -> String {
+    let mut parts = Vec::new();
+    if m.ctrl {
+        parts.push("ctrl");
+    }
+    if m.shift {
+        parts.push("shift");
+    }
+    if m.alt {
+        parts.push("alt");
+    }
+    if m.meta {
+        parts.push("meta");
+    }
+    parts.join("+")
 }
 
 /// How far a [`Action::Scroll`] goes.
@@ -170,14 +242,43 @@ impl fmt::Display for Action {
             Self::PointerDown(x, y) => write!(f, "pointerdown {x},{y}"),
             Self::PointerUp(x, y) => write!(f, "pointerup {x},{y}"),
             Self::DragEvent { kind, x, y, .. } => write!(f, "dragevent {kind:?} {x},{y}"),
+            Self::ClickWith {
+                at,
+                button,
+                count,
+                mods,
+                ..
+            } => {
+                write!(f, "click {at}")?;
+                match button {
+                    pageon_js::Button::Left => {}
+                    pageon_js::Button::Middle => f.write_str(" middle")?,
+                    pageon_js::Button::Right => f.write_str(" right")?,
+                }
+                match count {
+                    2 => f.write_str(" double")?,
+                    3 => f.write_str(" triple")?,
+                    _ => {}
+                }
+                if !mods.none() {
+                    write!(f, " {}", mods_text(*mods))?;
+                }
+                Ok(())
+            }
+            Self::Hold(k, ms) => write!(f, "hold {k} {ms}"),
+            Self::TypeFocused(t) => write!(f, "type {t:?}"),
+            Self::Eval(e) => write!(f, "eval {e}"),
             Self::Wait(ms) => write!(f, "wait {ms}"),
             Self::Goto(u) => write!(f, "goto {u}"),
             Self::Back => f.write_str("back"),
             Self::Forward => f.write_str("forward"),
-            Self::Scroll { target, by } => {
+            Self::Scroll { target, by, point } => {
                 f.write_str("scroll")?;
                 if let Some(t) = target {
                     write!(f, " {t}")?;
+                }
+                if let Some((x, y)) = point {
+                    write!(f, " {x},{y}")?;
                 }
                 match by {
                     ScrollBy::IntoView => Ok(()),
@@ -235,15 +336,63 @@ impl FromStr for Action {
             Some((x.trim().parse::<f64>().ok()?, y.trim().parse::<f64>().ok()?))
         };
         Ok(match verb.to_ascii_lowercase().as_str() {
-            "click" => match point() {
-                Some((x, y)) => Self::ClickAt(x, y),
-                None => Self::Click(need("a ref, e.g. `click e5`")?),
-            },
+            "click" => {
+                let at = match point() {
+                    Some((x, y)) => At::Point(x, y),
+                    None => At::Ref(need("a ref, e.g. `click e5`")?),
+                };
+                let (mut button, mut count, mut mods) =
+                    (pageon_js::Button::Left, 1u8, pageon_js::Mods::default());
+                for w in tail.split_whitespace() {
+                    match w.to_ascii_lowercase().as_str() {
+                        "left" => button = pageon_js::Button::Left,
+                        "middle" => button = pageon_js::Button::Middle,
+                        "right" => button = pageon_js::Button::Right,
+                        "double" => count = 2,
+                        "triple" => count = 3,
+                        m => {
+                            for part in m.split('+') {
+                                mods = mods.with(part).ok_or_else(|| {
+                                    format!(
+                                        "`click` takes left, middle, right, double, triple and modifiers (ctrl+shift), not {w:?}"
+                                    )
+                                })?;
+                            }
+                        }
+                    }
+                }
+                match (at, button, count, mods.none()) {
+                    (At::Ref(r), pageon_js::Button::Left, 1, true) => Self::Click(r),
+                    (At::Point(x, y), pageon_js::Button::Left, 1, true) => Self::ClickAt(x, y),
+                    (at, button, count, _) => Self::ClickWith {
+                        at,
+                        button,
+                        count,
+                        mods,
+                        nth: false,
+                    },
+                }
+            }
             "hover" => match point() {
                 Some((x, y)) => Self::HoverAt(x, y),
                 None => Self::Hover(need("a ref, e.g. `hover e5`")?),
             },
+            // `type "text"`: into the focused element.
+            "type" if rest.starts_with('"') => Self::TypeFocused(unquote(rest)),
             "type" => Self::Type(need("a ref and text, e.g. `type e3 hello`")?, unquote(tail)),
+            "hold" => {
+                let key = need("a key and milliseconds, e.g. `hold shift 2000`")?;
+                let ms = tail.trim().parse().map_err(|_| {
+                    format!("`hold` needs milliseconds after the key, not {tail:?}")
+                })?;
+                Self::Hold(key, ms)
+            }
+            "eval" => {
+                if rest.is_empty() {
+                    return Err("`eval` needs an expression, e.g. `eval document.title`".into());
+                }
+                Self::Eval(rest.to_string())
+            }
             "drag" => {
                 let help =
                     "`drag` needs two refs: the element and where to drop it, e.g. `drag e3 e7`";
@@ -269,7 +418,11 @@ impl FromStr for Action {
                 need("a ref and an option, e.g. `select e7 Germany`")?,
                 vec![unquote(tail)],
             ),
-            "press" => Self::Press(need("a key, e.g. `press Enter`")?),
+            // A key, a chord or a sequence: `press Enter`, `press ctrl+a`, `press Down Down`.
+            "press" if rest.is_empty() => {
+                return Err("`press` needs a key, e.g. `press Enter`".into());
+            }
+            "press" => Self::Press(rest.to_string()),
             "wait" => Self::Wait(
                 need("milliseconds, e.g. `wait 500`")?
                     .parse()
@@ -300,11 +453,45 @@ impl FromStr for Action {
             }
             other => {
                 return Err(format!(
-                    "unknown action {other:?}: use click, type, upload, drag, press, select, hover, scroll, wait, goto, back, forward or tool"
+                    "unknown action {other:?}: use click, type, upload, drag, press, hold, select, hover, scroll, wait, goto, back, forward, tool or eval"
                 ));
             }
         })
     }
+}
+
+/// The chords of a `press`: one key (`Enter`, ` `), a chord (`ctrl+a`), or a space-separated
+/// sequence where `xN` repeats the key before it (`Down Down Enter`, `Tab x3`); key names as
+/// the DOM names them or as computer-use models send them (`Return`, `Page_Down`, `super`).
+pub(crate) fn key_sequence(spec: &str) -> Result<Vec<(pageon_js::Mods, String)>, String> {
+    if spec.chars().count() == 1 {
+        return Ok(vec![(pageon_js::Mods::default(), spec.to_string())]);
+    }
+    let mut keys: Vec<(pageon_js::Mods, String)> = Vec::new();
+    for word in spec.split_whitespace() {
+        let times = word
+            .strip_prefix('x')
+            .or_else(|| word.strip_prefix('*'))
+            .and_then(|n| n.parse::<usize>().ok());
+        match (times, keys.last().cloned()) {
+            (Some(n), Some(last)) if (1..=100).contains(&n) => {
+                keys.extend(std::iter::repeat_n(last, n - 1));
+            }
+            (Some(_), Some(_)) => return Err(format!("{word:?}: repeat a key 1 to 100 times")),
+            _ => keys.push(
+                pageon_js::chord(word).ok_or_else(|| {
+                    format!("the key {word:?} (keys: Enter, Tab, Escape, ctrl+a, shift+Tab, ArrowDown or Down, Page_Down, F5, a)")
+                })?,
+            ),
+        }
+        if keys.len() > 1000 {
+            return Err("more than 1,000 keys in one press".into());
+        }
+    }
+    if keys.is_empty() {
+        return Err("a press without a key".into());
+    }
+    Ok(keys)
 }
 
 /// `down`, `down 300`, `by 120,-40`, `e12`, `e5 down [PX]`.
@@ -312,9 +499,19 @@ fn parse_scroll(rest: &str) -> Result<Action, String> {
     const HELP: &str = "`scroll` needs a direction, a ref or both: `scroll down`, `scroll down 300`, `scroll by 0,300`, `scroll e12`, `scroll e5 down`";
     let words: Vec<&str> = rest.split_whitespace().collect();
     let is_ref = |w: &str| Direction::parse(w).is_none() && w != "by";
-    let (target, words) = match words.split_first() {
-        Some((w, more)) if is_ref(w) => (Some((*w).to_string()), more),
+    // A viewport point (`scroll 640,380 down 300`): the wheel turns there.
+    let at = |w: &str| {
+        let (x, y) = w.split_once(',')?;
+        Some((x.trim().parse::<f64>().ok()?, y.trim().parse::<f64>().ok()?))
+            .filter(|(x, y)| x.is_finite() && y.is_finite())
+    };
+    let (point, words) = match words.split_first() {
+        Some((w, more)) if at(w).is_some() => (at(w), more),
         _ => (None, words.as_slice()),
+    };
+    let (target, words) = match words.split_first() {
+        Some((w, more)) if point.is_none() && is_ref(w) => (Some((*w).to_string()), more),
+        _ => (None, words),
     };
     let px = |w: &str| {
         w.parse::<f64>()
@@ -324,6 +521,7 @@ fn parse_scroll(rest: &str) -> Result<Action, String> {
     };
     let by = match words {
         [] if target.is_some() => ScrollBy::IntoView,
+        [] if point.is_some() => return Err(HELP.into()),
         [d] => ScrollBy::Page(Direction::parse(d).ok_or(HELP)?),
         [d, n] if Direction::parse(d).is_some() => {
             let (sx, sy) = Direction::parse(d).map_or((0.0, 0.0), Direction::sign);
@@ -343,7 +541,7 @@ fn parse_scroll(rest: &str) -> Result<Action, String> {
         }
         _ => return Err(HELP.into()),
     };
-    Ok(Action::Scroll { target, by })
+    Ok(Action::Scroll { target, by, point })
 }
 
 /// A file a navigation delivered instead of a page.
@@ -419,6 +617,20 @@ pub struct Outcome {
     /// The agent's click opened a file chooser (on this ref); `upload REF NAME` fills it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub file_chooser: Option<String>,
+    /// What a coordinate action reached: the element's line (`button e12 "Pay now"`), marked
+    /// third-party when it lies in another origin's frame.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub target: Option<String>,
+    /// What `eval` returned, as text: page data, cut at 50,000 characters.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub value: Option<String>,
+    /// Console messages (level, text) the main document logged during the action (at most 200,
+    /// each cut at 500 characters).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub console: Vec<(String, String)>,
+    /// `type "…"` found nothing editable focused: the keys went to the page.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub unfocused: bool,
     /// What a drag did (HTML drag and drop, dropped or not; or the data of an intercepted
     /// drag).
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -675,6 +887,8 @@ pub enum ActionError {
     Engine(String),
     /// A page tool could not be called, or failed; page text is quoted.
     Tool(String),
+    /// `eval` threw or its promise was rejected (the message is page data).
+    Script(String),
 }
 
 impl ActionError {
@@ -719,6 +933,10 @@ impl ActionError {
                 "check the tool's name and parameters in the observation, or act on the page instead"
                     .into()
             }
+            Self::Script(_) => {
+                "fix the expression: it runs in an isolated world over the page's document (its DOM, not its script globals)"
+                    .into()
+            }
         }
     }
 }
@@ -740,6 +958,7 @@ impl fmt::Display for ActionError {
             Self::File(m) => write!(f, "upload refused: {m}"),
             Self::Engine(m) => write!(f, "the content process failed: {m}"),
             Self::Tool(m) => write!(f, "tool failed: {m}"),
+            Self::Script(m) => write!(f, "script failed: {m}"),
         }
     }
 }
@@ -812,6 +1031,8 @@ pub struct Tab<'s, E: Env> {
     tools_seen: Option<String>,
     /// The frame where the pointer's button went down (protocol clients' presses).
     pressed_frame: Option<usize>,
+    /// The main document's engine and how many console messages the tab has reported from it.
+    console_seen: (usize, u64),
     /// A drag that starts is handed to the protocol client instead of running (CDP
     /// `Input.setInterceptDrags`).
     intercept_drags: bool,
@@ -1066,6 +1287,7 @@ impl<'s, E: Env> Tab<'s, E> {
             record_steps,
             observed: 0,
             pressed_frame: None,
+            console_seen: (0, 0),
             intercept_drags: false,
         };
         let mut tab = tab;
@@ -1142,7 +1364,33 @@ impl<'s, E: Env> Tab<'s, E> {
         s
     }
 
+    /// The console messages the main document logged since the tab last reported (at most
+    /// 200, each cut at 500 characters).
+    fn collect_console(&mut self, out: &mut Outcome) {
+        let Ok(live) = self.live(0) else { return };
+        let id = Rc::as_ptr(&live.engine) as usize;
+        let seen = if self.console_seen.0 == id {
+            self.console_seen.1
+        } else {
+            // A new engine (another document): only what it logged since this action began
+            // is new, which a fresh count cannot tell; report what it holds.
+            0
+        };
+        let (lines, total) = live.engine.borrow().console_since(seen);
+        self.console_seen = (id, total);
+        let skip = lines.len().saturating_sub(200);
+        out.console = lines
+            .into_iter()
+            .skip(skip)
+            .map(|(level, text)| (level, cut_chars(&text, 500)))
+            .collect();
+    }
+
     fn redact_outcome(&self, o: &mut Outcome) {
+        o.target = o.target.take().map(|t| self.redact(t));
+        for (_, text) in &mut o.console {
+            *text = self.redact(std::mem::take(text));
+        }
         if self.session.secrets().is_empty() {
             return;
         }
@@ -1386,6 +1634,7 @@ impl<'s, E: Env> Tab<'s, E> {
         }
         let mut requests = net.borrow_mut().take_log();
         out.requests.append(&mut requests);
+        self.collect_console(&mut out);
         self.redact_outcome(&mut out);
         self.session.seen(self.doc.loaded_at.max(self.now()));
         // A page's tool can echo what was typed into it.
@@ -1629,14 +1878,95 @@ impl<'s, E: Env> Tab<'s, E> {
                 };
                 self.finish(0, &live, out)
             }
-            Action::Press(key) => {
+            Action::Press(spec) => {
                 // Keys go to the frame that holds focus.
+                let keys = key_sequence(spec).map_err(ActionError::Unsupported)?;
                 let frame = self.focused_frame();
                 let live = self.live(frame)?;
                 let errors = self.frame_errors(frame);
-                live.engine.borrow_mut().press(live.realm, key);
+                {
+                    let mut engine = live.engine.borrow_mut();
+                    for (mods, key) in &keys {
+                        engine.press_chord(live.realm, *mods, key);
+                    }
+                }
                 self.after(frame, &live, errors, out)
             }
+            Action::Hold(spec, ms) => {
+                let (mods, key) = pageon_js::chord(spec)
+                    .ok_or_else(|| ActionError::Unsupported(format!("unknown key {spec:?}")))?;
+                let frame = self.focused_frame();
+                let live = self.live(frame)?;
+                let errors = self.frame_errors(frame);
+                live.engine
+                    .borrow_mut()
+                    .key_hold(live.realm, mods, &key, true, false);
+                // Chrome's auto-repeat: after 500 ms, a `keydown` every 33 ms.
+                let mut held = 0u64;
+                while held < *ms {
+                    let step = if held < 500 {
+                        (500 - held).min(*ms - held)
+                    } else {
+                        33.min(*ms - held)
+                    };
+                    live.engine.borrow_mut().wait(step, self.session.env());
+                    held += step;
+                    if held >= 500 && held < *ms {
+                        live.engine
+                            .borrow_mut()
+                            .key_hold(live.realm, mods, &key, true, true);
+                    }
+                }
+                live.engine
+                    .borrow_mut()
+                    .key_hold(live.realm, mods, &key, false, false);
+                let r = self.after(frame, &live, errors, out);
+                out.settled.virtual_ms += ms;
+                r
+            }
+            Action::TypeFocused(text) => {
+                let frame = self.focused_frame();
+                let value = match text.strip_prefix("secret://") {
+                    // The vault's rule as for `type REF`: released for the origin of the frame
+                    // that holds focus, and only into an editable element there.
+                    Some(name) => {
+                        let live = self.live(frame)?;
+                        let editable = live.engine.borrow().focused_editable(live.realm);
+                        if !editable {
+                            return Err(ActionError::Secret(format!(
+                                "secret://{name} is typed only into a focused field: nothing editable has focus"
+                            )));
+                        }
+                        let origin = self.frame_origin(frame);
+                        let v = self
+                            .session
+                            .env()
+                            .secret(name, &origin)
+                            .map_err(|e| ActionError::Secret(e.to_string()))?;
+                        self.session.keep_secret(v.clone(), text.clone());
+                        v
+                    }
+                    None => text.clone(),
+                };
+                let live = self.live(frame)?;
+                let errors = self.frame_errors(frame);
+                let typed = {
+                    let mut engine = live.engine.borrow_mut();
+                    match (text.starts_with("secret://"), engine.focused(live.realm)) {
+                        (true, Some(f)) => {
+                            engine.fill(live.realm, f, &value);
+                            true
+                        }
+                        _ => engine.type_focused(live.realm, &value),
+                    }
+                };
+                if !typed {
+                    out.scrolled.clear();
+                    out.unfocused = true;
+                }
+                self.after(frame, &live, errors, out)
+            }
+            Action::Eval(expr) => self.eval(expr, out),
             Action::HoverAt(x, y) if self.pressed_frame.is_some() => {
                 // A move with the button held: a drag step in the frame of the press.
                 let (frame, hit, x, y) = self.hit(*x, *y);
@@ -1715,6 +2045,43 @@ impl<'s, E: Env> Tab<'s, E> {
                 out.drag = Some(d);
                 self.after(frame, &live, errors, out)
             }
+            Action::ClickWith {
+                at,
+                button,
+                count,
+                mods,
+                nth,
+            } => {
+                let (frame, node, point) = match at {
+                    At::Ref(r) => {
+                        let (frame, node, _) = self.resolve(r)?;
+                        self.scroll_into_view(frame, node, out)?;
+                        let (frame, node, point) = self.resolve(r)?;
+                        self.check(frame, node, r, &Action::Click(r.clone()))?;
+                        (frame, node, point)
+                    }
+                    At::Point(x, y) => {
+                        out.target = Some(self.describe_at(*x, *y));
+                        let (frame, hit, x, y) = self.hit(*x, *y);
+                        let Some(node) = hit else { return Ok(()) };
+                        (frame, node, Some((x, y)))
+                    }
+                };
+                let live = self.live(frame)?;
+                let errors = self.frame_errors(frame);
+                live.engine.borrow_mut().click_ex(
+                    live.realm,
+                    node,
+                    point,
+                    pageon_js::ClickKind {
+                        button: *button,
+                        count: *count,
+                        mods: *mods,
+                        nth: *nth,
+                    },
+                );
+                self.after(frame, &live, errors, out)
+            }
             Action::ClickAt(x, y) | Action::HoverAt(x, y) => {
                 let (frame, hit, x, y) = self.hit(*x, *y);
                 let Some(node) = hit else { return Ok(()) };
@@ -1738,6 +2105,7 @@ impl<'s, E: Env> Tab<'s, E> {
             Action::Scroll {
                 target: Some(r),
                 by: ScrollBy::IntoView,
+                ..
             } => {
                 let (frame, node, _) = self.resolve(r)?;
                 if !self.scroll_into_view(frame, node, out)? {
@@ -1745,13 +2113,18 @@ impl<'s, E: Env> Tab<'s, E> {
                 }
                 Ok(())
             }
-            Action::Scroll { target, by } => {
-                let (frame, node) = match target {
-                    Some(r) => {
+            Action::Scroll { target, by, point } => {
+                let (frame, node, point) = match (target, point) {
+                    (Some(r), _) => {
                         let (f, n, _) = self.resolve(r)?;
-                        (f, Some(n))
+                        (f, Some(n), None)
                     }
-                    None => (0, None),
+                    // The wheel turns over whatever is at the point, in its frame.
+                    (None, Some((x, y))) => {
+                        let (f, hit, x, y) = self.hit(*x, *y);
+                        (f, hit, Some((x, y)))
+                    }
+                    (None, None) => (0, None, None),
                 };
                 let amount = match *by {
                     ScrollBy::Page(d) => {
@@ -1767,10 +2140,12 @@ impl<'s, E: Env> Tab<'s, E> {
                 };
                 let live = self.live(frame)?;
                 let errors = self.frame_errors(frame);
-                let wheeled = live
-                    .engine
-                    .borrow_mut()
-                    .wheel(live.realm, None, node, amount);
+                let wheeled = live.engine.borrow_mut().wheel(
+                    live.realm,
+                    point,
+                    node.filter(|_| point.is_none()),
+                    amount,
+                );
                 out.scrolled.push(match wheeled {
                     pageon_js::Wheeled::Moved(s, (x, y)) => {
                         let at = format!("{},{}", x.round(), y.round());
@@ -1823,7 +2198,9 @@ impl<'s, E: Env> Tab<'s, E> {
                                     reason: Reason::NotEditable,
                                 });
                             }
-                            let value = match text.strip_prefix("secret://") {
+                            match text.strip_prefix("secret://") {
+                                // A secret is filled at once, as a password manager fills it:
+                                // no keystrokes, so the page never holds part of it.
                                 Some(name) => {
                                     let origin = self.frame_origin(frame);
                                     let v = self
@@ -1832,11 +2209,10 @@ impl<'s, E: Env> Tab<'s, E> {
                                         .secret(name, &origin)
                                         .map_err(|e| ActionError::Secret(e.to_string()))?;
                                     self.session.keep_secret(v.clone(), text.clone());
-                                    v
+                                    engine.fill(live.realm, node, &v);
                                 }
-                                None => text.clone(),
-                            };
-                            engine.type_text(live.realm, node, &value);
+                                None => engine.type_text(live.realm, node, text),
+                            }
                         }
                         Action::Select(_, values) => {
                             let missing = engine.select(live.realm, node, values);
@@ -1854,6 +2230,161 @@ impl<'s, E: Env> Tab<'s, E> {
                 self.after(frame, &live, errors, out)
             }
         }
+    }
+
+    /// A read with the agent's refs (see [`crate::Read`]), redacted; a ref the episode no
+    /// longer knows is a stale or unknown ref.
+    pub fn read(&mut self, read: &crate::Read) -> Result<String, ActionError> {
+        let capture = self.doc.capture(Viewport::default());
+        let text = match read {
+            crate::Read::Page {
+                filter,
+                depth,
+                root,
+                budget,
+            } => self
+                .episode
+                .read(&capture, *filter, *depth, root.as_deref(), *budget)
+                .map_err(|e| {
+                    let r = root.clone().unwrap_or_default();
+                    match e {
+                        RefError::Unknown | RefError::Ambiguous { .. } => {
+                            ActionError::UnknownRef(r)
+                        }
+                        _ => ActionError::StaleRef(r),
+                    }
+                })?,
+            crate::Read::Find { query, limit } => self.episode.find(&capture, query, *limit),
+            crate::Read::Line(r) => {
+                let line = self
+                    .episode
+                    .elements(&capture)
+                    .into_iter()
+                    .find(|e| &e.reference == r)
+                    .map(|e| e.line);
+                match line {
+                    Some(l) => l,
+                    None => {
+                        self.resolve(r)?;
+                        return Err(ActionError::StaleRef(r.clone()));
+                    }
+                }
+            }
+            crate::Read::At(x, y) => self.describe_at(*x, *y),
+            crate::Read::Markdown(budget) => {
+                self.doc
+                    .view(crate::Dump::Markdown, Viewport::default(), *budget)
+            }
+        };
+        Ok(self.redact(text))
+    }
+
+    /// `eval EXPR`: evaluated in the main document's isolated world `pageon-exec` (its DOM,
+    /// cookies and same-origin `fetch`; never the page's script globals), settled like any
+    /// action; a promise is awaited within the settle window. The value is page data.
+    fn eval(&mut self, expr: &str, out: &mut Outcome) -> Result<(), ActionError> {
+        let live = self.live(0)?;
+        let errors = self.frame_errors(0);
+        let (world, ran) = {
+            let mut engine = live.engine.borrow_mut();
+            let world = engine
+                .world(live.realm, "pageon-exec")
+                .map_err(ActionError::Script)?;
+            let ran = engine.evaluate(world, expr);
+            (world, ran)
+        };
+        let settled = self.after(0, &live, errors, out);
+        let handle = ran.map_err(|t| ActionError::Script(page_text(&t.text)))?;
+        settled?;
+        if out.navigated.is_some() {
+            out.value = Some("undefined".into());
+            return Ok(());
+        }
+        let mut engine = live.engine.borrow_mut();
+        let value = match engine.promise_state(world, handle) {
+            pageon_js::PromiseState::NotPromise => handle,
+            pageon_js::PromiseState::Fulfilled(v) => v,
+            pageon_js::PromiseState::Rejected(e) => {
+                let why = engine
+                    .describe(world, e, false)
+                    .ok()
+                    .and_then(|d| {
+                        d.get("description")
+                            .or(d.get("value"))
+                            .map(|v| v.as_str().map_or_else(|| v.to_string(), str::to_string))
+                    })
+                    .unwrap_or_else(|| "rejected".into());
+                let why = why.lines().next().unwrap_or_default().to_string();
+                return Err(ActionError::Script(format!(
+                    "rejected: {}",
+                    page_text(&why)
+                )));
+            }
+            pageon_js::PromiseState::Pending => {
+                return Err(ActionError::Script(format!(
+                    "the promise did not settle within {} ms",
+                    self.options.settle_ms
+                )));
+            }
+        };
+        let d = engine
+            .describe(world, value, true)
+            .map_err(ActionError::Script)?;
+        let text = match d.get("value") {
+            Some(serde_json::Value::String(s)) => s.clone(),
+            Some(v) if d.get("type").and_then(serde_json::Value::as_str) != Some("undefined") => {
+                v.to_string()
+            }
+            _ => d
+                .get("description")
+                .or(d.get("unserializableValue"))
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or(
+                    d.get("type")
+                        .and_then(serde_json::Value::as_str)
+                        .unwrap_or("undefined"),
+                )
+                .to_string(),
+        };
+        out.value = Some(self.redact(cut_chars(&text, 50_000)));
+        Ok(())
+    }
+
+    /// What is at a viewport point, as the agent knows it: the line of the element with a ref
+    /// that contains what is painted there (`button e12 "Pay now"`), marked when it lies in a
+    /// frame of another origin; else the element's tag.
+    pub(crate) fn describe_at(&mut self, x: f64, y: f64) -> String {
+        let (frame, hit, ..) = self.hit(x, y);
+        let Some(node) = hit else {
+            return format!("nothing at {x},{y}");
+        };
+        let capture = self.doc.capture(Viewport::default());
+        let elements = self.episode.elements(&capture);
+        let owned: Vec<(usize, NodeId, String)> = elements
+            .into_iter()
+            .filter_map(|e| self.doc.node_for(&e.target).map(|(f, n)| (f, n, e.line)))
+            .collect();
+        let third = if frame != 0 && self.frame_origin(frame) != self.frame_origin(0) {
+            format!(" · third-party frame {}", self.frame_origin(frame))
+        } else {
+            String::new()
+        };
+        let Some(doc) = self.frame_document(frame) else {
+            return format!("an element at {x},{y}{third}");
+        };
+        let dom = &doc.dom;
+        let mut cur = Some(node);
+        while let Some(n) = cur {
+            if let Some((_, _, line)) = owned.iter().find(|(f, m, _)| *f == frame && *m == n) {
+                return self.redact(format!("{}{third}", line.trim()));
+            }
+            cur = dom.parent(n);
+        }
+        let tag = dom
+            .get(node)
+            .and_then(|n| n.local_name().map(str::to_string))
+            .unwrap_or_else(|| "node".into());
+        format!("<{tag}> without a ref{third}")
     }
 
     /// `upload REF NAMES`: a file input is filled directly (it may be hidden, as file inputs
@@ -2671,6 +3202,16 @@ fn params(schema: Option<&str>) -> String {
         })
         .collect::<Vec<_>>()
         .join(", ")
+}
+
+/// `s` cut at `max` characters, saying so.
+fn cut_chars(s: &str, max: usize) -> String {
+    if s.chars().count() <= max {
+        return s.to_string();
+    }
+    let mut t: String = s.chars().take(max).collect();
+    t.push_str(&format!(" … [cut at {max} characters]"));
+    t
 }
 
 #[cfg(test)]

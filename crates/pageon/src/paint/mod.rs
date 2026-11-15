@@ -54,6 +54,8 @@ pub enum Area {
     FullPage,
     /// A rectangle in document CSS px (may extend below the fold).
     Clip(Rect),
+    /// A rectangle in viewport CSS px (where the viewport is scrolled to).
+    ViewportClip(Rect),
 }
 
 /// Image format.
@@ -445,6 +447,14 @@ impl<E: Env> Tab<'_, E> {
         }
         let (dw, dh) = layout.document_size();
         let area = match o.area {
+            Area::ViewportClip(r) => {
+                let (x, y) = layout.viewport_scroll();
+                Rect {
+                    x: r.x + x,
+                    y: r.y + y,
+                    ..r
+                }
+            }
             // The viewport where it is scrolled to.
             Area::Viewport => {
                 let (x, y) = layout.viewport_scroll();

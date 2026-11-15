@@ -838,9 +838,11 @@ pub mod console {
             parts.push(cv::string(cx, l).unwrap_or_else(|_| "<value>".into()));
         }
         let mut sh = cx.realm.shared.borrow_mut();
-        if sh.console.len() < 1000 {
-            sh.console.push((level.to_string(), parts.join(" ")));
+        if sh.console.len() >= 1000 {
+            sh.console.remove(0);
         }
+        sh.console.push((level.to_string(), parts.join(" ")));
+        sh.console_total += 1;
         Ok(())
     }
 

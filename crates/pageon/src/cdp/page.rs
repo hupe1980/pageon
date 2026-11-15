@@ -658,18 +658,45 @@ impl<E: Env> Session<'_, E> {
                             Action::Scroll {
                                 target: None,
                                 by: crate::ScrollBy::Pixels(num("deltaX"), num("deltaY")),
+                                point: None,
                             },
                         );
                     }
                     "mouseReleased" => {
                         let was = self.targets[ti].pressed.take();
-                        let left = matches!(s("button").as_str(), "left" | "");
-                        match was {
+                        let button = match s("button").as_str() {
+                            "right" => Some(pageon_js::Button::Right),
+                            "middle" => Some(pageon_js::Button::Middle),
+                            "left" | "" => Some(pageon_js::Button::Left),
+                            _ => None,
+                        };
+                        let count = params
+                            .get("clickCount")
+                            .and_then(Json::as_u64)
+                            .map_or(1, |c| c.clamp(1, 3) as u8);
+                        let mods = modifiers(params);
+                        match (was, button) {
                             // Pressed and released without a move: a click, as before.
-                            Some((_, false)) if left => {
+                            (Some((_, false)), Some(pageon_js::Button::Left))
+                                if count == 1 && mods.none() =>
+                            {
                                 let _ = self.act(ti, Action::ClickAt(x, y));
                             }
-                            Some((_, true)) => {
+                            // Another button, the second or third click of a sequence (the
+                            // client sends each), or modifiers held.
+                            (Some((_, false)), Some(button)) => {
+                                let _ = self.act(
+                                    ti,
+                                    Action::ClickWith {
+                                        at: crate::At::Point(x, y),
+                                        button,
+                                        count,
+                                        mods,
+                                        nth: true,
+                                    },
+                                );
+                            }
+                            (Some((_, true)), _) => {
                                 let _ = self.act(ti, Action::PointerUp(x, y));
                             }
                             _ => {}
@@ -731,7 +758,29 @@ impl<E: Env> Session<'_, E> {
                         _ => key,
                     };
                     if !key.is_empty() {
-                        let _ = self.act(ti, Action::Press(key));
+                        // Modifiers held: a chord (`ctrl+a`, `shift+Tab`).
+                        let mods = modifiers(params);
+                        let mut chord = String::new();
+                        for (on, name) in [
+                            (mods.ctrl, "ctrl+"),
+                            (mods.shift, "shift+"),
+                            (mods.alt, "alt+"),
+                            (mods.meta, "meta+"),
+                        ] {
+                            if on {
+                                chord.push_str(name);
+                            }
+                        }
+                        // A shifted character is already the character the key types.
+                        if chord == "shift+" && key.chars().count() == 1 {
+                            chord.clear();
+                        }
+                        chord.push_str(if key == " " && !chord.is_empty() {
+                            "space"
+                        } else {
+                            &key
+                        });
+                        let _ = self.act(ti, Action::Press(chord));
                     }
                 } else if ty == "char" && params.get("key").is_none() {
                     // A bare character (keyboard.sendCharacter).
@@ -930,4 +979,15 @@ pub(super) fn set_cookies<E: Env>(
     }
     session.add_cookies(&out);
     Ok(json!({}))
+}
+
+/// CDP's `modifiers` bitmask: 1 alt, 2 ctrl, 4 meta, 8 shift.
+fn modifiers(params: &Json) -> pageon_js::Mods {
+    let m = params.get("modifiers").and_then(Json::as_u64).unwrap_or(0);
+    pageon_js::Mods {
+        alt: m & 1 != 0,
+        ctrl: m & 2 != 0,
+        meta: m & 4 != 0,
+        shift: m & 8 != 0,
+    }
 }

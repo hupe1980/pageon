@@ -341,6 +341,10 @@ fn serve_on(input: Box<dyn BufRead>, output: Box<dyn Write>) -> Result<(), Strin
                 .get_mut(&tab)
                 .map(|t| json(&if full { t.observe_full() } else { t.observe() }))
                 .ok_or_else(|| no_tab(tab)),
+            Op::Read { tab, read } => tabs
+                .get_mut(&tab)
+                .map(|t| json(&t.read(&read)))
+                .ok_or_else(|| no_tab(tab)),
             Op::View {
                 tab,
                 kind,

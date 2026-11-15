@@ -395,6 +395,13 @@ pub mod event_target {
         } else if radio {
             crate::dom::html_input_element::set_checked_state(cx, el, true);
         }
+        // A trusted click's count and modifiers are the input action's.
+        let (detail, mods) = if trusted {
+            let st = cx.st();
+            (i32::from(st.click_count.max(1)), st.mods)
+        } else {
+            (1, crate::dom::input::Mods::default())
+        };
         let data = EventData {
             ty: "click".into(),
             bubbles: true,
@@ -403,9 +410,10 @@ pub mod event_target {
             initialized: true,
             trusted,
             time: now(cx),
-            ui_detail: 1,
+            ui_detail: detail,
             input: InputData {
                 button: (0, 0),
+                mods: (mods.ctrl, mods.shift, mods.alt, mods.meta),
                 client: point,
                 screen: (point.0 as i32, point.1 as i32),
                 page_offset: crate::dom::scroll::offset(cx, crate::dom::scroll::Scroller::Viewport),

@@ -116,6 +116,13 @@ Tool results never contain it, so a hijacked model cannot hand the live view to 
 person has the page, the agent's other calls wait; a call made before the person starts closes
 the view.
 
+## Claude's and OpenAI's tools
+
+Applications that call a model themselves can have `pageon mcp` run Anthropic's browser and
+computer toolsets and OpenAI's computer tool: `pageon/toolset/definition` and
+`pageon/toolset/run` sit beside MCP and are never in `tools/list`. See
+[Claude & OpenAI tools](@/docs/toolsets.md).
+
 ## Page tools (WebMCP)
 
 Tools a page registers with `document.modelContext.registerTool` appear first in the

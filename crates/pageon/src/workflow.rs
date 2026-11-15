@@ -229,6 +229,7 @@ impl fmt::Display for WStep {
                 let text = Action::Scroll {
                     target: target.as_ref().map(|_| "\u{1}".to_string()),
                     by: *by,
+                    point: None,
                 }
                 .to_string();
                 match target {
@@ -406,7 +407,11 @@ pub fn compile(steps: &[Step]) -> Result<Workflow, String> {
             Action::Goto(url) => WStep::Goto { url },
             Action::Back => WStep::Back,
             Action::Forward => WStep::Forward,
-            Action::Scroll { target, by } => WStep::Scroll {
+            Action::Scroll {
+                target,
+                by,
+                point: None,
+            } => WStep::Scroll {
                 target: target.as_deref().map(locator),
                 by,
             },
@@ -433,6 +438,11 @@ pub fn compile(steps: &[Step]) -> Result<Workflow, String> {
                 }
             }
             Action::ClickAt(..)
+            | Action::ClickWith { .. }
+            | Action::Hold(..)
+            | Action::TypeFocused(_)
+            | Action::Eval(_)
+            | Action::Scroll { point: Some(_), .. }
             | Action::HoverAt(..)
             | Action::PointerDown(..)
             | Action::PointerUp(..)
@@ -744,6 +754,7 @@ pub fn run(
             WStep::Back => Action::Back,
             WStep::Forward => Action::Forward,
             WStep::Scroll { by, .. } => Action::Scroll {
+                point: None,
                 target: reference.clone(),
                 by: *by,
             },

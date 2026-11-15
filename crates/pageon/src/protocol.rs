@@ -36,6 +36,10 @@ pub(crate) enum Op {
         tab: u32,
         full: bool,
     },
+    Read {
+        tab: u32,
+        read: crate::Read,
+    },
     View {
         tab: u32,
         kind: Dump,

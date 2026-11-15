@@ -10,6 +10,166 @@ use crate::dom::event_target::{dispatch, fire, move_focus};
 use crate::generated::Iface;
 use crate::realm::{EventData, InputData, NavRequest, Slot, Target};
 
+/// Modifier keys held during an input action.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct Mods {
+    /// Control.
+    pub ctrl: bool,
+    /// Shift.
+    pub shift: bool,
+    /// Alt (Option).
+    pub alt: bool,
+    /// Meta (Command, Super, Windows).
+    pub meta: bool,
+}
+
+impl Mods {
+    /// The modifier a name stands for (`ctrl`, `control`, `shift`, `alt`, `option`, `meta`,
+    /// `super`, `cmd`, `command`, `win`), case-insensitive.
+    pub fn with(mut self, name: &str) -> Option<Self> {
+        match name.to_ascii_lowercase().as_str() {
+            "ctrl" | "control" => self.ctrl = true,
+            "shift" => self.shift = true,
+            "alt" | "option" => self.alt = true,
+            "meta" | "super" | "cmd" | "command" | "win" => self.meta = true,
+            _ => return None,
+        }
+        Some(self)
+    }
+
+    /// Whether no modifier is held.
+    pub fn none(self) -> bool {
+        self == Self::default()
+    }
+
+    /// The held modifiers' DOM key names, in pressing order.
+    fn keys(self) -> Vec<&'static str> {
+        [
+            (self.ctrl, "Control"),
+            (self.shift, "Shift"),
+            (self.alt, "Alt"),
+            (self.meta, "Meta"),
+        ]
+        .into_iter()
+        .filter_map(|(on, k)| on.then_some(k))
+        .collect()
+    }
+
+    fn tuple(self) -> (bool, bool, bool, bool) {
+        (self.ctrl, self.shift, self.alt, self.meta)
+    }
+}
+
+/// A mouse button.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum Button {
+    /// The primary button.
+    #[default]
+    Left,
+    /// The wheel button.
+    Middle,
+    /// The secondary button.
+    Right,
+}
+
+impl Button {
+    /// `MouseEvent.button`.
+    fn code(self) -> i16 {
+        match self {
+            Self::Left => 0,
+            Self::Middle => 1,
+            Self::Right => 2,
+        }
+    }
+
+    /// The button's bit in `MouseEvent.buttons`.
+    fn mask(self) -> u16 {
+        match self {
+            Self::Left => 1,
+            Self::Middle => 4,
+            Self::Right => 2,
+        }
+    }
+}
+
+/// How a click is given: the button, the clicks (1 single, 2 double, 3 triple), the modifiers
+/// held, and whether only the `count`-th click runs (a protocol client sends each click).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct ClickKind {
+    /// The button.
+    pub button: Button,
+    /// The click count.
+    pub count: u8,
+    /// Modifier keys.
+    pub mods: Mods,
+    /// Only the `count`-th click.
+    pub nth: bool,
+}
+
+/// The DOM key for a key name, accepting xdotool-style names as computer-use models send them
+/// (`Return`, `BackSpace`, `Page_Down`, `Left`, `super` …); `None` for an unknown name.
+pub fn key_name(name: &str) -> Option<String> {
+    let mut chars = name.chars();
+    if let (Some(c), None) = (chars.next(), chars.next()) {
+        return Some(c.to_string());
+    }
+    let k = match name.to_ascii_lowercase().as_str() {
+        "return" | "enter" | "kp_enter" => "Enter",
+        "tab" => "Tab",
+        "backspace" => "Backspace",
+        "escape" | "esc" => "Escape",
+        "delete" | "del" => "Delete",
+        "insert" => "Insert",
+        "home" => "Home",
+        "end" => "End",
+        "page_up" | "pageup" | "prior" => "PageUp",
+        "page_down" | "pagedown" | "next" => "PageDown",
+        "left" | "arrowleft" => "ArrowLeft",
+        "right" | "arrowright" => "ArrowRight",
+        "up" | "arrowup" => "ArrowUp",
+        "down" | "arrowdown" => "ArrowDown",
+        "space" => " ",
+        "ctrl" | "control" | "control_l" | "control_r" => "Control",
+        "shift" | "shift_l" | "shift_r" => "Shift",
+        "alt" | "option" | "alt_l" | "alt_r" => "Alt",
+        "meta" | "super" | "super_l" | "super_r" | "cmd" | "command" | "win" => "Meta",
+        "capslock" | "caps_lock" => "CapsLock",
+        f if f.len() <= 3
+            && f.starts_with('f')
+            && f[1..].parse::<u8>().is_ok_and(|n| (1..=12).contains(&n)) =>
+        {
+            return Some(format!("F{}", &f[1..]));
+        }
+        // Other DOM key names (`NumLock`, `ContextMenu`, `AudioVolumeUp`), as protocol clients
+        // send them.
+        _ if name.chars().next().is_some_and(|c| c.is_ascii_uppercase())
+            && name.chars().all(|c| c.is_ascii_alphanumeric()) =>
+        {
+            return Some(name.to_string());
+        }
+        _ => return None,
+    };
+    Some(k.to_string())
+}
+
+/// A chord (`ctrl+shift+Left`, `Return`, `a`): its modifiers and its key; `None` when a part is
+/// unknown. A chord of modifiers only (`shift`) is that modifier's key.
+pub fn chord(spec: &str) -> Option<(Mods, String)> {
+    let parts: Vec<&str> = spec.split('+').collect();
+    // `+` itself, or a chord ending in `+` (`ctrl++`).
+    let (mods, key) = match parts.as_slice() {
+        [] => return None,
+        [k] => (&[][..], *k),
+        [m @ .., ""] => (m, "+"),
+        [m @ .., k] => (m, *k),
+    };
+    let mut held = Mods::default();
+    for m in mods {
+        held = held.with(m)?;
+    }
+    Some((held, key_name(key)?))
+}
+
 fn now(cx: &Cx<'_, '_, '_>) -> f64 {
     let sh = cx.realm.shared.borrow();
     sh.now - sh.origin
@@ -58,6 +218,10 @@ fn mouse(
         || (ty.ends_with("move") && cx.st().pressed.is_some());
     let page_offset = crate::dom::scroll::offset(cx, crate::dom::scroll::Scroller::Viewport);
     cx.st().scroll.pointer = Some(point);
+    let (mods, button, clicks) = {
+        let st = cx.st();
+        (st.mods.tuple(), st.button, st.click_count.max(1))
+    };
     let data = EventData {
         ty: ty.into(),
         bubbles,
@@ -66,11 +230,19 @@ fn mouse(
         initialized: true,
         trusted: true,
         time: now(cx),
-        ui_detail: i32::from(matches!(ty, "mousedown" | "mouseup" | "click")),
+        ui_detail: if matches!(
+            ty,
+            "mousedown" | "mouseup" | "click" | "auxclick" | "dblclick" | "contextmenu"
+        ) {
+            i32::from(clicks)
+        } else {
+            0
+        },
         input: InputData {
             client: point,
             screen: (point.0 as i32, point.1 as i32),
-            button: (0, u16::from(pressed)),
+            mods,
+            button: (button.code(), if pressed { button.mask() } else { 0 }),
             pointer: if pointer {
                 (1, "mouse".into(), true)
             } else {
@@ -100,6 +272,7 @@ pub(crate) fn wheel_event(
     dy: f64,
 ) -> R<bool> {
     let page_offset = crate::dom::scroll::offset(cx, crate::dom::scroll::Scroller::Viewport);
+    let mods = cx.st().mods.tuple();
     let data = EventData {
         ty: "wheel".into(),
         bubbles: true,
@@ -113,6 +286,7 @@ pub(crate) fn wheel_event(
             screen: (point.0 as i32, point.1 as i32),
             page_offset,
             delta: (dx, dy, 0.0, 0),
+            mods,
             ..InputData::default()
         },
         ..EventData::default()
@@ -204,6 +378,88 @@ pub fn click(cx: &mut Cx<'_, '_, '_>, el: NodeId, point: Option<(f64, f64)>) -> 
     mouse(cx, el, "pointerup", p, None)?;
     mouse(cx, el, "mouseup", p, None)?;
     crate::dom::event_target::click_with(cx, el, true, p)
+}
+
+/// A trusted click with any button, click count (1–3) and modifiers, as a person's: for the
+/// primary button each click runs as [`click`] (`detail` counting up) and the second fires
+/// `dblclick` (with `nth`, only the `count`-th click: a protocol client sends each one); the middle button fires `auxclick` (a link opens in a new tab), the secondary
+/// `contextmenu` (no menu) then `auxclick`. Modifiers are on every event; a ctrl-, meta- or
+/// shift-click on a link opens it in a new tab.
+pub fn click_ex(
+    cx: &mut Cx<'_, '_, '_>,
+    el: NodeId,
+    point: Option<(f64, f64)>,
+    kind: ClickKind,
+) -> R<()> {
+    let ClickKind {
+        button,
+        count,
+        mods,
+        nth,
+    } = kind;
+    let saved = {
+        let mut st = cx.st();
+        let saved = (st.mods, st.button, st.click_count);
+        st.mods = mods;
+        st.button = button;
+        saved
+    };
+    let r = click_ex_inner(cx, el, point, button, count.clamp(1, 3), nth);
+    {
+        let mut st = cx.st();
+        (st.mods, st.button, st.click_count) = saved;
+    }
+    r
+}
+
+fn click_ex_inner(
+    cx: &mut Cx<'_, '_, '_>,
+    el: NodeId,
+    point: Option<(f64, f64)>,
+    button: Button,
+    count: u8,
+    nth: bool,
+) -> R<()> {
+    let (el, p) = target_at(cx, el, point);
+    if button == Button::Left {
+        for n in (if nth { count } else { 1 })..=count {
+            cx.st().click_count = n;
+            click(cx, el, Some(p))?;
+            if n == 2 {
+                mouse(cx, el, "dblclick", p, None)?;
+            }
+        }
+        return Ok(());
+    }
+    cx.st().click_count = 1;
+    hover(cx, el, Some(p))?;
+    cx.st().pressed = Some(Press {
+        node: el,
+        point: p,
+        moved: false,
+    });
+    mouse(cx, el, "pointerdown", p, None)?;
+    let down = mouse(cx, el, "mousedown", p, None)?;
+    if down && button == Button::Right {
+        mouse(cx, el, "contextmenu", p, None)?;
+    }
+    mouse(cx, el, "pointerup", p, None)?;
+    cx.st().pressed = None;
+    mouse(cx, el, "mouseup", p, None)?;
+    if mouse(cx, el, "auxclick", p, None)? && button == Button::Middle {
+        // The middle button's default on a link: open it in a new tab.
+        let mut cur = Some(el);
+        while let Some(c) = cur {
+            if matches!(tag(cx, c).as_str(), "a" | "area")
+                && let Some(href) = attr(cx, c, "href")
+            {
+                follow_link(cx, &href, Some("_blank"));
+                break;
+            }
+            cur = cx.dom().parent(c);
+        }
+    }
+    Ok(())
 }
 
 /// The activation behaviour after a click that was not cancelled, of the clicked element or
@@ -324,7 +580,9 @@ fn follow_link(cx: &mut Cx<'_, '_, '_>, href: &str, target: Option<&str>) {
     let Some(url) = base_url(cx).and_then(|b| b.join(href).ok()) else {
         return;
     };
-    if target.is_some_and(|t| t.eq_ignore_ascii_case("_blank")) {
+    let mods = cx.st().mods;
+    let new_tab = mods.ctrl || mods.meta || mods.shift || cx.st().button == Button::Middle;
+    if new_tab || target.is_some_and(|t| t.eq_ignore_ascii_case("_blank")) {
         cx.st().push_popup(url.to_string());
     } else {
         navigate(cx, url.as_str(), false);
@@ -572,12 +830,31 @@ fn key_info(key: &str) -> (String, u32) {
         "End" => 35,
         "Home" => 36,
         "Delete" => 46,
+        "Insert" => 45,
+        "Shift" => return ("ShiftLeft".into(), 16),
+        "Control" => return ("ControlLeft".into(), 17),
+        "Alt" => return ("AltLeft".into(), 18),
+        "Meta" => return ("MetaLeft".into(), 91),
+        "CapsLock" => 20,
+        f if f.starts_with('F') && f[1..].parse::<u32>().is_ok() => {
+            return (f.to_string(), 111 + f[1..].parse::<u32>().unwrap_or(1));
+        }
         _ => 0,
     };
     (key.to_string(), code)
 }
 
 fn key_event(cx: &mut Cx<'_, '_, '_>, target: NodeId, ty: &str, key: &str) -> R<bool> {
+    key_event_with(cx, target, ty, key, false)
+}
+
+fn key_event_with(
+    cx: &mut Cx<'_, '_, '_>,
+    target: NodeId,
+    ty: &str,
+    key: &str,
+    repeat: bool,
+) -> R<bool> {
     let (code, key_code) = key_info(key);
     let printable = key.chars().count() == 1;
     let char_code = if ty == "keypress" {
@@ -589,6 +866,7 @@ fn key_event(cx: &mut Cx<'_, '_, '_>, target: NodeId, ty: &str, key: &str) -> R<
     } else {
         0
     };
+    let mods = cx.st().mods.tuple();
     let data = EventData {
         ty: ty.into(),
         bubbles: true,
@@ -599,6 +877,8 @@ fn key_event(cx: &mut Cx<'_, '_, '_>, target: NodeId, ty: &str, key: &str) -> R<
         time: now(cx),
         input: InputData {
             key: (key.to_string(), code),
+            mods,
+            repeat,
             legacy: (
                 char_code,
                 if ty == "keypress" {
@@ -746,6 +1026,18 @@ pub fn type_text(cx: &mut Cx<'_, '_, '_>, el: NodeId, text: &str) -> R<()> {
     Ok(())
 }
 
+/// Fills an editable element as a password manager does: focus, the whole value at once,
+/// `input` and `change`, and no key events, so no partial value ever exists in the page.
+pub fn fill(cx: &mut Cx<'_, '_, '_>, el: NodeId, value: &str) -> R<()> {
+    move_focus(cx, Some(el))?;
+    if cx.dom().get(el).is_none() || value_of(cx, el)? == value {
+        return Ok(());
+    }
+    set_value(cx, el, value);
+    input_event(cx, el, "input", false)?;
+    input_event(cx, el, "change", false).map(|_| ())
+}
+
 /// Implicit submission (Enter in a field): the form's default button, else the form.
 fn implicit_submit(cx: &mut Cx<'_, '_, '_>, el: NodeId) -> R<()> {
     let Some(form) = form_of(cx, el) else {
@@ -777,6 +1069,143 @@ fn implicit_submit(cx: &mut Cx<'_, '_, '_>, el: NodeId) -> R<()> {
 
 /// Presses a key on the focused element (or the body), with its default action.
 pub fn press(cx: &mut Cx<'_, '_, '_>, key: &str) -> R<()> {
+    press_chord(cx, Mods::default(), key)
+}
+
+/// The element key events go to: the focused element, else the body.
+fn key_target(cx: &Cx<'_, '_, '_>) -> Option<NodeId> {
+    cx.st()
+        .focused
+        .filter(|&f| cx.dom().get(f).is_some())
+        .or_else(|| {
+            let dom = cx.dom();
+            dom.traverse(dom.root()).find_map(|e| match e {
+                Edge::Enter(n) if dom.get(n).is_some_and(|x| x.is_html("body")) => Some(n),
+                _ => None,
+            })
+        })
+}
+
+/// Presses a chord: each modifier's `keydown` (the modifiers accumulating on the events), the
+/// key with its default action, then the modifiers' `keyup` in reverse. With ctrl or meta, a
+/// printable key inserts nothing; `a` selects a text control's whole value.
+pub fn press_chord(cx: &mut Cx<'_, '_, '_>, mods: Mods, key: &str) -> R<()> {
+    let saved = cx.st().mods;
+    let r = press_chord_inner(cx, mods, key);
+    cx.st().mods = saved;
+    r
+}
+
+fn press_chord_inner(cx: &mut Cx<'_, '_, '_>, mods: Mods, key: &str) -> R<()> {
+    let Some(t) = key_target(cx) else {
+        return Ok(());
+    };
+    let mut held = Mods::default();
+    for m in mods.keys() {
+        held = held.with(m).unwrap_or(held);
+        cx.st().mods = held;
+        key_event(cx, t, "keydown", m)?;
+    }
+    cx.st().mods = mods;
+    if !mods.keys().contains(&key) {
+        press_key(cx, key)?;
+    }
+    for m in mods.keys().into_iter().rev() {
+        cx.st().mods = held;
+        key_event(cx, t, "keyup", m)?;
+        held = match m {
+            "Control" => Mods {
+                ctrl: false,
+                ..held
+            },
+            "Shift" => Mods {
+                shift: false,
+                ..held
+            },
+            "Alt" => Mods { alt: false, ..held },
+            _ => Mods {
+                meta: false,
+                ..held
+            },
+        };
+    }
+    Ok(())
+}
+
+/// Holds a chord down (`keydown`, repeated when `repeat`) or releases it (`keyup`), for a key
+/// held over time: the modifiers go down first and up last.
+pub fn key_hold(cx: &mut Cx<'_, '_, '_>, mods: Mods, key: &str, down: bool, repeat: bool) -> R<()> {
+    let Some(t) = key_target(cx) else {
+        return Ok(());
+    };
+    let saved = cx.st().mods;
+    cx.st().mods = mods;
+    let r = (|| {
+        if down {
+            if !repeat {
+                for m in mods.keys() {
+                    key_event(cx, t, "keydown", m)?;
+                }
+            }
+            if !mods.keys().contains(&key) || repeat {
+                key_event_with(cx, t, "keydown", key, repeat)?;
+            }
+        } else {
+            if !mods.keys().contains(&key) {
+                key_event(cx, t, "keyup", key)?;
+            }
+            for m in mods.keys().into_iter().rev() {
+                key_event(cx, t, "keyup", m)?;
+            }
+        }
+        Ok(())
+    })();
+    cx.st().mods = saved;
+    r
+}
+
+/// Types text into the focused element at its end, as keystrokes (no clearing first);
+/// `false` when nothing editable is focused (the keys then go to the body).
+pub fn type_focused(cx: &mut Cx<'_, '_, '_>, text: &str) -> R<bool> {
+    let focused = cx.st().focused.filter(|&f| cx.dom().get(f).is_some());
+    let Some(el) = focused.filter(|&f| editable(cx, f).is_some()) else {
+        for ch in text.chars() {
+            press(
+                cx,
+                &if ch == '\n' {
+                    "Enter".into()
+                } else {
+                    ch.to_string()
+                },
+            )?;
+        }
+        return Ok(false);
+    };
+    let initial = value_of(cx, el)?;
+    for ch in text.chars() {
+        let key = if ch == '\n' {
+            "Enter".to_string()
+        } else {
+            ch.to_string()
+        };
+        if key_event(cx, el, "keydown", &key)? && key_event(cx, el, "keypress", &key)? {
+            if ch == '\n' && tag(cx, el) != "textarea" {
+                implicit_submit(cx, el)?;
+            } else {
+                insert(cx, el, ch)?;
+            }
+        }
+        key_event(cx, el, "keyup", &key)?;
+    }
+    if cx.dom().get(el).is_some() && value_of(cx, el)? != initial {
+        input_event(cx, el, "change", false)?;
+    }
+    Ok(true)
+}
+
+/// One key on the focused element (or the body) with its default action, under the modifiers
+/// in the realm's state.
+fn press_key(cx: &mut Cx<'_, '_, '_>, key: &str) -> R<()> {
     let target = cx
         .st()
         .focused
@@ -789,14 +1218,27 @@ pub fn press(cx: &mut Cx<'_, '_, '_>, key: &str) -> R<()> {
             })
         });
     let Some(t) = target else { return Ok(()) };
+    let mods = cx.st().mods;
+    let command = mods.ctrl || mods.meta;
     let printable = key.chars().count() == 1;
     let mut go = key_event(cx, t, "keydown", key)?;
-    if go && (printable || key == "Enter") {
+    if go && !command && (printable || key == "Enter") {
         go = key_event(cx, t, "keypress", key)?;
     }
     if go {
         let tg = tag(cx, t);
         match key {
+            // Select all in a text control (full selection and the clipboard come later).
+            "a" | "A" if command => {
+                if editable(cx, t) == Some(true) {
+                    cx.dom_mut().control_mut(t).all_selected = true;
+                }
+            }
+            _ if command && printable => {}
+            "Tab" if mods.shift => {
+                let prev = prev_focusable(cx, t);
+                move_focus(cx, prev)?;
+            }
             "Enter" if tg == "textarea" => insert(cx, t, '\n')?,
             "Enter" if editable(cx, t) == Some(true) => implicit_submit(cx, t)?,
             "Enter" if matches!(tg.as_str(), "a" | "button" | "summary") => {
@@ -866,6 +1308,29 @@ pub fn press(cx: &mut Cx<'_, '_, '_>, key: &str) -> R<()> {
         }
     }
     key_event(cx, t, "keyup", key).map(|_| ())
+}
+
+fn prev_focusable(cx: &Cx<'_, '_, '_>, from: NodeId) -> Option<NodeId> {
+    let order = focus_order(cx);
+    match order.iter().position(|&n| n == from) {
+        Some(0) | None => order.last().copied(),
+        Some(i) => order.get(i - 1).copied(),
+    }
+}
+
+fn focus_order(cx: &Cx<'_, '_, '_>) -> Vec<NodeId> {
+    let all: Vec<NodeId> = {
+        let dom = cx.dom();
+        dom.traverse(dom.root())
+            .filter_map(|e| match e {
+                Edge::Enter(n) => Some(n),
+                Edge::Leave(_) => None,
+            })
+            .collect()
+    };
+    all.into_iter()
+        .filter(|&n| focusable(cx, n) && attr(cx, n, "tabindex").is_none_or(|t| t.trim() != "-1"))
+        .collect()
 }
 
 fn next_focusable(cx: &Cx<'_, '_, '_>, from: NodeId) -> Option<NodeId> {

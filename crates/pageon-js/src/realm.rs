@@ -491,6 +491,12 @@ pub struct State {
     pub pressed: Option<crate::dom::input::Press>,
     /// An HTML drag and drop in progress.
     pub drag: Option<crate::dom::input::DragSession>,
+    /// The modifier keys held during the current input action.
+    pub mods: crate::dom::input::Mods,
+    /// The mouse button of the current input action.
+    pub button: crate::dom::input::Button,
+    /// The click count of the current click (1–3; `detail` of mouse events).
+    pub click_count: u8,
     /// Accept dialogs (`confirm` → true, `prompt` → its default) instead of dismissing them.
     pub accept_dialogs: bool,
     /// `MutationObserver`s with registrations (slab ids, creation order).
@@ -611,8 +617,10 @@ pub struct Shared {
     pub next_id: u32,
     /// Page errors.
     pub errors: Vec<PageError>,
-    /// Console messages (level, text), capped.
+    /// Console messages (level, text): the latest 1,000.
     pub console: Vec<(String, String)>,
+    /// Console messages ever recorded (so readers can ask for what is new).
+    pub console_total: u64,
     /// Timers cancelled while running (a `clearInterval` from inside its own callback).
     pub cancelled: std::collections::HashSet<u32>,
     /// Protocol binding calls (realm, name, payload), drained by the client.

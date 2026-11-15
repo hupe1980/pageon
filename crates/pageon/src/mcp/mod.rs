@@ -8,6 +8,7 @@
 //! The server is synchronous, like the engine: a request is read, served, answered.
 
 mod http;
+pub(crate) mod toolset;
 
 use std::io::{BufRead, Write};
 
@@ -51,6 +52,10 @@ trait Backend {
     /// A person's input during a takeover: not the agent's step.
     fn input(&mut self, action: Action) -> Result<Outcome, ActionError>;
     fn view(&mut self, kind: Dump) -> Result<String, String>;
+    /// A read of the current tab with the agent's refs (the vendor toolsets).
+    fn read(&mut self, read: crate::Read) -> Result<String, ActionError>;
+    /// What the vendor toolsets may offer in this session.
+    fn offer(&self) -> toolset::Offer;
     fn state(&mut self) -> Result<StorageState, String>;
     fn has_tab(&self) -> bool;
     fn screenshot(&mut self, o: &crate::ScreenshotOptions) -> Result<crate::Image, PaintError>;
@@ -218,6 +223,7 @@ struct Caged<E: Env> {
     options: LoadOptions,
     budget: Budget,
     state: Option<StorageState>,
+    offer: toolset::Offer,
 }
 
 impl<E: Env> Backend for Caged<E> {
@@ -259,6 +265,19 @@ impl<E: Env> Backend for Caged<E> {
         self.sandbox
             .view_tab(t, kind, Viewport::default(), self.budget)
             .map_err(|e| e.to_string())
+    }
+
+    fn read(&mut self, read: crate::Read) -> Result<String, ActionError> {
+        let t = self
+            .tabs
+            .current()
+            .copied()
+            .ok_or_else(|| ActionError::Unsupported(no_page()))?;
+        self.sandbox.read_tab(t, read)
+    }
+
+    fn offer(&self) -> toolset::Offer {
+        self.offer
     }
 
     fn state(&mut self) -> Result<StorageState, String> {
@@ -350,6 +369,7 @@ struct Local<'s, E: Env> {
     options: LoadOptions,
     budget: Budget,
     state: Option<StorageState>,
+    offer: toolset::Offer,
 }
 
 impl<E: Env> Backend for Local<'_, E> {
@@ -386,6 +406,18 @@ impl<E: Env> Backend for Local<'_, E> {
     fn view(&mut self, kind: Dump) -> Result<String, String> {
         let t = self.tabs.current().ok_or_else(no_page)?;
         Ok(t.view(kind, Viewport::default(), self.budget))
+    }
+
+    fn read(&mut self, read: crate::Read) -> Result<String, ActionError> {
+        let t = self
+            .tabs
+            .current_mut()
+            .ok_or_else(|| ActionError::Unsupported(no_page()))?;
+        t.read(&read)
+    }
+
+    fn offer(&self) -> toolset::Offer {
+        self.offer
     }
 
     fn state(&mut self) -> Result<StorageState, String> {
@@ -477,6 +509,10 @@ pub struct McpOptions {
     pub state: Option<StorageState>,
     /// Serve Streamable HTTP instead of stdio (until the process ends).
     pub http: Option<HttpOptions>,
+    /// The vendor toolsets may run `javascript_exec` (an isolated world over the page).
+    pub allow_javascript_exec: bool,
+    /// Files are staged for uploads (`--file`), so the toolsets offer `file_upload`.
+    pub staged_files: bool,
 }
 
 impl Default for McpOptions {
@@ -488,6 +524,8 @@ impl Default for McpOptions {
             budget: Budget::o200k(4000),
             state: None,
             http: None,
+            allow_javascript_exec: false,
+            staged_files: false,
         }
     }
 }
@@ -500,6 +538,11 @@ pub fn serve<E: Env>(
     input: impl BufRead,
     output: impl Write,
 ) -> Result<StorageState, String> {
+    let offer = toolset::Offer {
+        javascript_exec: options.allow_javascript_exec,
+        file_upload: options.staged_files,
+        ..toolset::Offer::default()
+    };
     if options.sandbox {
         let mut sandbox = Sandbox::new(env, options.sandbox_options.clone())
             .map_err(|e| format!("{e}; {}", e.guidance()))?;
@@ -512,6 +555,7 @@ pub fn serve<E: Env>(
             options: options.load,
             budget: options.budget,
             state: options.state.clone(),
+            offer,
         };
         match &options.http {
             Some(h) => http::serve(&mut b, h)?,
@@ -530,6 +574,7 @@ pub fn serve<E: Env>(
             options: options.load,
             budget: options.budget,
             state: options.state.clone(),
+            offer,
         };
         match &options.http {
             Some(h) => http::serve(&mut b, h)?,
@@ -653,6 +698,8 @@ struct Pending {
 struct Server {
     /// Serve 2026-07-28 only (Streamable HTTP).
     modern_only: bool,
+    /// The vendor toolsets' pointer and read buffers.
+    toolset: toolset::State,
     /// Legacy: the client initialized with URL-mode elicitation (2025-11-25).
     url_elicitation: bool,
     elicitations: u64,
@@ -663,6 +710,7 @@ impl Server {
     fn new(modern_only: bool) -> Self {
         Self {
             modern_only,
+            toolset: toolset::State::default(),
             url_elicitation: false,
             elicitations: 0,
             pending: None,
@@ -697,6 +745,14 @@ impl Server {
             return Some(error(id, -32600, "invalid request: no method"));
         };
         let params = msg.get("params").cloned().unwrap_or(Value::Null);
+        // The vendor toolsets: pageon's own methods, never in `tools/list`, served on either
+        // era with or without `_meta`.
+        if let Some(op) = method.strip_prefix("pageon/toolset/") {
+            return Some(match self.toolset_method(b, op, &params) {
+                Ok(result) => json!({"jsonrpc": "2.0", "id": id, "result": result}),
+                Err(m) => error(id, -32602, &m),
+            });
+        }
         let version = params
             .get("_meta")
             .and_then(|m| m.get(META_VERSION))
@@ -712,6 +768,42 @@ impl Server {
             Ok(result) => json!({"jsonrpc": "2.0", "id": id, "result": result}),
             Err(e) => json!({"jsonrpc": "2.0", "id": id, "error": e}),
         })
+    }
+
+    /// `pageon/toolset/definition {toolset, console?, network?}` and
+    /// `pageon/toolset/run {toolset, calls, console?, network?, confirmed?}`.
+    fn toolset_method(
+        &mut self,
+        b: &mut dyn Backend,
+        op: &str,
+        params: &Value,
+    ) -> Result<Value, String> {
+        let name = params["toolset"].as_str().unwrap_or_default();
+        let kind = toolset::Kind::parse(name).ok_or_else(|| {
+            format!("toolset {name:?}: use browser_toolset_20260801, computer_toolset_20260801 or computer")
+        })?;
+        let offer = toolset::Offer {
+            console: params["console"].as_bool().unwrap_or(false),
+            network: params["network"].as_bool().unwrap_or(false),
+            ..b.offer()
+        };
+        match op {
+            "definition" => Ok(toolset::definition(kind, offer)),
+            "run" => {
+                let calls = params["calls"]
+                    .as_array()
+                    .ok_or("pageon/toolset/run needs calls: the vendor's tool calls")?;
+                let confirmed: Vec<String> = params["confirmed"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .filter_map(|c| c.as_str().map(str::to_string))
+                    .collect();
+                let results = toolset::run(kind, b, offer, &mut self.toolset, calls, &confirmed);
+                Ok(json!({"results": results}))
+            }
+            other => Err(format!("method not found: pageon/toolset/{other}")),
+        }
     }
 
     /// A transport that serves 2026-07-28 only refuses the handshake and requests without
@@ -1136,6 +1228,7 @@ pub(crate) fn kind_of(e: &ActionError) -> &'static str {
         ActionError::File(_) => "file",
         ActionError::Engine(_) => "engine",
         ActionError::Tool(_) => "tool",
+        ActionError::Script(_) => "script",
     }
 }
 
@@ -1145,6 +1238,11 @@ fn text_result(text: String, structured: Value) -> Value {
 
 /// Adds the step number to a result: `structuredContent.step` and a last line.
 fn stepped(b: &dyn Backend, mut result: Value) -> Value {
+    // Console lines are read on request (the toolsets' read_console), not handed to every
+    // model with every outcome.
+    if let Some(o) = result["structuredContent"]["outcome"].as_object_mut() {
+        o.remove("console");
+    }
     // A site's refusal is surfaced at the top; the observation text starts with it.
     if let Some(r) = result["structuredContent"]["outcome"]
         .get("refusal")
@@ -1751,6 +1849,14 @@ fn call_tool(
             let mut actions = Vec::new();
             for t in texts {
                 match t.parse::<Action>() {
+                    // Scripts only where the operator allowed them.
+                    Ok(Action::Eval(_)) if !b.offer().javascript_exec => {
+                        return Ok(tool_error(
+                            "unsupported",
+                            "eval is not enabled in this session".into(),
+                            "the operator enables it with --allow-javascript-exec".into(),
+                        ));
+                    }
                     Ok(a) => actions.push(a),
                     Err(e) => {
                         return Ok(tool_error(
@@ -1813,7 +1919,11 @@ fn call_tool(
                     }
                 }
             };
-            vec![Action::Scroll { target, by }]
+            vec![Action::Scroll {
+                target,
+                by,
+                point: None,
+            }]
         }
         "browser_type" => {
             let mut v = vec![Action::Type(s("ref")?, s("text")?)];

@@ -18,7 +18,7 @@ pub mod realm;
 mod select;
 mod serialize;
 
-pub use dom::input::{DragKind, Dragged};
+pub use dom::input::{Button, ClickKind, DragKind, Dragged, Mods, chord, key_name};
 pub use dom::scroll::{Amount, Scroller, Wheeled};
 pub use dom::session::{HistoryOp, State as SavedState};
 pub use dom::validation::Blocked;

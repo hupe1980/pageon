@@ -16,14 +16,15 @@ toggling labels).
 
 | Action | Example |
 | --- | --- |
-| Click an element, or a viewport point | `click e5` · `click 120,40` |
-| Type into a field, key by key | `type e3 hello world` · `type e4 secret://shop` |
+| Click an element, or a viewport point; another button, a double or triple click, modifiers | `click e5` · `click 120,40` · `click e5 right` · `click e5 double` · `click e2 ctrl` |
+| Type into a field, key by key; or at the end of the focused one | `type e3 hello world` · `type e4 secret://shop` · `type "hello"` |
 | Upload staged files into a file input, the chooser a button opens, or a drop zone | `upload e9 cv` · `upload e9 cv,photo` · `upload e9 download:1` |
-| Press a key on the focused element | `press Enter` · `press Escape` |
+| Press a key, a chord or a sequence on the focused element | `press Enter` · `press ctrl+a` · `press shift+Tab` · `press Down Down Enter` · `press Tab x3` |
+| Hold a key (ms of virtual time, with key repeat) | `hold shift 2000` |
 | Select options by value or label | `select e7 Germany` |
 | Hover | `hover e2` · `hover 120,40` |
 | Drag an element onto another | `drag e3 e7` |
-| Scroll the page, a container, or to an element | `scroll down` · `scroll down 300` · `scroll e5 down` · `scroll e12` |
+| Scroll the page, a container, what is at a point, or to an element | `scroll down` · `scroll down 300` · `scroll e5 down` · `scroll 640,380 down 300` · `scroll e12` |
 | Let time pass | `wait 500` |
 | Navigate | `goto https://example.com` · `back` · `forward` |
 | Call a page tool ([WebMCP](@/docs/webmcp.md)) | `tool searchFlights {"from": "TXL"}` |
@@ -111,6 +112,7 @@ When an action cannot be done, the error has a kind and guidance the model can f
 | `secret` | bind the secret to this page's origin |
 | `file` | stage the file for this site (`--file NAME@ORIGIN=PATH`) |
 | `tool` | the page's tool failed: its message, quoted |
+| `script` | an `eval` (the toolsets' `javascript_exec`) threw: its message, quoted |
 | `unsupported` | use another action |
 
 ## Files
