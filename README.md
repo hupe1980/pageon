@@ -14,6 +14,8 @@ sandboxed pages, and sessions you can replay, rewind and fork.
 [🎭 Puppeteer & Playwright](https://hupe1980.github.io/pageon/docs/cdp/)
 
 [![CI](https://github.com/hupe1980/pageon/actions/workflows/ci.yml/badge.svg)](https://github.com/hupe1980/pageon/actions/workflows/ci.yml)
+[![crates.io](https://img.shields.io/crates/v/pageon.svg)](https://crates.io/crates/pageon)
+[![PyPI](https://img.shields.io/pypi/v/pageon.svg)](https://pypi.org/project/pageon/)
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#-license)
 
 </div>
@@ -53,12 +55,15 @@ output is made for a model, and whose safety does not depend on the model behavi
 
 ## 🚀 Quick start
 
-pageon is pre-release and builds from source (Rust 1.99+, Linux or macOS):
+Install the CLI (Linux x86_64/arm64, macOS arm64):
 
 ```sh
-git clone https://github.com/hupe1980/pageon
-cargo install --path pageon/crates/pageon
+brew install hupe1980/tap/pageon   # or: cargo install pageon (Rust 1.99+)
+```
 
+Then:
+
+```sh
 pageon fetch https://example.com --dump ax                      # what an agent sees
 pageon fetch https://example.com --act "click e1" --dump ax     # act, then look again
 pageon fetch https://example.com --screenshot page.png --marks  # pixels, labelled with refs
@@ -75,7 +80,7 @@ PAGEON_SECRET_SHOP=… claude mcp add shop -- pageon mcp \
   --origin https://shop.example --secret shop@https://shop.example
 ```
 
-**🐍 Python** (`pip install ./pageon/bindings/python`):
+**🐍 Python** (`pip install pageon`, Python 3.11+):
 
 ```python
 from pageon import Browser
@@ -144,7 +149,7 @@ including the ones pageon loses.
 
 ## 🚧 Status
 
-pageon is pre-release. The [threat model](THREAT_MODEL.md) lists what it defends against and
+pageon 0.1 is early: the API may still change between minor versions. The [threat model](THREAT_MODEL.md) lists what it defends against and
 every known gap; read it before pointing an agent at anything that matters. Report
 vulnerabilities privately ([SECURITY.md](SECURITY.md)).
 
@@ -154,7 +159,7 @@ faked, so pages and clients can detect them.
 
 ## 🧱 Workspace
 
-| Crate | |
+| Rust crate | |
 | --- | --- |
 | [`pageon`](crates/pageon) | The engine, the CLI, the sandbox and policy, the MCP, CDP and BiDi servers |
 | [`pageon-agent`](crates/pageon-agent) | The agent views: refs, quoting, budgets, diffs |
@@ -164,7 +169,9 @@ faked, so pages and clients can detect them.
 | [`pageon-net`](crates/pageon-net) | Fetch, CORS, cookies, storage, the egress policy |
 | [`pageon-dom`](crates/pageon-dom) | The document model and HTML parsing |
 | [`pageon-env`](crates/pageon-env) | Network, clock and randomness: live, recorded or replayed |
-| [`pageon-py`](bindings/python) | The Python package, including the BrowserGym backend |
+
+The Python package `pageon`, with the BrowserGym backend, lives in
+[`bindings/python`](bindings/python).
 
 ```sh
 cargo test --workspace                              # offline: the engine, views and servers
