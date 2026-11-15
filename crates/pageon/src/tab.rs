@@ -38,6 +38,25 @@ pub enum Action {
     Select(String, Vec<String>),
     /// Move the pointer onto an element.
     Hover(String),
+    /// Drag an element onto another (centre to centre): a trusted press, moves and release,
+    /// with HTML drag and drop when the element is draggable.
+    Drag(String, String),
+    /// Press the pointer's button at a viewport point (CSS pixels; protocol clients).
+    PointerDown(f64, f64),
+    /// Release the pointer's button at a viewport point (protocol clients).
+    PointerUp(f64, f64),
+    /// A step of a drag the protocol client drives (CDP `Input.dispatchDragEvent`).
+    DragEvent {
+        /// Enter, over, drop or cancel.
+        kind: pageon_js::DragKind,
+        /// Viewport point.
+        x: f64,
+        /// Viewport point.
+        y: f64,
+        /// The drag's data: (type, value).
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        items: Vec<(String, String)>,
+    },
     /// Let virtual time pass (ms).
     Wait(u64),
     /// Load a URL in this tab.
@@ -147,6 +166,10 @@ impl fmt::Display for Action {
                 Ok(())
             }
             Self::Hover(r) => write!(f, "hover {r}"),
+            Self::Drag(a, b) => write!(f, "drag {a} {b}"),
+            Self::PointerDown(x, y) => write!(f, "pointerdown {x},{y}"),
+            Self::PointerUp(x, y) => write!(f, "pointerup {x},{y}"),
+            Self::DragEvent { kind, x, y, .. } => write!(f, "dragevent {kind:?} {x},{y}"),
             Self::Wait(ms) => write!(f, "wait {ms}"),
             Self::Goto(u) => write!(f, "goto {u}"),
             Self::Back => f.write_str("back"),
@@ -183,7 +206,8 @@ impl fmt::Display for Action {
 impl FromStr for Action {
     type Err = String;
 
-    /// `click e5`, `click 120,40` (a viewport point), `type e3 hello world`, `press Enter`,
+    /// `click e5`, `click 120,40` (a viewport point), `type e3 hello world`, `drag e3 e7`,
+    /// `press Enter`,
     /// `select e7 Germany`, `hover e2`, `hover 120,40`, `wait 500`, `goto https://…`, `back`,
     /// `forward`, `scroll down`, `scroll down 300`, `scroll by 120,-40`, `scroll e12` (into
     /// view), `scroll e5 down`.
@@ -220,6 +244,15 @@ impl FromStr for Action {
                 None => Self::Hover(need("a ref, e.g. `hover e5`")?),
             },
             "type" => Self::Type(need("a ref and text, e.g. `type e3 hello`")?, unquote(tail)),
+            "drag" => {
+                let help =
+                    "`drag` needs two refs: the element and where to drop it, e.g. `drag e3 e7`";
+                let to = tail.trim();
+                if first.is_empty() || to.is_empty() || to.contains(char::is_whitespace) {
+                    return Err(help.into());
+                }
+                Self::Drag(first.to_string(), to.to_string())
+            }
             "upload" => {
                 let r = need("a ref and file names, e.g. `upload e7 cv`")?;
                 let names: Vec<String> = unquote(tail)
@@ -267,7 +300,7 @@ impl FromStr for Action {
             }
             other => {
                 return Err(format!(
-                    "unknown action {other:?}: use click, type, upload, press, select, hover, scroll, wait, goto, back, forward or tool"
+                    "unknown action {other:?}: use click, type, upload, drag, press, select, hover, scroll, wait, goto, back, forward or tool"
                 ));
             }
         })
@@ -386,6 +419,10 @@ pub struct Outcome {
     /// The agent's click opened a file chooser (on this ref); `upload REF NAME` fills it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub file_chooser: Option<String>,
+    /// What a drag did (HTML drag and drop, dropped or not; or the data of an intercepted
+    /// drag).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub drag: Option<pageon_js::Dragged>,
     /// Dialogs beyond the 20 listed (answered by the dialog policy all the same).
     #[serde(default, skip_serializing_if = "is_zero")]
     pub dialogs_more: usize,
@@ -467,6 +504,17 @@ impl fmt::Display for Outcome {
         }
         if let Some(r) = &self.file_chooser {
             parts.push(format!("file chooser for {r} (upload {r} NAME)"));
+        }
+        if let Some(d) = &self.drag {
+            parts.push(
+                match (d.intercepted.is_some(), d.html, d.dropped) {
+                    (true, _, _) => "drag intercepted",
+                    (_, true, true) => "dragged (dropped)",
+                    (_, true, false) => "dragged (not accepted: no drop)",
+                    _ => "pointer drag",
+                }
+                .into(),
+            );
         }
         if self.dialogs_more > 0 {
             parts.push(format!("and {} more dialogs", self.dialogs_more));
@@ -762,6 +810,11 @@ pub struct Tab<'s, E: Env> {
     observed: u32,
     /// The page tools the agent last saw, to print them only when they change.
     tools_seen: Option<String>,
+    /// The frame where the pointer's button went down (protocol clients' presses).
+    pressed_frame: Option<usize>,
+    /// A drag that starts is handed to the protocol client instead of running (CDP
+    /// `Input.setInterceptDrags`).
+    intercept_drags: bool,
 }
 
 impl<E: Env> fmt::Debug for Tab<'_, E> {
@@ -863,6 +916,7 @@ pub(crate) fn refresh(doc: &mut Document) {
             doc.js.modals.clone_from(&st.modals);
             doc.js.focused = st.focused;
         }
+        doc.js.drop_targets = engine.drop_targets(live.realm);
         doc.js.scroll = crate::Scroll::of(&engine, live.realm);
         doc.js.errors = engine.errors_of(live.realm);
         doc.summary.errors = doc.js.errors.len();
@@ -925,6 +979,12 @@ impl<E: Env> Drop for Tab<'_, E> {
 }
 
 impl<'s, E: Env> Tab<'s, E> {
+    /// Hands drags that start to the protocol client instead of running them (CDP
+    /// `Input.setInterceptDrags`).
+    pub(crate) fn set_intercept_drags(&mut self, on: bool) {
+        self.intercept_drags = on;
+    }
+
     /// Closes the realtime connections of the page's documents (it is going away).
     fn close_streams(&self) {
         let env = self.session.env();
@@ -1005,6 +1065,8 @@ impl<'s, E: Env> Tab<'s, E> {
             tools_seen: None,
             record_steps,
             observed: 0,
+            pressed_frame: None,
+            intercept_drags: false,
         };
         let mut tab = tab;
         // History changes the page made while loading (a router's `replaceState`).
@@ -1263,6 +1325,7 @@ impl<'s, E: Env> Tab<'s, E> {
     fn target_of(&self, action: &Action) -> Option<(String, pageon_env::Target)> {
         let (Action::Click(r)
         | Action::Hover(r)
+        | Action::Drag(r, _)
         | Action::Type(r, _)
         | Action::Select(r, _)
         | Action::Upload(r, _)) = action
@@ -1574,6 +1637,84 @@ impl<'s, E: Env> Tab<'s, E> {
                 live.engine.borrow_mut().press(live.realm, key);
                 self.after(frame, &live, errors, out)
             }
+            Action::HoverAt(x, y) if self.pressed_frame.is_some() => {
+                // A move with the button held: a drag step in the frame of the press.
+                let (frame, hit, x, y) = self.hit(*x, *y);
+                let Some(node) = hit.filter(|_| Some(frame) == self.pressed_frame) else {
+                    return Ok(());
+                };
+                let live = self.live(frame)?;
+                let errors = self.frame_errors(frame);
+                let intercepted = live.engine.borrow_mut().pointer_move(
+                    live.realm,
+                    node,
+                    (x, y),
+                    self.intercept_drags,
+                );
+                if let Some(items) = intercepted {
+                    out.drag = Some(pageon_js::Dragged {
+                        html: true,
+                        dropped: false,
+                        intercepted: Some(items),
+                    });
+                }
+                if !live.engine.borrow().pressed(live.realm) {
+                    self.pressed_frame = None;
+                }
+                self.after(frame, &live, errors, out)
+            }
+            Action::PointerDown(x, y)
+            | Action::PointerUp(x, y)
+            | Action::DragEvent { x, y, .. } => {
+                let (frame, hit, x, y) = self.hit(*x, *y);
+                let frame = match action {
+                    Action::PointerDown(..) => frame,
+                    _ => self.pressed_frame.unwrap_or(frame),
+                };
+                let Some(node) = hit else { return Ok(()) };
+                let live = self.live(frame)?;
+                let errors = self.frame_errors(frame);
+                {
+                    let mut engine = live.engine.borrow_mut();
+                    let dragged = match action {
+                        Action::PointerDown(..) => {
+                            engine.pointer_down(live.realm, node, (x, y));
+                            None
+                        }
+                        Action::PointerUp(..) => Some(engine.pointer_up(live.realm, node, (x, y))),
+                        Action::DragEvent { kind, items, .. } => Some(engine.drag_from_client(
+                            live.realm,
+                            node,
+                            (x, y),
+                            *kind,
+                            items.clone(),
+                        )),
+                        _ => None,
+                    };
+                    out.drag = dragged.filter(|d| d.html);
+                    self.pressed_frame = engine.pressed(live.realm).then_some(frame);
+                }
+                self.after(frame, &live, errors, out)
+            }
+            Action::Drag(from, to) => {
+                // As a person does: bring the element into view, then drag it where the
+                // target is.
+                let (frame, node, _) = self.resolve(from)?;
+                self.scroll_into_view(frame, node, out)?;
+                let (frame, node, _) = self.resolve(from)?;
+                self.check(frame, node, from, &Action::Hover(from.clone()))?;
+                let (tframe, target, _) = self.resolve(to)?;
+                if tframe != frame {
+                    return Err(ActionError::Unsupported(format!(
+                        "dragging {from} into another frame ({to}): drags stay in one document"
+                    )));
+                }
+                let live = self.live(frame)?;
+                let errors = self.frame_errors(frame);
+                let d = live.engine.borrow_mut().drag(live.realm, node, target);
+                out.drag = Some(d);
+                self.after(frame, &live, errors, out)
+            }
             Action::ClickAt(x, y) | Action::HoverAt(x, y) => {
                 let (frame, hit, x, y) = self.hit(*x, *y);
                 let Some(node) = hit else { return Ok(()) };
@@ -1724,6 +1865,11 @@ impl<'s, E: Env> Tab<'s, E> {
         let live = self.live(frame)?;
         let direct = live.engine.borrow().file_input(live.realm, node);
         let errors = self.frame_errors(frame);
+        // A drop zone (an element that listens for `drop`): the files are dropped on it.
+        if direct.is_none() && live.engine.borrow_mut().drop_zone(live.realm, node) {
+            self.scroll_into_view(frame, node, out)?;
+            return self.put_files(frame, node, true, r, names, errors, out, true);
+        }
         let (target, multiple) = match direct {
             Some(m) => (node, m),
             None => {
@@ -1743,7 +1889,7 @@ impl<'s, E: Env> Tab<'s, E> {
                 (chooser, m)
             }
         };
-        self.put_files(frame, target, multiple, r, names, errors, out)
+        self.put_files(frame, target, multiple, r, names, errors, out, false)
     }
 
     /// Puts files into a file input (`node` in `frame`) whose element the protocol named
@@ -1774,6 +1920,7 @@ impl<'s, E: Env> Tab<'s, E> {
             names,
             errors,
             &mut out,
+            false,
         )?;
         Ok(out)
     }
@@ -1788,6 +1935,7 @@ impl<'s, E: Env> Tab<'s, E> {
         names: &[String],
         errors: usize,
         out: &mut Outcome,
+        drop: bool,
     ) -> Result<(), ActionError> {
         let live = self.live(frame)?;
         if names.len() > 1 && !multiple {
@@ -1825,9 +1973,17 @@ impl<'s, E: Env> Tab<'s, E> {
             let now = self.session.now_ms() as i64;
             files.push((fname, ty, bytes, now));
         }
-        live.engine
-            .borrow_mut()
-            .set_files(live.realm, target, files);
+        if drop {
+            let d = live
+                .engine
+                .borrow_mut()
+                .drop_files(live.realm, target, files);
+            out.drag = Some(d);
+        } else {
+            live.engine
+                .borrow_mut()
+                .set_files(live.realm, target, files);
+        }
         self.after(frame, &live, errors, out)
     }
 

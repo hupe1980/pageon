@@ -53,7 +53,9 @@ fn mouse(
     let pointer = ty.starts_with("pointer");
     let bubbles = !ty.ends_with("enter") && !ty.ends_with("leave");
     let cancelable = bubbles && !ty.ends_with("move") || ty == "mousemove" || ty == "pointermove";
-    let pressed = matches!(ty, "mousedown" | "pointerdown");
+    // The button is down from the press until the release (moves while dragging carry it).
+    let pressed = matches!(ty, "mousedown" | "pointerdown")
+        || (ty.ends_with("move") && cx.st().pressed.is_some());
     let page_offset = crate::dom::scroll::offset(cx, crate::dom::scroll::Scroller::Viewport);
     cx.st().scroll.pointer = Some(point);
     let data = EventData {
@@ -949,4 +951,419 @@ pub fn option_labels(cx: &Cx<'_, '_, '_>, el: NodeId) -> Vec<String> {
             _ => None,
         })
         .collect()
+}
+
+/// Where the pointer's button went down.
+#[derive(Debug, Clone)]
+pub struct Press {
+    /// The element pressed.
+    pub node: NodeId,
+    /// The point.
+    pub point: (f64, f64),
+    /// The pointer has moved since.
+    pub moved: bool,
+}
+
+/// An HTML drag and drop in progress.
+#[derive(Debug, Clone)]
+pub struct DragSession {
+    /// The element dragged (`None`: data from outside the page, a drop of files).
+    pub source: Option<NodeId>,
+    /// Its `DataTransfer` (slab id).
+    pub dt: u32,
+    /// The element under the pointer that the drag entered last.
+    pub target: Option<NodeId>,
+    /// The target's last `dragover` was cancelled: it accepts the drop.
+    pub accepted: bool,
+    /// The client drives the drag (CDP's drag interception).
+    pub intercepted: bool,
+}
+
+/// What a drag did.
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct Dragged {
+    /// HTML drag and drop ran (else a pointer drag).
+    pub html: bool,
+    /// A `drop` event fired (the target accepted).
+    pub dropped: bool,
+    /// The client took the drag over (CDP interception): its data, as (type, value).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub intercepted: Option<Vec<(String, String)>>,
+}
+
+/// The element a drag starts from when the press was on `el`: `draggable=true`, a link or an
+/// image (`draggable=false` stops the search).
+fn draggable(cx: &Cx<'_, '_, '_>, el: NodeId) -> Option<(NodeId, Vec<crate::dom::dnd::Item>)> {
+    use crate::dom::dnd::Item;
+    let dom = cx.dom();
+    let mut cur = Some(el);
+    while let Some(c) = cur {
+        let n = dom.get(c)?;
+        if n.local_name().is_some() {
+            match n.attr("draggable").map(str::to_ascii_lowercase).as_deref() {
+                Some("true") => return Some((c, Vec::new())),
+                Some("false") => return None,
+                _ => {}
+            }
+            let url = |a: &str| {
+                let v = n.attr(a)?;
+                let base = url::Url::parse(&cx.realm.st.borrow().url).ok();
+                Some(match base {
+                    Some(b) => b.join(v).map_or_else(|_| v.to_string(), |u| u.to_string()),
+                    None => v.to_string(),
+                })
+            };
+            let link = if n.is_html("a") { url("href") } else { None };
+            let img = if n.is_html("img") { url("src") } else { None };
+            if let Some(u) = link.or(img) {
+                let items = vec![
+                    Item::Text {
+                        ty: "text/uri-list".into(),
+                        data: u.clone(),
+                    },
+                    Item::Text {
+                        ty: "text/plain".into(),
+                        data: u,
+                    },
+                ];
+                return Some((c, items));
+            }
+        }
+        cur = dom.parent(c);
+    }
+    None
+}
+
+/// Fires a drag event at `el`; `false` if it was cancelled.
+fn drag_event(
+    cx: &mut Cx<'_, '_, '_>,
+    el: NodeId,
+    ty: &str,
+    point: (f64, f64),
+    dt: u32,
+) -> R<bool> {
+    use crate::dom::dnd::{Mode, set_mode};
+    let mode = match ty {
+        "dragstart" => Mode::ReadWrite,
+        "drop" => Mode::ReadOnly,
+        _ => Mode::Protected,
+    };
+    set_mode(cx, dt, mode);
+    let cancelable = !matches!(ty, "dragleave" | "dragend");
+    let page_offset = crate::dom::scroll::offset(cx, crate::dom::scroll::Scroller::Viewport);
+    let data = EventData {
+        ty: ty.into(),
+        bubbles: true,
+        cancelable,
+        composed: true,
+        initialized: true,
+        trusted: true,
+        time: now(cx),
+        input: InputData {
+            client: point,
+            screen: (point.0 as i32, point.1 as i32),
+            page_offset,
+            ..InputData::default()
+        },
+        drag: Some(dt),
+        ..EventData::default()
+    };
+    let e = cx.alloc(Iface::DragEvent, Slot::Event(Box::new(data)));
+    let ok = dispatch(cx, Target::Node(el), e);
+    set_mode(cx, dt, Mode::Protected);
+    ok
+}
+
+/// Presses the pointer's button on `el` at `point`: hover, `pointerdown`/`mousedown`, focus.
+pub fn pointer_down(cx: &mut Cx<'_, '_, '_>, el: NodeId, point: (f64, f64)) -> R<()> {
+    cx.st().drag = None;
+    // A press where the pointer already is moves nothing (no extra `mousemove`).
+    if cx.st().hovered != Some(el) {
+        hover(cx, el, Some(point))?;
+    }
+    cx.st().pressed = Some(Press {
+        node: el,
+        point,
+        moved: false,
+    });
+    mouse(cx, el, "pointerdown", point, None)?;
+    if mouse(cx, el, "mousedown", point, None)? {
+        let mut target = Some(el);
+        while let Some(t) = target {
+            if focusable(cx, t) {
+                break;
+            }
+            target = cx.dom().parent(t);
+        }
+        move_focus(cx, target)?;
+    }
+    Ok(())
+}
+
+/// Moves the pointer to `el` at `point`. With the button held from a draggable element, the
+/// first move starts HTML drag and drop (`dragstart`); with `intercept`, the drag's data is
+/// returned instead of running it (the client drives it). During a drag: `drag`, then
+/// `dragenter`/`dragleave`/`dragover` on the element under the pointer.
+pub fn pointer_move(
+    cx: &mut Cx<'_, '_, '_>,
+    el: NodeId,
+    point: (f64, f64),
+    intercept: bool,
+) -> R<Option<Vec<(String, String)>>> {
+    if cx.st().drag.as_ref().is_some_and(|d| !d.intercepted) {
+        drag_over(cx, el, point)?;
+        return Ok(None);
+    }
+    let first = match cx.st().pressed.as_mut() {
+        Some(p) if !p.moved => {
+            p.moved = true;
+            Some((p.node, p.point))
+        }
+        _ => None,
+    };
+    if let Some((pressed, at)) = first
+        && let Some((source, items)) = draggable(cx, pressed)
+    {
+        // As in browsers, the move that starts a drag is a move first.
+        hover(cx, el, Some(point))?;
+        let dt = crate::dom::dnd::new_data_transfer(cx, crate::dom::dnd::DtData::drag(items));
+        if drag_event(cx, source, "dragstart", at, dt)? {
+            // The drag takes the pointer: no more mouse events for this press.
+            mouse(cx, pressed, "pointercancel", at, None)?;
+            cx.st().pressed = None;
+            cx.st().drag = Some(DragSession {
+                source: Some(source),
+                dt,
+                target: None,
+                accepted: false,
+                intercepted: intercept,
+            });
+            if intercept {
+                let data = match cx.st().slot(dt) {
+                    Some(Slot::DataTransfer(d)) => d.strings(),
+                    _ => Vec::new(),
+                };
+                return Ok(Some(data));
+            }
+            drag_over(cx, el, point)?;
+            return Ok(None);
+        }
+    }
+    hover(cx, el, Some(point))?;
+    Ok(None)
+}
+
+/// One step of a drag over the page: `drag` at the source, then enter/leave and `dragover` at
+/// the element under the pointer; a cancelled `dragover` accepts the drop.
+fn drag_over(cx: &mut Cx<'_, '_, '_>, el: NodeId, point: (f64, f64)) -> R<()> {
+    let Some(s) = cx.st().drag.clone() else {
+        return Ok(());
+    };
+    if let Some(src) = s.source.filter(|&n| cx.dom().get(n).is_some()) {
+        drag_event(cx, src, "drag", point, s.dt)?;
+    }
+    if s.target != Some(el) {
+        if let Some(old) = s.target.filter(|&n| cx.dom().get(n).is_some()) {
+            drag_event(cx, old, "dragleave", point, s.dt)?;
+        }
+        drag_event(cx, el, "dragenter", point, s.dt)?;
+    }
+    // `dropEffect` starts from what `effectAllowed` allows; a cancelled `dragover` keeps
+    // it (or what the page set), an uncancelled one makes it `none`.
+    if let Some(Slot::DataTransfer(d)) = cx.st().slot_mut(s.dt) {
+        d.drop_effect = match d.effect_allowed.as_str() {
+            "none" => "none",
+            "link" | "linkMove" => "link",
+            "move" => "move",
+            _ => "copy",
+        }
+        .into();
+    }
+    let accepted = !drag_event(cx, el, "dragover", point, s.dt)?;
+    if !accepted && let Some(Slot::DataTransfer(d)) = cx.st().slot_mut(s.dt) {
+        d.drop_effect = "none".into();
+    }
+    if let Some(d) = cx.st().drag.as_mut() {
+        d.target = Some(el);
+        d.accepted = accepted;
+    }
+    Ok(())
+}
+
+/// Ends a drag at `el`: `drop` there if it accepted (else `dragleave`), then `dragend` at the
+/// source.
+fn drag_finish(cx: &mut Cx<'_, '_, '_>, el: NodeId, point: (f64, f64), drop: bool) -> R<Dragged> {
+    let Some(s) = cx.st().drag.take() else {
+        return Ok(Dragged::default());
+    };
+    let mut dropped = false;
+    if drop && s.accepted && s.target == Some(el) {
+        drag_event(cx, el, "drop", point, s.dt)?;
+        dropped = true;
+    } else if let Some(t) = s.target.filter(|&n| cx.dom().get(n).is_some()) {
+        drag_event(cx, t, "dragleave", point, s.dt)?;
+    }
+    if !dropped && let Some(Slot::DataTransfer(d)) = cx.st().slot_mut(s.dt) {
+        d.drop_effect = "none".into();
+    }
+    if let Some(src) = s.source.filter(|&n| cx.dom().get(n).is_some()) {
+        drag_event(cx, src, "dragend", point, s.dt)?;
+    }
+    cx.st().pressed = None;
+    Ok(Dragged {
+        html: true,
+        dropped,
+        intercepted: None,
+    })
+}
+
+/// Releases the button on `el` at `point`: the drop of a drag in progress, else
+/// `pointerup`/`mouseup` (and `click` when the pointer did not move).
+pub fn pointer_up(cx: &mut Cx<'_, '_, '_>, el: NodeId, point: (f64, f64)) -> R<Dragged> {
+    if cx.st().drag.as_ref().is_some_and(|d| !d.intercepted) {
+        drag_over(cx, el, point)?;
+        return drag_finish(cx, el, point, true);
+    }
+    let press = cx.st().pressed.take();
+    if press.is_none() && cx.st().drag.is_some() {
+        // The client drove an intercepted drag and never dropped it.
+        cx.st().drag = None;
+    }
+    mouse(cx, el, "pointerup", point, None)?;
+    mouse(cx, el, "mouseup", point, None)?;
+    if let Some(p) = press
+        && !p.moved
+        && p.node == el
+    {
+        crate::dom::event_target::click_with(cx, el, true, point)?;
+    }
+    Ok(Dragged::default())
+}
+
+/// What a CDP client asks of a drag it drives (`Input.dispatchDragEvent`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DragKind {
+    /// The drag enters the page (or moves within it).
+    Enter,
+    /// The drag moves.
+    Over,
+    /// The drag is dropped.
+    Drop,
+    /// The drag is cancelled.
+    Cancel,
+}
+
+/// A drag the client drives at `el`/`point`: the intercepted one, or one from outside the page
+/// with `items`.
+pub fn drag_from_client(
+    cx: &mut Cx<'_, '_, '_>,
+    el: NodeId,
+    point: (f64, f64),
+    kind: DragKind,
+    items: Vec<(String, String)>,
+) -> R<Dragged> {
+    use crate::dom::dnd::{DtData, Item};
+    let active = cx.st().drag.is_some();
+    if !active {
+        if matches!(kind, DragKind::Drop | DragKind::Cancel) {
+            return Ok(Dragged::default());
+        }
+        let items = items
+            .into_iter()
+            .map(|(ty, data)| Item::Text { ty, data })
+            .collect();
+        let dt = crate::dom::dnd::new_data_transfer(cx, DtData::drag(items));
+        cx.st().drag = Some(DragSession {
+            source: None,
+            dt,
+            target: None,
+            accepted: false,
+            intercepted: false,
+        });
+    }
+    if let Some(d) = cx.st().drag.as_mut() {
+        d.intercepted = false;
+    }
+    match kind {
+        DragKind::Enter | DragKind::Over => {
+            drag_over(cx, el, point)?;
+            Ok(Dragged {
+                html: true,
+                ..Dragged::default()
+            })
+        }
+        DragKind::Drop => drag_finish(cx, el, point, true),
+        DragKind::Cancel => drag_finish(cx, el, point, false),
+    }
+}
+
+/// A drag from `from` to `to` (centres): press, four moves, release.
+pub fn drag(cx: &mut Cx<'_, '_, '_>, from: NodeId, to: NodeId) -> R<Dragged> {
+    let (a, p0) = target_at(cx, from, None);
+    pointer_down(cx, a, p0)?;
+    let p1 = center(cx, to);
+    for i in 1..=4 {
+        let t = f64::from(i) / 4.0;
+        let p = (p0.0 + (p1.0 - p0.0) * t, p0.1 + (p1.1 - p0.1) * t);
+        let hit = cx.realm.layout().element_at(p.0 as f32, p.1 as f32);
+        // The last step lands on the target (or what covers it inside it).
+        let el = if i == 4 {
+            target_at(cx, to, Some(p)).0
+        } else {
+            hit.unwrap_or(to)
+        };
+        pointer_move(cx, el, p, false)?;
+    }
+    let (b, _) = target_at(cx, to, Some(p1));
+    pointer_up(cx, b, p1)
+}
+
+/// Drops files on `el` (a drop zone): `dragenter`, `dragover`, then `drop` if it accepts.
+pub fn drop_files(
+    cx: &mut Cx<'_, '_, '_>,
+    el: NodeId,
+    files: Vec<crate::dom::blobs::BlobData>,
+) -> R<Dragged> {
+    use crate::dom::dnd::{DtData, Item};
+    let (el, p) = target_at(cx, el, None);
+    let items = files
+        .into_iter()
+        .map(|f| Item::File(std::rc::Rc::new(f)))
+        .collect();
+    let dt = crate::dom::dnd::new_data_transfer(cx, DtData::drag(items));
+    cx.st().drag = Some(DragSession {
+        source: None,
+        dt,
+        target: None,
+        accepted: false,
+        intercepted: false,
+    });
+    hover(cx, el, Some(p))?;
+    drag_over(cx, el, p)?;
+    drag_finish(cx, el, p, true)
+}
+
+/// Whether an element (or an ancestor) listens for `drop`: a drop zone.
+pub fn drop_zone(cx: &Cx<'_, '_, '_>, el: NodeId) -> bool {
+    let st = cx.realm.st.borrow();
+    let dom = cx.dom();
+    let mut cur = Some(el);
+    while let Some(c) = cur {
+        let t = Target::Node(c);
+        let listens = st
+            .listeners
+            .get(&t)
+            .is_some_and(|l| l.iter().any(|x| x.ty == "drop"))
+            || st
+                .handlers
+                .keys()
+                .any(|(_, ht, ty)| *ht == t && ty == "drop")
+            || dom.get(c).is_some_and(|n| n.attr("ondrop").is_some());
+        if listens {
+            return true;
+        }
+        cur = dom.parent(c);
+    }
+    false
 }

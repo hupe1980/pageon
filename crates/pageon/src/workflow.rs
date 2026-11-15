@@ -432,9 +432,19 @@ pub fn compile(steps: &[Step]) -> Result<Workflow, String> {
                     files,
                 }
             }
-            Action::ClickAt(..) | Action::HoverAt(..) => {
+            Action::ClickAt(..)
+            | Action::HoverAt(..)
+            | Action::PointerDown(..)
+            | Action::PointerUp(..)
+            | Action::DragEvent { .. } => {
                 return Err(format!(
                     "step `{}` acts at a point; workflows name elements (record with refs)",
+                    step.action
+                ));
+            }
+            Action::Drag(..) => {
+                return Err(format!(
+                    "step `{}` drags; workflows do not drag yet (finish this part by hand)",
                     step.action
                 ));
             }

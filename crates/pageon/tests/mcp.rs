@@ -155,6 +155,7 @@ fn handshake_and_tools() {
             "browser_press",
             "browser_select",
             "browser_hover",
+            "browser_drag",
             "browser_scroll",
             "browser_wait",
             "browser_back",

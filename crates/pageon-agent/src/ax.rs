@@ -553,6 +553,7 @@ impl<'a, 'b> Walker<'a, 'b> {
             "Iframe" => self.frame_marker(f, node, key.as_ref(), ctx, in_view, guard),
             r if LANDMARK.contains(&r) => {
                 if (r == "form" || r == "region") && name.is_empty() {
+                    self.drop_target(f, node, &name, &children, key.as_ref(), dom, ctx, in_view);
                     walk_children(
                         self,
                         &sub(ctx.depth, ctx.suppress_text, false, ctx.in_modal),
@@ -576,6 +577,7 @@ impl<'a, 'b> Walker<'a, 'b> {
                     self.push(ctx, l, in_view);
                 }
                 self.path.push((r.to_string(), name.clone()));
+                self.drop_target(f, node, &name, &children, key.as_ref(), dom, ctx, in_view);
                 walk_children(
                     self,
                     &sub(ctx.depth, ctx.suppress_text, false, ctx.in_modal),
@@ -654,6 +656,9 @@ impl<'a, 'b> Walker<'a, 'b> {
                     modal,
                 );
                 self.path.push((r.to_string(), name.clone()));
+                if !shown {
+                    self.drop_target(f, node, &name, &children, key.as_ref(), dom, ctx, in_view);
+                }
                 let depth = if shown { ctx.depth + 1 } else { ctx.depth };
                 walk_children(
                     self,
@@ -724,6 +729,7 @@ impl<'a, 'b> Walker<'a, 'b> {
                 if on_path {
                     self.path.push((r.to_string(), name.clone()));
                 }
+                self.drop_target(f, node, &name, &children, key.as_ref(), dom, ctx, in_view);
                 walk_children(
                     self,
                     &sub(ctx.depth, ctx.suppress_text, label, ctx.in_modal),
@@ -733,6 +739,43 @@ impl<'a, 'b> Walker<'a, 'b> {
                 }
             }
         }
+    }
+
+    /// A `droptarget` line for an element that listens for `drop` (a board's column, a file
+    /// drop zone): a ref to drag or drop onto. Its content follows as usual.
+    #[allow(clippy::too_many_arguments)]
+    fn drop_target(
+        &mut self,
+        f: usize,
+        node: &AxNode,
+        name: &str,
+        children: &[usize],
+        key: Option<&NodeKey>,
+        dom: Option<usize>,
+        ctx: &Ctx,
+        in_view: bool,
+    ) {
+        let frame = &self.page.frames[f];
+        let Some(d) = dom else { return };
+        if !frame.dom[d].drop_target || ctx.suppress_text {
+            return;
+        }
+        let text = if name.is_empty() {
+            descendant_text(frame, children, 0)
+        } else {
+            name.to_string()
+        };
+        self.element(
+            f,
+            node,
+            "droptarget",
+            &normalize(&clip(&text, MAX_NAME)),
+            key,
+            dom,
+            ctx,
+            in_view,
+            false,
+        );
     }
 
     #[allow(clippy::too_many_arguments)]

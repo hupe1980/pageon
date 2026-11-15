@@ -6,6 +6,7 @@ pub mod blobs;
 mod canvas;
 mod collections;
 pub(crate) mod custom_elements;
+pub mod dnd;
 mod documents;
 mod elements;
 mod events;
@@ -49,8 +50,8 @@ pub use elements::{
     svg_graphics_element,
 };
 pub use events::{
-    custom_event, event, event_target, focus_event, keyboard_event, mouse_event, pointer_event,
-    ui_event, wheel_event,
+    custom_event, drag_event, event, event_target, focus_event, keyboard_event, mouse_event,
+    pointer_event, ui_event, wheel_event,
 };
 pub use globals::{
     animation_frame_provider, console, dom_exception, location, navigator_automation_information,
@@ -79,6 +80,7 @@ pub use traversal::tree_walker;
 pub use xml::xml_serializer;
 
 pub use blobs::{blob, file, file_list, file_reader};
+pub use dnd::{data_transfer, data_transfer_item, data_transfer_item_list};
 pub use internals::{aria_mixin, custom_state_set, element_internals};
 pub use net::{
     abort_controller, abort_signal, body, headers, progress_event, request, response,

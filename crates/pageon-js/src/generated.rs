@@ -38,6 +38,12 @@ pub enum Iface {
     DOMStringMap,
     /// `DOMTokenList`.
     DOMTokenList,
+    /// `DataTransfer`.
+    DataTransfer,
+    /// `DataTransferItem`.
+    DataTransferItem,
+    /// `DataTransferItemList`.
+    DataTransferItemList,
     /// `ElementInternals`.
     ElementInternals,
     /// `Event`.
@@ -300,6 +306,8 @@ pub enum Iface {
     WheelEvent,
     /// `XMLHttpRequest`.
     XMLHttpRequest,
+    /// `DragEvent`.
+    DragEvent,
     /// `HTMLAnchorElement`.
     HTMLAnchorElement,
     /// `HTMLAreaElement`.
@@ -334,7 +342,7 @@ pub enum Iface {
 
 impl Iface {
     /// All interfaces.
-    pub const ALL: &'static [Iface] = &[Iface::AbortController, Iface::Blob, Iface::CSSStyleDeclaration, Iface::CSSStyleProperties, Iface::CanvasRenderingContext2D, Iface::Crypto, Iface::CustomElementRegistry, Iface::CustomStateSet, Iface::DOMException, Iface::DOMImplementation, Iface::DOMRectList, Iface::DOMRectReadOnly, Iface::DOMStringMap, Iface::DOMTokenList, Iface::ElementInternals, Iface::Event, Iface::EventTarget, Iface::File, Iface::FileList, Iface::FileReader, Iface::FormData, Iface::HTMLCollection, Iface::HTMLFormControlsCollection, Iface::HTMLOptionsCollection, Iface::Headers, Iface::History, Iface::IdleDeadline, Iface::IntersectionObserver, Iface::IntersectionObserverEntry, Iface::Location, Iface::MediaQueryList, Iface::MediaQueryListEvent, Iface::MessageEvent, Iface::ModelContext, Iface::MutationObserver, Iface::MutationRecord, Iface::NamedNodeMap, Iface::Navigator, Iface::NavigatorUAData, Iface::Node, Iface::NodeFilter, Iface::NodeList, Iface::Performance, Iface::PopStateEvent, Iface::ProgressEvent, Iface::Request, Iface::ResizeObserver, Iface::ResizeObserverEntry, Iface::ResizeObserverSize, Iface::Response, Iface::Storage, Iface::StyleSheet, Iface::TextDecoder, Iface::TextEncoder, Iface::TreeWalker, Iface::UIEvent, Iface::URL, Iface::URLSearchParams, Iface::ValidityState, Iface::VisualViewport, Iface::WebSocket, Iface::Window, Iface::XMLHttpRequestEventTarget, Iface::XMLSerializer, Iface::console, Iface::AbortSignal, Iface::Attr, Iface::CSSStyleSheet, Iface::CharacterData, Iface::CloseEvent, Iface::Comment, Iface::CustomEvent, Iface::DOMRect, Iface::Document, Iface::DocumentFragment, Iface::DocumentType, Iface::Element, Iface::EventSource, Iface::FocusEvent, Iface::HTMLElement, Iface::HTMLEmbedElement, Iface::HTMLFieldSetElement, Iface::HTMLFontElement, Iface::HTMLFormElement, Iface::HTMLFrameElement, Iface::HTMLFrameSetElement, Iface::HTMLHRElement, Iface::HTMLHeadElement, Iface::HTMLHeadingElement, Iface::HTMLHtmlElement, Iface::HTMLIFrameElement, Iface::HTMLImageElement, Iface::HTMLInputElement, Iface::HTMLLIElement, Iface::HTMLLabelElement, Iface::HTMLLegendElement, Iface::HTMLLinkElement, Iface::HTMLMapElement, Iface::HTMLMarqueeElement, Iface::HTMLMediaElement, Iface::HTMLMenuElement, Iface::HTMLMetaElement, Iface::HTMLMeterElement, Iface::HTMLModElement, Iface::HTMLOListElement, Iface::HTMLObjectElement, Iface::HTMLOptGroupElement, Iface::HTMLOptionElement, Iface::HTMLOutputElement, Iface::HTMLParagraphElement, Iface::HTMLParamElement, Iface::HTMLPictureElement, Iface::HTMLPreElement, Iface::HTMLProgressElement, Iface::HTMLQuoteElement, Iface::HTMLScriptElement, Iface::HTMLSelectElement, Iface::HTMLSelectedContentElement, Iface::HTMLSlotElement, Iface::HTMLSourceElement, Iface::HTMLSpanElement, Iface::HTMLStyleElement, Iface::HTMLTableCaptionElement, Iface::HTMLTableCellElement, Iface::HTMLTableColElement, Iface::HTMLTableElement, Iface::HTMLTableRowElement, Iface::HTMLTableSectionElement, Iface::HTMLTemplateElement, Iface::HTMLTextAreaElement, Iface::HTMLTimeElement, Iface::HTMLTitleElement, Iface::HTMLTrackElement, Iface::HTMLUListElement, Iface::HTMLUnknownElement, Iface::HTMLVideoElement, Iface::KeyboardEvent, Iface::MouseEvent, Iface::PointerEvent, Iface::SVGElement, Iface::SVGGraphicsElement, Iface::ShadowRoot, Iface::Text, Iface::WheelEvent, Iface::XMLHttpRequest, Iface::HTMLAnchorElement, Iface::HTMLAreaElement, Iface::HTMLAudioElement, Iface::HTMLBRElement, Iface::HTMLBaseElement, Iface::HTMLBodyElement, Iface::HTMLButtonElement, Iface::HTMLCanvasElement, Iface::HTMLDListElement, Iface::HTMLDataElement, Iface::HTMLDataListElement, Iface::HTMLDetailsElement, Iface::HTMLDialogElement, Iface::HTMLDirectoryElement, Iface::HTMLDivElement];
+    pub const ALL: &'static [Iface] = &[Iface::AbortController, Iface::Blob, Iface::CSSStyleDeclaration, Iface::CSSStyleProperties, Iface::CanvasRenderingContext2D, Iface::Crypto, Iface::CustomElementRegistry, Iface::CustomStateSet, Iface::DOMException, Iface::DOMImplementation, Iface::DOMRectList, Iface::DOMRectReadOnly, Iface::DOMStringMap, Iface::DOMTokenList, Iface::DataTransfer, Iface::DataTransferItem, Iface::DataTransferItemList, Iface::ElementInternals, Iface::Event, Iface::EventTarget, Iface::File, Iface::FileList, Iface::FileReader, Iface::FormData, Iface::HTMLCollection, Iface::HTMLFormControlsCollection, Iface::HTMLOptionsCollection, Iface::Headers, Iface::History, Iface::IdleDeadline, Iface::IntersectionObserver, Iface::IntersectionObserverEntry, Iface::Location, Iface::MediaQueryList, Iface::MediaQueryListEvent, Iface::MessageEvent, Iface::ModelContext, Iface::MutationObserver, Iface::MutationRecord, Iface::NamedNodeMap, Iface::Navigator, Iface::NavigatorUAData, Iface::Node, Iface::NodeFilter, Iface::NodeList, Iface::Performance, Iface::PopStateEvent, Iface::ProgressEvent, Iface::Request, Iface::ResizeObserver, Iface::ResizeObserverEntry, Iface::ResizeObserverSize, Iface::Response, Iface::Storage, Iface::StyleSheet, Iface::TextDecoder, Iface::TextEncoder, Iface::TreeWalker, Iface::UIEvent, Iface::URL, Iface::URLSearchParams, Iface::ValidityState, Iface::VisualViewport, Iface::WebSocket, Iface::Window, Iface::XMLHttpRequestEventTarget, Iface::XMLSerializer, Iface::console, Iface::AbortSignal, Iface::Attr, Iface::CSSStyleSheet, Iface::CharacterData, Iface::CloseEvent, Iface::Comment, Iface::CustomEvent, Iface::DOMRect, Iface::Document, Iface::DocumentFragment, Iface::DocumentType, Iface::Element, Iface::EventSource, Iface::FocusEvent, Iface::HTMLElement, Iface::HTMLEmbedElement, Iface::HTMLFieldSetElement, Iface::HTMLFontElement, Iface::HTMLFormElement, Iface::HTMLFrameElement, Iface::HTMLFrameSetElement, Iface::HTMLHRElement, Iface::HTMLHeadElement, Iface::HTMLHeadingElement, Iface::HTMLHtmlElement, Iface::HTMLIFrameElement, Iface::HTMLImageElement, Iface::HTMLInputElement, Iface::HTMLLIElement, Iface::HTMLLabelElement, Iface::HTMLLegendElement, Iface::HTMLLinkElement, Iface::HTMLMapElement, Iface::HTMLMarqueeElement, Iface::HTMLMediaElement, Iface::HTMLMenuElement, Iface::HTMLMetaElement, Iface::HTMLMeterElement, Iface::HTMLModElement, Iface::HTMLOListElement, Iface::HTMLObjectElement, Iface::HTMLOptGroupElement, Iface::HTMLOptionElement, Iface::HTMLOutputElement, Iface::HTMLParagraphElement, Iface::HTMLParamElement, Iface::HTMLPictureElement, Iface::HTMLPreElement, Iface::HTMLProgressElement, Iface::HTMLQuoteElement, Iface::HTMLScriptElement, Iface::HTMLSelectElement, Iface::HTMLSelectedContentElement, Iface::HTMLSlotElement, Iface::HTMLSourceElement, Iface::HTMLSpanElement, Iface::HTMLStyleElement, Iface::HTMLTableCaptionElement, Iface::HTMLTableCellElement, Iface::HTMLTableColElement, Iface::HTMLTableElement, Iface::HTMLTableRowElement, Iface::HTMLTableSectionElement, Iface::HTMLTemplateElement, Iface::HTMLTextAreaElement, Iface::HTMLTimeElement, Iface::HTMLTitleElement, Iface::HTMLTrackElement, Iface::HTMLUListElement, Iface::HTMLUnknownElement, Iface::HTMLVideoElement, Iface::KeyboardEvent, Iface::MouseEvent, Iface::PointerEvent, Iface::SVGElement, Iface::SVGGraphicsElement, Iface::ShadowRoot, Iface::Text, Iface::WheelEvent, Iface::XMLHttpRequest, Iface::DragEvent, Iface::HTMLAnchorElement, Iface::HTMLAreaElement, Iface::HTMLAudioElement, Iface::HTMLBRElement, Iface::HTMLBaseElement, Iface::HTMLBodyElement, Iface::HTMLButtonElement, Iface::HTMLCanvasElement, Iface::HTMLDListElement, Iface::HTMLDataElement, Iface::HTMLDataListElement, Iface::HTMLDetailsElement, Iface::HTMLDialogElement, Iface::HTMLDirectoryElement, Iface::HTMLDivElement];
 
     /// The interface name.
     pub fn name(self) -> &'static str {
@@ -353,6 +361,9 @@ impl Iface {
             Iface::DOMRectReadOnly => "DOMRectReadOnly",
             Iface::DOMStringMap => "DOMStringMap",
             Iface::DOMTokenList => "DOMTokenList",
+            Iface::DataTransfer => "DataTransfer",
+            Iface::DataTransferItem => "DataTransferItem",
+            Iface::DataTransferItemList => "DataTransferItemList",
             Iface::ElementInternals => "ElementInternals",
             Iface::Event => "Event",
             Iface::EventTarget => "EventTarget",
@@ -484,6 +495,7 @@ impl Iface {
             Iface::Text => "Text",
             Iface::WheelEvent => "WheelEvent",
             Iface::XMLHttpRequest => "XMLHttpRequest",
+            Iface::DragEvent => "DragEvent",
             Iface::HTMLAnchorElement => "HTMLAnchorElement",
             Iface::HTMLAreaElement => "HTMLAreaElement",
             Iface::HTMLAudioElement => "HTMLAudioElement",
@@ -519,6 +531,9 @@ impl Iface {
             Iface::DOMRectReadOnly => None,
             Iface::DOMStringMap => None,
             Iface::DOMTokenList => None,
+            Iface::DataTransfer => None,
+            Iface::DataTransferItem => None,
+            Iface::DataTransferItemList => None,
             Iface::ElementInternals => None,
             Iface::Event => None,
             Iface::EventTarget => None,
@@ -650,6 +665,7 @@ impl Iface {
             Iface::Text => Some(Iface::CharacterData),
             Iface::WheelEvent => Some(Iface::MouseEvent),
             Iface::XMLHttpRequest => Some(Iface::XMLHttpRequestEventTarget),
+            Iface::DragEvent => Some(Iface::MouseEvent),
             Iface::HTMLAnchorElement => Some(Iface::HTMLElement),
             Iface::HTMLAreaElement => Some(Iface::HTMLElement),
             Iface::HTMLAudioElement => Some(Iface::HTMLMediaElement),
@@ -1665,6 +1681,198 @@ fn set__DOMTokenList__value(scope: &mut v8::PinScope, args: v8::FunctionCallback
         let a0: String = cv::string(cx, v)?;
         crate::dom::dom_token_list::set_value(cx, this, a0)?;
         cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__DataTransfer__dropEffect(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::DataTransfer)?;
+        let r: String = crate::dom::data_transfer::get_drop_effect(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__DataTransfer__dropEffect(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::DataTransfer)?;
+        let v = args.get(0);
+        let a0: String = cv::string(cx, v)?;
+        crate::dom::data_transfer::set_drop_effect(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__DataTransfer__effectAllowed(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::DataTransfer)?;
+        let r: String = crate::dom::data_transfer::get_effect_allowed(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__DataTransfer__effectAllowed(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::DataTransfer)?;
+        let v = args.get(0);
+        let a0: String = cv::string(cx, v)?;
+        crate::dom::data_transfer::set_effect_allowed(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__DataTransfer__items(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::DataTransfer)?;
+        let r: Obj = crate::dom::data_transfer::get_items(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__DataTransfer__setDragImage(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::DataTransfer)?;
+        if args.length() <= 0 { return Err(cv::Error::args("DataTransfer.setDragImage", 0)); }
+        let a0: Obj = { let v = args.get(0); cv::obj(cx, v, Iface::Element)? };
+        if args.length() <= 1 { return Err(cv::Error::args("DataTransfer.setDragImage", 1)); }
+        let a1: i32 = { let v = args.get(1); cv::int::<i32>(cx, v)? };
+        if args.length() <= 2 { return Err(cv::Error::args("DataTransfer.setDragImage", 2)); }
+        let a2: i32 = { let v = args.get(2); cv::int::<i32>(cx, v)? };
+        let r: () = crate::dom::data_transfer::set_drag_image(cx, this, a0, a1, a2)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__DataTransfer__types(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::DataTransfer)?;
+        let r: Vec<String> = crate::dom::data_transfer::get_types(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__DataTransfer__getData(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::DataTransfer)?;
+        if args.length() <= 0 { return Err(cv::Error::args("DataTransfer.getData", 0)); }
+        let a0: String = { let v = args.get(0); cv::string(cx, v)? };
+        let r: String = crate::dom::data_transfer::get_data(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__DataTransfer__setData(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::DataTransfer)?;
+        if args.length() <= 0 { return Err(cv::Error::args("DataTransfer.setData", 0)); }
+        let a0: String = { let v = args.get(0); cv::string(cx, v)? };
+        if args.length() <= 1 { return Err(cv::Error::args("DataTransfer.setData", 1)); }
+        let a1: String = { let v = args.get(1); cv::string(cx, v)? };
+        let r: () = crate::dom::data_transfer::set_data(cx, this, a0, a1)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__DataTransfer__clearData(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::DataTransfer)?;
+        let a0: Option<String> = { let v = args.get(0); if v.is_undefined() { None } else { Some(cv::string(cx, v)?) } };
+        let r: () = crate::dom::data_transfer::clear_data(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__DataTransfer__files(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::DataTransfer)?;
+        let r: Obj = crate::dom::data_transfer::get_files(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn ctor__DataTransfer(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        if args.new_target().is_undefined() { return Err(cv::Error::Type("Failed to construct 'DataTransfer': Please use the 'new' operator.".into())); }
+        let r: Obj = crate::dom::data_transfer::constructor(cx, )?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__DataTransferItem__kind(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::DataTransferItem)?;
+        let r: String = crate::dom::data_transfer_item::get_kind(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__DataTransferItem__type(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::DataTransferItem)?;
+        let r: String = crate::dom::data_transfer_item::get_type_(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__DataTransferItem__getAsString(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::DataTransferItem)?;
+        if args.length() <= 0 { return Err(cv::Error::args("DataTransferItem.getAsString", 0)); }
+        let a0: Option<Value> = { let v = args.get(0); cv::opt_value(cx, v) };
+        let r: () = crate::dom::data_transfer_item::get_as_string(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__DataTransferItem__getAsFile(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::DataTransferItem)?;
+        let r: Option<Obj> = crate::dom::data_transfer_item::get_as_file(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__DataTransferItemList__length(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::DataTransferItemList)?;
+        let r: u32 = crate::dom::data_transfer_item_list::get_length(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__DataTransferItemList__remove(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::DataTransferItemList)?;
+        if args.length() <= 0 { return Err(cv::Error::args("DataTransferItemList.remove", 0)); }
+        let a0: u32 = { let v = args.get(0); cv::int::<u32>(cx, v)? };
+        let r: () = crate::dom::data_transfer_item_list::remove(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__DataTransferItemList__clear(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::DataTransferItemList)?;
+        let r: () = crate::dom::data_transfer_item_list::clear(cx, this)?;
+        cx.ret(r)
     });
 }
 
@@ -23842,6 +24050,27 @@ fn ctor__XMLHttpRequest(scope: &mut v8::PinScope, args: v8::FunctionCallbackArgu
 }
 
 #[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__DragEvent__dataTransfer(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::DragEvent)?;
+        let r: Option<Obj> = crate::dom::drag_event::get_data_transfer(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn ctor__DragEvent(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        if args.new_target().is_undefined() { return Err(cv::Error::Type("Failed to construct 'DragEvent': Please use the 'new' operator.".into())); }
+        if args.length() <= 0 { return Err(cv::Error::args("DragEvent constructor", 0)); }
+        let a0: String = { let v = args.get(0); cv::string(cx, v)? };
+        let a1: DragEventInit = { let v = args.get(1); if v.is_undefined() { DragEventInit::default() } else { dict_drag_event_init(cx, v)? } };
+        let r: Obj = crate::dom::drag_event::constructor(cx, a0, a1)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
 fn get__HTMLAnchorElement__download(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::HTMLAnchorElement)?;
@@ -25688,6 +25917,139 @@ fn dict_custom_event_init(cx: &mut Cx<'_, '_, '_>, v: v8::Local<'_, v8::Value>) 
     { let v = cv::get(cx, obj, "cancelable")?; if !v.is_undefined() { d.cancelable = cv::boolean(cx, v); } }
     { let v = cv::get(cx, obj, "composed")?; if !v.is_undefined() { d.composed = cv::boolean(cx, v); } }
     { let v = cv::get(cx, obj, "detail")?; if !v.is_undefined() { d.detail = Some(cv::value(cx, v)); } }
+    Ok(d)
+}
+
+/// The `DragEventInit` dictionary.
+#[derive(Debug, Clone)]
+#[allow(missing_docs)]
+pub struct DragEventInit {
+    /// `altKey`.
+    pub alt_key: bool,
+    /// `bubbles`.
+    pub bubbles: bool,
+    /// `button`.
+    pub button: i16,
+    /// `buttons`.
+    pub buttons: u16,
+    /// `cancelable`.
+    pub cancelable: bool,
+    /// `clientX`.
+    pub client_x: i32,
+    /// `clientY`.
+    pub client_y: i32,
+    /// `composed`.
+    pub composed: bool,
+    /// `ctrlKey`.
+    pub ctrl_key: bool,
+    /// `dataTransfer`.
+    pub data_transfer: Option<Obj>,
+    /// `detail`.
+    pub detail: i32,
+    /// `metaKey`.
+    pub meta_key: bool,
+    /// `modifierAltGraph`.
+    pub modifier_alt_graph: bool,
+    /// `modifierCapsLock`.
+    pub modifier_caps_lock: bool,
+    /// `modifierFn`.
+    pub modifier_fn: bool,
+    /// `modifierFnLock`.
+    pub modifier_fn_lock: bool,
+    /// `modifierHyper`.
+    pub modifier_hyper: bool,
+    /// `modifierNumLock`.
+    pub modifier_num_lock: bool,
+    /// `modifierScrollLock`.
+    pub modifier_scroll_lock: bool,
+    /// `modifierSuper`.
+    pub modifier_super: bool,
+    /// `modifierSymbol`.
+    pub modifier_symbol: bool,
+    /// `modifierSymbolLock`.
+    pub modifier_symbol_lock: bool,
+    /// `relatedTarget`.
+    pub related_target: Option<Obj>,
+    /// `screenX`.
+    pub screen_x: i32,
+    /// `screenY`.
+    pub screen_y: i32,
+    /// `shiftKey`.
+    pub shift_key: bool,
+    /// `view`.
+    pub view: Option<Obj>,
+    /// `which`.
+    pub which: u32,
+}
+
+impl Default for DragEventInit {
+    fn default() -> Self {
+        Self {
+            alt_key: false,
+            bubbles: false,
+            button: 0,
+            buttons: 0,
+            cancelable: false,
+            client_x: 0,
+            client_y: 0,
+            composed: false,
+            ctrl_key: false,
+            data_transfer: None,
+            detail: 0,
+            meta_key: false,
+            modifier_alt_graph: false,
+            modifier_caps_lock: false,
+            modifier_fn: false,
+            modifier_fn_lock: false,
+            modifier_hyper: false,
+            modifier_num_lock: false,
+            modifier_scroll_lock: false,
+            modifier_super: false,
+            modifier_symbol: false,
+            modifier_symbol_lock: false,
+            related_target: None,
+            screen_x: 0,
+            screen_y: 0,
+            shift_key: false,
+            view: None,
+            which: 0,
+        }
+    }
+}
+
+#[allow(unused_variables, unused_mut, clippy::all)]
+fn dict_drag_event_init(cx: &mut Cx<'_, '_, '_>, v: v8::Local<'_, v8::Value>) -> R<DragEventInit> {
+    let mut d = DragEventInit::default();
+    if v.is_null_or_undefined() { return Ok(d); }
+    let obj = cv::object(cx, v, "DragEventInit")?;
+    { let v = cv::get(cx, obj, "altKey")?; if !v.is_undefined() { d.alt_key = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "bubbles")?; if !v.is_undefined() { d.bubbles = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "button")?; if !v.is_undefined() { d.button = cv::int::<i16>(cx, v)?; } }
+    { let v = cv::get(cx, obj, "buttons")?; if !v.is_undefined() { d.buttons = cv::int::<u16>(cx, v)?; } }
+    { let v = cv::get(cx, obj, "cancelable")?; if !v.is_undefined() { d.cancelable = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "clientX")?; if !v.is_undefined() { d.client_x = cv::int::<i32>(cx, v)?; } }
+    { let v = cv::get(cx, obj, "clientY")?; if !v.is_undefined() { d.client_y = cv::int::<i32>(cx, v)?; } }
+    { let v = cv::get(cx, obj, "composed")?; if !v.is_undefined() { d.composed = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "ctrlKey")?; if !v.is_undefined() { d.ctrl_key = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "dataTransfer")?; if !v.is_undefined() { d.data_transfer = if v.is_null_or_undefined() { None } else { Some(cv::obj(cx, v, Iface::DataTransfer)?) }; } }
+    { let v = cv::get(cx, obj, "detail")?; if !v.is_undefined() { d.detail = cv::int::<i32>(cx, v)?; } }
+    { let v = cv::get(cx, obj, "metaKey")?; if !v.is_undefined() { d.meta_key = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "modifierAltGraph")?; if !v.is_undefined() { d.modifier_alt_graph = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "modifierCapsLock")?; if !v.is_undefined() { d.modifier_caps_lock = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "modifierFn")?; if !v.is_undefined() { d.modifier_fn = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "modifierFnLock")?; if !v.is_undefined() { d.modifier_fn_lock = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "modifierHyper")?; if !v.is_undefined() { d.modifier_hyper = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "modifierNumLock")?; if !v.is_undefined() { d.modifier_num_lock = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "modifierScrollLock")?; if !v.is_undefined() { d.modifier_scroll_lock = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "modifierSuper")?; if !v.is_undefined() { d.modifier_super = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "modifierSymbol")?; if !v.is_undefined() { d.modifier_symbol = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "modifierSymbolLock")?; if !v.is_undefined() { d.modifier_symbol_lock = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "relatedTarget")?; if !v.is_undefined() { d.related_target = if v.is_null_or_undefined() { None } else { Some(cv::obj(cx, v, Iface::EventTarget)?) }; } }
+    { let v = cv::get(cx, obj, "screenX")?; if !v.is_undefined() { d.screen_x = cv::int::<i32>(cx, v)?; } }
+    { let v = cv::get(cx, obj, "screenY")?; if !v.is_undefined() { d.screen_y = cv::int::<i32>(cx, v)?; } }
+    { let v = cv::get(cx, obj, "shiftKey")?; if !v.is_undefined() { d.shift_key = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "view")?; if !v.is_undefined() { d.view = if v.is_null_or_undefined() { None } else { Some(cv::obj(cx, v, Iface::Window)?) }; } }
+    { let v = cv::get(cx, obj, "which")?; if !v.is_undefined() { d.which = cv::int::<u32>(cx, v)?; } }
     Ok(d)
 }
 
@@ -27657,6 +28019,46 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::accessor(scope, proto, "value", get__DOMTokenList__value, Some(set__DOMTokenList__value.map_fn_to()));
         cv::method(scope, proto.into(), "toString", get__DOMTokenList__value, 0);
         crate::dom::hooks::template(scope, Iface::DOMTokenList, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // DataTransfer
+        let f = cv::interface(scope, "DataTransfer", ctor__DataTransfer);
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "dropEffect", get__DataTransfer__dropEffect, Some(set__DataTransfer__dropEffect.map_fn_to()));
+        cv::accessor(scope, proto, "effectAllowed", get__DataTransfer__effectAllowed, Some(set__DataTransfer__effectAllowed.map_fn_to()));
+        cv::accessor(scope, proto, "items", get__DataTransfer__items, None);
+        cv::method(scope, proto.into(), "setDragImage", op__DataTransfer__setDragImage, 3);
+        cv::accessor(scope, proto, "types", get__DataTransfer__types, None);
+        cv::method(scope, proto.into(), "getData", op__DataTransfer__getData, 1);
+        cv::method(scope, proto.into(), "setData", op__DataTransfer__setData, 2);
+        cv::method(scope, proto.into(), "clearData", op__DataTransfer__clearData, 0);
+        cv::accessor(scope, proto, "files", get__DataTransfer__files, None);
+        crate::dom::hooks::template(scope, Iface::DataTransfer, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // DataTransferItem
+        let f = cv::interface(scope, "DataTransferItem", cv::illegal_constructor);
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "kind", get__DataTransferItem__kind, None);
+        cv::accessor(scope, proto, "type", get__DataTransferItem__type, None);
+        cv::method(scope, proto.into(), "getAsString", op__DataTransferItem__getAsString, 1);
+        cv::method(scope, proto.into(), "getAsFile", op__DataTransferItem__getAsFile, 0);
+        crate::dom::hooks::template(scope, Iface::DataTransferItem, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // DataTransferItemList
+        let f = cv::interface(scope, "DataTransferItemList", cv::illegal_constructor);
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "length", get__DataTransferItemList__length, None);
+        cv::method(scope, proto.into(), "remove", op__DataTransferItemList__remove, 1);
+        cv::method(scope, proto.into(), "clear", op__DataTransferItemList__clear, 0);
+        crate::dom::hooks::template(scope, Iface::DataTransferItemList, f);
         out.push(v8::Global::new(scope, f));
     }
     { // ElementInternals
@@ -30326,6 +30728,16 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         crate::dom::hooks::template(scope, Iface::XMLHttpRequest, f);
         out.push(v8::Global::new(scope, f));
     }
+    { // DragEvent
+        let f = cv::interface(scope, "DragEvent", ctor__DragEvent);
+        f.inherit(v8::Local::new(scope, &out[Iface::MouseEvent as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "dataTransfer", get__DragEvent__dataTransfer, None);
+        crate::dom::hooks::template(scope, Iface::DragEvent, f);
+        out.push(v8::Global::new(scope, f));
+    }
     { // HTMLAnchorElement
         let f = cv::interface(scope, "HTMLAnchorElement", cv::illegal_constructor);
         f.inherit(v8::Local::new(scope, &out[Iface::HTMLElement as usize]));
@@ -30572,6 +30984,9 @@ pub fn expose(scope: &mut v8::PinScope<'_, '_>, global: v8::Local<'_, v8::Object
     cv::expose(scope, global, &t[Iface::DOMRectReadOnly as usize], "DOMRectReadOnly");
     cv::expose(scope, global, &t[Iface::DOMStringMap as usize], "DOMStringMap");
     cv::expose(scope, global, &t[Iface::DOMTokenList as usize], "DOMTokenList");
+    cv::expose(scope, global, &t[Iface::DataTransfer as usize], "DataTransfer");
+    cv::expose(scope, global, &t[Iface::DataTransferItem as usize], "DataTransferItem");
+    cv::expose(scope, global, &t[Iface::DataTransferItemList as usize], "DataTransferItemList");
     cv::expose(scope, global, &t[Iface::ElementInternals as usize], "ElementInternals");
     cv::expose(scope, global, &t[Iface::Event as usize], "Event");
     cv::expose(scope, global, &t[Iface::EventTarget as usize], "EventTarget");
@@ -30704,6 +31119,7 @@ pub fn expose(scope: &mut v8::PinScope<'_, '_>, global: v8::Local<'_, v8::Object
     cv::expose(scope, global, &t[Iface::Text as usize], "Text");
     cv::expose(scope, global, &t[Iface::WheelEvent as usize], "WheelEvent");
     cv::expose(scope, global, &t[Iface::XMLHttpRequest as usize], "XMLHttpRequest");
+    cv::expose(scope, global, &t[Iface::DragEvent as usize], "DragEvent");
     cv::expose(scope, global, &t[Iface::HTMLAnchorElement as usize], "HTMLAnchorElement");
     cv::expose(scope, global, &t[Iface::HTMLAreaElement as usize], "HTMLAreaElement");
     cv::expose(scope, global, &t[Iface::HTMLAudioElement as usize], "HTMLAudioElement");

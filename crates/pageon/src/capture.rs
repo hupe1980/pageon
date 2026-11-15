@@ -272,6 +272,7 @@ fn document(
     let mut lay = LayoutTreeSnapshot::default();
     let mut index_of: HashMap<NodeId, i64> = HashMap::new();
     let mut facts: HashMap<NodeId, Facts> = HashMap::new();
+    let drops: std::collections::HashSet<NodeId> = doc.drop_targets().iter().copied().collect();
     // Paint order: stacking bucket, then z-index, then tree order.
     let mut paint_keys: Vec<(i32, i32, usize, NodeId)> = Vec::new();
     let mut skip_depth: Option<usize> = None;
@@ -324,6 +325,9 @@ fn document(
                     }
                     if clickable(n) {
                         nodes.is_clickable.index.push(idx);
+                    }
+                    if n.attr("ondrop").is_some() || drops.contains(&id) {
+                        nodes.is_drop_target.index.push(idx);
                     }
                     if let Some(l) = layout
                         && let Some(f) = element_facts(l, id)

@@ -98,7 +98,8 @@ struct Target<'s, E: Env> {
     bindings: Vec<String>,
     nodes: HashMap<(usize, NodeId), u64>,
     backends: HashMap<u64, (usize, NodeId)>,
-    pressed: bool,
+    /// Where the mouse button went down, and whether it moved since (a drag).
+    pressed: Option<((f64, f64), bool)>,
 }
 
 /// A call waiting on a promise.
@@ -416,7 +417,7 @@ impl<'s, E: Env> Session<'s, E> {
             bindings: Vec::new(),
             nodes: HashMap::new(),
             backends: HashMap::new(),
-            pressed: false,
+            pressed: None,
         });
         let ti = self.targets.len() - 1;
         self.rebuild_frames(ti);

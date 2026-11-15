@@ -623,10 +623,33 @@ impl<E: Env> Session<'_, E> {
             "Input.dispatchMouseEvent" => {
                 let (x, y) = (num("x"), num("y"));
                 match s("type").as_str() {
-                    "mouseMoved" if !self.targets[ti].pressed => {
-                        let _ = self.act(ti, Action::HoverAt(x, y));
-                    }
-                    "mousePressed" => self.targets[ti].pressed = true,
+                    "mouseMoved" => match self.targets[ti].pressed {
+                        None => {
+                            let _ = self.act(ti, Action::HoverAt(x, y));
+                        }
+                        // A move with the button held: the press happens now, then the
+                        // move is a drag step (HTML drag and drop on a draggable element).
+                        Some((p, moved)) => {
+                            if !moved {
+                                self.targets[ti].pressed = Some((p, true));
+                                let _ = self.act(ti, Action::PointerDown(p.0, p.1));
+                            }
+                            if let Ok(out) = self.act(ti, Action::HoverAt(x, y))
+                                && let Some(items) = out.drag.and_then(|d| d.intercepted)
+                            {
+                                let items: Vec<Json> = items
+                                    .into_iter()
+                                    .map(|(t, d)| json!({"mimeType": t, "data": d}))
+                                    .collect();
+                                self.target_event(
+                                    ti,
+                                    "Input.dragIntercepted",
+                                    json!({"data": {"items": items, "dragOperationsMask": 19}}),
+                                );
+                            }
+                        }
+                    },
+                    "mousePressed" => self.targets[ti].pressed = Some(((x, y), false)),
                     "mouseWheel" => {
                         // The wheel lands where the pointer is: move it there first.
                         let _ = self.act(ti, Action::HoverAt(x, y));
@@ -639,13 +662,61 @@ impl<E: Env> Session<'_, E> {
                         );
                     }
                     "mouseReleased" => {
-                        let was = std::mem::replace(&mut self.targets[ti].pressed, false);
+                        let was = self.targets[ti].pressed.take();
                         let left = matches!(s("button").as_str(), "left" | "");
-                        if was && left {
-                            let _ = self.act(ti, Action::ClickAt(x, y));
+                        match was {
+                            // Pressed and released without a move: a click, as before.
+                            Some((_, false)) if left => {
+                                let _ = self.act(ti, Action::ClickAt(x, y));
+                            }
+                            Some((_, true)) => {
+                                let _ = self.act(ti, Action::PointerUp(x, y));
+                            }
+                            _ => {}
                         }
                     }
                     _ => {}
+                }
+                Ok(json!({}))
+            }
+            "Input.setInterceptDrags" => {
+                let on = params
+                    .get("enabled")
+                    .and_then(Json::as_bool)
+                    .unwrap_or(false);
+                self.targets[ti].tab.set_intercept_drags(on);
+                Ok(json!({}))
+            }
+            "Input.dispatchDragEvent" => {
+                let kind = match s("type").as_str() {
+                    "dragEnter" => crate::DragKind::Enter,
+                    "dragOver" => crate::DragKind::Over,
+                    "drop" => crate::DragKind::Drop,
+                    "dragCancel" => crate::DragKind::Cancel,
+                    other => {
+                        return Err(CdpError::params(format!(
+                            "Input.dispatchDragEvent: unknown type {other:?} (dragEnter, dragOver, drop or dragCancel)"
+                        )));
+                    }
+                };
+                let items: Vec<(String, String)> = params
+                    .pointer("/data/items")
+                    .and_then(Json::as_array)
+                    .map(|a| {
+                        a.iter()
+                            .map(|i| {
+                                (
+                                    i["mimeType"].as_str().unwrap_or_default().to_string(),
+                                    i["data"].as_str().unwrap_or_default().to_string(),
+                                )
+                            })
+                            .collect()
+                    })
+                    .unwrap_or_default();
+                let (x, y) = (num("x"), num("y"));
+                let _ = self.act(ti, Action::DragEvent { kind, x, y, items });
+                if matches!(kind, crate::DragKind::Drop | crate::DragKind::Cancel) {
+                    self.targets[ti].pressed = None;
                 }
                 Ok(json!({}))
             }

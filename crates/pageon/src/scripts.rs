@@ -24,6 +24,7 @@ pub(crate) struct Ran {
     pub(crate) pending_timers: usize,
     pub(crate) virtual_ms: u64,
     pub(crate) modals: Vec<NodeId>,
+    pub(crate) drop_targets: Vec<NodeId>,
     pub(crate) focused: Option<NodeId>,
     pub(crate) scroll: crate::Scroll,
     pub(crate) pending_requests: usize,
@@ -415,6 +416,7 @@ pub(crate) fn run(
             pending_timers: 0,
             virtual_ms: 0,
             modals: Vec::new(),
+            drop_targets: Vec::new(),
             focused: None,
             scroll: crate::Scroll::default(),
             pending_requests: 0,
@@ -464,6 +466,7 @@ pub(crate) fn run(
             (st.modals.clone(), st.focused)
         })
         .unwrap_or_default();
+    let drop_targets = e.drop_targets(realm);
     let errors = e.errors_of(realm);
     let scripts = e.scripts_run();
     let (navigation, dialogs, popups) = e.take_requests(realm);
@@ -483,6 +486,7 @@ pub(crate) fn run(
         pending_timers: settled.pending,
         virtual_ms: settled.virtual_ms,
         modals,
+        drop_targets,
         focused,
         scroll,
         pending_requests: settled.pending_requests,

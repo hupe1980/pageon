@@ -109,7 +109,7 @@ enum Command {
     /// Tools:
     ///   read     browser_open, browser_observe, browser_view, browser_screenshot
     ///   tabs     browser_tabs (new, select, close, list; replies name the tab)
-    ///   act      browser_click, browser_type, browser_upload, browser_press, browser_select, browser_hover,
+    ///   act      browser_click, browser_type, browser_upload, browser_press, browser_select, browser_hover, browser_drag,
     ///            browser_scroll, browser_wait, browser_back, browser_forward, browser_call_tool
     ///   explore  browser_lookahead (try actions on a fork; the page is unchanged, writes are held),
     ///            browser_reset (back to any step, exactly, sending nothing again)

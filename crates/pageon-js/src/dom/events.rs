@@ -698,10 +698,56 @@ pub mod ui_event {
 }
 
 /// `MouseEvent`.
+/// `DragEvent`: a mouse event with the drag's data.
+pub mod drag_event {
+    use super::*;
+    use crate::generated::{DragEventInit, MouseEventInit};
+
+    pub fn constructor(cx: &mut Cx<'_, '_, '_>, ty: String, init: DragEventInit) -> R<Obj> {
+        let mouse = MouseEventInit {
+            bubbles: init.bubbles,
+            cancelable: init.cancelable,
+            composed: init.composed,
+            detail: init.detail,
+            screen_x: init.screen_x,
+            screen_y: init.screen_y,
+            client_x: init.client_x,
+            client_y: init.client_y,
+            ctrl_key: init.ctrl_key,
+            shift_key: init.shift_key,
+            alt_key: init.alt_key,
+            meta_key: init.meta_key,
+            button: init.button,
+            buttons: init.buttons,
+            related_target: init.related_target,
+            ..MouseEventInit::default()
+        };
+        let mut data = super::mouse_event::data(cx, ty, mouse);
+        data.drag = match init.data_transfer {
+            Some(d) => Some(d.slab()?),
+            None => None,
+        };
+        Ok(cx.alloc(Iface::DragEvent, Slot::Event(Box::new(data))))
+    }
+
+    pub fn get_data_transfer(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<Option<Obj>> {
+        match cx.st().slot(this.slab()?) {
+            Some(Slot::Event(e)) => Ok(e.drag.map(Obj::Slab)),
+            _ => Err(Error::Type("Illegal invocation".into())),
+        }
+    }
+}
+
 pub mod mouse_event {
     use super::*;
 
     pub fn constructor(cx: &mut Cx<'_, '_, '_>, ty: String, init: MouseEventInit) -> R<Obj> {
+        let data = data(cx, ty, init);
+        Ok(cx.alloc(Iface::MouseEvent, Slot::Event(Box::new(data))))
+    }
+
+    /// The event data of a mouse event (and of events built on it).
+    pub(crate) fn data(cx: &mut Cx<'_, '_, '_>, ty: String, init: MouseEventInit) -> EventData {
         let mut data = base(
             cx,
             ty,
@@ -721,7 +767,7 @@ pub mod mouse_event {
             ..InputData::default()
         };
         data.related = related(init.related_target);
-        Ok(cx.alloc(Iface::MouseEvent, Slot::Event(Box::new(data))))
+        data
     }
 
     pub fn get_screen_x(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<i32> {

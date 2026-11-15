@@ -69,6 +69,7 @@ pub use pageon_agent::{Budget, Capture, Episode, Mode, Target, Tokenizer};
 pub use pageon_dom::{Namespace, NodeId, QuirksMode};
 pub use pageon_env::{Env, Identity, Limits, Live, Profile, Recording, Replay, Request};
 pub use pageon_js::Dialog;
+pub use pageon_js::{DragKind, Dragged};
 pub use pageon_js::{PageError, PageErrorKind};
 pub use pageon_layout::{Layout, Pixmap, Rect, Viewport, Visibility};
 pub use pageon_net::{
@@ -155,6 +156,8 @@ pub(crate) struct JsState {
     pub(crate) pending_timers: usize,
     pub(crate) virtual_ms: u64,
     pub(crate) modals: Vec<NodeId>,
+    /// Elements listening for `drop` (they get refs: drag onto them, drop files on them).
+    pub(crate) drop_targets: Vec<NodeId>,
     pub(crate) focused: Option<NodeId>,
     pub(crate) pending_requests: usize,
     /// The viewport's scroll offset, and scroll containers' offsets.
@@ -512,6 +515,11 @@ impl Document {
     /// Dialogs the scripts opened with `showModal()`, oldest first.
     pub fn modals(&self) -> &[NodeId] {
         &self.js.modals
+    }
+
+    /// The elements listening for `drop` when the page settled.
+    pub(crate) fn drop_targets(&self) -> &[NodeId] {
+        &self.js.drop_targets
     }
 
     /// The element focused when the page settled.

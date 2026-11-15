@@ -397,6 +397,11 @@ class Tab:
     def hover(self, ref: str) -> Outcome:
         return self._act("browser_hover", {"ref": ref})
 
+    def drag(self, ref: str, to: str) -> Outcome:
+        """Drag ``ref`` onto ``to`` (centre to centre), as a person does; the outcome says whether
+        the page ran drag and drop and whether the drop was accepted."""
+        return self._act("browser_drag", {"ref": ref, "to": to})
+
     def scroll(self, direction: str | None = "down", pixels: float | None = None, ref: str | None = None) -> Outcome:
         """Scroll as a person does: ``direction`` (down, up, left, right) by a page or ``pixels``,
         of the page or the container ``ref``; ``scroll(None, ref="e12")`` brings e12 into view.

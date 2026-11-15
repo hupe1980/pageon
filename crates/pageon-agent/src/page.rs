@@ -107,6 +107,8 @@ pub struct DomNode {
     pub input_value: Option<String>,
     /// Responds to clicks (CDP `isClickable`, includes JS listeners).
     pub clickable: bool,
+    /// Listens for `drop`: something can be dragged or dropped onto it.
+    pub drop_target: bool,
 }
 
 impl DomNode {
@@ -324,6 +326,7 @@ fn decode_document(doc: &DocumentSnapshot, strings: &[String]) -> Vec<DomNode> {
                 layout: None,
                 input_value: None,
                 clickable: false,
+                drop_target: false,
             }
         })
         .collect();
@@ -337,6 +340,11 @@ fn decode_document(doc: &DocumentSnapshot, strings: &[String]) -> Vec<DomNode> {
     for &idx in &doc.nodes.is_clickable.index {
         if let Some(node) = usize::try_from(idx).ok().and_then(|i| nodes.get_mut(i)) {
             node.clickable = true;
+        }
+    }
+    for &idx in &doc.nodes.is_drop_target.index {
+        if let Some(node) = usize::try_from(idx).ok().and_then(|i| nodes.get_mut(i)) {
+            node.drop_target = true;
         }
     }
     let l = &doc.layout;

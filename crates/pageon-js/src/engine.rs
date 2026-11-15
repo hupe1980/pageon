@@ -14,6 +14,7 @@ use crate::dom::scroll::{Amount, Scroller, Wheeled};
 
 /// Scroll containers' offsets: `(node, x, y)`.
 pub type ScrollOffsets = Vec<(NodeId, f64, f64)>;
+use crate::dom::input::{DragKind, Dragged};
 use crate::realm::{Realm, Shared, State, Target, Timer};
 use crate::{PageError, PageErrorKind};
 
@@ -325,6 +326,8 @@ impl Engine {
                 requests_made: 0,
                 modules_loaded: 0,
                 hovered: None,
+                pressed: None,
+                drag: None,
                 accept_dialogs: cfg.accept_dialogs,
                 observers: Vec::new(),
                 intersections: Vec::new(),
@@ -1270,6 +1273,93 @@ impl Engine {
         });
     }
 
+    /// Presses the pointer's button on an element at `point` (a trusted press).
+    pub fn pointer_down(&mut self, realm: usize, node: NodeId, point: (f64, f64)) {
+        self.activate(realm);
+        let _ = self.input(realm, "pointerdown", |cx| {
+            crate::dom::input::pointer_down(cx, node, point)
+        });
+    }
+
+    /// Moves the pointer onto an element at `point`; with the button held from a draggable
+    /// element, HTML drag and drop starts. With `intercept`, a drag that starts is not run:
+    /// its data is returned (CDP drag interception).
+    pub fn pointer_move(
+        &mut self,
+        realm: usize,
+        node: NodeId,
+        point: (f64, f64),
+        intercept: bool,
+    ) -> Option<Vec<(String, String)>> {
+        self.input(realm, "pointermove", |cx| {
+            crate::dom::input::pointer_move(cx, node, point, intercept)
+        })
+        .flatten()
+    }
+
+    /// Releases the pointer's button on an element at `point` (a drop, if dragging).
+    pub fn pointer_up(&mut self, realm: usize, node: NodeId, point: (f64, f64)) -> Dragged {
+        self.activate(realm);
+        self.input(realm, "pointerup", |cx| {
+            crate::dom::input::pointer_up(cx, node, point)
+        })
+        .unwrap_or_default()
+    }
+
+    /// Whether the pointer's button is held (or a drag is in progress) in a realm.
+    pub fn pressed(&self, realm: usize) -> bool {
+        self.realm(realm).is_some_and(|r| {
+            let st = r.st.borrow();
+            st.pressed.is_some() || st.drag.is_some()
+        })
+    }
+
+    /// A trusted drag from one element to another (centres): press, moves, release.
+    pub fn drag(&mut self, realm: usize, from: NodeId, to: NodeId) -> Dragged {
+        self.activate(realm);
+        self.input(realm, "drag", |cx| crate::dom::input::drag(cx, from, to))
+            .unwrap_or_default()
+    }
+
+    /// A step of a drag a CDP client drives (`Input.dispatchDragEvent`).
+    pub fn drag_from_client(
+        &mut self,
+        realm: usize,
+        node: NodeId,
+        point: (f64, f64),
+        kind: DragKind,
+        items: Vec<(String, String)>,
+    ) -> Dragged {
+        self.input(realm, "drag", |cx| {
+            crate::dom::input::drag_from_client(cx, node, point, kind, items)
+        })
+        .unwrap_or_default()
+    }
+
+    /// Drops files on an element (a drop zone).
+    pub fn drop_files(
+        &mut self,
+        realm: usize,
+        node: NodeId,
+        files: Vec<(String, String, Vec<u8>, i64)>,
+    ) -> Dragged {
+        self.activate(realm);
+        let files = files
+            .into_iter()
+            .map(|(n, t, b, m)| crate::dom::blobs::BlobData::file(n, t, b, m))
+            .collect();
+        self.input(realm, "drop", |cx| {
+            crate::dom::input::drop_files(cx, node, files)
+        })
+        .unwrap_or_default()
+    }
+
+    /// Whether an element (or an ancestor) listens for `drop`.
+    pub fn drop_zone(&mut self, realm: usize, node: NodeId) -> bool {
+        self.with_cx(realm, |cx| crate::dom::input::drop_zone(cx, node))
+            .unwrap_or(false)
+    }
+
     /// Whether an element takes typed text: `Some(true)` for form fields, `Some(false)` for
     /// `contenteditable`, `None` otherwise.
     pub fn editable(&mut self, realm: usize, node: NodeId) -> Option<bool> {
@@ -1372,6 +1462,31 @@ impl Engine {
     }
 
     /// Open modal dialogs of a realm (for layout and the views).
+    /// The elements that listen for `drop` (script listeners and handlers): drop targets.
+    pub fn drop_targets(&self, realm: usize) -> Vec<NodeId> {
+        let Some(r) = self.realm(realm) else {
+            return Vec::new();
+        };
+        let st = r.st.borrow();
+        let mut out: Vec<NodeId> = st
+            .listeners
+            .iter()
+            .filter(|(_, l)| l.iter().any(|x| x.ty == "drop"))
+            .filter_map(|(t, _)| match t {
+                Target::Node(n) => Some(*n),
+                _ => None,
+            })
+            .chain(st.handlers.keys().filter_map(|(_, t, ty)| match t {
+                Target::Node(n) if ty == "drop" => Some(*n),
+                _ => None,
+            }))
+            .collect();
+        out.sort_unstable_by_key(|n| (n.index(), n.generation()));
+        out.dedup();
+        out
+    }
+
+    /// The elements with an open modal dialog, innermost last.
     pub fn modals(&self, realm: usize) -> Vec<NodeId> {
         self.realm(realm)
             .map(|r| r.st.borrow().modals.clone())

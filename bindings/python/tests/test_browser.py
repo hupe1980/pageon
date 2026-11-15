@@ -375,3 +375,32 @@ def test_tabs_keep_their_pages(shop: Path, sandbox: bool) -> None:
             login.observe()
         assert e.value.kind == "unknown_tab"
         assert "Shop" in home.observe(full=True)
+
+
+@pytest.mark.parametrize("sandbox", [True, False])
+def test_drag_moves_a_card(tmp_path: Path, sandbox: bool) -> None:
+    board = (
+        "<style>section{display:block;min-height:80px}</style>"
+        "<section aria-label=Todo><div role=button id=c draggable=true>Card</div></section>"
+        "<section id=done aria-label=Done></section><script>"
+        "c.addEventListener('dragstart', e => e.dataTransfer.setData('text/plain', 'c'));"
+        "done.addEventListener('dragover', e => e.preventDefault());"
+        "done.addEventListener('drop', e => done.append(document.getElementById(e.dataTransfer.getData('text/plain'))));"
+        "</script>"
+    )
+    log = {
+        "version": 1,
+        "user_agent": "",
+        "exchanges": [_html("https://board.test/", board)],
+        "clock": [1_800_000_000_000 + i * 1000 for i in range(256)],
+        "random": list(range(1, 65)),
+    }
+    rec = tmp_path / "board.rec.json"
+    rec.write_text(json.dumps(log))
+    with Browser(replay=rec, sandbox=sandbox, binary=BIN) as browser:
+        tab = browser.open("https://board.test/")
+        obs = tab.observe(full=True)
+        out = tab.drag(ref(obs, "button", "Card"), ref(obs, "droptarget", "Done"))
+        assert "dragged (dropped)" in str(out)
+        after = tab.observe(full=True)
+        assert '"Card"' in after.split('"Done"')[-1], after

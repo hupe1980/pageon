@@ -59,7 +59,7 @@ message.
 | --- | --- |
 | `observe(full=False)` | The agent view (what changed since the last one, unless `full`) |
 | `view(kind)` | `"markdown"`, `"text"`, `"requests"` or `"errors"` |
-| `click`, `type`, `press`, `select`, `hover`, `wait`, `back`, `forward` | An `Outcome`, or raises `ActionError` |
+| `click`, `type`, `press`, `select`, `hover`, `drag(ref, to)`, `wait`, `back`, `forward` | An `Outcome`, or raises `ActionError` |
 | `scroll(direction="down", pixels=None, ref=None)` | Scroll the page or the container `ref` (`scroll(None, ref="e12")` brings e12 into view) |
 | `screenshot(marks, full_page, format, mask)`, `crop(ref)` | A `Screenshot` (`.save(path)`, `.legend`) |
 | `reset(step=None)` | Back to a step exactly, sending nothing again |

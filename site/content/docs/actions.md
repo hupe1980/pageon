@@ -17,10 +17,11 @@ toggling labels).
 | --- | --- |
 | Click an element, or a viewport point | `click e5` · `click 120,40` |
 | Type into a field, key by key | `type e3 hello world` · `type e4 secret://shop` |
-| Upload staged files into a file input, or the chooser a button opens | `upload e9 cv` · `upload e9 cv,photo` · `upload e9 download:1` |
+| Upload staged files into a file input, the chooser a button opens, or a drop zone | `upload e9 cv` · `upload e9 cv,photo` · `upload e9 download:1` |
 | Press a key on the focused element | `press Enter` · `press Escape` |
 | Select options by value or label | `select e7 Germany` |
 | Hover | `hover e2` · `hover 120,40` |
+| Drag an element onto another | `drag e3 e7` |
 | Scroll the page, a container, or to an element | `scroll down` · `scroll down 300` · `scroll e5 down` · `scroll e12` |
 | Let time pass | `wait 500` |
 | Navigate | `goto https://example.com` · `back` · `forward` |
@@ -116,4 +117,13 @@ only for the agent's own `upload` naming it. A click that opens a file chooser s
 (`file chooser for e9 (upload e9 NAME)`). Downloads come back as handles (`download:1`, with
 the file's name, type and size) and can be uploaded again to the site they came from.
 
-Not yet supported: drag and drop. It fails with `unsupported` rather than doing something else.
+## Drag and drop
+
+`drag e3 e7` presses on e3, moves in a few steps and releases on e7, as a person does: pages
+that drag with pointer events (sortable lists, sliders) see trusted events, and draggable
+elements (`draggable`, links, images) run HTML drag and drop, with the data readable in
+`dragstart` and `drop` only. Elements that accept drops are listed as `droptarget eN "Done"`,
+so columns and drop zones have refs. The outcome says what happened: `dragged (dropped)`,
+`dragged (not accepted: no drop)` when the target never accepted it, or `pointer drag`.
+`upload e9 cv` on a drop zone drops the staged file there. Drags stay within one frame, and
+workflows do not record them yet.

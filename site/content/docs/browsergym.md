@@ -37,8 +37,9 @@ obs, reward, done, *_ = env.step("click('e1')")
   page has hijacked cannot run code on your machine.
 
 `upload_file(bid, name)` uploads a file staged with `PageonEnv(files={"cv": (path, [origin])})` by
-name, never a path. Actions pageon cannot perform yet (drag) raise an error that names the action, instead
-of silently doing nothing. `scroll(dx, dy)` scrolls with the wheel where the pointer is, as in
+name, never a path; on a drop zone it drops the file there. `drag_and_drop(from_bid, to_bid)` drags
+as a person does (HTML drag and drop on draggable elements). Actions pageon cannot perform
+(coordinates, `dblclick`) raise an error that names the action, instead of silently doing nothing. `scroll(dx, dy)` scrolls with the wheel where the pointer is, as in
 Chromium.
 
 MiniWoB's tasks are local files, so the environment lets pages open `file:` URLs by default;

@@ -533,3 +533,20 @@ members = ["constructor", "wasClean", "code", "reason"]
 
 [EventSource]
 members = ["constructor", "url", "withCredentials", "readyState", "close"]
+
+# HTML drag and drop: the data of a drag (and Playwright's file lists).
+[DataTransfer]
+members = [
+  "constructor", "dropEffect", "effectAllowed", "items", "setDragImage", "types", "getData", "setData",
+  "clearData", "files",
+]
+
+[DataTransferItemList]
+# `add` has overloads of different lengths: `hooks.rs` installs one method for both.
+members = ["length", "remove", "clear"]
+
+[DataTransferItem]
+members = ["kind", "type", "getAsString", "getAsFile"]
+
+[DragEvent]
+members = ["constructor", "dataTransfer"]

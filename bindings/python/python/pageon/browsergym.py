@@ -372,6 +372,9 @@ def _namespace(env: PageonEnv) -> dict[str, Any]:
     def hover(bid: str) -> None:
         act({"Hover": bid})
 
+    def drag_and_drop(from_bid: str, to_bid: str) -> None:
+        act({"Drag": [from_bid, to_bid]})
+
     def upload_file(bid: str, file: str | list[str]) -> None:
         # Staged file names (``PageonEnv(files=...)``), never host paths.
         act({"Upload": [bid, [file] if isinstance(file, str) else list(file)]})
@@ -436,7 +439,7 @@ def _namespace(env: PageonEnv) -> dict[str, Any]:
         "scroll": scroll,
         "dblclick": unsupported("dblclick", "use click(bid)"),
         "focus": unsupported("focus", "use click(bid), or press(bid, key) which focuses first"),
-        "drag_and_drop": unsupported("drag_and_drop", "there is no alternative yet"),
+        "drag_and_drop": drag_and_drop,
         "upload_file": upload_file,
         "check": unsupported("check", "use click(bid) on the checkbox"),
         "uncheck": unsupported("uncheck", "use click(bid) on the checkbox"),

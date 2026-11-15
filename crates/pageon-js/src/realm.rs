@@ -177,6 +177,8 @@ pub struct EventData {
     pub message: Option<Box<(String, String, Option<crate::cv::Obj>)>>,
     /// `CloseEvent`: wasClean, code, reason.
     pub close: Option<Box<(bool, u16, String)>>,
+    /// `DragEvent`: its `DataTransfer` (slab id).
+    pub drag: Option<u32>,
 }
 
 /// Mouse and keyboard event fields.
@@ -351,6 +353,12 @@ pub enum Slot {
     Xhr(Box<crate::dom::net::XhrData>),
     /// A `WebSocket`.
     WebSocket(Box<crate::dom::realtime::WsData>),
+    /// A `DataTransfer`.
+    DataTransfer(Box<crate::dom::dnd::DtData>),
+    /// A `DataTransferItemList` (its data transfer).
+    DtItems(u32),
+    /// A `DataTransferItem` (its data transfer and index).
+    DtItem(u32, usize),
     /// An `EventSource`.
     EventSource(Box<crate::dom::realtime::SseData>),
     /// A `URL` (and its `searchParams` object, once created).
@@ -479,6 +487,10 @@ pub struct State {
     pub modules_loaded: u32,
     /// The element under the pointer.
     pub hovered: Option<NodeId>,
+    /// The pointer's button is held (pressed on this element, at this point).
+    pub pressed: Option<crate::dom::input::Press>,
+    /// An HTML drag and drop in progress.
+    pub drag: Option<crate::dom::input::DragSession>,
     /// Accept dialogs (`confirm` → true, `prompt` → its default) instead of dismissing them.
     pub accept_dialogs: bool,
     /// `MutationObserver`s with registrations (slab ids, creation order).

@@ -210,6 +210,9 @@ pub struct NodeTreeSnapshot {
     pub content_document_index: RareIntegerData,
     /// Nodes that respond to clicks (including JS click listeners).
     pub is_clickable: RareBooleanData,
+    /// Nodes that listen for `drop`: drop targets (pageon's, not CDP's).
+    #[serde(skip_serializing_if = "RareBooleanData::is_empty")]
+    pub is_drop_target: RareBooleanData,
 }
 
 /// CDP rare string data.
@@ -228,6 +231,13 @@ pub struct RareStringData {
 pub struct RareBooleanData {
     /// Node indexes for which the value is true.
     pub index: Vec<i64>,
+}
+
+impl RareBooleanData {
+    /// No node has the flag.
+    pub fn is_empty(&self) -> bool {
+        self.index.is_empty()
+    }
 }
 
 /// CDP rare integer data.

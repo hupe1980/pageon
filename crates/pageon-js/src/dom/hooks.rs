@@ -44,6 +44,7 @@ pub fn template(
         | Iface::DOMRectList
         | Iface::CSSStyleDeclaration
         | Iface::FileList
+        | Iface::DataTransferItemList
         | Iface::NamedNodeMap => {
             proto.set_intrinsic_data_property(
                 iterator.into(),
@@ -64,6 +65,19 @@ pub fn template(
         | Iface::CSSStyleDeclaration => {
             inst.set_indexed_property_handler(
                 v8::IndexedPropertyHandlerConfiguration::new().getter(indexed_get),
+            );
+        }
+        Iface::DataTransferItemList => {
+            inst.set_indexed_property_handler(
+                v8::IndexedPropertyHandlerConfiguration::new().getter(indexed_get),
+            );
+            // `add` has overloads of different lengths: one method takes both.
+            cv::method(
+                scope,
+                proto.into(),
+                "add",
+                crate::dom::data_transfer_item_list::add_any,
+                1,
             );
         }
         Iface::CSSStyleProperties => {
@@ -169,6 +183,12 @@ fn indexed_get<'s>(
                 .ok()
                 .flatten()
                 .map(Out::Obj),
+            Iface::DataTransferItemList => {
+                crate::dom::data_transfer_item_list::item(cx, obj, index)
+                    .ok()
+                    .flatten()
+                    .map(Out::Obj)
+            }
             Iface::NamedNodeMap => crate::dom::named_node_map::item(cx, obj, index)
                 .ok()
                 .flatten()
