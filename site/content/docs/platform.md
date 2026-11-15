@@ -27,6 +27,7 @@ and `pageon fetch URL --dump errors` names what a page tried to use.
 | Streams | `ReadableStream`, `WritableStream`, `TransformStream`, `TextDecoderStream`, `TextEncoderStream`, `Response.body` (a body arrives whole, in one chunk), `arrayBuffer()`, `bytes()` |
 | Web Authentication | `navigator.credentials.create()`/`get()` for passkeys (ES256, `none` attestation) with keys held by the broker, `PublicKeyCredential` and its JSON helpers; see [passkeys](@/docs/secrets.md#passkeys) |
 | Web Crypto | `crypto.subtle` on secure pages: SHA digests; HMAC, ECDSA P-256 and Ed25519 keys, signatures and verification; AES-GCM. Keys come from the session's randomness and ECDSA signs deterministically, so replays match. Other algorithms reject with `NotSupportedError` |
+| Workers | Dedicated workers, classic and module, on the page's virtual clock: `postMessage` with `ArrayBuffer` transfer, `importScripts` (of the URLs a worker names as string literals, and `blob:`/`data:` URLs), timers, `fetch`, IndexedDB and the rest of the worker global; `blob:` worker scripts from `URL.createObjectURL`; at most 16 per page |
 | Realtime | `WebSocket` and `EventSource`, held by the broker, under the same policy as requests |
 | Files | `Blob`, `File`, `FileList`, `FileReader`, file inputs and drop zones (with staged files only), downloads |
 | Drag and drop | Trusted pointer drags, HTML drag and drop, `DataTransfer`, `DragEvent` |
@@ -36,8 +37,8 @@ and `pageon fetch URL --dump errors` names what a page tried to use.
 
 ## Not supported
 
-`BroadcastChannel`, iframes a script inserts after load, `blob:` URLs, workers and
-service workers, IME composition, undo (`historyUndo`) and formatting commands, `designMode`,
+`BroadcastChannel`, iframes a script inserts after load, `blob:` URLs outside worker scripts,
+shared, service and nested workers, transferring anything but `ArrayBuffer`s, IME composition, undo (`historyUndo`) and formatting commands, `designMode`,
 `ClipboardItem`, `PasswordCredential` and `FederatedCredential`, the Navigation API, Web Animations (`Element.animate`), `document.write`, XML
 parsing (`DOMParser` takes HTML only), canvas text and readback, the Permissions and
 Notifications APIs, WebRTC and WebTransport, HTTP/3.

@@ -54,7 +54,11 @@ fn the_sandbox_checks_pass() {
     let results: Vec<(String, bool)> =
         serde_json::from_str(&out).unwrap_or_else(|e| panic!("{e}: {out:?}\n{:#?}", doc.errors()));
     assert!(results.len() >= 13, "{}", results.len());
-    assert!(failed(&results).is_empty(), "failed: {:#?}", failed(&results));
+    assert!(
+        failed(&results).is_empty(),
+        "failed: {:#?}",
+        failed(&results)
+    );
     // A frame nested in a sandboxed frame inherits its flags.
     assert_eq!(text_of(&doc, "nested"), "nested null");
     // With `allow-modals`, the dialog policy answers.
@@ -67,7 +71,8 @@ fn the_sandbox_checks_pass() {
     assert_eq!(opaque.origin(), "null");
     // Requests from an opaque origin say so, and carry no SameSite cookie.
     assert_eq!(
-        env.header("POST", "https://a.test/api", "origin").as_deref(),
+        env.header("POST", "https://a.test/api", "origin")
+            .as_deref(),
         Some("null")
     );
     assert_eq!(env.header("POST", "https://a.test/api", "cookie"), None);
@@ -104,7 +109,10 @@ fn the_sandbox_checks_pass_caged() {
         "{:#?}",
         failed(&results)
     );
-    assert!(text.contains("nested null") && text.contains("modals true"), "{text}");
+    assert!(
+        text.contains("nested null") && text.contains("modals true"),
+        "{text}"
+    );
 }
 
 /// A sandboxed frame's form and new-window link, clicked by the agent.
@@ -124,8 +132,12 @@ fn actions_site(flags: &str) -> pageon_env::Log {
 fn click<E: pageon_env::Env>(tab: &mut pageon::Tab<'_, E>, role: &str, name: &str) -> String {
     let obs = tab.observe_full();
     let r = find(&obs, role, name);
-    tab.act(format!("click {r}").parse().unwrap_or_else(|e| panic!("{e}")))
-        .map_or_else(|e| format!("error {e}"), |o| o.to_string())
+    tab.act(
+        format!("click {r}")
+            .parse()
+            .unwrap_or_else(|e| panic!("{e}")),
+    )
+    .map_or_else(|e| format!("error {e}"), |o| o.to_string())
 }
 
 #[test]

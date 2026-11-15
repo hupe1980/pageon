@@ -79,6 +79,8 @@ pub struct Ext {
     pub global: bool,
     /// `[Exposed=…]` names Window (or `*`).
     pub window: bool,
+    /// `[Exposed=…]` names Worker or DedicatedWorker (or `*`).
+    pub worker: bool,
     /// `[LegacyFactoryFunction=Name(args)]` (`Image`, `Option`): the function's name and
     /// arguments.
     pub factory: Option<(String, Vec<Arg>)>,
@@ -289,7 +291,10 @@ fn ext(list: &Option<ExtendedAttributeList<'_>>) -> Ext {
                     "ReflectDefault" => e.reflect_default = Some(rhs),
                     "PutForwards" => e.put_forwards = Some(rhs),
                     "Global" => e.global = true,
-                    "Exposed" => e.window = rhs == "Window" || rhs == "Any",
+                    "Exposed" => {
+                        e.window = rhs == "Window" || rhs == "Any";
+                        e.worker = matches!(rhs.as_str(), "Worker" | "DedicatedWorker" | "Any");
+                    }
                     _ => {}
                 }
             }
@@ -298,7 +303,11 @@ fn ext(list: &Option<ExtendedAttributeList<'_>>) -> Ext {
             }
             ExtendedAttribute::IdentList(l) => {
                 if l.identifier.0 == "Exposed" {
-                    e.window = l.list.body.list.iter().any(|i| i.0 == "Window");
+                    let names = &l.list.body.list;
+                    e.window = names.iter().any(|i| i.0 == "Window" || i.0 == "Any");
+                    e.worker = names
+                        .iter()
+                        .any(|i| matches!(i.0, "Worker" | "DedicatedWorker" | "Any"));
                 }
                 if l.identifier.0 == "Global" {
                     e.global = true;

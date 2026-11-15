@@ -67,6 +67,25 @@ pub fn template(
                 v8::IndexedPropertyHandlerConfiguration::new().getter(indexed_get),
             );
         }
+        Iface::Worker => {
+            // `postMessage(message, transfer)` and `postMessage(message, options)`.
+            cv::method(
+                scope,
+                proto.into(),
+                "postMessage",
+                crate::dom::workers::worker_post_message,
+                1,
+            );
+        }
+        Iface::DedicatedWorkerGlobalScope => {
+            cv::method(
+                scope,
+                inst.into(),
+                "postMessage",
+                crate::dom::workers::global_post_message,
+                1,
+            );
+        }
         Iface::MessagePort => {
             // `postMessage(message, transfer)` and `postMessage(message, options)`.
             cv::method(

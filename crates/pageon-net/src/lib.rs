@@ -73,6 +73,8 @@ pub enum Dest {
     WebSocket,
     /// An `EventSource`'s stream.
     EventSource,
+    /// A worker's script.
+    Worker,
 }
 
 impl Dest {
@@ -89,6 +91,7 @@ impl Dest {
             Self::Robots => "robots",
             Self::WebSocket => "websocket",
             Self::EventSource => "eventsource",
+            Self::Worker => "worker",
         }
     }
 }

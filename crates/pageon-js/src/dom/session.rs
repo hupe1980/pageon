@@ -456,18 +456,44 @@ pub mod pop_state_event {
     }
 }
 
-/// `structuredClone(value)`.
+/// `structuredClone(value, {transfer})`.
 pub(crate) fn structured_clone(
     cx: &mut Cx<'_, '_, '_>,
     value: &Value,
     transfer: &[Value],
 ) -> R<Value> {
-    if !transfer.is_empty() {
-        return Err(Error::dom(
-            "DataCloneError",
-            "Failed to execute 'structuredClone': transferring objects is not supported.",
-        ));
+    let bytes = serialize_transfer(cx, value, transfer)?;
+    deserialize(cx, &bytes)
+}
+
+/// Serializes `value` for another context, moving the `ArrayBuffer`s in `transfer`: their
+/// bytes travel with the message and the sender's buffers are detached. Anything else in the
+/// list is a `DataCloneError`.
+pub(crate) fn serialize_transfer(
+    cx: &mut Cx<'_, '_, '_>,
+    value: &Value,
+    transfer: &[Value],
+) -> R<Vec<u8>> {
+    let mut buffers: Vec<v8::Local<'_, v8::ArrayBuffer>> = Vec::with_capacity(transfer.len());
+    for t in transfer {
+        let v = cx.local(t);
+        let Ok(b) = v8::Local::<v8::ArrayBuffer>::try_from(v) else {
+            return Err(Error::dom(
+                "DataCloneError",
+                "Failed to execute 'postMessage': pageon transfers only ArrayBuffers.",
+            ));
+        };
+        if !b.is_detachable() || buffers.iter().any(|o| o.strict_equals(b.into())) {
+            return Err(Error::dom(
+                "DataCloneError",
+                "Failed to execute 'postMessage': an ArrayBuffer is detached or listed twice.",
+            ));
+        }
+        buffers.push(b);
     }
     let bytes = serialize(cx, value)?;
-    deserialize(cx, &bytes)
+    for b in buffers {
+        let _ = b.detach(None);
+    }
+    Ok(bytes)
 }

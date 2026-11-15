@@ -196,7 +196,7 @@ impl<E: Env> Session<'_, E> {
             };
             let ty = match e.dest {
                 Dest::Document | Dest::Frame => "Document",
-                Dest::Script => "Script",
+                Dest::Script | Dest::Worker => "Script",
                 Dest::Style => "Stylesheet",
                 Dest::Image => "Image",
                 Dest::Fetch => "Fetch",

@@ -41,3 +41,18 @@ fn required_members_with_extended_attributes_parse() {
         "[EnforceRange] required unsigned long x;"
     );
 }
+
+#[test]
+fn exposure_to_workers_is_read() {
+    let m = model_of(
+        "[Exposed=(Window,Worker)] interface A {};\n\
+         [Exposed=Window] interface B {};\n\
+         [Exposed=DedicatedWorker] interface C {};\n\
+         [Exposed=*] interface D {};",
+    );
+    let at = |n: &str| (m.interfaces[n].ext.window, m.interfaces[n].ext.worker);
+    assert_eq!(at("A"), (true, true));
+    assert_eq!(at("B"), (true, false));
+    assert_eq!(at("C"), (false, true));
+    assert_eq!(at("D"), (true, true));
+}

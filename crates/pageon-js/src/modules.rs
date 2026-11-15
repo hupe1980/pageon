@@ -113,6 +113,13 @@ pub enum ScriptJob {
         /// The promise's resolver.
         resolver: v8::Global<v8::PromiseResolver>,
     },
+    /// A `Worker` to start: its handle in the owner realm.
+    Worker {
+        /// The realm that created it.
+        owner: usize,
+        /// The `Worker` object (slab id).
+        handle: u32,
+    },
 }
 
 impl ImportMap {
@@ -924,6 +931,7 @@ impl Engine {
                     json,
                     resolver,
                 } => self.run_import(realm, &url, json, resolver, env),
+                ScriptJob::Worker { owner, handle } => self.start_worker(owner, handle, env),
             }
         }
         n

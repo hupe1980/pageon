@@ -36,6 +36,7 @@ pub(crate) mod urls;
 pub(crate) mod validation;
 pub(crate) mod webmcp;
 mod webstorage;
+pub mod workers;
 mod xml;
 
 pub use crate::frames::{htmli_frame_element, message_event};
@@ -114,6 +115,9 @@ pub use urls::{form_data, url, url_search_params};
 pub use validation::{html_field_set_element, html_output_element, validity_state};
 pub use webmcp::model_context;
 pub use webstorage::{storage, window_local_storage, window_session_storage};
+pub use workers::{
+    dedicated_worker_global_scope, error_event, worker, worker_global_scope, worker_location,
+};
 
 pub mod hooks;
 
@@ -157,7 +161,9 @@ pub(crate) fn opaque_storage(cx: &Cx<'_, '_, '_>, what: &str) -> crate::cv::R<()
     if cx.realm.st.borrow().client.opaque() {
         return Err(crate::cv::Error::Dom(
             "SecurityError",
-            format!("Failed to read '{what}': the document is sandboxed and lacks the 'allow-same-origin' flag."),
+            format!(
+                "Failed to read '{what}': the document is sandboxed and lacks the 'allow-same-origin' flag."
+            ),
         ));
     }
     Ok(())

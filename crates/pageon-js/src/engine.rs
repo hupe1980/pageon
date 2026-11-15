@@ -472,6 +472,24 @@ impl Engine {
 
     /// Adds a document; returns its realm number.
     pub fn add_realm(&mut self, dom: Rc<RefCell<Dom>>, cfg: RealmConfig) -> usize {
+        self.add_realm_with(dom, cfg, None)
+    }
+
+    /// Adds a dedicated worker's realm (no document), linked to its `Worker`.
+    pub(crate) fn add_worker_realm(
+        &mut self,
+        cfg: RealmConfig,
+        link: crate::dom::workers::Link,
+    ) -> usize {
+        self.add_realm_with(Rc::new(RefCell::new(Dom::new())), cfg, Some(link))
+    }
+
+    fn add_realm_with(
+        &mut self,
+        dom: Rc<RefCell<Dom>>,
+        cfg: RealmConfig,
+        worker: Option<crate::dom::workers::Link>,
+    ) -> usize {
         let id = self.realms.len();
         // `navigator.userAgentData` is [SecureContext], and exists only where the profile has
         // client hints.
@@ -546,10 +564,13 @@ impl Engine {
                 crypto: crate::dom::platform::CryptoStream::new(cfg.crypto_key),
                 frame: None,
                 remote: Default::default(),
+                closed: false,
+                imports: Default::default(),
             }),
             templates: self.templates.clone(),
             shared: self.shared.clone(),
             worlds: RefCell::new(Vec::new()),
+            worker,
         });
         let (g, kept) = self.new_context(&realm, 0, ua_data, secure);
         realm.worlds.borrow_mut().push(crate::realm::World {
@@ -621,10 +642,13 @@ impl Engine {
         let mut locker = self.isolate.lock();
         let hs = std::pin::pin!(v8::HandleScope::new(&mut *locker));
         let hs = &mut hs.init();
-        let window = v8::Local::new(
-            hs,
-            &self.templates[crate::generated::Iface::Window as usize],
-        );
+        let worker = realm.worker.is_some();
+        let global_iface = if worker {
+            crate::generated::Iface::DedicatedWorkerGlobalScope
+        } else {
+            crate::generated::Iface::Window
+        };
+        let window = v8::Local::new(hs, &self.templates[global_iface as usize]);
         let global_template = window.instance_template(hs);
         let context = v8::Context::new(
             hs,
@@ -636,7 +660,11 @@ impl Engine {
         let scope = &mut v8::ContextScope::new(hs, context);
         // The documents of an engine share an origin, so their main worlds share a security
         // token and reach each other's windows; isolated worlds keep their own.
-        if world == 0 {
+        // A worker shares nothing with the documents: a token of its own.
+        if worker {
+            let t: v8::Local<'_, v8::Value> = v8::Object::new(scope).into();
+            context.set_security_token(t);
+        } else if world == 0 {
             let token = match &self.token {
                 Some(t) => v8::Local::new(scope, t),
                 None => {
@@ -650,8 +678,22 @@ impl Engine {
         let global = context.global(scope);
         let key = crate::realm::register(scope, global, realm.clone(), world);
         self.keys.push(key);
-        crate::generated::expose(scope, global, &self.templates);
-        crate::dom::window::install_extras(scope, global);
+        if worker {
+            crate::generated::expose_worker(scope, global, &self.templates);
+            crate::cv::expose(
+                scope,
+                global,
+                &self.templates[crate::generated::Iface::DedicatedWorkerGlobalScope as usize],
+                "DedicatedWorkerGlobalScope",
+            );
+            // No nested workers.
+            if let Some(k) = v8::String::new(scope, "Worker") {
+                let _ = global.delete(scope, k.into());
+            }
+        } else {
+            crate::generated::expose(scope, global, &self.templates);
+            crate::dom::window::install_extras(scope, global);
+        }
         if !ua_data {
             hide(scope, global, "Navigator", "userAgentData");
         }
@@ -958,6 +1000,10 @@ impl Engine {
             (c, r.clone(), 0)
         };
         let r_id = r.id;
+        if r.st.borrow().closed {
+            return None;
+        }
+        let errors_before = r.worker.map(|_| self.shared.borrow().errors.len());
         let mut locker = self.isolate.lock();
         let hs = std::pin::pin!(v8::HandleScope::new(&mut *locker));
         let hs = &mut hs.init();
@@ -982,6 +1028,9 @@ impl Engine {
         }
         report_rejections(&self.shared);
         self.shared.borrow_mut().tag_errors(r_id);
+        if let Some(before) = errors_before {
+            self.forward_errors(r_id, before);
+        }
         Some(out)
     }
 
@@ -1032,6 +1081,11 @@ impl Engine {
             let delivered = self.deliver_mail();
             if delivered > 0 {
                 tasks += delivered;
+                continue;
+            }
+            // Worker messages and errors, in posting order.
+            if self.deliver_worker_mail() {
+                tasks += 1;
                 continue;
             }
             // `MessagePort` messages, in posting order.

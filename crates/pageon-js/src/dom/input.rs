@@ -606,8 +606,7 @@ fn follow_link(cx: &mut Cx<'_, '_, '_>, href: &str, target: Option<&str>) {
     let mods = cx.st().mods;
     let new_tab = mods.ctrl || mods.meta || mods.shift || cx.st().button == Button::Middle;
     if new_tab || target.is_some_and(|t| t.eq_ignore_ascii_case("_blank")) {
-        if !crate::dom::sandbox_blocks(cx, |s| s.popups, "allow-popups", "opening a new window")
-        {
+        if !crate::dom::sandbox_blocks(cx, |s| s.popups, "allow-popups", "opening a new window") {
             cx.st().push_popup(url.to_string());
         }
     } else {

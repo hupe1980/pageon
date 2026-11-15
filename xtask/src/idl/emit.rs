@@ -728,6 +728,7 @@ impl Gen<'_> {
         // Members and template code.
         let mut install = String::new();
         let mut expose = String::new();
+        let mut expose_worker = String::new();
         let mut ifaces: Vec<Interface> = Vec::new();
         for n in &self.order {
             let Some(i) = model.interfaces.get(n).cloned() else {
@@ -920,6 +921,12 @@ impl Gen<'_> {
                     expose,
                     "    cv::expose(scope, global, &t[Iface::{i} as usize], \"{i}\");"
                 );
+                if iface.ext.worker {
+                    let _ = writeln!(
+                        expose_worker,
+                        "    cv::expose(scope, global, &t[Iface::{i} as usize], \"{i}\");"
+                    );
+                }
                 continue;
             }
             if iface.namespace {
@@ -932,6 +939,12 @@ impl Gen<'_> {
                     "    cv::expose_namespace(scope, global, &t[Iface::{i} as usize], \"{}\");",
                     i
                 );
+                if iface.ext.worker {
+                    let _ = writeln!(
+                        expose_worker,
+                        "    cv::expose_namespace(scope, global, &t[Iface::{i} as usize], \"{i}\");"
+                    );
+                }
                 continue;
             }
             let parent = iface.parent.as_ref().map_or(String::new(), |p| {
@@ -944,6 +957,12 @@ impl Gen<'_> {
             if iface.ext.window && !iface.ext.global {
                 let _ = writeln!(
                     expose,
+                    "    cv::expose(scope, global, &t[Iface::{i} as usize], \"{i}\");"
+                );
+            }
+            if iface.ext.worker && !iface.ext.global {
+                let _ = writeln!(
+                    expose_worker,
                     "    cv::expose(scope, global, &t[Iface::{i} as usize], \"{i}\");"
                 );
             }
@@ -969,7 +988,7 @@ impl Gen<'_> {
         self.emit_dicts();
         let _ = write!(
             self.out,
-            "/// Builds every interface template, in `Iface` order.\npub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::FunctionTemplate>> {{\n    let mut out: Vec<v8::Global<v8::FunctionTemplate>> = Vec::with_capacity(Iface::ALL.len());\n{install}    out\n}}\n\n/// Puts interface objects and namespaces on a new global.\npub fn expose(scope: &mut v8::PinScope<'_, '_>, global: v8::Local<'_, v8::Object>, t: &[v8::Global<v8::FunctionTemplate>]) {{\n{expose}}}\n"
+            "/// Builds every interface template, in `Iface` order.\npub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::FunctionTemplate>> {{\n    let mut out: Vec<v8::Global<v8::FunctionTemplate>> = Vec::with_capacity(Iface::ALL.len());\n{install}    out\n}}\n\n/// Puts interface objects and namespaces on a new global.\npub fn expose(scope: &mut v8::PinScope<'_, '_>, global: v8::Local<'_, v8::Object>, t: &[v8::Global<v8::FunctionTemplate>]) {{\n{expose}}}\n\n/// Puts the interfaces exposed to dedicated workers on a worker's global.\npub fn expose_worker(scope: &mut v8::PinScope<'_, '_>, global: v8::Local<'_, v8::Object>, t: &[v8::Global<v8::FunctionTemplate>]) {{\n{expose_worker}}}\n"
         );
     }
 }

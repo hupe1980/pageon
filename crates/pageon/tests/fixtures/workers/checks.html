@@ -1,0 +1,79 @@
+<!doctype html>
+<meta charset=utf-8>
+<title>Workers</title>
+<pre id=out>pending</pre>
+<script>
+const results = [];
+const check = (name, ok) => results.push([name, !!ok]);
+const ask = (w, msg, transfer) => new Promise((resolve) => {
+  w.addEventListener('message', function on(e) { if (e.data.op === msg.op) { w.removeEventListener('message', on); resolve(e.data); } });
+  w.postMessage(msg, transfer || []);
+});
+const once = (target, type) => new Promise((resolve) => target.addEventListener(type, resolve, { once: true }));
+
+async function main() {
+  check('Worker exists', typeof Worker === 'function');
+  const w = new Worker('worker.js', { name: 'calc' });
+  const { facts } = await ask(w, { op: 'facts' });
+  check('worker global', facts.global);
+  check('no document or window in a worker', facts.noDocument);
+  check('no nested workers', facts.noNestedWorker);
+  check('name', facts.name === 'calc');
+  check('location', facts.location === new URL('worker.js', location.href).href);
+  check('origin', facts.origin === location.origin);
+  check('importScripts', facts.helper);
+  check('navigator', facts.ua);
+  check('IndexedDB, streams, encoding, crypto and performance in a worker', facts.apis);
+  check('a message round-trips', (await ask(w, { op: 'sum', values: [1, 2, 3] })).value === 6);
+  check('timers on the virtual clock', (await ask(w, { op: 'timer', at: Date.now() })).at);
+  check('fetch in a worker', (await ask(w, { op: 'fetch' })).text === 'hello from data');
+
+  const buf = new Uint8Array([1, 2, 3]).buffer;
+  const back = await ask(w, { op: 'buffer', buffer: buf }, [buf]);
+  check('a transferred buffer is detached', buf.byteLength === 0);
+  check('and arrives', new Uint8Array(back.buffer).join() === '2,4,6');
+  check('only ArrayBuffers transfer', (() => { try { w.postMessage(1, [{}]); return false; } catch (e) { return e.name === 'DataCloneError'; } })());
+
+  const err = once(w, 'error');
+  w.postMessage({ op: 'throw' });
+  const ev = await err;
+  check('an uncaught worker error is an ErrorEvent', ev instanceof ErrorEvent && ev.message.includes('worker boom') && ev.filename.endsWith('worker.js'));
+
+  let after = false;
+  w.addEventListener('message', (e) => { if (e.data.op === 'after-close') after = true; });
+  w.postMessage({ op: 'close' });
+  await new Promise((r) => setTimeout(r, 20));
+  check('close() ends the worker (its last message still arrives)', after === true);
+
+  const m = new Worker('module.js', { type: 'module' });
+  m.postMessage(21);
+  const modMsg = await once(m, 'message');
+  check('a module worker imports', modMsg.data.value === 42 && modMsg.data.meta);
+
+  const src = "onmessage = (e) => postMessage(e.data + ' from blob')";
+  const url = URL.createObjectURL(new Blob([src], { type: 'text/javascript' }));
+  check('a blob: URL', url.startsWith('blob:' + location.origin + '/'));
+  const b = new Worker(url);
+  b.postMessage('hi');
+  check('a blob: worker answers', (await once(b, 'message')).data === 'hi from blob');
+  URL.revokeObjectURL(url);
+  const gone = new Worker(url);
+  check('a revoked blob: URL fails with error', (await once(gone, 'error')) instanceof Event);
+
+  const d = new Worker('data:text/javascript,postMessage(self.origin)');
+  check('a data: worker has an opaque origin', (await once(d, 'message')).data === 'null');
+
+  const t = new Worker('worker.js');
+  let heard = false;
+  t.onmessage = () => { heard = true; };
+  t.postMessage({ op: 'sum', values: [1] });
+  t.terminate();
+  await new Promise((r) => setTimeout(r, 20));
+  check('terminate() drops what was pending', !heard);
+
+  check('a cross-origin script is a SecurityError', (() => { try { new Worker('https://other.test/w.js'); return false; } catch (e) { return e.name === 'SecurityError'; } })());
+  check('structuredClone transfers', (() => { const a = new ArrayBuffer(4); const c = structuredClone(a, { transfer: [a] }); return a.byteLength === 0 && c.byteLength === 4; })());
+  out.textContent = JSON.stringify(results);
+}
+main().catch((e) => { out.textContent = JSON.stringify([['main threw ' + e + ' ' + e.stack, false]]); });
+</script>

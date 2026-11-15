@@ -119,7 +119,9 @@ fn accept(dest: Dest) -> &'static str {
         }
         Dest::Style => "text/css,*/*;q=0.1",
         Dest::Image => "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
-        Dest::Script | Dest::Fetch | Dest::Xhr | Dest::Robots | Dest::WebSocket => "*/*",
+        Dest::Script | Dest::Worker | Dest::Fetch | Dest::Xhr | Dest::Robots | Dest::WebSocket => {
+            "*/*"
+        }
         Dest::EventSource => "text/event-stream",
     }
 }
@@ -129,6 +131,7 @@ fn sec_dest(dest: Dest) -> &'static str {
         Dest::Document => "document",
         Dest::Frame => "iframe",
         Dest::Script => "script",
+        Dest::Worker => "worker",
         Dest::Style => "style",
         Dest::Image => "image",
         Dest::Fetch | Dest::Xhr | Dest::Robots | Dest::EventSource => "empty",

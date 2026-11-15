@@ -45,6 +45,17 @@ fn parse(url: &str, base: Option<&str>) -> R<Url> {
 pub mod url {
     use super::*;
 
+    /// `URL.createObjectURL(blob)`: a `blob:` URL a worker can start from.
+    pub fn create_object_url(cx: &mut Cx<'_, '_, '_>, obj: Value) -> R<String> {
+        crate::dom::workers::create_object_url(cx, &obj)
+    }
+
+    /// `URL.revokeObjectURL(url)`.
+    pub fn revoke_object_url(cx: &mut Cx<'_, '_, '_>, url: String) -> R<()> {
+        cx.realm.shared.borrow_mut().blob_urls.remove(&url);
+        Ok(())
+    }
+
     fn get<T>(cx: &Cx<'_, '_, '_>, this: Obj, f: impl FnOnce(&Url) -> T) -> R<T> {
         match cx.realm.st.borrow().slot(this.slab()?) {
             Some(Slot::Url(u, _)) => Ok(f(u)),

@@ -1,0 +1,14 @@
+<!doctype html>
+<meta charset=utf-8>
+<title>Comlink</title>
+<p id=out>pending</p>
+<script src=comlink.min.js></script>
+<script>
+(async () => {
+  const api = Comlink.wrap(new Worker('comlink-worker.js'));
+  const sum = await api.add(2, 3);
+  const up = await api.later('done');
+  const err = await api.fail().then(() => 'no error', (e) => e.message);
+  out.textContent = [sum, up, err].join(' ');
+})().catch((e) => { out.textContent = 'threw ' + e; });
+</script>

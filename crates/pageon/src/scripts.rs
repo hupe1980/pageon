@@ -334,7 +334,10 @@ fn identity(client: &Client, start: &crate::load::Start<'_>) -> (String, String)
     // A sandbox without `allow-same-origin`: an opaque origin.
     let opaque = client.opaque().then(|| "null".to_string());
     match start.inherit {
-        Some((url, origin)) => (url.to_string(), opaque.unwrap_or_else(|| origin.to_string())),
+        Some((url, origin)) => (
+            url.to_string(),
+            opaque.unwrap_or_else(|| origin.to_string()),
+        ),
         None => (
             client.url.to_string(),
             opaque.unwrap_or_else(|| crate::frames::origin_of(client.url.as_str())),

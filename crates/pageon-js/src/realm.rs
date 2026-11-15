@@ -128,6 +128,9 @@ pub struct Listener {
     pub removed: Rc<std::cell::Cell<bool>>,
 }
 
+/// An `ErrorEvent`'s message, filename, lineno, colno and error.
+pub type ErrorInfo = (String, String, u32, u32, Option<Value>);
+
 /// An event's state.
 #[derive(Debug, Clone, Default)]
 pub struct EventData {
@@ -175,6 +178,8 @@ pub struct EventData {
     pub media: Option<(String, bool)>,
     /// `MessageEvent`: origin, lastEventId and source (data is in `detail`).
     pub message: Option<Box<(String, String, Option<crate::cv::Obj>)>>,
+    /// `ErrorEvent`: message, filename, lineno, colno, error.
+    pub error: Option<Box<ErrorInfo>>,
     /// `CloseEvent`: wasClean, code, reason.
     pub close: Option<Box<(bool, u16, String)>>,
     /// `DragEvent`, `ClipboardEvent`, `InputEvent`: its `DataTransfer` (slab id).
@@ -325,6 +330,8 @@ pub enum Slot {
     AuthResponse(Box<crate::dom::credentials::Resp>),
     /// A `MessageChannel`: its two ports.
     Channel(u32, u32),
+    /// A `Worker`.
+    Worker(Box<crate::dom::workers::Handle>),
     /// A `PerformanceMark` or `PerformanceMeasure`.
     PerfEntry(Box<crate::dom::timing::Entry>),
     /// A `PerformanceObserver`.
@@ -571,6 +578,10 @@ pub struct State {
     /// Windows of other frames as this realm sees them, and their cross-origin members, by
     /// (world, context, member; `""` for the window itself).
     pub remote: HashMap<(u32, u32, &'static str), v8::Global<v8::Object>>,
+    /// A worker that ended (`terminate`, `close`): no further task runs in it.
+    pub closed: bool,
+    /// The scripts a worker's `importScripts` may run, loaded when it started (URL → text).
+    pub imports: HashMap<String, String>,
 }
 
 impl State {
@@ -681,6 +692,12 @@ pub struct Shared {
     pub bindings: Vec<(usize, String, String)>,
     /// The engine's id (distinct for every engine in the process).
     pub engine: u64,
+    /// Messages and errors between workers and their owners, in posting order.
+    pub worker_mail: std::collections::VecDeque<crate::dom::workers::Mail>,
+    /// Workers running in this engine.
+    pub workers: usize,
+    /// `blob:` URLs (`URL.createObjectURL`): bytes and type.
+    pub blob_urls: HashMap<String, (Vec<u8>, String)>,
     /// The engine's realms, by index (weak: the engine owns them).
     pub realms: Vec<std::rc::Weak<Realm>>,
     /// The realm each page error happened in (parallel to `errors`, filled as realms run).
@@ -757,6 +774,8 @@ pub struct Realm {
     pub shared: Rc<RefCell<Shared>>,
     /// The realm's contexts by world: the main world first, then isolated worlds by name.
     pub worlds: RefCell<Vec<World>>,
+    /// A dedicated worker's global, linked to its `Worker` in the realm that created it.
+    pub worker: Option<crate::dom::workers::Link>,
 }
 
 /// One context of a realm.

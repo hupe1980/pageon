@@ -274,7 +274,12 @@ impl<'s> Cx<'_, 's, '_> {
         let this = args.this();
         let global = self.scope.get_current_context().global(self.scope);
         if this.strict_equals(global.into()) {
-            return if Iface::Window.is_a(iface) {
+            let own = if self.realm.worker.is_some() {
+                Iface::DedicatedWorkerGlobalScope
+            } else {
+                Iface::Window
+            };
+            return if own.is_a(iface) {
                 Ok(Obj::Window)
             } else {
                 Err(illegal())
@@ -472,7 +477,11 @@ pub fn unwrap_any(cx: &mut Cx<'_, '_, '_>, v: v8::Local<'_, v8::Value>) -> Optio
     unwrap_obj(cx, v, iface).ok().map(|obj| (obj, iface))
 }
 
-fn unwrap_obj(cx: &mut Cx<'_, '_, '_>, v: v8::Local<'_, v8::Value>, iface: Iface) -> R<Obj> {
+pub(crate) fn unwrap_obj(
+    cx: &mut Cx<'_, '_, '_>,
+    v: v8::Local<'_, v8::Value>,
+    iface: Iface,
+) -> R<Obj> {
     let Ok(o) = v8::Local::<v8::Object>::try_from(v) else {
         return Err(illegal());
     };

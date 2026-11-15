@@ -397,7 +397,8 @@ members = ["constructor", "lengthComputable", "loaded", "total"]
 [URL]
 members = [
   "constructor", "parse", "canParse", "href", "origin", "protocol", "username", "password", "host",
-  "hostname", "port", "pathname", "search", "searchParams", "hash", "toJSON",
+  "hostname", "port", "pathname", "search", "searchParams", "hash", "toJSON", "createObjectURL",
+  "revokeObjectURL",
 ]
 
 [URLSearchParams]
@@ -673,3 +674,23 @@ members = ["attestationObject", "getTransports", "getAuthenticatorData", "getPub
 [AuthenticatorAssertionResponse]
 members = ["authenticatorData", "signature", "userHandle"]
 
+
+# Dedicated workers: the global, its location and navigator, the `Worker` handle and the
+# `ErrorEvent` an uncaught worker error fires. `postMessage` (two overloads) is in hooks.rs.
+[WorkerGlobalScope]
+members = ["self", "location", "navigator", "importScripts"]
+
+[DedicatedWorkerGlobalScope]
+members = ["name", "close"]
+
+[WorkerLocation]
+members = ["href", "origin", "protocol", "host", "hostname", "port", "pathname", "search", "hash"]
+
+[WorkerNavigator]
+members = []
+
+[Worker]
+members = ["constructor", "terminate"]
+
+[ErrorEvent]
+members = ["constructor", "message", "filename", "lineno", "colno", "error"]

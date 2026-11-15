@@ -184,6 +184,14 @@ pub enum Iface {
     WebSocket,
     /// `Window`.
     Window,
+    /// `Worker`.
+    Worker,
+    /// `WorkerGlobalScope`.
+    WorkerGlobalScope,
+    /// `WorkerLocation`.
+    WorkerLocation,
+    /// `WorkerNavigator`.
+    WorkerNavigator,
     /// `XMLHttpRequestEventTarget`.
     XMLHttpRequestEventTarget,
     /// `XMLSerializer`.
@@ -214,6 +222,8 @@ pub enum Iface {
     CustomEvent,
     /// `DOMRect`.
     DOMRect,
+    /// `DedicatedWorkerGlobalScope`.
+    DedicatedWorkerGlobalScope,
     /// `Document`.
     Document,
     /// `DocumentFragment`.
@@ -222,6 +232,8 @@ pub enum Iface {
     DocumentType,
     /// `Element`.
     Element,
+    /// `ErrorEvent`.
+    ErrorEvent,
     /// `EventSource`.
     EventSource,
     /// `FocusEvent`.
@@ -396,7 +408,7 @@ pub enum Iface {
 
 impl Iface {
     /// All interfaces.
-    pub const ALL: &'static [Iface] = &[Iface::AbortController, Iface::AbstractRange, Iface::AuthenticatorResponse, Iface::Blob, Iface::CSS, Iface::CSSStyleDeclaration, Iface::CSSStyleProperties, Iface::CanvasRenderingContext2D, Iface::CaretPosition, Iface::Credential, Iface::CredentialsContainer, Iface::Crypto, Iface::CryptoKey, Iface::CustomElementRegistry, Iface::CustomStateSet, Iface::DOMException, Iface::DOMImplementation, Iface::DOMParser, Iface::DOMRectList, Iface::DOMRectReadOnly, Iface::DOMStringMap, Iface::DOMTokenList, Iface::DataTransfer, Iface::DataTransferItem, Iface::DataTransferItemList, Iface::ElementInternals, Iface::Event, Iface::EventTarget, Iface::File, Iface::FileList, Iface::FileReader, Iface::FormData, Iface::HTMLCollection, Iface::HTMLFormControlsCollection, Iface::HTMLOptionsCollection, Iface::Headers, Iface::History, Iface::IdleDeadline, Iface::IntersectionObserver, Iface::IntersectionObserverEntry, Iface::Location, Iface::MediaQueryList, Iface::MediaQueryListEvent, Iface::MessageChannel, Iface::MessageEvent, Iface::MessagePort, Iface::ModelContext, Iface::MutationObserver, Iface::MutationRecord, Iface::NamedNodeMap, Iface::Navigator, Iface::NavigatorUAData, Iface::Node, Iface::NodeFilter, Iface::NodeIterator, Iface::NodeList, Iface::Performance, Iface::PerformanceEntry, Iface::PerformanceMark, Iface::PerformanceMeasure, Iface::PerformanceObserver, Iface::PerformanceObserverEntryList, Iface::PopStateEvent, Iface::ProgressEvent, Iface::PublicKeyCredential, Iface::Range, Iface::Request, Iface::ResizeObserver, Iface::ResizeObserverEntry, Iface::ResizeObserverSize, Iface::Response, Iface::Screen, Iface::Selection, Iface::StaticRange, Iface::Storage, Iface::StyleSheet, Iface::SubtleCrypto, Iface::TextDecoder, Iface::TextEncoder, Iface::TreeWalker, Iface::UIEvent, Iface::URL, Iface::URLSearchParams, Iface::ValidityState, Iface::VisualViewport, Iface::WebSocket, Iface::Window, Iface::XMLHttpRequestEventTarget, Iface::XMLSerializer, Iface::console, Iface::AbortSignal, Iface::Attr, Iface::AuthenticatorAssertionResponse, Iface::AuthenticatorAttestationResponse, Iface::CSSStyleSheet, Iface::CharacterData, Iface::Clipboard, Iface::ClipboardEvent, Iface::CloseEvent, Iface::Comment, Iface::CustomEvent, Iface::DOMRect, Iface::Document, Iface::DocumentFragment, Iface::DocumentType, Iface::Element, Iface::EventSource, Iface::FocusEvent, Iface::HTMLElement, Iface::HTMLEmbedElement, Iface::HTMLFieldSetElement, Iface::HTMLFontElement, Iface::HTMLFormElement, Iface::HTMLFrameElement, Iface::HTMLFrameSetElement, Iface::HTMLHRElement, Iface::HTMLHeadElement, Iface::HTMLHeadingElement, Iface::HTMLHtmlElement, Iface::HTMLIFrameElement, Iface::HTMLImageElement, Iface::HTMLInputElement, Iface::HTMLLIElement, Iface::HTMLLabelElement, Iface::HTMLLegendElement, Iface::HTMLLinkElement, Iface::HTMLMapElement, Iface::HTMLMarqueeElement, Iface::HTMLMediaElement, Iface::HTMLMenuElement, Iface::HTMLMetaElement, Iface::HTMLMeterElement, Iface::HTMLModElement, Iface::HTMLOListElement, Iface::HTMLObjectElement, Iface::HTMLOptGroupElement, Iface::HTMLOptionElement, Iface::HTMLOutputElement, Iface::HTMLParagraphElement, Iface::HTMLParamElement, Iface::HTMLPictureElement, Iface::HTMLPreElement, Iface::HTMLProgressElement, Iface::HTMLQuoteElement, Iface::HTMLScriptElement, Iface::HTMLSelectElement, Iface::HTMLSelectedContentElement, Iface::HTMLSlotElement, Iface::HTMLSourceElement, Iface::HTMLSpanElement, Iface::HTMLStyleElement, Iface::HTMLTableCaptionElement, Iface::HTMLTableCellElement, Iface::HTMLTableColElement, Iface::HTMLTableElement, Iface::HTMLTableRowElement, Iface::HTMLTableSectionElement, Iface::HTMLTemplateElement, Iface::HTMLTextAreaElement, Iface::HTMLTimeElement, Iface::HTMLTitleElement, Iface::HTMLTrackElement, Iface::HTMLUListElement, Iface::HTMLUnknownElement, Iface::HTMLVideoElement, Iface::InputEvent, Iface::KeyboardEvent, Iface::MouseEvent, Iface::PointerEvent, Iface::SVGElement, Iface::SVGGraphicsElement, Iface::ShadowRoot, Iface::Text, Iface::WheelEvent, Iface::XMLHttpRequest, Iface::DragEvent, Iface::HTMLAnchorElement, Iface::HTMLAreaElement, Iface::HTMLAudioElement, Iface::HTMLBRElement, Iface::HTMLBaseElement, Iface::HTMLBodyElement, Iface::HTMLButtonElement, Iface::HTMLCanvasElement, Iface::HTMLDListElement, Iface::HTMLDataElement, Iface::HTMLDataListElement, Iface::HTMLDetailsElement, Iface::HTMLDialogElement, Iface::HTMLDirectoryElement, Iface::HTMLDivElement];
+    pub const ALL: &'static [Iface] = &[Iface::AbortController, Iface::AbstractRange, Iface::AuthenticatorResponse, Iface::Blob, Iface::CSS, Iface::CSSStyleDeclaration, Iface::CSSStyleProperties, Iface::CanvasRenderingContext2D, Iface::CaretPosition, Iface::Credential, Iface::CredentialsContainer, Iface::Crypto, Iface::CryptoKey, Iface::CustomElementRegistry, Iface::CustomStateSet, Iface::DOMException, Iface::DOMImplementation, Iface::DOMParser, Iface::DOMRectList, Iface::DOMRectReadOnly, Iface::DOMStringMap, Iface::DOMTokenList, Iface::DataTransfer, Iface::DataTransferItem, Iface::DataTransferItemList, Iface::ElementInternals, Iface::Event, Iface::EventTarget, Iface::File, Iface::FileList, Iface::FileReader, Iface::FormData, Iface::HTMLCollection, Iface::HTMLFormControlsCollection, Iface::HTMLOptionsCollection, Iface::Headers, Iface::History, Iface::IdleDeadline, Iface::IntersectionObserver, Iface::IntersectionObserverEntry, Iface::Location, Iface::MediaQueryList, Iface::MediaQueryListEvent, Iface::MessageChannel, Iface::MessageEvent, Iface::MessagePort, Iface::ModelContext, Iface::MutationObserver, Iface::MutationRecord, Iface::NamedNodeMap, Iface::Navigator, Iface::NavigatorUAData, Iface::Node, Iface::NodeFilter, Iface::NodeIterator, Iface::NodeList, Iface::Performance, Iface::PerformanceEntry, Iface::PerformanceMark, Iface::PerformanceMeasure, Iface::PerformanceObserver, Iface::PerformanceObserverEntryList, Iface::PopStateEvent, Iface::ProgressEvent, Iface::PublicKeyCredential, Iface::Range, Iface::Request, Iface::ResizeObserver, Iface::ResizeObserverEntry, Iface::ResizeObserverSize, Iface::Response, Iface::Screen, Iface::Selection, Iface::StaticRange, Iface::Storage, Iface::StyleSheet, Iface::SubtleCrypto, Iface::TextDecoder, Iface::TextEncoder, Iface::TreeWalker, Iface::UIEvent, Iface::URL, Iface::URLSearchParams, Iface::ValidityState, Iface::VisualViewport, Iface::WebSocket, Iface::Window, Iface::Worker, Iface::WorkerGlobalScope, Iface::WorkerLocation, Iface::WorkerNavigator, Iface::XMLHttpRequestEventTarget, Iface::XMLSerializer, Iface::console, Iface::AbortSignal, Iface::Attr, Iface::AuthenticatorAssertionResponse, Iface::AuthenticatorAttestationResponse, Iface::CSSStyleSheet, Iface::CharacterData, Iface::Clipboard, Iface::ClipboardEvent, Iface::CloseEvent, Iface::Comment, Iface::CustomEvent, Iface::DOMRect, Iface::DedicatedWorkerGlobalScope, Iface::Document, Iface::DocumentFragment, Iface::DocumentType, Iface::Element, Iface::ErrorEvent, Iface::EventSource, Iface::FocusEvent, Iface::HTMLElement, Iface::HTMLEmbedElement, Iface::HTMLFieldSetElement, Iface::HTMLFontElement, Iface::HTMLFormElement, Iface::HTMLFrameElement, Iface::HTMLFrameSetElement, Iface::HTMLHRElement, Iface::HTMLHeadElement, Iface::HTMLHeadingElement, Iface::HTMLHtmlElement, Iface::HTMLIFrameElement, Iface::HTMLImageElement, Iface::HTMLInputElement, Iface::HTMLLIElement, Iface::HTMLLabelElement, Iface::HTMLLegendElement, Iface::HTMLLinkElement, Iface::HTMLMapElement, Iface::HTMLMarqueeElement, Iface::HTMLMediaElement, Iface::HTMLMenuElement, Iface::HTMLMetaElement, Iface::HTMLMeterElement, Iface::HTMLModElement, Iface::HTMLOListElement, Iface::HTMLObjectElement, Iface::HTMLOptGroupElement, Iface::HTMLOptionElement, Iface::HTMLOutputElement, Iface::HTMLParagraphElement, Iface::HTMLParamElement, Iface::HTMLPictureElement, Iface::HTMLPreElement, Iface::HTMLProgressElement, Iface::HTMLQuoteElement, Iface::HTMLScriptElement, Iface::HTMLSelectElement, Iface::HTMLSelectedContentElement, Iface::HTMLSlotElement, Iface::HTMLSourceElement, Iface::HTMLSpanElement, Iface::HTMLStyleElement, Iface::HTMLTableCaptionElement, Iface::HTMLTableCellElement, Iface::HTMLTableColElement, Iface::HTMLTableElement, Iface::HTMLTableRowElement, Iface::HTMLTableSectionElement, Iface::HTMLTemplateElement, Iface::HTMLTextAreaElement, Iface::HTMLTimeElement, Iface::HTMLTitleElement, Iface::HTMLTrackElement, Iface::HTMLUListElement, Iface::HTMLUnknownElement, Iface::HTMLVideoElement, Iface::InputEvent, Iface::KeyboardEvent, Iface::MouseEvent, Iface::PointerEvent, Iface::SVGElement, Iface::SVGGraphicsElement, Iface::ShadowRoot, Iface::Text, Iface::WheelEvent, Iface::XMLHttpRequest, Iface::DragEvent, Iface::HTMLAnchorElement, Iface::HTMLAreaElement, Iface::HTMLAudioElement, Iface::HTMLBRElement, Iface::HTMLBaseElement, Iface::HTMLBodyElement, Iface::HTMLButtonElement, Iface::HTMLCanvasElement, Iface::HTMLDListElement, Iface::HTMLDataElement, Iface::HTMLDataListElement, Iface::HTMLDetailsElement, Iface::HTMLDialogElement, Iface::HTMLDirectoryElement, Iface::HTMLDivElement];
 
     /// The interface name.
     pub fn name(self) -> &'static str {
@@ -488,6 +500,10 @@ impl Iface {
             Iface::VisualViewport => "VisualViewport",
             Iface::WebSocket => "WebSocket",
             Iface::Window => "Window",
+            Iface::Worker => "Worker",
+            Iface::WorkerGlobalScope => "WorkerGlobalScope",
+            Iface::WorkerLocation => "WorkerLocation",
+            Iface::WorkerNavigator => "WorkerNavigator",
             Iface::XMLHttpRequestEventTarget => "XMLHttpRequestEventTarget",
             Iface::XMLSerializer => "XMLSerializer",
             Iface::console => "console",
@@ -503,10 +519,12 @@ impl Iface {
             Iface::Comment => "Comment",
             Iface::CustomEvent => "CustomEvent",
             Iface::DOMRect => "DOMRect",
+            Iface::DedicatedWorkerGlobalScope => "DedicatedWorkerGlobalScope",
             Iface::Document => "Document",
             Iface::DocumentFragment => "DocumentFragment",
             Iface::DocumentType => "DocumentType",
             Iface::Element => "Element",
+            Iface::ErrorEvent => "ErrorEvent",
             Iface::EventSource => "EventSource",
             Iface::FocusEvent => "FocusEvent",
             Iface::HTMLElement => "HTMLElement",
@@ -685,6 +703,10 @@ impl Iface {
             Iface::VisualViewport => Some(Iface::EventTarget),
             Iface::WebSocket => Some(Iface::EventTarget),
             Iface::Window => Some(Iface::EventTarget),
+            Iface::Worker => Some(Iface::EventTarget),
+            Iface::WorkerGlobalScope => Some(Iface::EventTarget),
+            Iface::WorkerLocation => None,
+            Iface::WorkerNavigator => None,
             Iface::XMLHttpRequestEventTarget => Some(Iface::EventTarget),
             Iface::XMLSerializer => None,
             Iface::console => None,
@@ -700,10 +722,12 @@ impl Iface {
             Iface::Comment => Some(Iface::CharacterData),
             Iface::CustomEvent => Some(Iface::Event),
             Iface::DOMRect => Some(Iface::DOMRectReadOnly),
+            Iface::DedicatedWorkerGlobalScope => Some(Iface::WorkerGlobalScope),
             Iface::Document => Some(Iface::Node),
             Iface::DocumentFragment => Some(Iface::Node),
             Iface::DocumentType => Some(Iface::Node),
             Iface::Element => Some(Iface::Node),
+            Iface::ErrorEvent => Some(Iface::Event),
             Iface::EventSource => Some(Iface::EventTarget),
             Iface::FocusEvent => Some(Iface::UIEvent),
             Iface::HTMLElement => Some(Iface::Element),
@@ -7449,6 +7473,26 @@ fn op__URL__toJSON(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments
 }
 
 #[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__URL__static_createObjectURL(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        if args.length() <= 0 { return Err(cv::Error::args("URL.createObjectURL", 0)); }
+        let a0: Value = { let v = args.get(0); cv::value(cx, v) };
+        let r: String = crate::dom::url::create_object_url(cx, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__URL__static_revokeObjectURL(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        if args.length() <= 0 { return Err(cv::Error::args("URL.revokeObjectURL", 0)); }
+        let a0: String = { let v = args.get(0); cv::string(cx, v)? };
+        let r: () = crate::dom::url::revoke_object_url(cx, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
 fn ctor__URL(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     cv::call(scope, &args, &mut rv, |cx, args| {
         if args.new_target().is_undefined() { return Err(cv::Error::Type("Failed to construct 'URL': Please use the 'new' operator.".into())); }
@@ -10648,6 +10692,586 @@ fn get__Window__localStorage(scope: &mut v8::PinScope, args: v8::FunctionCallbac
 }
 
 #[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Worker__terminate(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Worker)?;
+        let r: () = crate::dom::worker::terminate(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Worker__onerror(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Worker)?;
+        let r = cv::handler_get(cx, this, "error")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Worker__onerror(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Worker)?;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "error", v)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Worker__onmessage(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Worker)?;
+        let r = cv::handler_get(cx, this, "message")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Worker__onmessage(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Worker)?;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "message", v)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Worker__onmessageerror(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Worker)?;
+        let r = cv::handler_get(cx, this, "messageerror")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Worker__onmessageerror(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Worker)?;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "messageerror", v)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn ctor__Worker(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        if args.new_target().is_undefined() { return Err(cv::Error::Type("Failed to construct 'Worker': Please use the 'new' operator.".into())); }
+        if args.length() <= 0 { return Err(cv::Error::args("Worker constructor", 0)); }
+        let a0: String = { let v = args.get(0); cv::string_nte(cx, v)? };
+        let a1: WorkerOptions = { let v = args.get(1); if v.is_undefined() { WorkerOptions::default() } else { dict_worker_options(cx, v)? } };
+        let r: Obj = crate::dom::worker::constructor(cx, a0, a1)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__WorkerGlobalScope__self(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerGlobalScope)?;
+        let r: Obj = crate::dom::worker_global_scope::get_self_(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__WorkerGlobalScope__location(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerGlobalScope)?;
+        let r: Obj = crate::dom::worker_global_scope::get_location(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__WorkerGlobalScope__navigator(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerGlobalScope)?;
+        let r: Obj = crate::dom::worker_global_scope::get_navigator(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__WorkerGlobalScope__importScripts(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerGlobalScope)?;
+        let mut a0: Vec<String> = Vec::new();
+        for k in 0..args.length() { let v = args.get(k); a0.push(cv::string_nte(cx, v)?); }
+        let r: () = crate::dom::worker_global_scope::import_scripts(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__WorkerGlobalScope__onerror(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerGlobalScope)?;
+        let r = cv::handler_get(cx, this, "error")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__WorkerGlobalScope__onerror(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerGlobalScope)?;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "error", v)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__WorkerGlobalScope__onlanguagechange(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerGlobalScope)?;
+        let r = cv::handler_get(cx, this, "languagechange")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__WorkerGlobalScope__onlanguagechange(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerGlobalScope)?;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "languagechange", v)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__WorkerGlobalScope__onoffline(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerGlobalScope)?;
+        let r = cv::handler_get(cx, this, "offline")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__WorkerGlobalScope__onoffline(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerGlobalScope)?;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "offline", v)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__WorkerGlobalScope__ononline(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerGlobalScope)?;
+        let r = cv::handler_get(cx, this, "online")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__WorkerGlobalScope__ononline(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerGlobalScope)?;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "online", v)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__WorkerGlobalScope__onrejectionhandled(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerGlobalScope)?;
+        let r = cv::handler_get(cx, this, "rejectionhandled")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__WorkerGlobalScope__onrejectionhandled(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerGlobalScope)?;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "rejectionhandled", v)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__WorkerGlobalScope__onunhandledrejection(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerGlobalScope)?;
+        let r = cv::handler_get(cx, this, "unhandledrejection")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__WorkerGlobalScope__onunhandledrejection(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerGlobalScope)?;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "unhandledrejection", v)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__WorkerGlobalScope__fetch(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerGlobalScope)?;
+        if args.length() <= 0 { return Err(cv::Error::args("WorkerGlobalScope.fetch", 0)); }
+        let a0: Value = { let v = args.get(0); cv::value(cx, v) };
+        let a1: RequestInit = { let v = args.get(1); if v.is_undefined() { RequestInit::default() } else { dict_request_init(cx, v)? } };
+        let r: Value = crate::dom::window_or_worker_global_scope::fetch(cx, this, a0, a1)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__WorkerGlobalScope__performance(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerGlobalScope)?;
+        let r: Obj = crate::dom::window_or_worker_global_scope::get_performance(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__WorkerGlobalScope__origin(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerGlobalScope)?;
+        let r: String = crate::dom::window_or_worker_global_scope::get_origin(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__WorkerGlobalScope__isSecureContext(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerGlobalScope)?;
+        let r: bool = crate::dom::window_or_worker_global_scope::get_is_secure_context(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__WorkerGlobalScope__reportError(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerGlobalScope)?;
+        if args.length() <= 0 { return Err(cv::Error::args("WorkerGlobalScope.reportError", 0)); }
+        let a0: Value = { let v = args.get(0); cv::value(cx, v) };
+        let r: () = crate::dom::window_or_worker_global_scope::report_error(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__WorkerGlobalScope__btoa(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerGlobalScope)?;
+        if args.length() <= 0 { return Err(cv::Error::args("WorkerGlobalScope.btoa", 0)); }
+        let a0: String = { let v = args.get(0); cv::string(cx, v)? };
+        let r: String = crate::dom::window_or_worker_global_scope::btoa(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__WorkerGlobalScope__atob(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerGlobalScope)?;
+        if args.length() <= 0 { return Err(cv::Error::args("WorkerGlobalScope.atob", 0)); }
+        let a0: String = { let v = args.get(0); cv::string(cx, v)? };
+        let r: String = crate::dom::window_or_worker_global_scope::atob(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__WorkerGlobalScope__setTimeout(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerGlobalScope)?;
+        if args.length() <= 0 { return Err(cv::Error::args("WorkerGlobalScope.setTimeout", 0)); }
+        let a0: Value = { let v = args.get(0); cv::value(cx, v) };
+        let a1: i32 = { let v = args.get(1); if v.is_undefined() { 0 } else { cv::int::<i32>(cx, v)? } };
+        let mut a2: Vec<Value> = Vec::new();
+        for k in 2..args.length() { let v = args.get(k); a2.push(cv::value(cx, v)); }
+        let r: i32 = crate::dom::window_or_worker_global_scope::set_timeout(cx, this, a0, a1, a2)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__WorkerGlobalScope__clearTimeout(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerGlobalScope)?;
+        let a0: i32 = { let v = args.get(0); if v.is_undefined() { 0 } else { cv::int::<i32>(cx, v)? } };
+        let r: () = crate::dom::window_or_worker_global_scope::clear_timeout(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__WorkerGlobalScope__setInterval(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerGlobalScope)?;
+        if args.length() <= 0 { return Err(cv::Error::args("WorkerGlobalScope.setInterval", 0)); }
+        let a0: Value = { let v = args.get(0); cv::value(cx, v) };
+        let a1: i32 = { let v = args.get(1); if v.is_undefined() { 0 } else { cv::int::<i32>(cx, v)? } };
+        let mut a2: Vec<Value> = Vec::new();
+        for k in 2..args.length() { let v = args.get(k); a2.push(cv::value(cx, v)); }
+        let r: i32 = crate::dom::window_or_worker_global_scope::set_interval(cx, this, a0, a1, a2)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__WorkerGlobalScope__clearInterval(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerGlobalScope)?;
+        let a0: i32 = { let v = args.get(0); if v.is_undefined() { 0 } else { cv::int::<i32>(cx, v)? } };
+        let r: () = crate::dom::window_or_worker_global_scope::clear_interval(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__WorkerGlobalScope__queueMicrotask(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerGlobalScope)?;
+        if args.length() <= 0 { return Err(cv::Error::args("WorkerGlobalScope.queueMicrotask", 0)); }
+        let a0: Value = { let v = args.get(0); cv::value(cx, v) };
+        let r: () = crate::dom::window_or_worker_global_scope::queue_microtask(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__WorkerGlobalScope__structuredClone(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerGlobalScope)?;
+        if args.length() <= 0 { return Err(cv::Error::args("WorkerGlobalScope.structuredClone", 0)); }
+        let a0: Value = { let v = args.get(0); cv::value(cx, v) };
+        let a1: StructuredSerializeOptions = { let v = args.get(1); if v.is_undefined() { StructuredSerializeOptions::default() } else { dict_structured_serialize_options(cx, v)? } };
+        let r: Value = crate::dom::window_or_worker_global_scope::structured_clone(cx, this, a0, a1)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__WorkerGlobalScope__crypto(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerGlobalScope)?;
+        let r: Obj = crate::dom::window_or_worker_global_scope::get_crypto(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__WorkerLocation__href(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerLocation)?;
+        let r: String = crate::dom::worker_location::get_href(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__WorkerLocation__origin(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerLocation)?;
+        let r: String = crate::dom::worker_location::get_origin(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__WorkerLocation__protocol(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerLocation)?;
+        let r: String = crate::dom::worker_location::get_protocol(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__WorkerLocation__host(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerLocation)?;
+        let r: String = crate::dom::worker_location::get_host(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__WorkerLocation__hostname(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerLocation)?;
+        let r: String = crate::dom::worker_location::get_hostname(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__WorkerLocation__port(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerLocation)?;
+        let r: String = crate::dom::worker_location::get_port(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__WorkerLocation__pathname(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerLocation)?;
+        let r: String = crate::dom::worker_location::get_pathname(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__WorkerLocation__search(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerLocation)?;
+        let r: String = crate::dom::worker_location::get_search(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__WorkerLocation__hash(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerLocation)?;
+        let r: String = crate::dom::worker_location::get_hash(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__WorkerNavigator__appCodeName(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerNavigator)?;
+        let r: String = crate::dom::navigator_id::get_app_code_name(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__WorkerNavigator__appName(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerNavigator)?;
+        let r: String = crate::dom::navigator_id::get_app_name(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__WorkerNavigator__appVersion(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerNavigator)?;
+        let r: String = crate::dom::navigator_id::get_app_version(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__WorkerNavigator__platform(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerNavigator)?;
+        let r: String = crate::dom::navigator_id::get_platform(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__WorkerNavigator__product(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerNavigator)?;
+        let r: String = crate::dom::navigator_id::get_product(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__WorkerNavigator__productSub(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerNavigator)?;
+        let r: String = crate::dom::navigator_id::get_product_sub(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__WorkerNavigator__userAgent(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerNavigator)?;
+        let r: String = crate::dom::navigator_id::get_user_agent(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__WorkerNavigator__vendor(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerNavigator)?;
+        let r: String = crate::dom::navigator_id::get_vendor(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__WorkerNavigator__vendorSub(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerNavigator)?;
+        let r: String = crate::dom::navigator_id::get_vendor_sub(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__WorkerNavigator__language(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerNavigator)?;
+        let r: String = crate::dom::navigator_language::get_language(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__WorkerNavigator__languages(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerNavigator)?;
+        let r: Vec<String> = crate::dom::navigator_language::get_languages(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__WorkerNavigator__onLine(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerNavigator)?;
+        let r: bool = crate::dom::navigator_on_line::get_on_line(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__WorkerNavigator__userAgentData(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerNavigator)?;
+        let r: Obj = crate::dom::navigator_ua::get_user_agent_data(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
 fn get__XMLHttpRequestEventTarget__onloadstart(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::XMLHttpRequestEventTarget)?;
@@ -11513,6 +12137,84 @@ fn ctor__CustomEvent(scope: &mut v8::PinScope, args: v8::FunctionCallbackArgumen
         let a1: CustomEventInit = { let v = args.get(1); if v.is_undefined() { CustomEventInit::default() } else { dict_custom_event_init(cx, v)? } };
         let r: Obj = crate::dom::custom_event::constructor(cx, a0, a1)?;
         cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__DedicatedWorkerGlobalScope__name(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = Obj::Window;
+        let r: String = crate::dom::dedicated_worker_global_scope::get_name(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__DedicatedWorkerGlobalScope__close(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = Obj::Window;
+        let r: () = crate::dom::dedicated_worker_global_scope::close(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__DedicatedWorkerGlobalScope__requestAnimationFrame(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = Obj::Window;
+        if args.length() <= 0 { return Err(cv::Error::args("DedicatedWorkerGlobalScope.requestAnimationFrame", 0)); }
+        let a0: Value = { let v = args.get(0); cv::value(cx, v) };
+        let r: u32 = crate::dom::animation_frame_provider::request_animation_frame(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__DedicatedWorkerGlobalScope__cancelAnimationFrame(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = Obj::Window;
+        if args.length() <= 0 { return Err(cv::Error::args("DedicatedWorkerGlobalScope.cancelAnimationFrame", 0)); }
+        let a0: u32 = { let v = args.get(0); cv::int::<u32>(cx, v)? };
+        let r: () = crate::dom::animation_frame_provider::cancel_animation_frame(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__DedicatedWorkerGlobalScope__onmessage(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = Obj::Window;
+        let r = cv::handler_get(cx, this, "message")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__DedicatedWorkerGlobalScope__onmessage(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = Obj::Window;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "message", v)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__DedicatedWorkerGlobalScope__onmessageerror(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = Obj::Window;
+        let r = cv::handler_get(cx, this, "messageerror")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__DedicatedWorkerGlobalScope__onmessageerror(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = Obj::Window;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "messageerror", v)?;
+        cx.ret(())
     });
 }
 
@@ -15763,6 +16465,63 @@ fn set__Element__ariaValueText(scope: &mut v8::PinScope, args: v8::FunctionCallb
         let this = cx.this(args, Iface::Element)?;
         cv::reflect_set(cx, this, "aria-valuetext", args.get(0), cv::Reflect::NullableStr)?;
         cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ErrorEvent__message(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ErrorEvent)?;
+        let r: String = crate::dom::error_event::get_message(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ErrorEvent__filename(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ErrorEvent)?;
+        let r: String = crate::dom::error_event::get_filename(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ErrorEvent__lineno(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ErrorEvent)?;
+        let r: u32 = crate::dom::error_event::get_lineno(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ErrorEvent__colno(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ErrorEvent)?;
+        let r: u32 = crate::dom::error_event::get_colno(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ErrorEvent__error(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ErrorEvent)?;
+        let r: Value = crate::dom::error_event::get_error(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn ctor__ErrorEvent(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        if args.new_target().is_undefined() { return Err(cv::Error::Type("Failed to construct 'ErrorEvent': Please use the 'new' operator.".into())); }
+        if args.length() <= 0 { return Err(cv::Error::args("ErrorEvent constructor", 0)); }
+        let a0: String = { let v = args.get(0); cv::string(cx, v)? };
+        let a1: ErrorEventInit = { let v = args.get(1); if v.is_undefined() { ErrorEventInit::default() } else { dict_error_event_init(cx, v)? } };
+        let r: Obj = crate::dom::error_event::constructor(cx, a0, a1)?;
+        cx.ret(r)
     });
 }
 
@@ -28363,6 +29122,59 @@ fn dict_element_definition_options(cx: &mut Cx<'_, '_, '_>, v: v8::Local<'_, v8:
     Ok(d)
 }
 
+/// The `ErrorEventInit` dictionary.
+#[derive(Debug, Clone)]
+#[allow(missing_docs)]
+pub struct ErrorEventInit {
+    /// `bubbles`.
+    pub bubbles: bool,
+    /// `cancelable`.
+    pub cancelable: bool,
+    /// `colno`.
+    pub colno: u32,
+    /// `composed`.
+    pub composed: bool,
+    /// `error`.
+    pub error: Option<Value>,
+    /// `filename`.
+    pub filename: String,
+    /// `lineno`.
+    pub lineno: u32,
+    /// `message`.
+    pub message: String,
+}
+
+impl Default for ErrorEventInit {
+    fn default() -> Self {
+        Self {
+            bubbles: false,
+            cancelable: false,
+            colno: 0,
+            composed: false,
+            error: None,
+            filename: "".to_string(),
+            lineno: 0,
+            message: "".to_string(),
+        }
+    }
+}
+
+#[allow(unused_variables, unused_mut, clippy::all)]
+fn dict_error_event_init(cx: &mut Cx<'_, '_, '_>, v: v8::Local<'_, v8::Value>) -> R<ErrorEventInit> {
+    let mut d = ErrorEventInit::default();
+    if v.is_null_or_undefined() { return Ok(d); }
+    let obj = cv::object(cx, v, "ErrorEventInit")?;
+    { let v = cv::get(cx, obj, "bubbles")?; if !v.is_undefined() { d.bubbles = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "cancelable")?; if !v.is_undefined() { d.cancelable = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "colno")?; if !v.is_undefined() { d.colno = cv::int::<u32>(cx, v)?; } }
+    { let v = cv::get(cx, obj, "composed")?; if !v.is_undefined() { d.composed = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "error")?; if !v.is_undefined() { d.error = Some(cv::value(cx, v)); } }
+    { let v = cv::get(cx, obj, "filename")?; if !v.is_undefined() { d.filename = cv::string(cx, v)?; } }
+    { let v = cv::get(cx, obj, "lineno")?; if !v.is_undefined() { d.lineno = cv::int::<u32>(cx, v)?; } }
+    { let v = cv::get(cx, obj, "message")?; if !v.is_undefined() { d.message = cv::string(cx, v)?; } }
+    Ok(d)
+}
+
 /// The `EventInit` dictionary.
 #[derive(Debug, Clone)]
 #[allow(missing_docs)]
@@ -30257,6 +31069,39 @@ fn dict_wheel_event_init(cx: &mut Cx<'_, '_, '_>, v: v8::Local<'_, v8::Value>) -
     Ok(d)
 }
 
+/// The `WorkerOptions` dictionary.
+#[derive(Debug, Clone)]
+#[allow(missing_docs)]
+pub struct WorkerOptions {
+    /// `credentials`.
+    pub credentials: String,
+    /// `name`.
+    pub name: String,
+    /// `type`.
+    pub type_: String,
+}
+
+impl Default for WorkerOptions {
+    fn default() -> Self {
+        Self {
+            credentials: "same-origin".to_string(),
+            name: "".to_string(),
+            type_: "classic".to_string(),
+        }
+    }
+}
+
+#[allow(unused_variables, unused_mut, clippy::all)]
+fn dict_worker_options(cx: &mut Cx<'_, '_, '_>, v: v8::Local<'_, v8::Value>) -> R<WorkerOptions> {
+    let mut d = WorkerOptions::default();
+    if v.is_null_or_undefined() { return Ok(d); }
+    let obj = cv::object(cx, v, "WorkerOptions")?;
+    { let v = cv::get(cx, obj, "credentials")?; if !v.is_undefined() { d.credentials = cv::string(cx, v)?; } }
+    { let v = cv::get(cx, obj, "name")?; if !v.is_undefined() { d.name = cv::string(cx, v)?; } }
+    { let v = cv::get(cx, obj, "type")?; if !v.is_undefined() { d.type_ = cv::string(cx, v)?; } }
+    Ok(d)
+}
+
 /// Builds every interface template, in `Iface` order.
 pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::FunctionTemplate>> {
     let mut out: Vec<v8::Global<v8::FunctionTemplate>> = Vec::with_capacity(Iface::ALL.len());
@@ -31533,6 +32378,8 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::accessor(scope, proto, "searchParams", get__URL__searchParams, None);
         cv::accessor(scope, proto, "hash", get__URL__hash, Some(set__URL__hash.map_fn_to()));
         cv::method(scope, proto.into(), "toJSON", op__URL__toJSON, 0);
+        cv::method(scope, f.into(), "createObjectURL", op__URL__static_createObjectURL, 1);
+        cv::method(scope, f.into(), "revokeObjectURL", op__URL__static_revokeObjectURL, 1);
         crate::dom::hooks::template(scope, Iface::URL, f);
         out.push(v8::Global::new(scope, f));
     }
@@ -31790,6 +32637,91 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         crate::dom::hooks::template(scope, Iface::Window, f);
         out.push(v8::Global::new(scope, f));
     }
+    { // Worker
+        let f = cv::interface(scope, "Worker", ctor__Worker);
+        f.inherit(v8::Local::new(scope, &out[Iface::EventTarget as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::method(scope, proto.into(), "terminate", op__Worker__terminate, 0);
+        cv::accessor(scope, proto, "onerror", get__Worker__onerror, Some(set__Worker__onerror.map_fn_to()));
+        cv::accessor(scope, proto, "onmessage", get__Worker__onmessage, Some(set__Worker__onmessage.map_fn_to()));
+        cv::accessor(scope, proto, "onmessageerror", get__Worker__onmessageerror, Some(set__Worker__onmessageerror.map_fn_to()));
+        crate::dom::hooks::template(scope, Iface::Worker, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // WorkerGlobalScope
+        let f = cv::interface(scope, "WorkerGlobalScope", cv::illegal_constructor);
+        f.inherit(v8::Local::new(scope, &out[Iface::EventTarget as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "self", get__WorkerGlobalScope__self, None);
+        cv::accessor(scope, proto, "location", get__WorkerGlobalScope__location, None);
+        cv::accessor(scope, proto, "navigator", get__WorkerGlobalScope__navigator, None);
+        cv::method(scope, proto.into(), "importScripts", op__WorkerGlobalScope__importScripts, 0);
+        cv::accessor(scope, proto, "onerror", get__WorkerGlobalScope__onerror, Some(set__WorkerGlobalScope__onerror.map_fn_to()));
+        cv::accessor(scope, proto, "onlanguagechange", get__WorkerGlobalScope__onlanguagechange, Some(set__WorkerGlobalScope__onlanguagechange.map_fn_to()));
+        cv::accessor(scope, proto, "onoffline", get__WorkerGlobalScope__onoffline, Some(set__WorkerGlobalScope__onoffline.map_fn_to()));
+        cv::accessor(scope, proto, "ononline", get__WorkerGlobalScope__ononline, Some(set__WorkerGlobalScope__ononline.map_fn_to()));
+        cv::accessor(scope, proto, "onrejectionhandled", get__WorkerGlobalScope__onrejectionhandled, Some(set__WorkerGlobalScope__onrejectionhandled.map_fn_to()));
+        cv::accessor(scope, proto, "onunhandledrejection", get__WorkerGlobalScope__onunhandledrejection, Some(set__WorkerGlobalScope__onunhandledrejection.map_fn_to()));
+        cv::method(scope, proto.into(), "fetch", op__WorkerGlobalScope__fetch, 1);
+        cv::accessor(scope, proto, "performance", get__WorkerGlobalScope__performance, None);
+        cv::accessor(scope, proto, "origin", get__WorkerGlobalScope__origin, None);
+        cv::accessor(scope, proto, "isSecureContext", get__WorkerGlobalScope__isSecureContext, None);
+        cv::method(scope, proto.into(), "reportError", op__WorkerGlobalScope__reportError, 1);
+        cv::method(scope, proto.into(), "btoa", op__WorkerGlobalScope__btoa, 1);
+        cv::method(scope, proto.into(), "atob", op__WorkerGlobalScope__atob, 1);
+        cv::method(scope, proto.into(), "setTimeout", op__WorkerGlobalScope__setTimeout, 1);
+        cv::method(scope, proto.into(), "clearTimeout", op__WorkerGlobalScope__clearTimeout, 0);
+        cv::method(scope, proto.into(), "setInterval", op__WorkerGlobalScope__setInterval, 1);
+        cv::method(scope, proto.into(), "clearInterval", op__WorkerGlobalScope__clearInterval, 0);
+        cv::method(scope, proto.into(), "queueMicrotask", op__WorkerGlobalScope__queueMicrotask, 1);
+        cv::method(scope, proto.into(), "structuredClone", op__WorkerGlobalScope__structuredClone, 1);
+        cv::accessor(scope, proto, "crypto", get__WorkerGlobalScope__crypto, None);
+        crate::dom::hooks::template(scope, Iface::WorkerGlobalScope, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // WorkerLocation
+        let f = cv::interface(scope, "WorkerLocation", cv::illegal_constructor);
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "href", get__WorkerLocation__href, None);
+        cv::method(scope, proto.into(), "toString", get__WorkerLocation__href, 0);
+        cv::accessor(scope, proto, "origin", get__WorkerLocation__origin, None);
+        cv::accessor(scope, proto, "protocol", get__WorkerLocation__protocol, None);
+        cv::accessor(scope, proto, "host", get__WorkerLocation__host, None);
+        cv::accessor(scope, proto, "hostname", get__WorkerLocation__hostname, None);
+        cv::accessor(scope, proto, "port", get__WorkerLocation__port, None);
+        cv::accessor(scope, proto, "pathname", get__WorkerLocation__pathname, None);
+        cv::accessor(scope, proto, "search", get__WorkerLocation__search, None);
+        cv::accessor(scope, proto, "hash", get__WorkerLocation__hash, None);
+        crate::dom::hooks::template(scope, Iface::WorkerLocation, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // WorkerNavigator
+        let f = cv::interface(scope, "WorkerNavigator", cv::illegal_constructor);
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "appCodeName", get__WorkerNavigator__appCodeName, None);
+        cv::accessor(scope, proto, "appName", get__WorkerNavigator__appName, None);
+        cv::accessor(scope, proto, "appVersion", get__WorkerNavigator__appVersion, None);
+        cv::accessor(scope, proto, "platform", get__WorkerNavigator__platform, None);
+        cv::accessor(scope, proto, "product", get__WorkerNavigator__product, None);
+        cv::accessor(scope, proto, "productSub", get__WorkerNavigator__productSub, None);
+        cv::accessor(scope, proto, "userAgent", get__WorkerNavigator__userAgent, None);
+        cv::accessor(scope, proto, "vendor", get__WorkerNavigator__vendor, None);
+        cv::accessor(scope, proto, "vendorSub", get__WorkerNavigator__vendorSub, None);
+        cv::accessor(scope, proto, "language", get__WorkerNavigator__language, None);
+        cv::accessor(scope, proto, "languages", get__WorkerNavigator__languages, None);
+        cv::accessor(scope, proto, "onLine", get__WorkerNavigator__onLine, None);
+        cv::accessor(scope, proto, "userAgentData", get__WorkerNavigator__userAgentData, None);
+        crate::dom::hooks::template(scope, Iface::WorkerNavigator, f);
+        out.push(v8::Global::new(scope, f));
+    }
     { // XMLHttpRequestEventTarget
         let f = cv::interface(scope, "XMLHttpRequestEventTarget", cv::illegal_constructor);
         f.inherit(v8::Local::new(scope, &out[Iface::EventTarget as usize]));
@@ -31989,6 +32921,21 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         inst.set_internal_field_count(cv::FIELDS);
         let proto = f.prototype_template(scope);
         crate::dom::hooks::template(scope, Iface::DOMRect, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // DedicatedWorkerGlobalScope
+        let f = cv::interface(scope, "DedicatedWorkerGlobalScope", cv::illegal_constructor);
+        f.inherit(v8::Local::new(scope, &out[Iface::WorkerGlobalScope as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::accessor(scope, inst, "name", get__DedicatedWorkerGlobalScope__name, None);
+        cv::method(scope, inst.into(), "close", op__DedicatedWorkerGlobalScope__close, 0);
+        cv::method(scope, inst.into(), "requestAnimationFrame", op__DedicatedWorkerGlobalScope__requestAnimationFrame, 1);
+        cv::method(scope, inst.into(), "cancelAnimationFrame", op__DedicatedWorkerGlobalScope__cancelAnimationFrame, 1);
+        cv::accessor(scope, inst, "onmessage", get__DedicatedWorkerGlobalScope__onmessage, Some(set__DedicatedWorkerGlobalScope__onmessage.map_fn_to()));
+        cv::accessor(scope, inst, "onmessageerror", get__DedicatedWorkerGlobalScope__onmessageerror, Some(set__DedicatedWorkerGlobalScope__onmessageerror.map_fn_to()));
+        crate::dom::hooks::template(scope, Iface::DedicatedWorkerGlobalScope, f);
         out.push(v8::Global::new(scope, f));
     }
     { // Document
@@ -32311,6 +33258,20 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::accessor(scope, proto, "ariaValueNow", get__Element__ariaValueNow, Some(set__Element__ariaValueNow.map_fn_to()));
         cv::accessor(scope, proto, "ariaValueText", get__Element__ariaValueText, Some(set__Element__ariaValueText.map_fn_to()));
         crate::dom::hooks::template(scope, Iface::Element, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // ErrorEvent
+        let f = cv::interface(scope, "ErrorEvent", ctor__ErrorEvent);
+        f.inherit(v8::Local::new(scope, &out[Iface::Event as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "message", get__ErrorEvent__message, None);
+        cv::accessor(scope, proto, "filename", get__ErrorEvent__filename, None);
+        cv::accessor(scope, proto, "lineno", get__ErrorEvent__lineno, None);
+        cv::accessor(scope, proto, "colno", get__ErrorEvent__colno, None);
+        cv::accessor(scope, proto, "error", get__ErrorEvent__error, None);
+        crate::dom::hooks::template(scope, Iface::ErrorEvent, f);
         out.push(v8::Global::new(scope, f));
     }
     { // EventSource
@@ -33921,6 +34882,7 @@ pub fn expose(scope: &mut v8::PinScope<'_, '_>, global: v8::Local<'_, v8::Object
     cv::expose(scope, global, &t[Iface::ValidityState as usize], "ValidityState");
     cv::expose(scope, global, &t[Iface::VisualViewport as usize], "VisualViewport");
     cv::expose(scope, global, &t[Iface::WebSocket as usize], "WebSocket");
+    cv::expose(scope, global, &t[Iface::Worker as usize], "Worker");
     cv::expose(scope, global, &t[Iface::XMLHttpRequestEventTarget as usize], "XMLHttpRequestEventTarget");
     cv::expose(scope, global, &t[Iface::XMLSerializer as usize], "XMLSerializer");
     cv::expose_namespace(scope, global, &t[Iface::console as usize], "console");
@@ -33940,6 +34902,7 @@ pub fn expose(scope: &mut v8::PinScope<'_, '_>, global: v8::Local<'_, v8::Object
     cv::expose(scope, global, &t[Iface::DocumentFragment as usize], "DocumentFragment");
     cv::expose(scope, global, &t[Iface::DocumentType as usize], "DocumentType");
     cv::expose(scope, global, &t[Iface::Element as usize], "Element");
+    cv::expose(scope, global, &t[Iface::ErrorEvent as usize], "ErrorEvent");
     cv::expose(scope, global, &t[Iface::EventSource as usize], "EventSource");
     cv::expose(scope, global, &t[Iface::FocusEvent as usize], "FocusEvent");
     cv::expose(scope, global, &t[Iface::HTMLElement as usize], "HTMLElement");
@@ -34027,4 +34990,53 @@ pub fn expose(scope: &mut v8::PinScope<'_, '_>, global: v8::Local<'_, v8::Object
     cv::expose(scope, global, &t[Iface::HTMLDialogElement as usize], "HTMLDialogElement");
     cv::expose(scope, global, &t[Iface::HTMLDirectoryElement as usize], "HTMLDirectoryElement");
     cv::expose(scope, global, &t[Iface::HTMLDivElement as usize], "HTMLDivElement");
+}
+
+/// Puts the interfaces exposed to dedicated workers on a worker's global.
+pub fn expose_worker(scope: &mut v8::PinScope<'_, '_>, global: v8::Local<'_, v8::Object>, t: &[v8::Global<v8::FunctionTemplate>]) {
+    cv::expose(scope, global, &t[Iface::AbortController as usize], "AbortController");
+    cv::expose(scope, global, &t[Iface::Blob as usize], "Blob");
+    cv::expose(scope, global, &t[Iface::Crypto as usize], "Crypto");
+    cv::expose(scope, global, &t[Iface::CryptoKey as usize], "CryptoKey");
+    cv::expose(scope, global, &t[Iface::DOMException as usize], "DOMException");
+    cv::expose(scope, global, &t[Iface::DOMRectReadOnly as usize], "DOMRectReadOnly");
+    cv::expose(scope, global, &t[Iface::Event as usize], "Event");
+    cv::expose(scope, global, &t[Iface::EventTarget as usize], "EventTarget");
+    cv::expose(scope, global, &t[Iface::File as usize], "File");
+    cv::expose(scope, global, &t[Iface::FileList as usize], "FileList");
+    cv::expose(scope, global, &t[Iface::FileReader as usize], "FileReader");
+    cv::expose(scope, global, &t[Iface::FormData as usize], "FormData");
+    cv::expose(scope, global, &t[Iface::Headers as usize], "Headers");
+    cv::expose(scope, global, &t[Iface::MessageChannel as usize], "MessageChannel");
+    cv::expose(scope, global, &t[Iface::MessageEvent as usize], "MessageEvent");
+    cv::expose(scope, global, &t[Iface::MessagePort as usize], "MessagePort");
+    cv::expose(scope, global, &t[Iface::NavigatorUAData as usize], "NavigatorUAData");
+    cv::expose(scope, global, &t[Iface::Performance as usize], "Performance");
+    cv::expose(scope, global, &t[Iface::PerformanceEntry as usize], "PerformanceEntry");
+    cv::expose(scope, global, &t[Iface::PerformanceMark as usize], "PerformanceMark");
+    cv::expose(scope, global, &t[Iface::PerformanceMeasure as usize], "PerformanceMeasure");
+    cv::expose(scope, global, &t[Iface::PerformanceObserver as usize], "PerformanceObserver");
+    cv::expose(scope, global, &t[Iface::PerformanceObserverEntryList as usize], "PerformanceObserverEntryList");
+    cv::expose(scope, global, &t[Iface::ProgressEvent as usize], "ProgressEvent");
+    cv::expose(scope, global, &t[Iface::Request as usize], "Request");
+    cv::expose(scope, global, &t[Iface::Response as usize], "Response");
+    cv::expose(scope, global, &t[Iface::SubtleCrypto as usize], "SubtleCrypto");
+    cv::expose(scope, global, &t[Iface::TextDecoder as usize], "TextDecoder");
+    cv::expose(scope, global, &t[Iface::TextEncoder as usize], "TextEncoder");
+    cv::expose(scope, global, &t[Iface::URL as usize], "URL");
+    cv::expose(scope, global, &t[Iface::URLSearchParams as usize], "URLSearchParams");
+    cv::expose(scope, global, &t[Iface::WebSocket as usize], "WebSocket");
+    cv::expose(scope, global, &t[Iface::Worker as usize], "Worker");
+    cv::expose(scope, global, &t[Iface::WorkerGlobalScope as usize], "WorkerGlobalScope");
+    cv::expose(scope, global, &t[Iface::WorkerLocation as usize], "WorkerLocation");
+    cv::expose(scope, global, &t[Iface::WorkerNavigator as usize], "WorkerNavigator");
+    cv::expose(scope, global, &t[Iface::XMLHttpRequestEventTarget as usize], "XMLHttpRequestEventTarget");
+    cv::expose_namespace(scope, global, &t[Iface::console as usize], "console");
+    cv::expose(scope, global, &t[Iface::AbortSignal as usize], "AbortSignal");
+    cv::expose(scope, global, &t[Iface::CloseEvent as usize], "CloseEvent");
+    cv::expose(scope, global, &t[Iface::CustomEvent as usize], "CustomEvent");
+    cv::expose(scope, global, &t[Iface::DOMRect as usize], "DOMRect");
+    cv::expose(scope, global, &t[Iface::ErrorEvent as usize], "ErrorEvent");
+    cv::expose(scope, global, &t[Iface::EventSource as usize], "EventSource");
+    cv::expose(scope, global, &t[Iface::XMLHttpRequest as usize], "XMLHttpRequest");
 }
