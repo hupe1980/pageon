@@ -1,4 +1,4 @@
-//! Regression tests for spec 030 (hardening 3): the threat model's small residuals, one test
+//! Regression tests for the threat model's small residuals, one test
 //! per fix.
 
 mod common;
@@ -6,7 +6,7 @@ mod common;
 use common::*;
 use pageon::{LoadError, LoadOptions, Replay, Session};
 
-/// SR-004 (P-16): a robots.txt behind more than five redirects cannot be read, so the site is
+/// P-16: a robots.txt behind more than five redirects cannot be read, so the site is
 /// refused (fail-closed); a percent-encoded path cannot bypass a rule.
 #[test]
 fn robots_txt_fails_closed_and_decodes_paths() {
@@ -42,7 +42,7 @@ fn robots_txt_fails_closed_and_decodes_paths() {
     assert!(refused("https://enc.test/%70rivate").contains("Disallow: /private"));
 }
 
-/// SR-002 (P-02): IPv6 transition forms of loopback and local-use NAT64 are private.
+/// P-02: IPv6 transition forms of loopback and local-use NAT64 are private.
 #[test]
 fn transition_addresses_are_private() {
     let session = Session::new(Replay::new(site(vec![])));
@@ -75,7 +75,7 @@ fn act(s: &str) -> pageon::Action {
     s.parse().unwrap_or_else(|e| panic!("{e}"))
 }
 
-/// SR-006 (P-13): a lookahead's reads do not make an origin known, so the real first write
+/// P-13: a lookahead's reads do not make an origin known, so the real first write
 /// there still carries `first-contact` (and reaches the guard).
 #[test]
 fn lookahead_reads_leave_first_contact_alone() {
@@ -142,7 +142,7 @@ impl<E: pageon::Env> pageon::Env for Slow<E> {
     }
 }
 
-/// SR-006 (P-13): a branch that keeps requesting is stopped at its deadline (10 s).
+/// P-13: a branch that keeps requesting is stopped at its deadline (10 s).
 #[test]
 #[allow(clippy::disallowed_methods)] // wall time: the deadline is wall time
 fn a_lookahead_branch_has_a_deadline() {
@@ -173,7 +173,7 @@ fn a_lookahead_branch_has_a_deadline() {
     assert!(tab.observe().is_ok());
 }
 
-/// SR-007 (P-19): a document loads at most 2,000 modules and makes at most 10,000 requests;
+/// P-19: a document loads at most 2,000 modules and makes at most 10,000 requests;
 /// one page error says so each time.
 #[test]
 fn a_document_has_module_and_request_caps() {
@@ -233,7 +233,7 @@ fn a_document_has_module_and_request_caps() {
     );
 }
 
-/// SR-007 (P-20): one click with 500 alerts and 500 popups reports 20 of each and counts the
+/// P-20: one click with 500 alerts and 500 popups reports 20 of each and counts the
 /// rest; the page goes on (every dialog was answered).
 #[test]
 fn an_action_reports_at_most_twenty_dialogs_and_popups() {
@@ -262,7 +262,7 @@ fn an_action_reports_at_most_twenty_dialogs_and_popups() {
     assert!(tab.observe().contains("done"), "the page went on");
 }
 
-/// SR-007 (P-20): a content process that stops answering does not hang the broker: the command
+/// P-20: a content process that stops answering does not hang the broker: the command
 /// fails with a timeout, the process is stopped, and later commands say why.
 #[test]
 #[allow(clippy::disallowed_methods)] // wall time: the timeout is wall time
@@ -307,7 +307,7 @@ fn a_silent_content_process_times_out() {
     );
 }
 
-/// SR-008 (P-17): schema names and types are quoted unless plain identifiers, so a page cannot
+/// P-17: schema names and types are quoted unless plain identifiers, so a page cannot
 /// write view syntax into the tool line.
 #[test]
 fn tool_schemas_cannot_write_view_lines() {

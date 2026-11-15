@@ -33,7 +33,7 @@ Web Platform Tests, pinned at one commit (`tests/wpt/SOURCE`):
 - names: 539/572 (94.2 %).
 
 Of the 33 failing names, 27 need CSS generated content (`::before`, `::after`, counters), which
-pageon does not include in names yet. Every failure is listed in `tests/wpt/KNOWN.md`, and a new
+pageon does not include in names. Every failure is listed in `tests/wpt/KNOWN.md`, and a new
 failure fails the test.
 
 MIT OR Apache-2.0.

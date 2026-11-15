@@ -1,5 +1,5 @@
-// pageon site: theme, copy buttons, tabs, search, docs menu and TOC highlighting. No dependencies
-// except Zola's elasticlunr search index.
+// pageon site: theme, copy buttons, tabs, search, docs menu and TOC highlighting. No dependencies;
+// Zola's elasticlunr search index loads on the first search.
 (() => {
   const $ = (s, el = document) => el.querySelector(s);
   const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -87,7 +87,23 @@
   const input = $('[data-search-input]');
   const results = $('[data-search-results]');
   let index;
-  const open = () => { dialog.showModal(); input.focus(); input.select(); };
+  let loading;
+  const script = (src) => new Promise((ok, fail) => {
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload = ok;
+    s.onerror = fail;
+    document.head.append(s);
+  });
+  // The index and its library load once, when search is first opened.
+  const load = () => {
+    loading ||= (dialog.dataset.searchSrc || '').split(' ').filter(Boolean)
+      .reduce((p, src) => p.then(() => script(src)), Promise.resolve())
+      .then(() => { index = elasticlunr.Index.load(window.searchIndex); input.dispatchEvent(new Event('input')); })
+      .catch(() => { loading = null; });
+    return loading;
+  };
+  const open = () => { dialog.showModal(); input.focus(); input.select(); load(); };
   $('[data-search-open]')?.addEventListener('click', open);
   addEventListener('keydown', (e) => {
     if (e.key === '/' && !/input|textarea/i.test(document.activeElement.tagName)) {
@@ -98,7 +114,6 @@
   dialog?.addEventListener('click', (e) => { if (e.target === dialog) dialog.close(); });
   const escape = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   input?.addEventListener('input', () => {
-    if (!index && window.searchIndex && window.elasticlunr) index = elasticlunr.Index.load(window.searchIndex);
     const q = input.value.trim();
     if (!index || q.length < 2) { results.innerHTML = ''; return; }
     const fields = { title: { boost: 3 }, description: { boost: 2 }, body: { boost: 1 } };

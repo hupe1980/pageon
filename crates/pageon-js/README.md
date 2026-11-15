@@ -42,11 +42,13 @@ The surface covers what real pages and the MiniWoB++ and corpus pages need:
 - SVG elements and named access on `window`;
 - networking: `fetch` with `Headers`, `Request` and `Response`, async `XMLHttpRequest`,
   `AbortController` and `AbortSignal` (including `timeout` and `any`), `URL`,
-  `URLSearchParams`, `FormData` (string entries), `document.cookie`, `localStorage` and
-  `sessionStorage`.
+  `URLSearchParams`, `FormData`, `document.cookie`, `localStorage` and `sessionStorage`;
+- `WebSocket` and `EventSource`, held by the broker, messages on the virtual clock;
+- files: `Blob`, `File`, `FileList`, `FileReader`, file inputs;
+- drag and drop: `DataTransfer`, `DragEvent`.
 
-Input comes from the engine: `Engine::click`, `type_text`, `press`, `select` and `hover` dispatch
-trusted pointer, mouse, focus, keyboard and input events, at the topmost element under the point,
+Input comes from the engine: `Engine::click`, `type_text`, `press`, `select`, `hover` and `drag`
+dispatch trusted pointer, mouse, drag, focus, keyboard and input events, at the topmost element under the point,
 followed by the browser's default actions (links, form submission, labels, `<details>`).
 Navigations, dialogs (`alert`/`confirm`/`prompt`, answered at once by a policy) and popups are
 recorded for the caller. The isolate is locked only while in use, so pages can stay live
@@ -76,9 +78,9 @@ The process stays single-threaded at rest: the watchdog thread exists only while
 A bug in a binding becomes a JavaScript `TypeError` and a reported page error; it never aborts
 the process.
 
-## Not yet
+## Absent
 
-These are absent, and reported when a page needs them:
+These are not implemented, and reported when a page needs them:
 - `document.write`;
 - customized built-ins (`is=`), `formStateRestoreCallback`, file values in `setFormValue`, and
   stylesheet options and `cssRules` of constructed stylesheets;
@@ -86,8 +88,8 @@ These are absent, and reported when a page needs them:
   the page has loaded stay unloaded, and frames are not navigated by script;
 - value sanitization of number and date fields (an unparsable value is `badInput`, as typed);
 - `blob:` URLs (`URL.createObjectURL`), streams, `FileReader.readAsBinaryString`, structured clone
-  of blobs, `DataTransfer`;
-- `WebSocket`, `EventSource`, `IndexedDB`;
+  of blobs;
+- `IndexedDB`;
 - Selection and `Range`, the Navigation API, `crypto.subtle`;
 - workers;
 - canvas text, images and readback;

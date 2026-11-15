@@ -1145,7 +1145,7 @@ fn history_api_navigations_stay_in_the_document() {
     assert_eq!(h["result"]["currentIndex"], 2, "{h}");
 }
 
-/// SR-001 (P-11): only the printed URL, with its per-run secret, reaches the browser;
+/// P-11: only the printed URL, with its per-run secret, reaches the browser;
 /// discovery over HTTP is opt-in.
 #[test]
 fn the_endpoint_answers_only_its_printed_url() {
@@ -1203,7 +1203,7 @@ fn allowing_every_origin_warns() {
 }
 
 /// Spec 033: init scripts run before the page's own scripts, in every new document and frame,
-/// script-less ones too; world scripts in their world; removal stops them (SR-001).
+/// script-less ones too; world scripts in their world; removal stops them.
 #[test]
 fn init_scripts_run_before_the_page() {
     let session = Session::new(Replay::new(site(vec![

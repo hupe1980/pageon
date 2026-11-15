@@ -1,4 +1,4 @@
-//! Platform basics single-page apps call at startup (spec 027): `matchMedia` (Stylo evaluates
+//! Platform basics single-page apps call at startup: `matchMedia` (Stylo evaluates
 //! the queries), `crypto` (a per-document ChaCha20 stream keyed from the `Env` seam),
 //! `TextEncoder`/`TextDecoder` (encoding_rs), `ResizeObserver` (delivered at the rendering step
 //! after IntersectionObserver), `requestIdleCallback` and the `Image`/`Option` constructors.

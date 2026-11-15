@@ -1,8 +1,9 @@
 +++
 title = "WebMCP page tools"
-description = "Pages that declare tools with WebMCP's document.modelContext get them listed first in the agent's view, with the origin and script that registered them, and called as actions."
+description = "Tools pages declare with WebMCP's document.modelContext are listed first in the agent's view, with their provenance, and called as actions."
 weight = 23
 [extra]
+seo_title = "WebMCP page tools for agents"
 group = "Concepts"
 nav = "WebMCP"
 +++

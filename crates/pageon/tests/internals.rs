@@ -1,4 +1,4 @@
-//! Element internals (spec 029): constraint validation and the blocked-submission outcome,
+//! Element internals: constraint validation and the blocked-submission outcome,
 //! form-associated custom elements, custom states, and adopted stylesheets — in-process, caged
 //! and replayed.
 
@@ -227,7 +227,7 @@ fn page_rules_cancelled_events_and_formnovalidate() {
     assert_eq!(o.requests.len(), 1, "formnovalidate submits: {o}");
 }
 
-/// SR-001, SR-002: a page-set message is quoted page data, clipped; a typed secret never
+/// A page-set message is quoted page data, clipped; a typed secret never
 /// appears in an outcome.
 #[test]
 fn page_messages_are_page_data_and_secrets_stay_out() {
@@ -389,7 +389,7 @@ if (ADOPT) {{
     );
 }
 
-/// SR-003: custom states and sheet text are capped, with one page error each.
+/// Custom states and sheet text are capped, with one page error each.
 #[test]
 fn side_tables_are_capped() {
     let page = r#"<!doctype html><p id=out></p><script>

@@ -284,7 +284,7 @@ mod tests {
         );
     }
 
-    /// SR-004 (P-16): percent-encoded paths cannot bypass a rule, and encoded rules match.
+    /// P-16: percent-encoded paths cannot bypass a rule, and encoded rules match.
     #[test]
     fn percent_escapes_of_unreserved_characters_are_decoded() {
         let r = Robots::parse(

@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   {%- set page_title = config.title -%}
+  {%- if page and page.extra.seo_title -%}{%- set seo_title = page.extra.seo_title ~ " · pageon" -%}{%- endif -%}
   {%- set page_description = config.description -%}
   {%- if page and page.title -%}
     {%- set page_title = page.title ~ " · pageon" -%}
@@ -13,15 +14,16 @@
     {%- if section.description -%}{%- set page_description = section.description -%}{%- endif -%}
   {%- endif -%}
   {%- set canonical = current_url | default(value=config.base_url ~ "/") -%}
-  <title>{% block title %}{{ page_title }}{% endblock %}</title>
+  <title>{% block title %}{{ seo_title | default(value=page_title) }}{% endblock %}</title>
   <meta name="description" content="{{ page_description }}">
   <meta name="keywords" content="{{ config.extra.keywords }}">
   <meta name="author" content="{{ config.author }}">
   <link rel="canonical" href="{{ canonical }}">
-  <meta name="robots" content="index, follow, max-image-preview:large">
+  <meta name="robots" content="{% block robots %}index, follow, max-image-preview:large{% endblock %}">
 
   <meta property="og:type" content="{% if page %}article{% else %}website{% endif %}">
   <meta property="og:site_name" content="pageon">
+  <meta property="og:locale" content="en_US">
   <meta property="og:title" content="{{ page_title }}">
   <meta property="og:description" content="{{ page_description }}">
   <meta property="og:url" content="{{ canonical }}">
@@ -33,6 +35,7 @@
   <meta name="twitter:title" content="{{ page_title }}">
   <meta name="twitter:description" content="{{ page_description }}">
   <meta name="twitter:image" content="{{ get_url(path='og.png') }}">
+  <meta name="twitter:image:alt" content="pageon: the browser engine built for AI agents">
 
   <meta name="theme-color" content="#0b0d12" media="(prefers-color-scheme: dark)">
   <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
@@ -77,7 +80,8 @@
     </div>
   </header>
 
-  <dialog class="search" aria-label="Search the documentation" data-search>
+  <dialog class="search" aria-label="Search the documentation" data-search
+    data-search-src="{{ get_url(path='elasticlunr.min.js') }} {{ get_url(path='search_index.en.js') }}">
     <form method="dialog" class="search__box" role="search">
       <input type="search" placeholder="Search the docs…" aria-label="Search" autocomplete="off" data-search-input>
       <button class="search__close" aria-label="Close search">Esc</button>
@@ -107,8 +111,6 @@
       </nav>
     </div>
   </footer>
-  <script src="{{ get_url(path='elasticlunr.min.js') }}" defer></script>
-  <script src="{{ get_url(path='search_index.en.js') }}" defer></script>
   <script src="{{ get_url(path='site.js', cachebust=true) }}" defer></script>
 </body>
 </html>

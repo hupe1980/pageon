@@ -2,7 +2,8 @@
 
 pageon's browser networking. Every request a page makes passes through one place:
 - documents, stylesheets, scripts and frames;
-- `fetch` and `XMLHttpRequest`.
+- `fetch` and `XMLHttpRequest`;
+- the handshakes of `WebSocket` and `EventSource` (cookies, `Origin`, the egress checks).
 
 That place applies the browser's rules over [`pageon-env`](../pageon-env) (`Live`, `Recording`
 or `Replay`).

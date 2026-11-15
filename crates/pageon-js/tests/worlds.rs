@@ -1,4 +1,4 @@
-//! Isolated worlds: separate JavaScript over one document, as Chromium's (spec 026).
+//! Isolated worlds: separate JavaScript over one document, as Chromium's.
 
 use std::cell::RefCell;
 use std::rc::Rc;

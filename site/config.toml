@@ -3,7 +3,7 @@
 #   zola build    # → public/
 base_url = "https://hupe1980.github.io/pageon"
 title = "pageon: the browser engine built for AI agents"
-description = "pageon is an open-source browser engine in Rust, built for AI agents: compact page views with stable refs, typed actions, sandboxed pages, replay and fork. MCP, Python, Puppeteer, Playwright and WebDriver BiDi."
+description = "Open-source browser engine in Rust for AI agents: compact views with stable refs, typed actions, sandboxed pages and replay. MCP, Python, CDP and BiDi."
 default_language = "en"
 compile_sass = true
 minify_html = true

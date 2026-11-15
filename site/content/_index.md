@@ -1,6 +1,6 @@
 +++
 title = "pageon: the browser engine built for AI agents"
-description = "pageon is an open-source browser engine in Rust, built for AI agents: compact page views with stable refs, typed actions, sandboxed pages, replay and fork. MCP, Python, Puppeteer, Playwright and WebDriver BiDi."
+description = "Open-source browser engine in Rust for AI agents: compact views with stable refs, typed actions, sandboxed pages and replay. MCP, Python, CDP and BiDi."
 template = "index.html"
 
 [extra]
@@ -59,9 +59,27 @@ title = "Workflows and WebMCP"
 text = "A solved task compiles into a workflow that reruns without a model and stops where a site drifted. Tools a page declares with WebMCP are listed first, with their provenance."
 link = "@/docs/workflows.md"
 
+[[extra.features]]
+icon = "🌐"
+title = "Real web apps"
+text = "Modules and bundlers, web components, forms that validate as in Chrome, several tabs, file uploads, drag and drop, WebSockets and server-sent events."
+link = "@/docs/platform.md"
+
+[[extra.features]]
+icon = "🙋"
+title = "People in the loop"
+text = "Writes can wait for an approver or a guard program, and an agent can hand the page to a person through a live view for a login or a CAPTCHA."
+link = "@/docs/security.md"
+
+[[extra.features]]
+icon = "🔌"
+title = "Every protocol"
+text = "MCP `2026-07-28` and earlier over stdio or Streamable HTTP, CDP for Puppeteer and Playwright, WebDriver BiDi, Python and Rust: one engine behind all of them."
+link = "@/docs/mcp.md"
+
 [[extra.connect]]
 name = "MCP"
-text = "Add pageon to Claude Code, Claude Desktop, Cursor or any MCP host. Eighteen `browser_*` tools; every action answers with its outcome, what changed and its step number."
+text = "Add pageon to Claude Code, Claude Desktop, Cursor or any MCP host, over stdio or Streamable HTTP. `browser_*` tools to read, act, use tabs, look ahead and hand over to a person; every action answers with its outcome, what changed and its step number."
 link = "@/docs/mcp.md"
 code = '''
 ```sh
@@ -100,14 +118,12 @@ const pw = await chromium.connectOverCDP(cdpUrl);
 
 [[extra.connect]]
 name = "WebDriver BiDi"
-text = "The W3C protocol on the same port, at `/session`. Puppeteer's BiDi mode and plain BiDi clients work; `pageon:observe` and `pageon:act` add the agent view."
+text = "The W3C protocol on the same port, at the printed `/session/…` URL. Puppeteer's BiDi mode and plain BiDi clients work; `pageon:observe` and `pageon:act` add the agent view."
 link = "@/docs/bidi.md"
 code = '''
 ```js
-const browser = await puppeteer.connect({
-  browserWSEndpoint: 'ws://127.0.0.1:9222/session',
-  protocol: 'webDriverBiDi',
-});
+// the printed ws://127.0.0.1:9222/session/<secret> URL
+const browser = await puppeteer.connect({ browserWSEndpoint: bidiUrl, protocol: 'webDriverBiDi' });
 ```
 '''
 

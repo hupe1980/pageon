@@ -1902,7 +1902,7 @@ fn call_tool(
 mod tests {
     use super::*;
 
-    /// SR-007 (P-20): a request line over the limit is refused and skipped; reading goes on.
+    /// P-20: a request line over the limit is refused and skipped; reading goes on.
     #[test]
     fn long_lines_are_refused_and_skipped() {
         let mut input = std::io::Cursor::new(format!("{}\n{{\"a\":1}}\n", "x".repeat(100)));

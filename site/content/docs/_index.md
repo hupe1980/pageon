@@ -1,6 +1,6 @@
 +++
 title = "Documentation"
-description = "Everything about pageon, the browser engine built for AI agents: install it, connect your agent, understand the views and actions, and run it safely."
+description = "Install pageon, the browser engine built for AI agents, connect your agent, and learn the views, actions, safety model and replay."
 sort_by = "weight"
 template = "section.html"
 page_template = "page.html"

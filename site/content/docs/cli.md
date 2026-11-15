@@ -1,6 +1,6 @@
 +++
 title = "Command line"
-description = "The pageon CLI: fetch and act on pages, take screenshots, record and replay sessions, serve MCP, CDP and WebDriver BiDi, manage identities and run workflows."
+description = "The pageon CLI: fetch and act on pages, take screenshots, record and replay, serve MCP, CDP and WebDriver BiDi, and run workflows."
 weight = 10
 [extra]
 group = "Interfaces"
@@ -12,7 +12,7 @@ One binary does everything. `pageon <command> --help` prints every option with e
 | Command | What it does |
 | --- | --- |
 | `pageon fetch URL` | Load a page, optionally act on it, and print a view or take a screenshot |
-| `pageon mcp` | Serve a browser to an agent over MCP (stdio) |
+| `pageon mcp` | Serve a browser to an agent over MCP (stdio; `--http` for Streamable HTTP) |
 | `pageon cdp` (alias `pageon bidi`) | Serve Puppeteer, Playwright and WebDriver BiDi clients on one port |
 | `pageon replay FILE` | Re-run a recorded session and check every step reaches the same page |
 | `pageon workflow compile/run` | Turn a recorded session into a workflow; run it without a model |
@@ -54,6 +54,7 @@ Screenshot options: `--screenshot FILE` (`.png`, `.jpg`), `--full-page`, `--mark
 | `--approve` | Ask on the terminal before every write (`fetch`, `replay --live`) |
 | `--guard COMMAND` | Ask a program about requests ([guard](@/docs/security.md#guard)) |
 | `--secret NAME@ORIGIN` | A [secret](@/docs/secrets.md) from `PAGEON_SECRET_<NAME>`, bound to an origin; `NAME:totp@ORIGIN` for TOTP |
+| `--file NAME@ORIGIN=PATH` | A file the agent may upload by name, only to that origin |
 | `--state FILE` · `--save-state FILE` | Start from / save cookies and localStorage (Playwright `storageState`) |
 | `--record FILE` · `--replay FILE` | Record the session; serve it again offline |
 | `--private-network allow` | Let pages reach localhost and private ranges (refused by default) |

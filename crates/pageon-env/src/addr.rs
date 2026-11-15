@@ -156,7 +156,7 @@ mod tests {
         }
     }
 
-    /// SR-002 (P-02): transition forms carrying a private IPv4 address, local-use NAT64, the
+    /// P-02: transition forms carrying a private IPv4 address, local-use NAT64, the
     /// discard prefix and the documentation ranges are not public; public ones stay public.
     #[test]
     fn transition_and_documentation_addresses() {

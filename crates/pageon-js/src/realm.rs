@@ -761,7 +761,7 @@ impl Realm {
 }
 
 /// Most dialogs, popups (and, in the tab, downloads) one action reports: the rest are
-/// answered as usual and counted (SR-007).
+/// answered as usual and counted.
 pub const MAX_PER_ACTION: usize = 20;
 
 impl State {

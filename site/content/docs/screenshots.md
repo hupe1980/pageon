@@ -1,8 +1,9 @@
 +++
 title = "Screenshots and set-of-marks"
-description = "pageon paints pages on demand from the same layout the agent acts on: viewport and full-page screenshots, set-of-marks labelled with the agent's refs, crops with provenance, and masks."
+description = "Screenshots from the layout the agent acts on: viewport and full page, set-of-marks labelled with refs, crops with provenance, and masks."
 weight = 22
 [extra]
+seo_title = "Screenshots and set-of-marks for vision models"
 group = "Concepts"
 nav = "Screenshots"
 +++

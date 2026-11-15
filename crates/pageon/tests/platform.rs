@@ -1,4 +1,4 @@
-//! Platform basics (spec 027): the History API through the tab, and the globals single-page
+//! Platform basics: the History API through the tab, and the globals single-page
 //! apps and component libraries call at startup.
 
 mod common;

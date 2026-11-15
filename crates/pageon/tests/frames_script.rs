@@ -1,4 +1,4 @@
-//! Scripting across frames (spec 028): `contentWindow`, `contentDocument`, `parent`/`top`,
+//! Scripting across frames: `contentWindow`, `contentDocument`, `parent`/`top`,
 //! cross-origin windows, `postMessage`, and nodes between documents — in-process, caged and
 //! replayed.
 

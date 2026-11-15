@@ -1,8 +1,9 @@
 +++
 title = "BrowserGym & AgentLab"
-description = "Run BrowserGym's tasks and AgentLab's agents on pageon unchanged: one line switches the backend, bids are pageon's refs, and a MiniWoB++ step takes 9 ms."
+description = "Run BrowserGym tasks and AgentLab agents on pageon unchanged: one line switches the backend, and a MiniWoB++ step takes about 9 ms."
 weight = 16
 [extra]
+seo_title = "BrowserGym and AgentLab backend"
 group = "Interfaces"
 nav = "BrowserGym"
 +++
@@ -36,11 +37,11 @@ obs, reward, done, *_ = env.step("click('e1')")
   attribute or a variable, runs nothing and comes back in `last_action_error`, so a model that a
   page has hijacked cannot run code on your machine.
 
-`upload_file(bid, name)` uploads a file staged with `PageonEnv(files={"cv": (path, [origin])})` by
-name, never a path; on a drop zone it drops the file there. `drag_and_drop(from_bid, to_bid)` drags
-as a person does (HTML drag and drop on draggable elements). Actions pageon cannot perform
-(coordinates, `dblclick`) raise an error that names the action, instead of silently doing nothing. `scroll(dx, dy)` scrolls with the wheel where the pointer is, as in
-Chromium.
+`upload_file(bid, name)` uploads a file staged with `PageonEnv(files={"cv": (path, [origin])})`
+by name, never a path (on a drop zone, it drops it there). `drag_and_drop(from_bid, to_bid)`
+drags as a person does. `scroll(dx, dy)` scrolls with the wheel where the pointer is, as in
+Chromium. Actions pageon cannot perform (coordinates, `dblclick`) raise an error that names the
+action.
 
 MiniWoB's tasks are local files, so the environment lets pages open `file:` URLs by default;
 pass `allow_files=False` (with `gym.make(..., allow_files=False)`) for tasks on the web.

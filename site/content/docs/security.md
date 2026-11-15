@@ -1,8 +1,9 @@
 +++
 title = "Security model"
-description = "How pageon keeps agents safe on hostile pages: a sandboxed page process, origin sets enforced at egress, approvals, a guard program, quoted views and masked screenshots."
+description = "How pageon keeps agents safe on hostile pages: a sandboxed page process, origin sets enforced at egress, approvals, a guard and quoted views."
 weight = 30
 [extra]
+seo_title = "Security model: sandboxing and prompt-injection defences"
 group = "Safety"
 nav = "Security model"
 +++
@@ -163,13 +164,12 @@ built-ins cannot change what a client computes.
 ## Known limits
 
 pageon is pre-release, and its [threat model](https://github.com/hupe1980/pageon/blob/main/THREAT_MODEL.md)
-lists every known threat class with its status, including the open ones. The most important
-today:
+lists every known threat class with its status, including the open ones. The most important:
 
 - **Defaults are permissive.** Without `--origin`, an approver or a guard, every request is
   sent. Configure origin sets for every task that matters.
-- **Local endpoints.** `pageon cdp` has no token: any local process can connect while it runs.
-  An idle connection cannot block other clients, and only a real close command ends it.
+- **Local endpoints.** The `pageon cdp` and `pageon mcp --http` URLs carry a per-run secret:
+  any local process that can read the printed URL can connect. Keep it private.
 - **Files at rest.** Recordings and saved state hold cookies and page content. pageon writes
   them readable by you only, but does not encrypt them; keep them private.
 - **A compromised page process.** It still decides which origin a typed secret is for (the

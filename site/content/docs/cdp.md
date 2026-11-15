@@ -1,8 +1,9 @@
 +++
 title = "Puppeteer & Playwright"
-description = "Run existing Puppeteer and Playwright scripts on pageon over the Chrome DevTools Protocol, with the page in a sandbox and the agent view one call away."
+description = "Run existing Puppeteer and Playwright code on pageon over CDP: locators, clicks, drags, uploads and screenshots, with the page in a sandbox."
 weight = 13
 [extra]
+seo_title = "Puppeteer and Playwright on pageon over CDP"
 group = "Interfaces"
 nav = "Puppeteer & Playwright"
 +++
@@ -58,8 +59,9 @@ await page.frameLocator('#payment').getByLabel('Card').fill('4242 4242 4242 4242
 
 The CDP subset Puppeteer and Playwright use: targets and frames (same- and cross-origin),
 navigation and history, evaluate and handles, selectors, locators and auto-waiting, trusted
-clicks and typing, cookies, request/response, console and error events, and screenshots (PNG and
-JPEG, viewport, full page, clip, elements). Single-page apps that route with the History API
+clicks, typing and drags (with Chrome's drag interception), file inputs, cookies,
+request/response, console and error events, and screenshots (PNG and JPEG, viewport, full page,
+clip, elements). Single-page apps that route with the History API
 send `Page.navigatedWithinDocument` (BiDi: `browsingContext.historyUpdated`), so `page.url()`,
 `waitForURL` and `goBack` work as in Chrome.
 

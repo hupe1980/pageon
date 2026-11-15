@@ -21,7 +21,7 @@ import subprocess
 import sys
 import threading
 from collections import deque
-from collections.abc import Mapping, Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -33,13 +33,13 @@ __all__ = ["ActionError", "Browser", "Lookahead", "Outcome", "Screenshot", "Tab"
 _PROTOCOL = "2025-11-25"
 
 
-
-def _file_flags(files: "Mapping[str, tuple[str | os.PathLike[str], Iterable[str]]]") -> list[str]:
+def _file_flags(files: Mapping[str, tuple[str | os.PathLike[str], Iterable[str]]] | None) -> list[str]:
     """``--file NAME@ORIGIN[,ORIGIN]=PATH`` for each staged file: the agent uploads by name."""
     out: list[str] = []
-    for name, (path, origins) in files.items():
+    for name, (path, origins) in (files or {}).items():
         out += ["--file", f"{name}@{','.join(origins)}={os.fspath(path)}"]
     return out
+
 
 class ActionError(PageonError):
     """An action the page refused. ``str(err)`` is the text to show the agent.
@@ -149,7 +149,7 @@ class Browser:
         origins: Iterable[str] = (),
         read_origins: Iterable[str] = (),
         secrets: Iterable[str] = (),
-        files: "Mapping[str, tuple[str | os.PathLike[str], Iterable[str]]]" = {},
+        files: Mapping[str, tuple[str | os.PathLike[str], Iterable[str]]] | None = None,
         state: str | os.PathLike[str] | None = None,
         save_state: str | os.PathLike[str] | None = None,
         replay: str | os.PathLike[str] | None = None,
@@ -335,7 +335,6 @@ class Browser:
             e = result.get("structuredContent", {}).get("error", {})
             raise ActionError(e.get("kind", "engine"), e.get("message", _text(result)), e.get("guidance", ""))
         return result
-
 
     def _track(self, result: dict[str, Any]) -> None:
         """Follows pageon's tabs: every reply names the current one; a list names them all."""

@@ -1,8 +1,9 @@
 +++
 title = "Python"
-description = "Drive pageon from Python with pageon.Browser: agent views, typed actions and outcomes, ActionError with guidance, screenshots, reset, lookahead, WebMCP tools and workflows."
+description = "Drive pageon from Python: agent views with refs, typed actions and outcomes, tabs, screenshots, reset, lookahead and workflows."
 weight = 12
 [extra]
+seo_title = "Python browser automation for AI agents"
 group = "Interfaces"
 +++
 
@@ -43,6 +44,7 @@ with Browser(origins=["https://shop.example"], secrets=["shop@https://shop.examp
 | --- | --- |
 | `origins`, `read_origins` | Where the task may write and read |
 | `secrets` | `["name@https://origin"]`; values from `PAGEON_SECRET_<NAME>` |
+| `files` | `{"cv": ("./cv.pdf", ["https://jobs.example"])}`: files the agent may upload by name |
 | `guard` | A [guard](@/docs/security.md#guard) command |
 | `state`, `save_state` | Playwright `storageState` files |
 | `record`, `replay` | Record the session, or serve one offline |
@@ -59,7 +61,7 @@ message.
 | --- | --- |
 | `observe(full=False)` | The agent view (what changed since the last one, unless `full`) |
 | `view(kind)` | `"markdown"`, `"text"`, `"requests"` or `"errors"` |
-| `click`, `type`, `press`, `select`, `hover`, `drag(ref, to)`, `wait`, `back`, `forward` | An `Outcome`, or raises `ActionError` |
+| `click`, `type`, `upload(ref, *names)`, `press`, `select`, `hover`, `drag(ref, to)`, `wait`, `back`, `forward` | An `Outcome`, or raises `ActionError` |
 | `scroll(direction="down", pixels=None, ref=None)` | Scroll the page or the container `ref` (`scroll(None, ref="e12")` brings e12 into view) |
 | `screenshot(marks, full_page, format, mask)`, `crop(ref)` | A `Screenshot` (`.save(path)`, `.legend`) |
 | `reset(step=None)` | Back to a step exactly, sending nothing again |

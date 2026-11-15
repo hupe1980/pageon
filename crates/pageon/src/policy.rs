@@ -293,7 +293,7 @@ impl<E: Env> Policy<E> {
             labels.push("first-contact".into());
         }
         // What the guard and the approver see: the URL with vault secrets as handles,
-        // page-authored text clipped and marked (SR-005).
+        // page-authored text clipped and marked.
         let effect = Effect {
             method: req.method.clone(),
             url: clip(req.shown_url.as_deref().unwrap_or(&req.url), MAX_URL),

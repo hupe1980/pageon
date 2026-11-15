@@ -1,8 +1,9 @@
 +++
 title = "Record, replay and reset"
-description = "pageon records sessions step by step and replays them byte for byte on a virtual clock: offline debugging, regression checks against live sites, and exact reset to any step."
+description = "Record sessions step by step and replay them byte for byte on a virtual clock: offline debugging, checks against live sites, exact reset."
 weight = 40
 [extra]
+seo_title = "Record, replay and reset browser sessions"
 group = "Reproducible sessions"
 nav = "Record & replay"
 +++

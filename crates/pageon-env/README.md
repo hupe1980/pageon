@@ -10,7 +10,10 @@ implementations:
 | `Recording` | Wraps `Live` and writes everything it served to a readable JSON file |
 | `Replay` | Serves only the recording, byte-identically and offline. A request that was not recorded is an error, never a network call |
 
-Requests carry their method, headers and body, and recordings keep request bodies.
+Requests carry their method, headers and body, and recordings keep request bodies. Realtime
+connections (`WebSocket`, server-sent events) go through `Env::stream` too: `Live` connects to
+the address it vetted, recordings keep each message with the virtual time it was delivered at,
+and `Replay` serves them offline in order.
 
 `Live` speaks for one of two identities:
 - **`agent`** (default): an honest pageon user agent; with an `Identity`, every request is signed

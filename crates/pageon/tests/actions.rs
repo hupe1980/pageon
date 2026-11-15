@@ -25,7 +25,7 @@ fn act<E: Env>(tab: &mut Tab<'_, E>, a: &str) -> pageon::Outcome {
         .unwrap_or_else(|e| panic!("{a}: {e} ({})", e.guidance()))
 }
 
-// ----- US1: input, errors -----
+// ----- input, errors -----
 
 const FORM: &str = "<h1>Form</h1><input id=t aria-label=Name><input id=n aria-label=Digitless>\
 <select id=s aria-label=Country><option value=de>Germany<option value=fr>France</select>\
@@ -181,7 +181,7 @@ fn us1_errors_are_typed_and_change_nothing() {
     assert!(obs.contains("\nok click "), "{obs}");
 }
 
-// ----- US2: navigation -----
+// ----- navigation -----
 
 fn shop() -> Vec<pageon_env::Exchange> {
     vec![
@@ -404,7 +404,7 @@ fn us2_multipart_script_navigation_and_fragments() {
     assert_eq!(text_of(tab.document(), "out"), "#details");
 }
 
-// ----- US3: dialogs, popups, downloads -----
+// ----- dialogs, popups, downloads -----
 
 const DIALOGS: &str = "<button id=del>Delete</button><button id=ask>Ask</button><button id=pop>Popup</button>\
 <a href=/new target=_blank>New tab</a><a href=/report.pdf>Report</a><a href=/data>Export</a><div id=out></div>\
@@ -497,7 +497,7 @@ fn us3_dialogs_popups_and_downloads() {
     assert_eq!(text_of(tab.document(), "out"), "Ada");
 }
 
-// ----- US4: cache -----
+// ----- cache -----
 
 #[test]
 fn us4_fresh_scripts_are_not_fetched_again() {

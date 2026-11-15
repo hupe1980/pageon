@@ -6,7 +6,7 @@
 //! state and the caller's `Env`, so policy, recording and replay apply), resolution, and the
 //! hooks. Fetches are synchronous, so a graph is complete before it is instantiated.
 
-/// Most modules one document fetches, over all its graphs and dynamic imports (SR-007).
+/// Most modules one document fetches, over all its graphs and dynamic imports.
 pub const MAX_MODULES: u32 = 2_000;
 
 use pageon_dom::NodeId;

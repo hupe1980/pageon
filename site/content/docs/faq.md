@@ -1,6 +1,6 @@
 +++
 title = "FAQ"
-description = "Answers about pageon: how it differs from headless Chrome and Playwright MCP, which sites work, how it handles bot detection and CAPTCHAs, and how to contribute."
+description = "pageon compared with headless Chrome and Playwright MCP, which sites work, bot detection and CAPTCHAs, platforms and contributing."
 weight = 52
 [extra]
 group = "Reference"
@@ -16,14 +16,11 @@ sessions replay, rewind and fork. It also speaks CDP, so Playwright code can run
 
 ## Will my site work?
 
-Server-rendered sites and forms, script-heavy pages (the MiniWoB++ suite runs its jQuery and d3
-code), and apps bundled by Vite, esbuild or webpack are tested: pageon runs classic and module
-scripts, import maps, dynamic imports, script loaders, `fetch` and XHR, cookies and storage,
-scrolling (infinite feeds, lazy sections, in-page links), and web components (Shadow DOM,
-declarative shadow roots, custom elements, form-associated custom elements, adopted
-stylesheets; Lit runs as is), and forms validate as in Chrome. Pages that need workers or
-canvas readback do not work fully yet. `pageon fetch URL --dump errors`
-shows what a page tried and failed to use.
+Most do. Tested: server-rendered sites and forms, script-heavy pages (MiniWoB++'s jQuery and
+d3), apps bundled by Vite, esbuild or webpack, web components (Lit runs as is), WebSockets and
+server-sent events, drag and drop. Pages that need workers or canvas readback do not work
+fully; the [web platform](@/docs/platform.md) page has the full list, and `pageon fetch URL
+--dump errors` shows what a page tried and failed to use.
 
 ## Does pageon get past bot detection?
 
@@ -46,7 +43,7 @@ A recorded session replays to the same page at every step, in the sandbox or in-
 
 ## Which platforms are supported?
 
-Linux (x86_64, aarch64) and macOS. Windows is not supported yet.
+Linux (x86_64, aarch64) and macOS. Not Windows.
 
 ## How do I contribute?
 

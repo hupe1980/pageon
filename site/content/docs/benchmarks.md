@@ -1,8 +1,9 @@
 +++
 title = "Benchmarks"
-description = "How pageon's agent view compares with Playwright MCP, BrowserGym and browser-use on MiniWoB++ (task success and tokens, with confidence intervals), plus engine conformance and speed figures."
+description = "pageon's agent view against Playwright MCP, BrowserGym and browser-use on MiniWoB++: task success, tokens and confidence intervals."
 weight = 50
 [extra]
+seo_title = "Benchmarks: pageon vs Playwright MCP, BrowserGym, browser-use"
 group = "Reference"
 +++
 

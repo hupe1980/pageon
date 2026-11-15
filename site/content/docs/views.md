@@ -1,8 +1,9 @@
 +++
 title = "The agent view"
-description = "pageon's ax view: a compact, quoted, token-budgeted outline of a web page with stable element refs, diffs between steps, and marks for hidden text, traps and third-party frames."
+description = "pageon's ax view: a compact, quoted, token-budgeted outline of a page with stable refs, diffs between steps, and marks for hidden text and traps."
 weight = 20
 [extra]
+seo_title = "The agent view: compact pages with stable refs"
 group = "Concepts"
 nav = "The agent view"
 +++
@@ -43,6 +44,7 @@ inside them.
 - **Elements** are `role ref "name"`, followed by their value (`="ann@example.com"`), options
   (`{"Germany"|"France"|+3}`) and states (`checked`, `disabled`, `required`, `expanded`, …).
 - **Text** an agent may need is quoted; long runs keep their head and tail.
+- **Drop targets** (columns, drop zones) are `droptarget eN "Done"`, under their heading.
 
 ## Refs
 

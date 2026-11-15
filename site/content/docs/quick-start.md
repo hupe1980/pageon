@@ -3,16 +3,15 @@ title = "Quick start"
 description = "Install pageon, see a page the way an agent sees it, act on it, and connect your agent in five minutes."
 weight = 1
 [extra]
+seo_title = "Quick start: install pageon and connect your agent"
 group = "Start"
 +++
 
 ## Install
 
-pageon is pre-release and builds from source with Rust 1.99 or newer. Its sandbox,
-[procage](https://github.com/hupe1980/procage), is checked out next to it:
+pageon is pre-release and builds from source with Rust 1.99 or newer:
 
 ```sh
-git clone https://github.com/hupe1980/procage
 git clone https://github.com/hupe1980/pageon
 cargo install --path pageon/crates/pageon
 pageon --version

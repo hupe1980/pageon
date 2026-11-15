@@ -1,8 +1,9 @@
 +++
 title = "Identity and robots.txt"
-description = "pageon is an honest agent: it says it is automated, honours robots.txt, signs requests with Web Bot Auth, reports refusals instead of solving CAPTCHAs, and offers an opt-in coherent Chrome profile."
+description = "pageon says it is an agent: honest user agent, robots.txt, Web Bot Auth signatures, refusals reported instead of CAPTCHAs solved."
 weight = 32
 [extra]
+seo_title = "Honest agent identity, Web Bot Auth and robots.txt"
 group = "Safety"
 nav = "Identity"
 +++

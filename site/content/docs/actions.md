@@ -1,8 +1,9 @@
 +++
 title = "Actions and outcomes"
-description = "pageon's typed actions (click, type, press, select, hover, scroll, wait, goto, back, tool calls), how they check actionability and settle, and the outcomes and errors they return."
+description = "pageon's typed actions (click, type, upload, drag, scroll, …): how they check actionability, settle on virtual time, and report outcomes and errors."
 weight = 21
 [extra]
+seo_title = "Browser actions for AI agents: outcomes and errors"
 group = "Concepts"
 nav = "Actions"
 +++
@@ -108,8 +109,11 @@ When an action cannot be done, the error has a kind and guidance the model can f
 | `no_such_option` | use one of: Small, Medium, Large |
 | `navigation` | the page did not load: why, and what to try |
 | `secret` | bind the secret to this page's origin |
+| `file` | stage the file for this site (`--file NAME@ORIGIN=PATH`) |
 | `tool` | the page's tool failed: its message, quoted |
 | `unsupported` | use another action |
+
+## Files
 
 Files are uploaded by name, never by path: the operator stages each one for the sites it may go
 to (`--file cv@https://jobs.example=./cv.pdf`; `files=` in Python), and the broker hands it out
@@ -125,5 +129,5 @@ elements (`draggable`, links, images) run HTML drag and drop, with the data read
 `dragstart` and `drop` only. Elements that accept drops are listed as `droptarget eN "Done"`,
 so columns and drop zones have refs. The outcome says what happened: `dragged (dropped)`,
 `dragged (not accepted: no drop)` when the target never accepted it, or `pointer drag`.
-`upload e9 cv` on a drop zone drops the staged file there. Drags stay within one frame, and
-workflows do not record them yet.
+`upload e9 cv` on a drop zone drops the staged file there. Drags stay within one frame and are
+not part of [workflows](@/docs/workflows.md).

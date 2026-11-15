@@ -1,8 +1,9 @@
 +++
 title = "Architecture"
-description = "How pageon is built: its own DOM, V8 with WebIDL-generated bindings, Stylo and Taffy layout, a native accessibility tree, a broker/content split, and one seam for all nondeterminism."
+description = "How pageon is built: its own DOM, V8 with WebIDL bindings, Stylo and Taffy layout, a sandboxed page process and one seam for nondeterminism."
 weight = 51
 [extra]
+seo_title = "Architecture of an agent-first browser engine"
 group = "Reference"
 +++
 
@@ -46,10 +47,6 @@ and what a page can do, and reuses proven components for the rest.
 - **Bindings from standards.** The DOM surface is generated from the specifications' WebIDL;
   hand-written members are listed and checked at compile time.
 
-## What is not there yet
+## What pages can use
 
-`MessageChannel`, iframes a
-script inserts after load, `blob:` URLs, `IndexedDB`, workers
-and service workers, Selection and `Range`, the Navigation API, `crypto.subtle`,
-`document.write`, WebDriver classic, request interception, HTTP/3. Missing APIs are absent, not
-faked, and protocol methods pageon lacks say what to use instead.
+The [web platform](@/docs/platform.md) page lists what pages get and what is absent.

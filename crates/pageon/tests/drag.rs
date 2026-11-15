@@ -1,4 +1,4 @@
-//! Drag and drop (spec 036): trusted pointer drags, HTML drag and drop with `DataTransfer`,
+//! Drag and drop: trusted pointer drags, HTML drag and drop with `DataTransfer`,
 //! drop zones, in-process and caged.
 
 mod common;

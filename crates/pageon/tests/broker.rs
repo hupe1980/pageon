@@ -1,4 +1,4 @@
-//! Broker trust (spec 031): a signed-in session works caged while its `HttpOnly` cookie stays
+//! Broker trust: a signed-in session works caged while its `HttpOnly` cookie stays
 //! in the broker; storage state and replays carry it.
 
 mod common;
@@ -68,7 +68,7 @@ fn act(s: &str) -> pageon::Action {
     s.parse().unwrap_or_else(|e| panic!("{e}"))
 }
 
-/// SR-004 (P-04): the session works, scripts see only `theme`, the server gets `sid`, the
+/// P-04: the session works, scripts see only `theme`, the server gets `sid`, the
 /// saved state has `sid` as HttpOnly, and a state file puts it back into the broker.
 #[test]
 fn http_only_sessions_work_caged_with_the_cookie_in_the_broker() {
@@ -139,7 +139,7 @@ fn http_only_sessions_work_caged_with_the_cookie_in_the_broker() {
     );
 }
 
-/// SR-003, SR-004: a caged signed-in session records and replays, caged.
+/// A caged signed-in session records and replays, caged.
 #[test]
 fn a_caged_session_with_http_only_cookies_replays() {
     let rec = Recording::new(Replay::new(login_site()));

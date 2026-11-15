@@ -1,8 +1,9 @@
 +++
 title = "Workflows"
-description = "Compile a solved task into a workflow that reruns without a model in about 1 ms per step, survives cosmetic site changes, stops precisely where a site drifted, and is repaired by acting by hand."
+description = "Compile a solved task into a workflow that reruns without a model, survives cosmetic changes, stops where a site drifted, and is repaired by hand."
 weight = 42
 [extra]
+seo_title = "Workflows: rerun solved tasks without a model"
 group = "Reproducible sessions"
 +++
 

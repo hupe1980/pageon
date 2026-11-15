@@ -1,14 +1,19 @@
 +++
 title = "Rust API"
-description = "Embed pageon in Rust: sessions and tabs, typed actions and outcomes, recordings and replay, the sandbox, the egress policy and the secrets vault."
+description = "Embed pageon in Rust: sessions and tabs, typed actions and outcomes, recordings, the sandbox, the egress policy and the secrets vault."
 weight = 15
 [extra]
+seo_title = "Rust API: embed the browser engine"
 group = "Interfaces"
 nav = "Rust API"
 +++
 
-The `pageon` crate is the engine as a library. Add it from the repository (see the
-[quick start](@/docs/quick-start.md) for the checkout).
+The `pageon` crate is the engine as a library:
+
+```toml
+[dependencies]
+pageon = { git = "https://github.com/hupe1980/pageon" }
+```
 
 ## Sessions and tabs
 
@@ -53,4 +58,4 @@ They compose: `Session::new(&Secrets::new(Policy::new(Live::default())...))`.
 (`RemoteTab`) have the same API, and the broker keeps the environment. `lookahead` forks the page
 to try actions.
 
-The API reference is on docs.rs once pageon is released; until then `cargo doc --open -p pageon`.
+`cargo doc --open -p pageon` builds the API reference.

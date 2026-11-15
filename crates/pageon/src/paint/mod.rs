@@ -27,7 +27,7 @@ pub const MAX_PIXELS: u64 = 64 << 20;
 const MAX_FETCHES: usize = 256;
 
 /// Cuts `area` so the image stays within [`MAX_PIXELS`] at `scale` (the height goes), with a
-/// note when it did (SR-007).
+/// note when it did.
 fn within_pixels(mut area: Rect, scale: f32) -> (Rect, Option<String>) {
     let scale2 = f64::from(scale) * f64::from(scale);
     let pixels = f64::from(area.width) * f64::from(area.height) * scale2;
@@ -821,7 +821,7 @@ fn finish(
 mod tests {
     use super::*;
 
-    /// SR-007 (P-20): a full-page paint stays within 64 megapixels.
+    /// P-20: a full-page paint stays within 64 megapixels.
     #[test]
     fn paints_stay_within_the_pixel_budget() {
         let r = |w: f32, h: f32| Rect {

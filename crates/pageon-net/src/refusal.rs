@@ -402,7 +402,7 @@ mod tests {
         assert!(r.guidance().contains("does not solve"));
     }
 
-    /// SR-004 (P-16): a site cannot park the agent for days.
+    /// P-16: a site cannot park the agent for days.
     #[test]
     fn retry_after_is_capped_at_an_hour() {
         let r = c(429, &[("retry-after", "604800")], "").unwrap_or_else(|| panic!("refusal"));

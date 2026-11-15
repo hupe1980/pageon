@@ -1,8 +1,9 @@
 +++
 title = "MCP server"
-description = "Use pageon as an MCP browser for Claude Code, Claude Desktop, Cursor or any MCP host: twenty browser tools, typed outcomes, step numbers, reset, lookahead and human takeover."
+description = "pageon as an MCP browser server for Claude Code, Claude Desktop, Cursor and any MCP host: typed outcomes, tabs, reset, lookahead and takeover."
 weight = 11
 [extra]
+seo_title = "MCP browser server for Claude Code, Cursor and any MCP host"
 group = "Interfaces"
 nav = "MCP server"
 +++

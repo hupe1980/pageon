@@ -25,7 +25,7 @@ fn out(doc: &Document) -> String {
         .unwrap_or_else(|| panic!("#out missing in\n{}", doc.dump(pageon::Dump::Html)))
 }
 
-// ----- US1: script requests -----
+// ----- script requests -----
 
 #[test]
 fn us1_fetch_renders_json() {
@@ -469,7 +469,7 @@ fn us1_replays_are_identical() {
     assert_eq!(e1.urls(), e2.urls());
 }
 
-// ----- US2: cookies and storage -----
+// ----- cookies and storage -----
 
 #[test]
 fn us2_login_cookies_follow_redirects_and_loads() {
@@ -673,7 +673,7 @@ fn us2_cookies_load_from_a_storage_state_file() {
     assert!(matches!(session.load_cookies(&bad), Err(LoadError::Io(_))));
 }
 
-// ----- US3: egress -----
+// ----- egress -----
 
 const PRIVATE: &[&str] = &[
     "http://127.0.0.1/x",
@@ -840,7 +840,7 @@ fn us3_mixed_content_is_blocked() {
     );
 }
 
-// ----- US4: honest headers -----
+// ----- honest headers -----
 
 #[test]
 fn us4_requests_carry_honest_headers() {

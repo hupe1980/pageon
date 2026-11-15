@@ -458,7 +458,7 @@ fn the_label_check_is_cheap() {
     assert!(per <= 0.1, "{per}");
 }
 
-/// SR-005 (P-18): a guard that answers twice cannot approve the next effect with its extra
+/// P-18: a guard that answers twice cannot approve the next effect with its extra
 /// answer; one that forgets the id fails closed too.
 #[test]
 fn guard_verdicts_must_match_their_effect() {
@@ -489,7 +489,7 @@ fn guard_verdicts_must_match_their_effect() {
     }
 }
 
-/// SR-005 (P-18): the guard sees a vault secret in a URL as its handle, and a page-authored
+/// P-18: the guard sees a vault secret in a URL as its handle, and a page-authored
 /// target line clipped and marked.
 #[test]
 fn the_guard_sees_handles_and_clipped_page_text() {

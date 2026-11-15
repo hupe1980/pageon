@@ -235,7 +235,7 @@ fn nobody_comes_and_it_times_out() {
     assert!(TcpStream::connect(host).is_err(), "the view is closed");
 }
 
-/// SR-007 (P-12): a client that trickles its request a byte a second cannot hold the view; the
+/// P-12: a client that trickles its request a byte a second cannot hold the view; the
 /// person behind it is served within the request deadline (5 s).
 #[test]
 #[allow(clippy::disallowed_methods)] // wall time: the view must stay responsive

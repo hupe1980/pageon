@@ -1,8 +1,9 @@
 +++
 title = "Lookahead"
-description = "Try actions on a fork of the live page before committing: pageon forks the sandboxed page process, holds any request that could change something, and returns what the agent would see."
+description = "Try actions on a fork of the live page before committing: writes are held, nothing is recorded, and the agent sees what would happen."
 weight = 41
 [extra]
+seo_title = "Lookahead: try browser actions before committing"
 group = "Reproducible sessions"
 +++
 

@@ -1254,7 +1254,7 @@ mod tests {
         EnvCall::Fetch(r)
     }
 
-    /// SR-001, P-04: the private network is the broker's decision, per tab.
+    /// P-04: the private network is the broker's decision, per tab.
     #[test]
     fn allow_private_comes_from_the_served_command() {
         let env = Seen::default();
@@ -1305,7 +1305,7 @@ mod tests {
         }
     }
 
-    /// SR-002, P-04: a secret only for the handle a served type action types, once.
+    /// P-04: a secret only for the handle a served type action types, once.
     #[test]
     fn secrets_only_for_the_typed_handle_once() {
         let env = crate::Secrets::new(Seen::default())
@@ -1397,7 +1397,7 @@ mod tests {
         );
     }
 
-    /// SR-003, P-04: one step per recordable command, described by the broker.
+    /// P-04: one step per recordable command, described by the broker.
     #[test]
     fn steps_come_from_the_served_command() {
         let env = pageon_env::Recording::new(Seen::default());
@@ -1480,7 +1480,7 @@ mod tests {
         }
     }
 
-    /// SR-004, P-04: an HttpOnly cookie never reaches the content process, and goes along
+    /// P-04: an HttpOnly cookie never reaches the content process, and goes along
     /// with later requests that carry cookies.
     #[test]
     fn http_only_cookies_stay_in_the_broker() {
@@ -1551,7 +1551,7 @@ mod tests {
         );
     }
 
-    /// SR-002 (032): a staged file only for the upload action naming it, once.
+    /// A staged file only for the upload action naming it, once.
     #[test]
     fn files_only_for_the_upload_once() {
         let path = std::env::temp_dir().join(format!("pageon-sb-file-{}.txt", std::process::id()));

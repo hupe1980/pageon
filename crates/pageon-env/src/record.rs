@@ -852,7 +852,7 @@ mod steps_tests {
         assert_eq!(r.len(), 1);
     }
 
-    /// SR-003 (P-08): cookie values a server set do not reach a saved recording; the cookie,
+    /// P-08: cookie values a server set do not reach a saved recording; the cookie,
     /// its name and attributes do.
     #[test]
     fn cookie_values_are_not_recorded() {
@@ -882,7 +882,7 @@ mod steps_tests {
         assert!(saved.contains("tok=pageon-redacted; HTTPONLY"), "{saved}");
     }
 
-    /// SR-003: an in-memory recording stops for good past its body limit.
+    /// An in-memory recording stops for good past its body limit.
     #[test]
     fn a_body_limit_stops_the_recording() {
         let rec = Recording::new(crate::Replay::new(site())).with_body_limit(2);

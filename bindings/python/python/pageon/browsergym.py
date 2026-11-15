@@ -28,7 +28,7 @@ import os
 import subprocess
 import threading
 import time
-from collections.abc import Mapping, Iterable
+from collections.abc import Iterable, Mapping
 from pathlib import Path
 from typing import Any
 
@@ -67,10 +67,10 @@ _IGNORED = (
 
 
 
-def _file_flags(files: "Mapping[str, tuple[str | os.PathLike[str], Iterable[str]]]") -> list[str]:
+def _file_flags(files: Mapping[str, tuple[str | os.PathLike[str], Iterable[str]]] | None) -> list[str]:
     """``--file NAME@ORIGIN[,ORIGIN]=PATH`` for each staged file: the agent uploads by name."""
     out: list[str] = []
-    for name, (path, origins) in files.items():
+    for name, (path, origins) in (files or {}).items():
         out += ["--file", f"{name}@{','.join(origins)}={os.fspath(path)}"]
     return out
 
@@ -125,7 +125,7 @@ class PageonEnv(BrowserEnv):
         origins: Iterable[str] = (),
         read_origins: Iterable[str] = (),
         secrets: Iterable[str] = (),
-        files: "Mapping[str, tuple[str | os.PathLike[str], Iterable[str]]]" = {},
+        files: Mapping[str, tuple[str | os.PathLike[str], Iterable[str]]] | None = None,
         record: str | os.PathLike[str] | None = None,
         profile: str = "agent",
         identity: str | os.PathLike[str] | None = None,

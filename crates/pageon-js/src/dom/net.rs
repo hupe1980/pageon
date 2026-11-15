@@ -658,7 +658,7 @@ pub(crate) fn complete(
 }
 
 /// Most requests one document makes (`fetch`, XHR): past it they fail as network errors and
-/// one page error says why (SR-007).
+/// one page error says why.
 pub const MAX_REQUESTS: u32 = 10_000;
 
 /// Counts a request of the document: whether it may be made.

@@ -237,7 +237,7 @@ fn a_legend_only_oracle_solves_miniwob() {
     }
 }
 
-/// US3: a crop is the matching region of the screenshot, with its provenance; a ref in a
+/// A crop is the matching region of the screenshot, with its provenance; a ref in a
 /// cross-origin frame is third-party.
 #[test]
 fn crops_carry_provenance() {

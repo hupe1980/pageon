@@ -1,20 +1,19 @@
 +++
 title = "WebDriver BiDi"
-description = "pageon serves the W3C WebDriver BiDi protocol: Puppeteer's BiDi mode and plain BiDi clients drive a sandboxed page, with pageon:observe and pageon:act for agents."
+description = "WebDriver BiDi on pageon: Puppeteer's BiDi mode and plain BiDi clients drive a sandboxed page, with pageon:observe and pageon:act for agents."
 weight = 14
 [extra]
+seo_title = "WebDriver BiDi server for automation and agents"
 group = "Interfaces"
 nav = "WebDriver BiDi"
 +++
 
 WebDriver BiDi is the W3C standard for browser automation. `pageon cdp` (or its alias
-`pageon bidi`) serves it on the same port as CDP, at `/session`.
+`pageon bidi`) serves it on the same port as CDP, at the printed URL
+(`ws://127.0.0.1:9222/session/<secret>`).
 
 ```js
-const browser = await puppeteer.connect({
-  browserWSEndpoint: 'ws://127.0.0.1:9222/session',
-  protocol: 'webDriverBiDi',
-});
+const browser = await puppeteer.connect({ browserWSEndpoint: bidiUrl, protocol: 'webDriverBiDi' });
 ```
 
 Puppeteer's own test scripts run over BiDi unchanged, in the sandbox and in-process.

@@ -1,4 +1,4 @@
-//! Files (spec 032): uploads of operator-staged files by name (in-process, caged, replayed),
+//! Files: uploads of operator-staged files by name (in-process, caged, replayed),
 //! the File API, and downloads as handles.
 
 mod common;
@@ -172,7 +172,7 @@ fn an_agent_attaches_a_staged_file_caged() {
     check_body(&bodies.1.borrow());
 }
 
-/// SR-001, SR-002: unstaged names, other origins, several files without `multiple`, and
+/// Unstaged names, other origins, several files without `multiple`, and
 /// elements that open no chooser are refused with what to do.
 #[test]
 fn uploads_are_refused_with_guidance() {
@@ -244,7 +244,7 @@ fn an_upload_replays() {
     .unwrap_or_else(|d| panic!("{}", pageon::replay::report(&d)));
 }
 
-/// SR-003: a download uploads back to its own origin by handle, nowhere else.
+/// A download uploads back to its own origin by handle, nowhere else.
 #[test]
 fn downloads_are_handles() {
     let page = "<a href=/invoice.pdf>Invoice</a><input type=file id=f aria-label=Receipt><p id=out></p><script>f.onchange = () => out.textContent = f.files[0].name + ' ' + f.files[0].size</script>";

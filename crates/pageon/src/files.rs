@@ -175,7 +175,7 @@ mod tests {
         }
     }
 
-    /// SR-001: only staged names (or their exact paths), for their origins; never other paths
+    /// Only staged names (or their exact paths), for their origins; never other paths
     /// or directories.
     #[test]
     fn only_staged_files_for_their_origins() {

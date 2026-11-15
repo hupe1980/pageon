@@ -10,9 +10,9 @@ use crate::cv::{Cx, Error, Obj, R, Value};
 use crate::generated::{Iface, ValidityStateFlags};
 use crate::realm::Slot;
 
-/// Most custom states one element keeps (SR-003).
+/// Most custom states one element keeps.
 pub const MAX_STATES: usize = 1024;
-/// Most bytes of form values and adopted stylesheet text one document keeps (SR-003).
+/// Most bytes of form values and adopted stylesheet text one document keeps.
 pub const MAX_SIDE_BYTES: usize = 16 << 20;
 
 /// Bytes the document's side tables hold (form values and adopted sheets).

@@ -236,7 +236,7 @@ def test_lookahead_sees_without_doing(shop: Path) -> None:
 def test_guard_and_mask(shop: Path) -> None:
     # A guard echoes each effect's id (the first field of the line) with its verdict.
     deny_posts = (
-        "while read -r l; do id=$(printf %s \"$l\" | sed 's/^{\"id\":\\([0-9]*\\).*/\\1/'); "
+        'while read -r l; do id=$(printf %s "$l" | sed \'s/^{"id":\\([0-9]*\\).*/\\1/\'); '
         'case "$l" in *\'"method":"POST"\'*) '
         'echo "{\\"id\\":$id,\\"verdict\\":\\"deny\\",\\"reason\\":\\"read-only task\\"}";; '
         '*) echo "{\\"id\\":$id,\\"verdict\\":\\"allow\\"}";; esac; done'
@@ -344,7 +344,8 @@ def test_upload_a_staged_file(tmp_path: Path, sandbox: bool) -> None:
     }
     rec = tmp_path / "jobs.rec.json"
     rec.write_text(json.dumps(log))
-    with Browser(replay=rec, sandbox=sandbox, files={"cv": (cv, ["https://jobs.test"])}, robots="ignore", binary=BIN) as browser:
+    staged = {"cv": (cv, ["https://jobs.test"])}
+    with Browser(replay=rec, sandbox=sandbox, files=staged, robots="ignore", binary=BIN) as browser:
         tab = browser.open("https://jobs.test/")
         page = tab.observe(full=True)
         tab.upload(ref(page, "button", "CV"), "cv")
@@ -365,7 +366,7 @@ def test_tabs_keep_their_pages(shop: Path, sandbox: bool) -> None:
         assert login.id == "t2"
         assert [t.id for t in browser.tabs] == ["t1", "t2"]
         # Each Tab acts on its own page, whichever is current.
-        assert 'combobox' in home.observe(full=True) and '"M"' in home.observe(full=True)
+        assert "combobox" in home.observe(full=True) and '"M"' in home.observe(full=True)
         user = ref(login.observe(full=True), "textbox", "User")
         login.type(user, "ada")
         assert "ada" in login.observe(full=True)
@@ -385,7 +386,8 @@ def test_drag_moves_a_card(tmp_path: Path, sandbox: bool) -> None:
         "<section id=done aria-label=Done></section><script>"
         "c.addEventListener('dragstart', e => e.dataTransfer.setData('text/plain', 'c'));"
         "done.addEventListener('dragover', e => e.preventDefault());"
-        "done.addEventListener('drop', e => done.append(document.getElementById(e.dataTransfer.getData('text/plain'))));"
+        "done.addEventListener('drop', e =>"
+        " done.append(document.getElementById(e.dataTransfer.getData('text/plain'))));"
         "</script>"
     )
     log = {
