@@ -39,6 +39,8 @@ class Pageon < Formula
   test do
     assert_match version.to_s, shell_output("#{bin}/pageon --version")
     (testpath/"page.html").write "<h1>Hello</h1><button>Go</button>"
-    assert_match 'button e1 "Go"', shell_output("#{bin}/pageon fetch #{testpath}/page.html --dump ax")
+    # `brew test` runs inside Homebrew's sandbox on macOS, and Seatbelt sandboxes do not nest.
+    flags = OS.mac? ? " --no-sandbox" : ""
+    assert_match 'button e1 "Go"', shell_output("#{bin}/pageon fetch #{testpath}/page.html --dump ax#{flags}")
   end
 end
