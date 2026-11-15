@@ -147,7 +147,12 @@ impl<E: Env> Sandbox<E> {
             .map_err(|e| SandboxError::Spawn(e.to_string()))?;
         // Only relaxations that make the cage stricter are accepted; any is named in the receipt.
         let relax = procage::policy::lower::Relax::new().no_unix_sockets();
-        let (cage, relaxed) = Cage::fit(&policy(&abs), &CageOptions::default(), &relax)
+        // Landlock binds the binary's read rule to its inode at spawn: a rename-replace of the
+        // file loses the rule (stricter, never broader). Accepted by name; exact on macOS.
+        let lower = procage::policy::lower::LowerOptions::default()
+            .allow(procage::policy::lower::Construct::FsLiteral);
+        let cage_options = CageOptions::default().with_lower(lower);
+        let (cage, relaxed) = Cage::fit(&policy(&abs), &cage_options, &relax)
             .map_err(|e| SandboxError::Cage(e.to_string()))?;
         let mut cmd = Command::new(&program);
         cmd.arg("content")
@@ -184,8 +189,13 @@ impl<E: Env> Sandbox<E> {
             timeout: options.command_timeout,
             next: 1,
             receipt: format!(
-                "sandbox: {backend}, base v1; reads only {}; no network, no files, no programs{}",
+                "sandbox: {backend}, base v1; reads only {}{}; no network, no files, no programs{}",
                 program.display(),
+                if cfg!(target_os = "linux") {
+                    " (bound to its inode at spawn)"
+                } else {
+                    ""
+                },
                 relaxed
                     .iter()
                     .map(|r| format!("; {}", r.relaxation))
