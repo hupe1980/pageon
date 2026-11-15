@@ -28,6 +28,14 @@ jobs:
         with:
           components: clippy, rustfmt
       - uses: Swatinem/rust-cache@v2
+      # The cache keeps v8's build-script fingerprint but not target/debug/gn_out, where the
+      # script puts the prebuilt V8: without it, make the script run again.
+      - name: Restore the prebuilt V8
+        shell: bash
+        run: |
+          if ! ls target/debug/gn_out/obj/*rusty_v8* >/dev/null 2>&1; then
+            rm -rf target/debug/build/v8-* target/debug/.fingerprint/v8-*
+          fi
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo xtask idl --check
