@@ -199,6 +199,16 @@ impl Env for BrokerEnv {
         }
     }
 
+    fn passkey(
+        &self,
+        call: &pageon_env::PasskeyCall,
+    ) -> Result<pageon_env::PasskeyReply, NetError> {
+        match self.ask(EnvCall::Passkey(Box::new(call.clone())))? {
+            EnvReply::Passkey(r) => r,
+            _ => unexpected(),
+        }
+    }
+
     fn file(&self, name: &str, origin: &str) -> Result<pageon_env::StagedFile, NetError> {
         match self.ask(EnvCall::File {
             name: name.into(),

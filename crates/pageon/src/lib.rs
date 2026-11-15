@@ -50,6 +50,7 @@ mod load;
 mod markdown;
 pub mod mcp;
 mod paint;
+mod passkeys;
 mod policy;
 mod protocol;
 pub mod replay;
@@ -81,6 +82,7 @@ pub use pageon_net::{
 };
 pub use pageon_net::{Refusal, RefusalKind};
 pub use paint::{Area, Format, Image, PaintError, Provenance, ScreenshotOptions, image_tokens};
+pub use passkeys::{PasskeyError, Passkeys};
 pub use policy::{Effect, EffectClass, Policy, Verdict, check_origin};
 pub use sandbox::{Lookahead, Pending, RemoteTab, Sandbox, SandboxError, SandboxOptions};
 pub use secrets::{Secret, Secrets};

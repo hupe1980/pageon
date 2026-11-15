@@ -28,6 +28,8 @@ pub enum ConfigError {
     Profile(String),
     /// The recording could not be written.
     Recording(String),
+    /// A passkey store that cannot be read.
+    Passkeys(String),
 }
 
 impl ConfigError {
@@ -42,6 +44,9 @@ impl ConfigError {
                 "write files as NAME@ORIGIN=PATH, e.g. cv@https://jobs.example=./cv.pdf".into()
             }
             Self::Replay(_) => "record one with `pageon fetch <url> --record FILE`".into(),
+            Self::Passkeys(_) => {
+                "point --passkeys at a passkey store, or at a new file pageon creates".into()
+            }
             Self::Identity(_) => "create one with `pageon identity new`".into(),
             Self::Proxy(_) => "pass a proxy URL such as http://127.0.0.1:3128".into(),
             Self::Profile(_) => "use the agent profile, or a build with the chrome feature".into(),
@@ -52,7 +57,10 @@ impl ConfigError {
     /// Whether the error is about a file (exit code 3 in the CLI) rather than the
     /// configuration (2).
     pub fn is_io(&self) -> bool {
-        matches!(self, Self::Replay(_) | Self::Recording(_))
+        matches!(
+            self,
+            Self::Replay(_) | Self::Recording(_) | Self::Passkeys(_)
+        )
     }
 }
 
@@ -66,7 +74,8 @@ impl fmt::Display for ConfigError {
             | Self::Identity(m)
             | Self::Proxy(m)
             | Self::Profile(m)
-            | Self::Recording(m) => f.write_str(m),
+            | Self::Recording(m)
+            | Self::Passkeys(m) => f.write_str(m),
         }
     }
 }
@@ -112,6 +121,7 @@ pub struct Config {
     record: Option<PathBuf>,
     replay: Option<PathBuf>,
     identity: Option<PathBuf>,
+    passkeys: Option<PathBuf>,
     profile: Profile,
     proxy: Option<String>,
     timeout: Duration,
@@ -133,6 +143,7 @@ impl Default for Config {
             record: None,
             replay: None,
             identity: None,
+            passkeys: None,
             profile: Profile::Agent,
             proxy: None,
             timeout: Duration::from_secs(30),
@@ -258,6 +269,13 @@ impl Config {
         self
     }
 
+    /// Signs in with the passkeys in this store (created with mode 0600 when missing; new
+    /// passkeys a site creates are added). Keys never leave the broker.
+    pub fn passkeys(mut self, path: impl Into<PathBuf>) -> Self {
+        self.passkeys = Some(path.into());
+        self
+    }
+
     /// Who the session says it is.
     pub fn profile(mut self, profile: Profile) -> Self {
         self.profile = profile;
@@ -302,6 +320,16 @@ impl Config {
             ));
         }
         let mut warnings = Vec::new();
+        if let Some(p) = &self.passkeys {
+            crate::passkeys::check_store(p).map_err(|e| ConfigError::Passkeys(e.to_string()))?;
+            if crate::Passkeys::<pageon_env::Replay>::exposed(p) {
+                warnings.push(format!(
+                    "{} is readable by others; run `chmod 600 {}`",
+                    p.display(),
+                    p.display()
+                ));
+            }
+        }
         if let Some(p) = &self.identity {
             Identity::load(p).map_err(|e| ConfigError::Identity(e.to_string()))?;
             if Identity::exposed(p) {
@@ -337,6 +365,7 @@ impl Config {
     ) -> Result<T, ConfigError> {
         let secrets = self.all_secrets()?;
         let files = self.all_files()?;
+        self.passkey_store()?;
         Ok(self.guarded(base, &secrets, &files, job).0)
     }
 
@@ -345,9 +374,19 @@ impl Config {
         self.live()
     }
 
+    fn passkey_store(&self) -> Result<(), ConfigError> {
+        match &self.passkeys {
+            Some(p) => {
+                crate::passkeys::check_store(p).map_err(|e| ConfigError::Passkeys(e.to_string()))
+            }
+            None => Ok(()),
+        }
+    }
+
     fn run_with<T>(&self, keep: bool, job: impl FnOnce(&dyn Env) -> T) -> Result<T, ConfigError> {
         let secrets = self.all_secrets()?;
         let files = self.all_files()?;
+        self.passkey_store()?;
         if let Some(path) = &self.replay {
             if self.record.is_some() {
                 return Err(ConfigError::Replay(
@@ -412,7 +451,14 @@ impl Config {
         for (name, path, origins) in files {
             staged = staged.with(name, path.clone(), origins.clone());
         }
-        let r = job(&staged);
+        let r = match self
+            .passkeys
+            .as_ref()
+            .and_then(|p| crate::Passkeys::open(&staged, p).ok())
+        {
+            Some(keys) => job(&keys),
+            None => job(&staged),
+        };
         (r, vault.values())
     }
 

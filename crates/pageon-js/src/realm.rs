@@ -317,8 +317,12 @@ pub enum Slot {
     Selection,
     /// A `CaretPosition`: node and offset.
     CaretPosition(NodeId, u32),
-    /// `navigator.clipboard`.
+    /// `navigator.clipboard` and `navigator.credentials`.
     Clipboard,
+    /// A `PublicKeyCredential`.
+    Credential(Box<crate::dom::credentials::Cred>),
+    /// An authenticator response.
+    AuthResponse(Box<crate::dom::credentials::Resp>),
     /// A `MessageChannel`: its two ports.
     Channel(u32, u32),
     /// A `PerformanceMark` or `PerformanceMeasure`.
@@ -649,6 +653,8 @@ pub struct Shared {
     pub clipboard: Option<crate::dom::editing::Clip>,
     /// The page changed the clipboard (copy, cut, `writeText`) since the last action.
     pub clipboard_changed: bool,
+    /// Passkey calls waiting for the environment.
+    pub passkey_calls: std::collections::VecDeque<crate::dom::credentials::Waiting>,
     /// Inserted scripts and dynamic imports, run before other tasks.
     pub scripts: std::collections::VecDeque<crate::modules::ScriptJob>,
     /// Virtual time in ms since the Unix epoch.

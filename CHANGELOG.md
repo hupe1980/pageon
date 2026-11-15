@@ -13,6 +13,8 @@ All notable changes to this project are documented here. The format follows
   Lexical and Quill take typing, formatting shortcuts and paste.
 - `select REF TEXT` selects text in any element; `paste` pastes; outcomes report what an action
   copied.
+- Passkeys: sites' WebAuthn sign-in and registration answered from a store the broker holds
+  (`--passkeys FILE`); keys never reach the page process.
 
 ### Changed
 

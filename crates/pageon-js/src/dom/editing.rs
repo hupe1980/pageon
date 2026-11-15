@@ -494,7 +494,7 @@ pub(crate) fn set_control_sel(
     let s = s.min(e);
     let old = cx.dom().control(el).and_then(|c| c.selection);
     if old != Some((s, e, d)) {
-        cx.dom_mut().control_mut(el).selection = Some((s, e, d));
+        cx.dom_quiet().control_mut(el).selection = Some((s, e, d));
         let mut st = cx.st();
         if !st.control_sel.contains(&el) {
             st.control_sel.push(el);
@@ -1746,6 +1746,10 @@ pub mod navigator {
             Iface::Clipboard,
             Slot::Clipboard,
         ))
+    }
+
+    pub fn get_credentials(cx: &mut Cx<'_, '_, '_>, _this: Obj) -> R<Obj> {
+        Ok(crate::dom::credentials::container(cx))
     }
 }
 

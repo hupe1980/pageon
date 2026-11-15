@@ -47,12 +47,12 @@ pub(crate) fn select(cx: &Cx<'_, '_, '_>, anchor: Boundary, focus: Boundary) {
     let exposed = cx.st().sel_obj.map(|(r, _)| r);
     let r = match cur {
         Some(r) if exposed != Some(r) => {
-            cx.dom_mut().set_range(r, s, e);
+            cx.dom_quiet().set_range(r, s, e);
             r
         }
-        _ => cx.dom_mut().create_range(s, e),
+        _ => cx.dom_quiet().create_range(s, e),
     };
-    cx.dom_mut().set_selection(Some((r, dir)));
+    cx.dom_quiet().set_selection(Some((r, dir)));
 }
 
 /// Collapses the selection at `p`.
@@ -62,12 +62,13 @@ pub(crate) fn collapse_at(cx: &Cx<'_, '_, '_>, p: Boundary) {
 
 /// Empties the selection.
 pub(crate) fn clear(cx: &Cx<'_, '_, '_>) {
-    cx.dom_mut().set_selection(None);
+    cx.dom_quiet().set_selection(None);
 }
 
 /// Fires `selectionchange` at the document and at text controls whose selection changed.
 pub(crate) fn deliver(cx: &mut Cx<'_, '_, '_>) -> R<bool> {
-    let doc = cx.dom_mut().take_selection_changed();
+    // Taking the flag changes no node: no layout is invalidated.
+    let doc = cx.dom_quiet().take_selection_changed();
     let controls = std::mem::take(&mut cx.st().control_sel);
     let mut fired = false;
     for c in controls {
@@ -184,7 +185,7 @@ pub mod selection {
         if let Obj::Slab(slab) = range {
             cx.st().sel_obj = Some((r, slab));
         }
-        cx.dom_mut().set_selection(Some((r, Direction::None)));
+        cx.dom_quiet().set_selection(Some((r, Direction::None)));
         Ok(())
     }
 

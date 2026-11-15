@@ -157,6 +157,7 @@ class Browser:
         budget: int = 4000,
         profile: str = "agent",
         identity: str | os.PathLike[str] | None = None,
+        passkeys: str | os.PathLike[str] | None = None,
         robots: str = "respect",
         guard: str | None = None,
         allow_javascript_exec: bool = False,
@@ -183,6 +184,7 @@ class Browser:
             ("--replay", replay),
             ("--record", record),
             ("--identity", identity),
+            ("--passkeys", passkeys),
         )
         for flag, path in files:
             if path is not None:

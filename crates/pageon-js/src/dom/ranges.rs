@@ -97,7 +97,7 @@ pub(crate) fn bounds(cx: &Cx<'_, '_, '_>, this: Obj) -> R<(Boundary, Boundary)> 
 
 /// A new `Range` object over a new live range.
 pub(crate) fn new_range(cx: &Cx<'_, '_, '_>, start: Boundary, end: Boundary) -> Obj {
-    let r = cx.dom_mut().create_range(start, end);
+    let r = cx.dom_quiet().create_range(start, end);
     Obj::Slab(cx.st().alloc(Iface::Range, Slot::Range(r)))
 }
 
@@ -129,7 +129,7 @@ pub(crate) fn set_bound(cx: &Cx<'_, '_, '_>, r: RangeId, bp: Boundary, start: bo
             (s, bp)
         }
     };
-    cx.dom_mut().set_range(r, s, e);
+    cx.dom_quiet().set_range(r, s, e);
     Ok(())
 }
 
@@ -631,7 +631,7 @@ pub mod range {
         let r = live_id(cx, this)?;
         let (s, e) = bounds(cx, this)?;
         let p = if to_start { s } else { e };
-        cx.dom_mut().set_range(r, p, p);
+        cx.dom_quiet().set_range(r, p, p);
         Ok(())
     }
 
@@ -639,7 +639,7 @@ pub mod range {
         let r = live_id(cx, this)?;
         let s = beside(cx, node, false)?;
         let e = Boundary::new(s.node, s.offset + 1);
-        cx.dom_mut().set_range(r, s, e);
+        cx.dom_quiet().set_range(r, s, e);
         Ok(())
     }
 
@@ -696,7 +696,7 @@ pub mod range {
         let r = live_id(cx, this)?;
         let (s, e) = bounds(cx, this)?;
         let p = delete(cx, s, e)?;
-        cx.dom_mut().set_range(r, p, p);
+        cx.dom_quiet().set_range(r, p, p);
         Ok(())
     }
 
@@ -706,7 +706,7 @@ pub mod range {
         let new = new_point(&cx.dom(), s, e);
         let f = contents(cx, s, e, true)?;
         if s != e {
-            cx.dom_mut().set_range(r, new, new);
+            cx.dom_quiet().set_range(r, new, new);
         }
         Ok(Obj::Node(f))
     }
@@ -747,7 +747,7 @@ pub mod range {
         let frag = contents(cx, s, e, true)?;
         let new = new_point(&cx.dom(), s, e);
         if s != e {
-            cx.dom_mut().set_range(r, new, new);
+            cx.dom_quiet().set_range(r, new, new);
         }
         let kids: Vec<NodeId> = cx.dom().children(np).collect();
         for k in kids {

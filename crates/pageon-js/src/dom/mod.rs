@@ -6,6 +6,7 @@ pub(crate) mod basics;
 pub mod blobs;
 mod canvas;
 mod collections;
+pub(crate) mod credentials;
 pub(crate) mod custom_elements;
 pub mod dnd;
 mod documents;
@@ -89,6 +90,10 @@ pub use basics::{
     css, dom_parser, input_event, message_channel, message_event_target, message_port, screen,
 };
 pub use blobs::{blob, file, file_list, file_reader};
+pub use credentials::{
+    authenticator_assertion_response, authenticator_attestation_response, authenticator_response,
+    credential, public_key_credential,
+};
 pub use dnd::{data_transfer, data_transfer_item, data_transfer_item_list};
 pub use editing::{clipboard, clipboard_event, element_content_editable, navigator};
 pub use internals::{aria_mixin, custom_state_set, element_internals};

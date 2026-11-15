@@ -16,6 +16,7 @@ own licences.
 | Floating UI (`@floating-ui/dom` 1.6.13, `@floating-ui/core` 1.6.9) browser builds | `crates/pageon/tests/fixtures/floating-ui/` (tests only) | MIT (`fixtures/floating-ui/LICENSE`) |
 | DOMPurify 3.4.18 (`purify.min.js`) | `crates/pageon/tests/fixtures/platform2/` (tests only) | Apache-2.0 or MPL-2.0 (header in the file) |
 | ProseMirror 1.42.9, Lexical 0.53.0, Quill 2.0.3 (bundled, `*.min.js`) | `crates/pageon/tests/fixtures/editing/` (tests only) | MIT (ProseMirror, Lexical), BSD-3-Clause (Quill) |
+| SimpleWebAuthn browser 14.0.0 (`simplewebauthn.umd.min.js`) | `crates/pageon/tests/fixtures/passkeys/` (tests only) | MIT |
 | Lit 3 production modules (lit 3.3.3, lit-element 4.2.2, lit-html 3.3.3, @lit/reactive-element 2.1.2) | `crates/pageon/tests/fixtures/lit/` (tests only) | BSD-3-Clause (`fixtures/lit/LICENSE`) |
 
 Rust dependencies and their licences are checked by `cargo deny` (`deny.toml`). The Puppeteer

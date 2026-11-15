@@ -352,6 +352,10 @@ struct SessionArgs {
     /// Sign every request with this identity (Web Bot Auth; `pageon identity new`).
     #[arg(long, value_name = "FILE", env = "PAGEON_IDENTITY")]
     identity: Option<PathBuf>,
+    /// Sign in with the passkeys in this store (created 0600 when missing; passkeys a site
+    /// creates are added). Keys never reach the page process.
+    #[arg(long, value_name = "FILE", env = "PAGEON_PASSKEYS")]
+    passkeys: Option<PathBuf>,
     /// Who pageon says it is: an automated agent, or a pinned, coherent Chrome (needs a build
     /// with `--features chrome`).
     #[arg(long, value_enum, value_name = "PROFILE", default_value_t = ProfileArg::Agent)]
@@ -490,6 +494,9 @@ fn prepare(s: &SessionArgs) -> Result<Prepared, ExitCode> {
     }
     if let Some(p) = &s.identity {
         config = config.identity(p);
+    }
+    if let Some(p) = &s.passkeys {
+        config = config.passkeys(p);
     }
     if let Some(p) = &s.record {
         config = config.record(p);

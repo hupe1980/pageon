@@ -34,6 +34,8 @@ sha1 = "0.11"
 tungstenite = { version = "0.30", default-features = false, features = ["handshake"] }
 base64 = "0.22"
 getrandom = "0.4"
+p256 = { version = "0.14", default-features = false, features = ["ecdsa", "pkcs8", "alloc"] }
+sha2 = "0.11"
 libc = "0.2"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
 

@@ -135,7 +135,7 @@ fn type_error<'s>(cx: &mut Cx<'_, 's, '_>, message: &str) -> v8::Local<'s, v8::V
 }
 
 /// A new promise and its resolver.
-fn promise(cx: &mut Cx<'_, '_, '_>) -> R<(v8::Global<v8::PromiseResolver>, Value)> {
+pub(crate) fn promise(cx: &mut Cx<'_, '_, '_>) -> R<(v8::Global<v8::PromiseResolver>, Value)> {
     let r = v8::PromiseResolver::new(cx.scope).ok_or(Error::Terminated)?;
     let p = r.get_promise(cx.scope);
     Ok((v8::Global::new(cx.scope, r), cx.keep(p.into())))

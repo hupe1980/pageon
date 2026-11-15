@@ -233,6 +233,12 @@ impl<'s> Cx<'_, 's, '_> {
         self.realm.dom.borrow_mut()
     }
 
+    /// The realm's document, for changes that do not affect layout (live ranges, the
+    /// selection, a text field's caret): no relayout follows.
+    pub fn dom_quiet(&self) -> RefMut<'_, Dom> {
+        self.realm.dom.borrow_mut()
+    }
+
     /// The realm's state.
     pub fn st(&self) -> RefMut<'_, State> {
         self.realm.st.borrow_mut()

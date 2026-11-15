@@ -399,6 +399,13 @@ impl<E: Env> Env for Policy<E> {
         self.inner.secret(name, origin)
     }
 
+    fn passkey(
+        &self,
+        call: &pageon_env::PasskeyCall,
+    ) -> Result<pageon_env::PasskeyReply, NetError> {
+        self.inner.passkey(call)
+    }
+
     fn file(&self, name: &str, origin: &str) -> Result<pageon_env::StagedFile, NetError> {
         self.inner.file(name, origin)
     }

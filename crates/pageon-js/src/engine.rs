@@ -230,6 +230,108 @@ const PRELUDE: &str = r#"(() => {
   Date.UTC = NativeDate.UTC;
   Object.defineProperty(globalThis, 'Date', { value: Date, writable: true, configurable: true });
   Object.defineProperty(Math, 'random', { value: host.random, writable: true, configurable: true });
+  // WebAuthn: options become JSON for the host (buffers as base64url); the answers are the
+  // engine's own objects. Secure pages only (the classes are gone elsewhere).
+  if (globalThis.CredentialsContainer) {
+    const b64u = (v, what) => {
+      if (!(v instanceof ArrayBuffer || ArrayBuffer.isView(v))) {
+        throw new TypeError(`${what} must be a BufferSource`);
+      }
+      const u = v instanceof ArrayBuffer ? new Uint8Array(v) : new Uint8Array(v.buffer, v.byteOffset, v.byteLength);
+      let s = '';
+      for (const x of u) s += String.fromCharCode(x);
+      return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    };
+    const unb64u = (s) => {
+      const t = String(s).replace(/-/g, '+').replace(/_/g, '/');
+      const bin = atob(t + '==='.slice((t.length + 3) % 4));
+      const u = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+      return u.buffer;
+    };
+    const descriptors = (list, what) => Array.from(list || [], (d) => ({ type: d.type, id: b64u(d.id, what) }));
+    const passkey = host.passkey;
+    const containerMethods = {
+      create(options = {}) {
+        if (!(this instanceof CredentialsContainer)) throw new TypeError('Illegal invocation');
+        const pk = options && options.publicKey;
+        if (!pk) return Promise.reject(new DOMException('Only public key credentials are supported.', 'NotSupportedError'));
+        let json;
+        try {
+          json = JSON.stringify({
+            rp: { id: pk.rp && pk.rp.id, name: pk.rp && pk.rp.name },
+            user: { id: b64u(pk.user.id, 'user.id'), name: pk.user.name, displayName: pk.user.displayName },
+            challenge: b64u(pk.challenge, 'challenge'),
+            pubKeyCredParams: Array.from(pk.pubKeyCredParams || [], (p) => ({ type: p.type, alg: p.alg })),
+            excludeCredentials: descriptors(pk.excludeCredentials, 'excludeCredentials id'),
+          });
+        } catch (e) {
+          return Promise.reject(e);
+        }
+        return passkey('create', json);
+      },
+      get(options = {}) {
+        if (!(this instanceof CredentialsContainer)) throw new TypeError('Illegal invocation');
+        const pk = options && options.publicKey;
+        if (!pk) return Promise.reject(new DOMException('Only public key credentials are supported.', 'NotSupportedError'));
+        let json;
+        try {
+          json = JSON.stringify({
+            challenge: b64u(pk.challenge, 'challenge'),
+            rpId: pk.rpId,
+            allowCredentials: descriptors(pk.allowCredentials, 'allowCredentials id'),
+            mediation: options.mediation,
+          });
+        } catch (e) {
+          return Promise.reject(e);
+        }
+        return passkey('get', json);
+      },
+    };
+    for (const name of ['create', 'get']) {
+      Object.defineProperty(CredentialsContainer.prototype, name, { value: containerMethods[name], writable: true, configurable: true });
+    }
+    const enc = (b) => b64u(b, 'buffer');
+    const credentialMethods = {
+      getClientExtensionResults() { return {}; },
+      toJSON() {
+        const r = this.response;
+        const response = { clientDataJSON: enc(r.clientDataJSON) };
+        if (r instanceof AuthenticatorAttestationResponse) {
+          Object.assign(response, {
+            attestationObject: enc(r.attestationObject),
+            authenticatorData: enc(r.getAuthenticatorData()),
+            transports: r.getTransports(),
+            publicKeyAlgorithm: r.getPublicKeyAlgorithm(),
+            publicKey: enc(r.getPublicKey()),
+          });
+        } else {
+          Object.assign(response, {
+            authenticatorData: enc(r.authenticatorData),
+            signature: enc(r.signature),
+            userHandle: r.userHandle ? enc(r.userHandle) : undefined,
+          });
+        }
+        return { id: this.id, rawId: enc(this.rawId), response, authenticatorAttachment: this.authenticatorAttachment, clientExtensionResults: {}, type: this.type };
+      },
+    };
+    for (const name of ['getClientExtensionResults', 'toJSON']) {
+      Object.defineProperty(PublicKeyCredential.prototype, name, { value: credentialMethods[name], writable: true, configurable: true });
+    }
+    const statics = {
+      parseCreationOptionsFromJSON(o) {
+        return { ...o, challenge: unb64u(o.challenge), user: { ...o.user, id: unb64u(o.user.id) },
+          excludeCredentials: Array.from(o.excludeCredentials || [], (d) => ({ ...d, id: unb64u(d.id) })) };
+      },
+      parseRequestOptionsFromJSON(o) {
+        return { ...o, challenge: unb64u(o.challenge),
+          allowCredentials: Array.from(o.allowCredentials || [], (d) => ({ ...d, id: unb64u(d.id) })) };
+      },
+    };
+    for (const name of Object.keys(statics)) {
+      Object.defineProperty(PublicKeyCredential, name, { value: statics[name], writable: true, configurable: true });
+    }
+  }
   // Streams: loaded on first use (see streams.rs).
   let streams = null;
   const loadStreams = () => {
@@ -538,6 +640,19 @@ impl Engine {
             hide(scope, global, "Document", "modelContext");
             hide(scope, global, "Crypto", "randomUUID");
             hide(scope, global, "Crypto", "subtle");
+            hide(scope, global, "Navigator", "credentials");
+            for name in [
+                "Credential",
+                "CredentialsContainer",
+                "PublicKeyCredential",
+                "AuthenticatorResponse",
+                "AuthenticatorAttestationResponse",
+                "AuthenticatorAssertionResponse",
+            ] {
+                if let Some(k) = v8::String::new(scope, name) {
+                    let _ = global.delete(scope, k.into());
+                }
+            }
         }
         // The clock and RNG seam, then the prelude that rebinds Date and Math.random to it.
         let host = v8::Object::new(scope);
@@ -556,6 +671,12 @@ impl Engine {
         if let (Some(k), Some(func)) = (
             v8::String::new(scope, "streams"),
             v8::Function::new(scope, crate::streams::load),
+        ) {
+            host.set(scope, k.into(), func.into());
+        }
+        if let (Some(k), Some(func)) = (
+            v8::String::new(scope, "passkey"),
+            v8::Function::new(scope, crate::dom::credentials::host_call),
         ) {
             host.set(scope, k.into(), func.into());
         }
@@ -903,6 +1024,18 @@ impl Engine {
                     .first_key_value()
                     .is_some_and(|(k, _)| k.0 as f64 / 1000.0 <= sh.now)
             };
+            // Passkey calls, answered by the environment (the broker in a sandbox).
+            let call = self.shared.borrow_mut().passkey_calls.pop_front();
+            if let Some(w) = call {
+                tasks += 1;
+                let reply = env.passkey(&w.call);
+                let realm = w.realm;
+                let (_, fired) = self.guarded(|e| {
+                    e.with_cx(realm, |cx| crate::dom::credentials::answer(cx, w, reply));
+                });
+                self.terminated(fired, "passkey");
+                continue;
+            }
             if !due_now {
                 let op = self.shared.borrow_mut().streams.ops.pop_front();
                 if let Some(op) = op {

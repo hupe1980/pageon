@@ -832,6 +832,9 @@ struct Serving {
     files: Vec<String>,
     /// The step this command may record (action text, input), once.
     step: Option<(String, serde_json::Value)>,
+    /// The command is the agent's input: passkeys may be used (never on a load, a person's
+    /// input or a lookahead).
+    passkeys: bool,
 }
 
 /// The staged files an upload action names (download handles are the tab's own).
@@ -877,6 +880,7 @@ impl Serving {
                 allow_private: tab(t),
                 secrets: typed_secret(action).into_iter().collect(),
                 files: uploaded(action),
+                passkeys: !person,
                 step: (!person).then(|| {
                     (
                         action.to_string(),
@@ -889,9 +893,11 @@ impl Serving {
                 secrets: actions.iter().filter_map(typed_secret).collect(),
                 files: actions.iter().flat_map(uploaded).collect(),
                 step: None,
+                passkeys: false,
             },
             Op::Cdp { message, options } | Op::Bidi { message, options } => Self {
                 allow_private: options.allow_private_network,
+                passkeys: true,
                 // `DOM.setFileInputFiles` / `input.setFiles`: staged paths or names.
                 files: serde_json::from_str::<serde_json::Value>(message)
                     .ok()
@@ -986,6 +992,14 @@ fn answer<E: Env>(
                 "file \"{name}\" was not asked for by the agent (only an upload may use it)"
             )))),
         },
+        EnvCall::Passkey(call) => EnvReply::Passkey(match &*call {
+            pageon_env::PasskeyCall::Available => env.passkey(&call),
+            _ if serving.passkeys => env.passkey(&call),
+            _ => Ok(pageon_env::PasskeyReply::Refused {
+                name: "NotAllowedError".into(),
+                message: "passkeys are used only during the agent's actions".into(),
+            }),
+        }),
         EnvCall::Stream(call) => EnvReply::Stream(stream(env, serving, jar, branch, *call)),
         EnvCall::Records => EnvReply::Flag(env.recorder().is_some()),
         EnvCall::Profile => EnvReply::Profile(env.profile()),

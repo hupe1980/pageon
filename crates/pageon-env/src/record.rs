@@ -593,6 +593,11 @@ impl<E: Env> Env for Recording<E> {
         self.inner.secret(name, origin)
     }
 
+    /// Passkey operations pass through and are never recorded.
+    fn passkey(&self, call: &crate::PasskeyCall) -> Result<crate::PasskeyReply, NetError> {
+        self.inner.passkey(call)
+    }
+
     /// Staged files pass through and are never recorded (a replay stages them again).
     fn file(&self, name: &str, origin: &str) -> Result<crate::StagedFile, NetError> {
         self.inner.file(name, origin)

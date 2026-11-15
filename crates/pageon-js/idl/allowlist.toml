@@ -236,7 +236,7 @@ members = [
 ]
 
 [Navigator]
-members = ["clipboard"]
+members = ["clipboard", "credentials"]
 
 [NavigatorID]
 members = ["appCodeName", "appName", "appVersion", "platform", "product", "productSub", "userAgent", "vendor", "vendorSub"]
@@ -649,4 +649,27 @@ members = ["constructor", "clipboardData"]
 
 [Clipboard]
 members = ["readText", "writeText"]
+
+# WebAuthn: passkeys signed in the broker. `create`/`get`, `toJSON`, `getClientExtensionResults`
+# and the `parse…FromJSON` statics are in the engine's prelude.
+[CredentialsContainer]
+members = []
+
+[Credential]
+members = ["id", "type", "isConditionalMediationAvailable"]
+
+[PublicKeyCredential]
+members = [
+  "rawId", "response", "authenticatorAttachment", "isUserVerifyingPlatformAuthenticatorAvailable",
+  "isConditionalMediationAvailable",
+]
+
+[AuthenticatorResponse]
+members = ["clientDataJSON"]
+
+[AuthenticatorAttestationResponse]
+members = ["attestationObject", "getTransports", "getAuthenticatorData", "getPublicKey", "getPublicKeyAlgorithm"]
+
+[AuthenticatorAssertionResponse]
+members = ["authenticatorData", "signature", "userHandle"]
 

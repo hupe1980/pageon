@@ -437,6 +437,13 @@ impl<E: Env> Env for Secrets<E> {
     fn profile(&self) -> pageon_env::Profile {
         self.inner.profile()
     }
+
+    fn passkey(
+        &self,
+        call: &pageon_env::PasskeyCall,
+    ) -> Result<pageon_env::PasskeyReply, NetError> {
+        self.inner.passkey(call)
+    }
 }
 
 #[cfg(test)]

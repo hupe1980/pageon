@@ -113,6 +113,13 @@ impl<E: Env> Env for Files<E> {
         self.inner.secret(name, origin)
     }
 
+    fn passkey(
+        &self,
+        call: &pageon_env::PasskeyCall,
+    ) -> Result<pageon_env::PasskeyReply, NetError> {
+        self.inner.passkey(call)
+    }
+
     fn file(&self, name: &str, origin: &str) -> Result<StagedFile, NetError> {
         let Some((key, s)) = self.find(name) else {
             return self.inner.file(name, origin);

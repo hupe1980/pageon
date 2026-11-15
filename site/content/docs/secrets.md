@@ -1,6 +1,6 @@
 +++
 title = "Secrets"
-description = "Let agents log in without seeing passwords: secret:// handles bound to origins, TOTP codes, and refusal at egress outside a secret's origin."
+description = "Let agents log in without seeing passwords: secret:// handles bound to origins, TOTP codes, passkeys held by the broker, and refusal at egress outside a secret's origin."
 weight = 31
 [extra]
 seo_title = "Secrets: logins without exposing passwords to the model"
@@ -46,10 +46,33 @@ pageon mcp --secret otp:totp@https://shop.example
 
 `type e5 secret://otp` types the current six-digit code.
 
+## Passkeys
+
+```sh
+pageon mcp --passkeys ~/.config/pageon/passkeys.json
+```
+
+The agent clicks a site's "Sign in with a passkey" (or "Create a passkey") button, and the
+site's WebAuthn call is answered from the store: ES256 credentials, discoverable, created with
+the `none` attestation.
+
+- **Held by the broker.** Private keys never enter the page process, a recording, an outcome or
+  a view. The store is a JSON file created with mode 0600; passkeys a site creates are added.
+- **Bound to the site.** A credential signs only for its relying party, checked against the
+  page's origin in the broker, and only after a click or key the agent sent.
+- **What sites see.** A platform authenticator that has verified its user. There is no
+  autofill picker (`isConditionalMediationAvailable()` is false), so sites show their button;
+  with several passkeys for a site, the newest signs.
+
+Passkeys on a person's own phone or security key are not the agent's: hand those sign-ins to a
+person with a [takeover](@/docs/mcp.md#handing-over-to-a-person), and the session keeps the
+signed-in state.
+
 ## In code
 
 ```python
 Browser(secrets=["shop@https://shop.example"])           # Python; value from PAGEON_SECRET_SHOP
+Browser(passkeys="~/.config/pageon/passkeys.json")
 ```
 
 ```rust

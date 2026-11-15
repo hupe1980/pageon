@@ -1,0 +1,39 @@
+<!doctype html><meta charset=utf-8><title>Shop</title>
+<h1>Shop</h1>
+<button id=reg>Create a passkey</button>
+<button id=login>Sign in with a passkey</button>
+<pre id=out></pre>
+<script src=/simplewebauthn.umd.min.js></script>
+<script>
+// A relying party as sites write it with SimpleWebAuthn; the challenges are fixed so the test
+// can verify the responses as the server would.
+const { startRegistration, startAuthentication, browserSupportsWebAuthn } = SimpleWebAuthnBrowser;
+const show = (label, v) => out.textContent = label + ' ' + JSON.stringify(v);
+reg.onclick = async () => {
+  try {
+    const r = await startRegistration({ optionsJSON: {
+      challenge: 'cmVnaXN0cmF0aW9uLWNoYWxsZW5nZQ',
+      rp: { name: 'Shop', id: 'shop.test' },
+      user: { id: 'dXNlci0x', name: 'agent@shop.test', displayName: 'Agent' },
+      pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+      authenticatorSelection: { residentKey: 'required', userVerification: 'preferred' },
+      attestation: 'none',
+      timeout: 60000,
+    } });
+    show('registered', r);
+  } catch (e) { show('error', e.name + ': ' + e.message); }
+};
+login.onclick = async () => {
+  try {
+    const r = await startAuthentication({ optionsJSON: {
+      challenge: 'c2lnbi1pbi1jaGFsbGVuZ2U',
+      rpId: 'shop.test',
+      allowCredentials: [],
+      userVerification: 'preferred',
+      timeout: 60000,
+    } });
+    show('signed-in', r);
+  } catch (e) { show('error', e.name + ': ' + e.message); }
+};
+document.title = browserSupportsWebAuthn() ? 'Shop (passkeys)' : 'Shop (no passkeys)';
+</script>

@@ -252,6 +252,15 @@ pub trait Env {
         )))
     }
 
+    /// A passkey operation for a page (WebAuthn): environments without a passkey store have
+    /// none. The answer carries public data only.
+    fn passkey(&self, call: &PasskeyCall) -> Result<PasskeyReply, NetError> {
+        let _ = call;
+        Err(NetError::NoSecret(
+            "no passkeys are configured (configure a store with --passkeys FILE)".into(),
+        ))
+    }
+
     /// Staged file `name` for a page of `origin` (an upload). Environments without staged
     /// files have none; a host path is never read.
     fn file(&self, name: &str, origin: &str) -> Result<StagedFile, NetError> {
@@ -318,6 +327,10 @@ impl<E: Env + ?Sized> Env for Box<E> {
         (**self).random_u64()
     }
 
+    fn passkey(&self, call: &PasskeyCall) -> Result<PasskeyReply, NetError> {
+        (**self).passkey(call)
+    }
+
     fn secret(&self, name: &str, origin: &str) -> Result<String, NetError> {
         (**self).secret(name, origin)
     }
@@ -352,6 +365,10 @@ impl<E: Env + ?Sized> Env for &E {
         (**self).random_u64()
     }
 
+    fn passkey(&self, call: &PasskeyCall) -> Result<PasskeyReply, NetError> {
+        (**self).passkey(call)
+    }
+
     fn secret(&self, name: &str, origin: &str) -> Result<String, NetError> {
         (**self).secret(name, origin)
     }
@@ -371,4 +388,76 @@ impl<E: Env + ?Sized> Env for &E {
     fn profile(&self) -> Profile {
         (**self).profile()
     }
+}
+
+/// A passkey operation a page asks for (WebAuthn), as the browser forwards it to its
+/// authenticator. Buffers are raw bytes.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "op", rename_all = "snake_case")]
+pub enum PasskeyCall {
+    /// Whether a store exists (`isUserVerifyingPlatformAuthenticatorAvailable`).
+    Available,
+    /// `navigator.credentials.create()`: a new credential for `rp_id`.
+    Create {
+        /// The page's origin.
+        origin: String,
+        /// The relying party id the page asked for.
+        rp_id: String,
+        /// The user handle.
+        user_id: Vec<u8>,
+        /// The user's name, as the store lists it.
+        user_name: String,
+        /// Credentials that must not exist already.
+        exclude: Vec<Vec<u8>>,
+        /// SHA-256 of the client data.
+        client_data_hash: Vec<u8>,
+    },
+    /// `navigator.credentials.get()`: an assertion over the client data.
+    Get {
+        /// The page's origin.
+        origin: String,
+        /// The relying party id.
+        rp_id: String,
+        /// Allowed credential ids (empty: any of the rp id's).
+        allow: Vec<Vec<u8>>,
+        /// SHA-256 of the client data.
+        client_data_hash: Vec<u8>,
+    },
+}
+
+/// What a passkey operation returns: public data only.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum PasskeyReply {
+    /// Whether a store exists.
+    Available(bool),
+    /// A new credential.
+    Created {
+        /// The credential id.
+        id: Vec<u8>,
+        /// The authenticator data (with the attested credential data).
+        authenticator_data: Vec<u8>,
+        /// The CBOR attestation object (`none`).
+        attestation_object: Vec<u8>,
+        /// The public key (SubjectPublicKeyInfo DER).
+        public_key: Vec<u8>,
+    },
+    /// An assertion.
+    Signed {
+        /// The credential id.
+        id: Vec<u8>,
+        /// The authenticator data.
+        authenticator_data: Vec<u8>,
+        /// The ES256 signature (DER).
+        signature: Vec<u8>,
+        /// The user handle.
+        user_handle: Vec<u8>,
+    },
+    /// The page's request was refused: a DOMException name and message.
+    Refused {
+        /// `NotAllowedError`, `SecurityError`, `InvalidStateError`, …
+        name: String,
+        /// Why.
+        message: String,
+    },
 }

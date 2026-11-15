@@ -142,6 +142,8 @@ pub(crate) enum EnvCall {
     Profile,
     /// A realtime connection call (WebSocket, event stream).
     Stream(Box<pageon_env::StreamCall>),
+    /// A passkey operation (answered only during the agent's actions).
+    Passkey(Box<pageon_env::PasskeyCall>),
 }
 
 /// The broker's answer.
@@ -155,6 +157,7 @@ pub(crate) enum EnvReply {
     Flag(bool),
     Profile(pageon_env::Profile),
     Stream(Result<pageon_env::StreamReply, NetError>),
+    Passkey(Result<pageon_env::PasskeyReply, NetError>),
 }
 
 /// Content → broker.

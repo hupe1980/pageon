@@ -14,6 +14,8 @@ pub enum Iface {
     AbortController,
     /// `AbstractRange`.
     AbstractRange,
+    /// `AuthenticatorResponse`.
+    AuthenticatorResponse,
     /// `Blob`.
     Blob,
     /// `CSS`.
@@ -26,6 +28,10 @@ pub enum Iface {
     CanvasRenderingContext2D,
     /// `CaretPosition`.
     CaretPosition,
+    /// `Credential`.
+    Credential,
+    /// `CredentialsContainer`.
+    CredentialsContainer,
     /// `Crypto`.
     Crypto,
     /// `CryptoKey`.
@@ -132,6 +138,8 @@ pub enum Iface {
     PopStateEvent,
     /// `ProgressEvent`.
     ProgressEvent,
+    /// `PublicKeyCredential`.
+    PublicKeyCredential,
     /// `Range`.
     Range,
     /// `Request`.
@@ -186,6 +194,10 @@ pub enum Iface {
     AbortSignal,
     /// `Attr`.
     Attr,
+    /// `AuthenticatorAssertionResponse`.
+    AuthenticatorAssertionResponse,
+    /// `AuthenticatorAttestationResponse`.
+    AuthenticatorAttestationResponse,
     /// `CSSStyleSheet`.
     CSSStyleSheet,
     /// `CharacterData`.
@@ -384,19 +396,22 @@ pub enum Iface {
 
 impl Iface {
     /// All interfaces.
-    pub const ALL: &'static [Iface] = &[Iface::AbortController, Iface::AbstractRange, Iface::Blob, Iface::CSS, Iface::CSSStyleDeclaration, Iface::CSSStyleProperties, Iface::CanvasRenderingContext2D, Iface::CaretPosition, Iface::Crypto, Iface::CryptoKey, Iface::CustomElementRegistry, Iface::CustomStateSet, Iface::DOMException, Iface::DOMImplementation, Iface::DOMParser, Iface::DOMRectList, Iface::DOMRectReadOnly, Iface::DOMStringMap, Iface::DOMTokenList, Iface::DataTransfer, Iface::DataTransferItem, Iface::DataTransferItemList, Iface::ElementInternals, Iface::Event, Iface::EventTarget, Iface::File, Iface::FileList, Iface::FileReader, Iface::FormData, Iface::HTMLCollection, Iface::HTMLFormControlsCollection, Iface::HTMLOptionsCollection, Iface::Headers, Iface::History, Iface::IdleDeadline, Iface::IntersectionObserver, Iface::IntersectionObserverEntry, Iface::Location, Iface::MediaQueryList, Iface::MediaQueryListEvent, Iface::MessageChannel, Iface::MessageEvent, Iface::MessagePort, Iface::ModelContext, Iface::MutationObserver, Iface::MutationRecord, Iface::NamedNodeMap, Iface::Navigator, Iface::NavigatorUAData, Iface::Node, Iface::NodeFilter, Iface::NodeIterator, Iface::NodeList, Iface::Performance, Iface::PerformanceEntry, Iface::PerformanceMark, Iface::PerformanceMeasure, Iface::PerformanceObserver, Iface::PerformanceObserverEntryList, Iface::PopStateEvent, Iface::ProgressEvent, Iface::Range, Iface::Request, Iface::ResizeObserver, Iface::ResizeObserverEntry, Iface::ResizeObserverSize, Iface::Response, Iface::Screen, Iface::Selection, Iface::StaticRange, Iface::Storage, Iface::StyleSheet, Iface::SubtleCrypto, Iface::TextDecoder, Iface::TextEncoder, Iface::TreeWalker, Iface::UIEvent, Iface::URL, Iface::URLSearchParams, Iface::ValidityState, Iface::VisualViewport, Iface::WebSocket, Iface::Window, Iface::XMLHttpRequestEventTarget, Iface::XMLSerializer, Iface::console, Iface::AbortSignal, Iface::Attr, Iface::CSSStyleSheet, Iface::CharacterData, Iface::Clipboard, Iface::ClipboardEvent, Iface::CloseEvent, Iface::Comment, Iface::CustomEvent, Iface::DOMRect, Iface::Document, Iface::DocumentFragment, Iface::DocumentType, Iface::Element, Iface::EventSource, Iface::FocusEvent, Iface::HTMLElement, Iface::HTMLEmbedElement, Iface::HTMLFieldSetElement, Iface::HTMLFontElement, Iface::HTMLFormElement, Iface::HTMLFrameElement, Iface::HTMLFrameSetElement, Iface::HTMLHRElement, Iface::HTMLHeadElement, Iface::HTMLHeadingElement, Iface::HTMLHtmlElement, Iface::HTMLIFrameElement, Iface::HTMLImageElement, Iface::HTMLInputElement, Iface::HTMLLIElement, Iface::HTMLLabelElement, Iface::HTMLLegendElement, Iface::HTMLLinkElement, Iface::HTMLMapElement, Iface::HTMLMarqueeElement, Iface::HTMLMediaElement, Iface::HTMLMenuElement, Iface::HTMLMetaElement, Iface::HTMLMeterElement, Iface::HTMLModElement, Iface::HTMLOListElement, Iface::HTMLObjectElement, Iface::HTMLOptGroupElement, Iface::HTMLOptionElement, Iface::HTMLOutputElement, Iface::HTMLParagraphElement, Iface::HTMLParamElement, Iface::HTMLPictureElement, Iface::HTMLPreElement, Iface::HTMLProgressElement, Iface::HTMLQuoteElement, Iface::HTMLScriptElement, Iface::HTMLSelectElement, Iface::HTMLSelectedContentElement, Iface::HTMLSlotElement, Iface::HTMLSourceElement, Iface::HTMLSpanElement, Iface::HTMLStyleElement, Iface::HTMLTableCaptionElement, Iface::HTMLTableCellElement, Iface::HTMLTableColElement, Iface::HTMLTableElement, Iface::HTMLTableRowElement, Iface::HTMLTableSectionElement, Iface::HTMLTemplateElement, Iface::HTMLTextAreaElement, Iface::HTMLTimeElement, Iface::HTMLTitleElement, Iface::HTMLTrackElement, Iface::HTMLUListElement, Iface::HTMLUnknownElement, Iface::HTMLVideoElement, Iface::InputEvent, Iface::KeyboardEvent, Iface::MouseEvent, Iface::PointerEvent, Iface::SVGElement, Iface::SVGGraphicsElement, Iface::ShadowRoot, Iface::Text, Iface::WheelEvent, Iface::XMLHttpRequest, Iface::DragEvent, Iface::HTMLAnchorElement, Iface::HTMLAreaElement, Iface::HTMLAudioElement, Iface::HTMLBRElement, Iface::HTMLBaseElement, Iface::HTMLBodyElement, Iface::HTMLButtonElement, Iface::HTMLCanvasElement, Iface::HTMLDListElement, Iface::HTMLDataElement, Iface::HTMLDataListElement, Iface::HTMLDetailsElement, Iface::HTMLDialogElement, Iface::HTMLDirectoryElement, Iface::HTMLDivElement];
+    pub const ALL: &'static [Iface] = &[Iface::AbortController, Iface::AbstractRange, Iface::AuthenticatorResponse, Iface::Blob, Iface::CSS, Iface::CSSStyleDeclaration, Iface::CSSStyleProperties, Iface::CanvasRenderingContext2D, Iface::CaretPosition, Iface::Credential, Iface::CredentialsContainer, Iface::Crypto, Iface::CryptoKey, Iface::CustomElementRegistry, Iface::CustomStateSet, Iface::DOMException, Iface::DOMImplementation, Iface::DOMParser, Iface::DOMRectList, Iface::DOMRectReadOnly, Iface::DOMStringMap, Iface::DOMTokenList, Iface::DataTransfer, Iface::DataTransferItem, Iface::DataTransferItemList, Iface::ElementInternals, Iface::Event, Iface::EventTarget, Iface::File, Iface::FileList, Iface::FileReader, Iface::FormData, Iface::HTMLCollection, Iface::HTMLFormControlsCollection, Iface::HTMLOptionsCollection, Iface::Headers, Iface::History, Iface::IdleDeadline, Iface::IntersectionObserver, Iface::IntersectionObserverEntry, Iface::Location, Iface::MediaQueryList, Iface::MediaQueryListEvent, Iface::MessageChannel, Iface::MessageEvent, Iface::MessagePort, Iface::ModelContext, Iface::MutationObserver, Iface::MutationRecord, Iface::NamedNodeMap, Iface::Navigator, Iface::NavigatorUAData, Iface::Node, Iface::NodeFilter, Iface::NodeIterator, Iface::NodeList, Iface::Performance, Iface::PerformanceEntry, Iface::PerformanceMark, Iface::PerformanceMeasure, Iface::PerformanceObserver, Iface::PerformanceObserverEntryList, Iface::PopStateEvent, Iface::ProgressEvent, Iface::PublicKeyCredential, Iface::Range, Iface::Request, Iface::ResizeObserver, Iface::ResizeObserverEntry, Iface::ResizeObserverSize, Iface::Response, Iface::Screen, Iface::Selection, Iface::StaticRange, Iface::Storage, Iface::StyleSheet, Iface::SubtleCrypto, Iface::TextDecoder, Iface::TextEncoder, Iface::TreeWalker, Iface::UIEvent, Iface::URL, Iface::URLSearchParams, Iface::ValidityState, Iface::VisualViewport, Iface::WebSocket, Iface::Window, Iface::XMLHttpRequestEventTarget, Iface::XMLSerializer, Iface::console, Iface::AbortSignal, Iface::Attr, Iface::AuthenticatorAssertionResponse, Iface::AuthenticatorAttestationResponse, Iface::CSSStyleSheet, Iface::CharacterData, Iface::Clipboard, Iface::ClipboardEvent, Iface::CloseEvent, Iface::Comment, Iface::CustomEvent, Iface::DOMRect, Iface::Document, Iface::DocumentFragment, Iface::DocumentType, Iface::Element, Iface::EventSource, Iface::FocusEvent, Iface::HTMLElement, Iface::HTMLEmbedElement, Iface::HTMLFieldSetElement, Iface::HTMLFontElement, Iface::HTMLFormElement, Iface::HTMLFrameElement, Iface::HTMLFrameSetElement, Iface::HTMLHRElement, Iface::HTMLHeadElement, Iface::HTMLHeadingElement, Iface::HTMLHtmlElement, Iface::HTMLIFrameElement, Iface::HTMLImageElement, Iface::HTMLInputElement, Iface::HTMLLIElement, Iface::HTMLLabelElement, Iface::HTMLLegendElement, Iface::HTMLLinkElement, Iface::HTMLMapElement, Iface::HTMLMarqueeElement, Iface::HTMLMediaElement, Iface::HTMLMenuElement, Iface::HTMLMetaElement, Iface::HTMLMeterElement, Iface::HTMLModElement, Iface::HTMLOListElement, Iface::HTMLObjectElement, Iface::HTMLOptGroupElement, Iface::HTMLOptionElement, Iface::HTMLOutputElement, Iface::HTMLParagraphElement, Iface::HTMLParamElement, Iface::HTMLPictureElement, Iface::HTMLPreElement, Iface::HTMLProgressElement, Iface::HTMLQuoteElement, Iface::HTMLScriptElement, Iface::HTMLSelectElement, Iface::HTMLSelectedContentElement, Iface::HTMLSlotElement, Iface::HTMLSourceElement, Iface::HTMLSpanElement, Iface::HTMLStyleElement, Iface::HTMLTableCaptionElement, Iface::HTMLTableCellElement, Iface::HTMLTableColElement, Iface::HTMLTableElement, Iface::HTMLTableRowElement, Iface::HTMLTableSectionElement, Iface::HTMLTemplateElement, Iface::HTMLTextAreaElement, Iface::HTMLTimeElement, Iface::HTMLTitleElement, Iface::HTMLTrackElement, Iface::HTMLUListElement, Iface::HTMLUnknownElement, Iface::HTMLVideoElement, Iface::InputEvent, Iface::KeyboardEvent, Iface::MouseEvent, Iface::PointerEvent, Iface::SVGElement, Iface::SVGGraphicsElement, Iface::ShadowRoot, Iface::Text, Iface::WheelEvent, Iface::XMLHttpRequest, Iface::DragEvent, Iface::HTMLAnchorElement, Iface::HTMLAreaElement, Iface::HTMLAudioElement, Iface::HTMLBRElement, Iface::HTMLBaseElement, Iface::HTMLBodyElement, Iface::HTMLButtonElement, Iface::HTMLCanvasElement, Iface::HTMLDListElement, Iface::HTMLDataElement, Iface::HTMLDataListElement, Iface::HTMLDetailsElement, Iface::HTMLDialogElement, Iface::HTMLDirectoryElement, Iface::HTMLDivElement];
 
     /// The interface name.
     pub fn name(self) -> &'static str {
         match self {
             Iface::AbortController => "AbortController",
             Iface::AbstractRange => "AbstractRange",
+            Iface::AuthenticatorResponse => "AuthenticatorResponse",
             Iface::Blob => "Blob",
             Iface::CSS => "CSS",
             Iface::CSSStyleDeclaration => "CSSStyleDeclaration",
             Iface::CSSStyleProperties => "CSSStyleProperties",
             Iface::CanvasRenderingContext2D => "CanvasRenderingContext2D",
             Iface::CaretPosition => "CaretPosition",
+            Iface::Credential => "Credential",
+            Iface::CredentialsContainer => "CredentialsContainer",
             Iface::Crypto => "Crypto",
             Iface::CryptoKey => "CryptoKey",
             Iface::CustomElementRegistry => "CustomElementRegistry",
@@ -450,6 +465,7 @@ impl Iface {
             Iface::PerformanceObserverEntryList => "PerformanceObserverEntryList",
             Iface::PopStateEvent => "PopStateEvent",
             Iface::ProgressEvent => "ProgressEvent",
+            Iface::PublicKeyCredential => "PublicKeyCredential",
             Iface::Range => "Range",
             Iface::Request => "Request",
             Iface::ResizeObserver => "ResizeObserver",
@@ -477,6 +493,8 @@ impl Iface {
             Iface::console => "console",
             Iface::AbortSignal => "AbortSignal",
             Iface::Attr => "Attr",
+            Iface::AuthenticatorAssertionResponse => "AuthenticatorAssertionResponse",
+            Iface::AuthenticatorAttestationResponse => "AuthenticatorAttestationResponse",
             Iface::CSSStyleSheet => "CSSStyleSheet",
             Iface::CharacterData => "CharacterData",
             Iface::Clipboard => "Clipboard",
@@ -582,12 +600,15 @@ impl Iface {
         match self {
             Iface::AbortController => None,
             Iface::AbstractRange => None,
+            Iface::AuthenticatorResponse => None,
             Iface::Blob => None,
             Iface::CSS => None,
             Iface::CSSStyleDeclaration => None,
             Iface::CSSStyleProperties => Some(Iface::CSSStyleDeclaration),
             Iface::CanvasRenderingContext2D => None,
             Iface::CaretPosition => None,
+            Iface::Credential => None,
+            Iface::CredentialsContainer => None,
             Iface::Crypto => None,
             Iface::CryptoKey => None,
             Iface::CustomElementRegistry => None,
@@ -641,6 +662,7 @@ impl Iface {
             Iface::PerformanceObserverEntryList => None,
             Iface::PopStateEvent => Some(Iface::Event),
             Iface::ProgressEvent => Some(Iface::Event),
+            Iface::PublicKeyCredential => Some(Iface::Credential),
             Iface::Range => Some(Iface::AbstractRange),
             Iface::Request => None,
             Iface::ResizeObserver => None,
@@ -668,6 +690,8 @@ impl Iface {
             Iface::console => None,
             Iface::AbortSignal => Some(Iface::EventTarget),
             Iface::Attr => Some(Iface::Node),
+            Iface::AuthenticatorAssertionResponse => Some(Iface::AuthenticatorResponse),
+            Iface::AuthenticatorAttestationResponse => Some(Iface::AuthenticatorResponse),
             Iface::CSSStyleSheet => Some(Iface::StyleSheet),
             Iface::CharacterData => Some(Iface::Node),
             Iface::Clipboard => Some(Iface::EventTarget),
@@ -858,6 +882,15 @@ fn get__AbstractRange__collapsed(scope: &mut v8::PinScope, args: v8::FunctionCal
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::AbstractRange)?;
         let r: bool = crate::dom::abstract_range::get_collapsed(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__AuthenticatorResponse__clientDataJSON(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::AuthenticatorResponse)?;
+        let r: Value = crate::dom::authenticator_response::get_client_data_json(cx, this)?;
         cx.ret(r)
     });
 }
@@ -1466,6 +1499,32 @@ fn op__CaretPosition__getClientRect(scope: &mut v8::PinScope, args: v8::Function
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::CaretPosition)?;
         let r: Option<Obj> = crate::dom::caret_position::get_client_rect(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Credential__id(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Credential)?;
+        let r: String = crate::dom::credential::get_id(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Credential__type(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Credential)?;
+        let r: String = crate::dom::credential::get_type_(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Credential__static_isConditionalMediationAvailable(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let r: Value = crate::dom::credential::is_conditional_mediation_available(cx, )?;
         cx.ret(r)
     });
 }
@@ -4810,6 +4869,15 @@ fn get__Navigator__clipboard(scope: &mut v8::PinScope, args: v8::FunctionCallbac
 }
 
 #[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Navigator__credentials(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Navigator)?;
+        let r: Obj = crate::dom::navigator::get_credentials(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
 fn get__Navigator__appCodeName(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::Navigator)?;
@@ -5654,6 +5722,49 @@ fn ctor__ProgressEvent(scope: &mut v8::PinScope, args: v8::FunctionCallbackArgum
         let a0: String = { let v = args.get(0); cv::string(cx, v)? };
         let a1: ProgressEventInit = { let v = args.get(1); if v.is_undefined() { ProgressEventInit::default() } else { dict_progress_event_init(cx, v)? } };
         let r: Obj = crate::dom::progress_event::constructor(cx, a0, a1)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__PublicKeyCredential__rawId(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::PublicKeyCredential)?;
+        let r: Value = crate::dom::public_key_credential::get_raw_id(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__PublicKeyCredential__response(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::PublicKeyCredential)?;
+        let r: Obj = crate::dom::public_key_credential::get_response(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__PublicKeyCredential__authenticatorAttachment(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::PublicKeyCredential)?;
+        let r: Option<String> = crate::dom::public_key_credential::get_authenticator_attachment(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__PublicKeyCredential__static_isConditionalMediationAvailable(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let r: Value = crate::dom::public_key_credential::is_conditional_mediation_available(cx, )?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__PublicKeyCredential__static_isUserVerifyingPlatformAuthenticatorAvailable(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let r: Value = crate::dom::public_key_credential::is_user_verifying_platform_authenticator_available(cx, )?;
         cx.ret(r)
     });
 }
@@ -10995,6 +11106,78 @@ fn get__Attr__specified(scope: &mut v8::PinScope, args: v8::FunctionCallbackArgu
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::Attr)?;
         let r: bool = crate::dom::attr::get_specified(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__AuthenticatorAssertionResponse__authenticatorData(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::AuthenticatorAssertionResponse)?;
+        let r: Value = crate::dom::authenticator_assertion_response::get_authenticator_data(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__AuthenticatorAssertionResponse__signature(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::AuthenticatorAssertionResponse)?;
+        let r: Value = crate::dom::authenticator_assertion_response::get_signature(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__AuthenticatorAssertionResponse__userHandle(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::AuthenticatorAssertionResponse)?;
+        let r: Value = crate::dom::authenticator_assertion_response::get_user_handle(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__AuthenticatorAttestationResponse__attestationObject(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::AuthenticatorAttestationResponse)?;
+        let r: Value = crate::dom::authenticator_attestation_response::get_attestation_object(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__AuthenticatorAttestationResponse__getTransports(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::AuthenticatorAttestationResponse)?;
+        let r: Vec<String> = crate::dom::authenticator_attestation_response::get_transports(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__AuthenticatorAttestationResponse__getAuthenticatorData(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::AuthenticatorAttestationResponse)?;
+        let r: Value = crate::dom::authenticator_attestation_response::get_authenticator_data(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__AuthenticatorAttestationResponse__getPublicKey(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::AuthenticatorAttestationResponse)?;
+        let r: Value = crate::dom::authenticator_attestation_response::get_public_key(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__AuthenticatorAttestationResponse__getPublicKeyAlgorithm(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::AuthenticatorAttestationResponse)?;
+        let r: i32 = crate::dom::authenticator_attestation_response::get_public_key_algorithm(cx, this)?;
         cx.ret(r)
     });
 }
@@ -30100,6 +30283,15 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         crate::dom::hooks::template(scope, Iface::AbstractRange, f);
         out.push(v8::Global::new(scope, f));
     }
+    { // AuthenticatorResponse
+        let f = cv::interface(scope, "AuthenticatorResponse", cv::illegal_constructor);
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "clientDataJSON", get__AuthenticatorResponse__clientDataJSON, None);
+        crate::dom::hooks::template(scope, Iface::AuthenticatorResponse, f);
+        out.push(v8::Global::new(scope, f));
+    }
     { // Blob
         let f = cv::interface(scope, "Blob", ctor__Blob);
         let inst = f.instance_template(scope);
@@ -30190,6 +30382,25 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::accessor(scope, proto, "offset", get__CaretPosition__offset, None);
         cv::method(scope, proto.into(), "getClientRect", op__CaretPosition__getClientRect, 0);
         crate::dom::hooks::template(scope, Iface::CaretPosition, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // Credential
+        let f = cv::interface(scope, "Credential", cv::illegal_constructor);
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "id", get__Credential__id, None);
+        cv::accessor(scope, proto, "type", get__Credential__type, None);
+        cv::method(scope, f.into(), "isConditionalMediationAvailable", op__Credential__static_isConditionalMediationAvailable, 0);
+        crate::dom::hooks::template(scope, Iface::Credential, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // CredentialsContainer
+        let f = cv::interface(scope, "CredentialsContainer", cv::illegal_constructor);
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        crate::dom::hooks::template(scope, Iface::CredentialsContainer, f);
         out.push(v8::Global::new(scope, f));
     }
     { // Crypto
@@ -30792,6 +31003,7 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         inst.set_internal_field_count(cv::FIELDS);
         let proto = f.prototype_template(scope);
         cv::accessor(scope, proto, "clipboard", get__Navigator__clipboard, None);
+        cv::accessor(scope, proto, "credentials", get__Navigator__credentials, None);
         cv::accessor(scope, proto, "appCodeName", get__Navigator__appCodeName, None);
         cv::accessor(scope, proto, "appName", get__Navigator__appName, None);
         cv::accessor(scope, proto, "appVersion", get__Navigator__appVersion, None);
@@ -31017,6 +31229,20 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::accessor(scope, proto, "loaded", get__ProgressEvent__loaded, None);
         cv::accessor(scope, proto, "total", get__ProgressEvent__total, None);
         crate::dom::hooks::template(scope, Iface::ProgressEvent, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // PublicKeyCredential
+        let f = cv::interface(scope, "PublicKeyCredential", cv::illegal_constructor);
+        f.inherit(v8::Local::new(scope, &out[Iface::Credential as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "rawId", get__PublicKeyCredential__rawId, None);
+        cv::accessor(scope, proto, "response", get__PublicKeyCredential__response, None);
+        cv::accessor(scope, proto, "authenticatorAttachment", get__PublicKeyCredential__authenticatorAttachment, None);
+        cv::method(scope, f.into(), "isConditionalMediationAvailable", op__PublicKeyCredential__static_isConditionalMediationAvailable, 0);
+        cv::method(scope, f.into(), "isUserVerifyingPlatformAuthenticatorAvailable", op__PublicKeyCredential__static_isUserVerifyingPlatformAuthenticatorAvailable, 0);
+        crate::dom::hooks::template(scope, Iface::PublicKeyCredential, f);
         out.push(v8::Global::new(scope, f));
     }
     { // Range
@@ -31640,6 +31866,32 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::accessor(scope, proto, "ownerElement", get__Attr__ownerElement, None);
         cv::accessor(scope, proto, "specified", get__Attr__specified, None);
         crate::dom::hooks::template(scope, Iface::Attr, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // AuthenticatorAssertionResponse
+        let f = cv::interface(scope, "AuthenticatorAssertionResponse", cv::illegal_constructor);
+        f.inherit(v8::Local::new(scope, &out[Iface::AuthenticatorResponse as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "authenticatorData", get__AuthenticatorAssertionResponse__authenticatorData, None);
+        cv::accessor(scope, proto, "signature", get__AuthenticatorAssertionResponse__signature, None);
+        cv::accessor(scope, proto, "userHandle", get__AuthenticatorAssertionResponse__userHandle, None);
+        crate::dom::hooks::template(scope, Iface::AuthenticatorAssertionResponse, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // AuthenticatorAttestationResponse
+        let f = cv::interface(scope, "AuthenticatorAttestationResponse", cv::illegal_constructor);
+        f.inherit(v8::Local::new(scope, &out[Iface::AuthenticatorResponse as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "attestationObject", get__AuthenticatorAttestationResponse__attestationObject, None);
+        cv::method(scope, proto.into(), "getTransports", op__AuthenticatorAttestationResponse__getTransports, 0);
+        cv::method(scope, proto.into(), "getAuthenticatorData", op__AuthenticatorAttestationResponse__getAuthenticatorData, 0);
+        cv::method(scope, proto.into(), "getPublicKey", op__AuthenticatorAttestationResponse__getPublicKey, 0);
+        cv::method(scope, proto.into(), "getPublicKeyAlgorithm", op__AuthenticatorAttestationResponse__getPublicKeyAlgorithm, 0);
+        crate::dom::hooks::template(scope, Iface::AuthenticatorAttestationResponse, f);
         out.push(v8::Global::new(scope, f));
     }
     { // CSSStyleSheet
@@ -33585,12 +33837,15 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
 pub fn expose(scope: &mut v8::PinScope<'_, '_>, global: v8::Local<'_, v8::Object>, t: &[v8::Global<v8::FunctionTemplate>]) {
     cv::expose(scope, global, &t[Iface::AbortController as usize], "AbortController");
     cv::expose(scope, global, &t[Iface::AbstractRange as usize], "AbstractRange");
+    cv::expose(scope, global, &t[Iface::AuthenticatorResponse as usize], "AuthenticatorResponse");
     cv::expose(scope, global, &t[Iface::Blob as usize], "Blob");
     cv::expose_namespace(scope, global, &t[Iface::CSS as usize], "CSS");
     cv::expose(scope, global, &t[Iface::CSSStyleDeclaration as usize], "CSSStyleDeclaration");
     cv::expose(scope, global, &t[Iface::CSSStyleProperties as usize], "CSSStyleProperties");
     cv::expose(scope, global, &t[Iface::CanvasRenderingContext2D as usize], "CanvasRenderingContext2D");
     cv::expose(scope, global, &t[Iface::CaretPosition as usize], "CaretPosition");
+    cv::expose(scope, global, &t[Iface::Credential as usize], "Credential");
+    cv::expose(scope, global, &t[Iface::CredentialsContainer as usize], "CredentialsContainer");
     cv::expose(scope, global, &t[Iface::Crypto as usize], "Crypto");
     cv::expose(scope, global, &t[Iface::CryptoKey as usize], "CryptoKey");
     cv::expose(scope, global, &t[Iface::CustomElementRegistry as usize], "CustomElementRegistry");
@@ -33644,6 +33899,7 @@ pub fn expose(scope: &mut v8::PinScope<'_, '_>, global: v8::Local<'_, v8::Object
     cv::expose(scope, global, &t[Iface::PerformanceObserverEntryList as usize], "PerformanceObserverEntryList");
     cv::expose(scope, global, &t[Iface::PopStateEvent as usize], "PopStateEvent");
     cv::expose(scope, global, &t[Iface::ProgressEvent as usize], "ProgressEvent");
+    cv::expose(scope, global, &t[Iface::PublicKeyCredential as usize], "PublicKeyCredential");
     cv::expose(scope, global, &t[Iface::Range as usize], "Range");
     cv::expose(scope, global, &t[Iface::Request as usize], "Request");
     cv::expose(scope, global, &t[Iface::ResizeObserver as usize], "ResizeObserver");
@@ -33670,6 +33926,8 @@ pub fn expose(scope: &mut v8::PinScope<'_, '_>, global: v8::Local<'_, v8::Object
     cv::expose_namespace(scope, global, &t[Iface::console as usize], "console");
     cv::expose(scope, global, &t[Iface::AbortSignal as usize], "AbortSignal");
     cv::expose(scope, global, &t[Iface::Attr as usize], "Attr");
+    cv::expose(scope, global, &t[Iface::AuthenticatorAssertionResponse as usize], "AuthenticatorAssertionResponse");
+    cv::expose(scope, global, &t[Iface::AuthenticatorAttestationResponse as usize], "AuthenticatorAttestationResponse");
     cv::expose(scope, global, &t[Iface::CSSStyleSheet as usize], "CSSStyleSheet");
     cv::expose(scope, global, &t[Iface::CharacterData as usize], "CharacterData");
     cv::expose(scope, global, &t[Iface::Clipboard as usize], "Clipboard");
