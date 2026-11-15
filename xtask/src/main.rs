@@ -4,6 +4,8 @@
 //!   and `idl/allowlist.toml`.
 //! - `cargo xtask idl --check`: fails if the committed file is stale.
 
+mod idl;
+
 use std::path::Path;
 use std::process::ExitCode;
 
@@ -12,7 +14,7 @@ fn main() -> ExitCode {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../crates/pageon-js");
     match args.first().map(String::as_str) {
         Some("idl") => {
-            let out = match pageon_idl::generate(&root.join("idl")) {
+            let out = match idl::generate(&root.join("idl")) {
                 Ok(o) => o,
                 Err(errors) => {
                     for e in errors {

@@ -55,7 +55,7 @@ after(async () => s && s.stop());
 
 test('connectOverCDP: one default context, version, pages', async () => {
   assert.equal(s.browser.contexts().length, 1);
-  // Playwright reports the product's version part (`pageon/0.0.1` → `0.0.1`).
+  // Playwright reports the product's version part (`pageon/0.0.2` → `0.0.2`).
   assert.match(s.browser.version(), /^\d+\.\d+/);
   assert.ok(s.context.pages().includes(page));
 });

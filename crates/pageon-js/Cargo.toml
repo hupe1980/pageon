@@ -6,7 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 authors.workspace = true
-description = "pageon's JavaScript: V8, WebIDL-generated DOM bindings and the HTML event loop."
+description = "pageon's JavaScript: V8, WebIDL-generated DOM bindings and the HTML event loop"
 readme = "README.md"
 keywords = ["browser", "javascript", "v8", "dom", "agents"]
 categories = ["web-programming"]
@@ -29,7 +29,6 @@ chacha20 = { version = "0.10", default-features = false, features = ["rng"] }
 rand_core = "0.10"
 
 [dev-dependencies]
-pageon-idl = { path = "../pageon-idl" }
 pageon-dom.workspace = true
 pageon-env.workspace = true
 pageon-net.workspace = true

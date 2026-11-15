@@ -6,12 +6,11 @@ ones. Report a suspected vulnerability privately as described in [SECURITY.md](S
 
 ## Release status
 
-This describes pageon 0.0.1, a pre-release. The model was built with
+This describes pageon 0.0.2, a pre-release. The model was built with
 [ThreatSpec](https://github.com/hupe1980/spec-kit-threatspec) (STRIDE, the OWASP Top 10 for LLM
-and for Agentic Applications 2026, MITRE ATLAS, MAESTRO) over the sandbox, networking, MCP,
-paint and takeover, CDP, WebDriver BiDi, replay, identity, lookahead, egress policy, WebMCP,
-script-loading and web-component (Shadow DOM, custom elements) features. Every status below was checked against the code and its tests on
-2026-11-14; classes marked *reproduced* were also confirmed by running pageon.
+and for Agentic Applications 2026, MITRE ATLAS, MAESTRO) over every feature. Every status below
+is checked against the code and its tests; classes marked *reproduced* were also confirmed by
+running pageon.
 
 pageon runs each page in a sandboxed content process built with
 [procage](https://github.com/hupe1980/procage) (Seatbelt on macOS; Landlock, seccomp and
@@ -21,15 +20,14 @@ text in the agent's views is quoted.
 
 It does **not**, in this release:
 
-- authenticate clients of the CDP and BiDi endpoint beyond loopback, `Host` and `Origin`
-  checks: any local process can drive the browser (P-11);
+- authenticate clients of the CDP, BiDi and MCP HTTP endpoints beyond loopback, `Host` and
+  `Origin` checks and the per-run secret in the printed URL (P-11);
 - enforce origin sets, approvals or a guard unless the operator configures them; without them,
   every request the page or a hijacked agent makes is sent (P-05);
 - recognise secrets that a page transforms (reverses, splits, re-encodes) before sending or
   echoing them (P-06, P-07);
 - encrypt recordings and saved state files: they hold cookies and response bodies, and are
-  protected only by being readable by the operator alone (P-08);
-- defend against a compromised content process lying to the broker (P-04).
+  protected only by being readable by the operator alone (P-08).
 
 ## Adversary
 
@@ -104,7 +102,7 @@ Ids are stable and never reused. The fields are:
 | P-01 | Local files through `file:` | A web page loads `file:` URLs through iframes, scripts, stylesheets or `fetch`, and a hijacked agent opens them with `browser_open`. The broker reads them; the policy exempts `file:`, even with origin sets. File contents appear in the agent's view, scripts run, and load/error events reveal which files exist. *Reproduced, then fixed:* only `file:` documents load `file:` URLs, and agents need `--allow-files`. | critical | mitigate | mitigated | crates/pageon/tests/hardening.rs::web_pages_cannot_read_local_files, ::a_redirect_cannot_lead_onto_the_disk, ::local_pages_keep_their_own_files, ::agents_need_allow_files_for_local_pages, ::cdp_navigation_to_local_files_is_refused |
 | P-02 | Private network (SSRF) | Requests to loopback, private ranges, link-local and metadata endpoints, in any address encoding, through redirects and through DNS answers. | critical | mitigate | partial | crates/pageon/tests/network.rs::us3_private_destinations_are_blocked_by_default, ::us3_blocked_loads_say_what_to_do; crates/pageon-env/tests/live.rs::private_addresses_are_refused_before_connecting; crates/pageon-env/src/addr.rs::tests::transition_and_documentation_addresses; crates/pageon/tests/hardening3.rs::transition_addresses_are_private |
 | P-03 | Engine exploit escapes the cage | Code that compromised the content process reads files, writes, connects or executes programs. | high | mitigate | mitigated | crates/pageon/tests/sandbox.rs::the_cage_holds |
-| P-04 | Compromised content process lies to the broker | The broker trusts fields the content process sends: `allow_private`, labels and cause, the origin a secret is typed into, recorded steps. The cookie jar also lives in the content process. Since D071 the broker decides `allow_private` from the command it serves, releases a secret once for the handle its own type action types, records steps it describes itself, drops `secret:` labels, and keeps `HttpOnly` cookies out of the content process. | high | mitigate | mitigated | crates/pageon/src/sandbox.rs::tests::allow_private_comes_from_the_served_command, ::secrets_only_for_the_typed_handle_once, ::steps_come_from_the_served_command, ::http_only_cookies_stay_in_the_broker; crates/pageon/tests/broker.rs::http_only_sessions_work_caged_with_the_cookie_in_the_broker, ::a_caged_session_with_http_only_cookies_replays |
+| P-04 | Compromised content process lies to the broker | The broker trusts fields the content process sends: `allow_private`, labels and cause, the origin a secret is typed into, recorded steps. The cookie jar also lives in the content process. The broker decides `allow_private` from the command it serves, releases a secret once for the handle its own type action types, records steps it describes itself, drops `secret:` labels, and keeps `HttpOnly` cookies out of the content process. | high | mitigate | mitigated | crates/pageon/src/sandbox.rs::tests::allow_private_comes_from_the_served_command, ::secrets_only_for_the_typed_handle_once, ::steps_come_from_the_served_command, ::http_only_cookies_stay_in_the_broker; crates/pageon/tests/broker.rs::http_only_sessions_work_caged_with_the_cookie_in_the_broker, ::a_caged_session_with_http_only_cookies_replays |
 | P-05 | Unapproved egress | Requests outside the origin sets, writes without approval, and first contacts the operator never saw. | critical | mitigate | partial | crates/pageon/tests/policy.rs::policy_matrix_in_process_and_caged; crates/pageon/tests/guard.rs::the_guard_sees_metadata_and_decides; crates/pageon/tests/hardening.rs::an_origin_without_a_scheme_is_a_usage_error |
 | P-06 | Secret exfiltration at egress | A page sends a vault secret to an origin it is not bound to. | high | mitigate | partial | crates/pageon/tests/guard.rs::a_secret_never_leaves_for_another_origin; crates/pageon/src/secrets.rs::secrets_are_found_in_every_encoding |
 | P-07 | Secrets reach the model or a protocol client | A secret appears in views, outcomes, screenshots, tool results, or CDP and BiDi messages. | high | mitigate | partial | crates/pageon/tests/secrets.rs::secrets_reach_the_server_and_nothing_else; crates/pageon/tests/paint.rs::secrets_never_reach_pixels; crates/pageon/tests/bidi.rs::secrets_never_reach_bidi_messages; crates/pageon/tests/hardening.rs::secrets_are_redacted_session_wide |
@@ -122,11 +120,11 @@ Ids are stable and never reused. The fields are:
 | P-19 | Script loading | Inserted, module or imported scripts run where HTML would not run them, or escape the policy. | high | mitigate | partial | crates/pageon/tests/modules.rs::modules_import_maps_and_inserted_scripts_follow_html, ::late_import_maps_merge_and_refused_imports_say_why; crates/pageon/tests/hardening.rs::cloned_inert_scripts_stay_inert; crates/pageon/tests/hardening3.rs::a_document_has_module_and_request_caps |
 | P-20 | Resource exhaustion | A page or a client exhausts memory, time or requests. | medium | mitigate | partial | crates/pageon-js (time, heap and task limits; see its README); crates/pageon/tests/hardening.rs::deeply_nested_pages_render; crates/pageon/tests/cdp.rs::idle_connections_and_quoted_commands_cannot_stop_the_endpoint; crates/pageon/tests/hardening3.rs::an_action_reports_at_most_twenty_dialogs_and_popups, ::a_silent_content_process_times_out; crates/pageon/src/paint/mod.rs::paints_stay_within_the_pixel_budget; crates/pageon/src/mcp.rs::long_lines_are_refused_and_skipped |
 | P-21 | Web isolation | A page reads another origin's data, steals or plants cookies, or loads mixed content. | high | mitigate | mitigated | crates/pageon/tests/network.rs::us1_fetch_and_cors_matrix, ::us2_public_suffix_and_prefix_rejections_are_logged, ::us2_partitioned_cookies_stay_with_their_top_level_site, ::us3_mixed_content_is_blocked; crates/pageon-net/tests/http_state.rs |
-| P-22 | Shared helper realms | CDP's utility world and BiDi sandboxes shared the page's JavaScript globals, so a page could tamper with code a client runs there. *Accepted (D051), then fixed (spec 026, D066):* isolated worlds are separate V8 contexts over the same document, and objects never cross worlds. | medium | mitigate | mitigated | crates/pageon-js/tests/worlds.rs; crates/pageon/tests/cdp.rs::isolated_worlds_are_separate_javascript_over_one_document; conformance/puppeteer/test/worlds.test.mjs; conformance/playwright/test/worlds.test.mjs |
+| P-22 | Shared helper realms | A page tampers with code a protocol client runs in CDP's utility world or a BiDi sandbox, through shared JavaScript globals. Isolated worlds are separate V8 contexts over the same document, and objects never cross worlds. | medium | mitigate | mitigated | crates/pageon-js/tests/worlds.rs; crates/pageon/tests/cdp.rs::isolated_worlds_are_separate_javascript_over_one_document; conformance/puppeteer/test/worlds.test.mjs; conformance/playwright/test/worlds.test.mjs |
 | P-23 | Web components | Shadow and slotted content reaches the agent unquoted or unmarked; component styles or crafted selectors escape their tree and falsify views and actionability; repeated ids across shadow trees borrow labels (a field named by another component's label); closed shadow internals leak to page scripts through retargeting gaps; custom element callbacks loop without bound. | high | mitigate | mitigated | crates/pageon/tests/components.rs::components_render_in_views, ::shadow_labels_name_their_own_inputs, ::shadow_elements_get_the_same_actionability_checks, ::the_platform_checks_pass, ::runaway_reactions_are_bounded; crates/pageon-layout/tests/shadow.rs; crates/pageon-layout/src/scope.rs (tests) |
-| P-24 | Harness code execution | Model output that a harness runs on the agent host, outside the cage. BrowserGym's `PageonEnv.step` runs the action string with Python's `exec` and full builtins, as BrowserGym does with Chromium, so a hijacked model's `__import__('os').system(…)` ran on the host. *Found by reading code (spec 015), then fixed:* actions are parsed with `ast`, and only calls to action functions with literal arguments run. | high | mitigate | mitigated | bindings/python/tests/test_actions.py::test_anything_but_action_calls_runs_nothing, ::test_browsergym_action_strings_run_in_order |
+| P-24 | Harness code execution | Model output that a harness runs on the agent host, outside the cage. BrowserGym's `PageonEnv.step` runs the action string with Python's `exec` and full builtins, as BrowserGym does with Chromium, so a hijacked model's `__import__('os').system(…)` ran on the host. *Found by reading code, then fixed:* actions are parsed with `ast`, and only calls to action functions with literal arguments run. | high | mitigate | mitigated | bindings/python/tests/test_actions.py::test_anything_but_action_calls_runs_nothing, ::test_browsergym_action_strings_run_in_order |
 | P-25 | Action target integrity | An action lands on another element than the one named: a page reacts to the scroll before an action and covers the target, a decoy with the same role and name is inserted ahead of a workflow's locator, or a hit test through frames misreports. Actions re-check the target after scrolling and refuse covered ones; workflow locators do not pin the count of equal elements. | medium | mitigate | partial | crates/pageon/tests/components.rs::shadow_elements_get_the_same_actionability_checks; crates/pageon/tests/actions.rs; crates/pageon/tests/scrolling.rs::a_cover_shown_while_scrolling_into_view_refuses_the_action |
-| P-26 | Terminal output injection | Page text with control characters (ESC, OSC) reaches the operator's terminal raw through `pageon fetch` text and html dumps. *Reproduced (spec 002), then fixed:* `pageon fetch` escapes control characters other than newline and tab. | low | mitigate | mitigated | crates/pageon/tests/cli.rs::page_text_cannot_drive_the_terminal |
+| P-26 | Terminal output injection | Page text with control characters (ESC, OSC) reaches the operator's terminal raw through `pageon fetch` text and html dumps. *Reproduced, then fixed:* `pageon fetch` escapes control characters other than newline and tab. | low | mitigate | mitigated | crates/pageon/tests/cli.rs::page_text_cannot_drive_the_terminal |
 | P-27 | Session history manipulation | A page uses the History API to show the agent a URL of another site, to flood the history and bury the agent's way back, or to trap `back` with entries it adds on its own. | medium | mitigate | mitigated | crates/pageon/tests/platform.rs::a_page_cannot_flood_or_trap_the_history, ::single_page_apps_route_in_place_and_back; crates/pageon/tests/fixtures/platform/checks.html |
 | P-28 | Predictable page randomness | `crypto.getRandomValues` and `randomUUID` values (a page's tokens, nonces, PKCE verifiers) are predictable from a deterministic or weakly seeded generator. They come from a per-document ChaCha20 stream keyed with 256 bits from the OS (live) or the recording (replay); recordings therefore hold what reproduces them and stay secret (P-08). | high | mitigate | mitigated | crates/pageon/tests/platform.rs::crypto_values_differ_live_and_replay_exactly |
 | P-29 | Cross-frame isolation | A cross-origin frame (an ad, a hostile widget) reaches the host's or a sibling's objects, document or nodes. Or it reads a payment field, receives a message meant for another origin, forges `event.origin`, or navigates the top page. Documents of other origins run in separate engines and see only remote windows (HTML's cross-origin members; `SecurityError` otherwise; location writes refused). `targetOrigin` is checked at delivery and `event.origin` comes from the sender's realm. Wrappers of another realm are refused before their slot is read. The mailbox and pump rounds are bounded. | high | mitigate | mitigated | crates/pageon/tests/frames_script.rs::the_cross_frame_checks_pass, ::the_cross_frame_checks_pass_caged, ::an_embedded_payment_field_talks_to_its_host, ::a_message_flood_is_bounded, ::frames_answering_each_other_forever_do_not_hold_an_action |
@@ -164,10 +162,10 @@ Ids are stable and never reused. The fields are:
     - a page logging each key event leaks the secret one character at a time.
   - The broker relays the content process's protocol output unchecked.
 - **P-08** Recordings keep base64 bodies, URL-encoded secrets and passwords typed without
-  `secret://` (`HttpOnly` cookie values are redacted since 2026-11-14, D070/D071).
+  `secret://` (`HttpOnly` cookie values are redacted).
 - **P-09**
   - Outcome URLs, download names, error messages, popup URLs, image notes and WebMCP schema
-    words are quoted and capped since 2026-11-14 (D065, D070).
+    words are quoted and capped.
   - Content nested deeper than 400 levels is left out of the ax view without a note.
   - Tool lines and image notes are outside the token budget.
 - **P-10**
@@ -207,7 +205,7 @@ Ids are stable and never reused. The fields are:
 - **P-20**
   - Debug builds need a main thread's stack (8 MiB) for the parser's 512 levels; release
     builds run them on 2 MiB threads.
-  - A document may make 10,000 requests (per document since D070), all within one settle.
+  - A document may make 10,000 requests (per document), all within one settle.
   - The broker's 60 s deadline counts silence: a content process that keeps sending messages
     is not cut off.
 

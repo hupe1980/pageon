@@ -3,7 +3,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 
-use crate::model::{Arg, Ext, Interface, Member, Model, Owned, Ty};
+use super::model::{Arg, Ext, Interface, Member, Model, Owned, Ty};
 
 /// The allowlist: per interface or mixin, the members implemented by hand.
 pub type Allow = BTreeMap<String, BTreeSet<String>>;

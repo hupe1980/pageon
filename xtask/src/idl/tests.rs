@@ -1,7 +1,7 @@
 //! The model the generator works from: grammar normalization and the extended attributes
 //! pageon reads.
 
-use pageon_idl::model;
+use super::model;
 
 fn model_of(idl: &str) -> model::Model {
     let dir = std::env::temp_dir().join(format!("pageon-idl-{}-{}", std::process::id(), idl.len()));

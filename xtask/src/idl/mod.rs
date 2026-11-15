@@ -1,9 +1,11 @@
 //! pageon's WebIDL binding generator: pinned IDL plus an allowlist in, `generated.rs` out.
 //!
-//! Used by `cargo xtask idl` (writes the file) and by pageon-js's freshness test (compares).
+//! `cargo xtask idl` writes the file; `cargo xtask idl --check` fails when the committed one is stale.
 
-pub mod emit;
-pub mod model;
+mod emit;
+mod model;
+#[cfg(test)]
+mod tests;
 
 use std::path::Path;
 
