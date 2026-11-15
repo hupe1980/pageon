@@ -37,6 +37,10 @@ Claude Desktop, Cursor and other hosts take the same command in their JSON confi
 }
 ```
 
+[mrun](https://github.com/hupe1980/mrun), a runner for local models, has pageon built in:
+`mrun mcp add browser` gives its chats a browser, and `mrun mcp serve browser` serves it to any
+MCP client. It embeds pageon as a library (see [Rust](@/docs/rust.md#embedding-a-configured-browser)).
+
 ### Over HTTP
 
 ```sh

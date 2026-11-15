@@ -15,7 +15,7 @@ categories = ["web-programming"]
 pageon-dom.workspace = true
 serde.workspace = true
 blitz-dom = { version = "=0.3.0-beta.4", default-features = false, features = ["floats"] }
-parley = { version = "=0.12.0", default-features = false, features = ["std"] }
+parley = { version = "=0.12.0", default-features = false, features = ["std", "complex-scripts"] }
 html5ever = "0.40"
 blitz-traits = "=0.3.0-beta.4"
 style = { package = "stylo", version = "0.22" }
@@ -33,6 +33,9 @@ resvg = { version = "0.50", default-features = false, features = ["text"] }
 
 [dev-dependencies]
 serde_json.workspace = true
+# Turns ICU4X's data warnings on, so the complex-script test can count them.
+icu_provider = { version = "2", features = ["logging"] }
+log = "0.4"
 
 [lints]
 workspace = true

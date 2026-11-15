@@ -128,6 +128,10 @@ r = client.messages.create(model="claude-opus-5-5", tools=[ts.definition], messa
 messages += [{"role": "assistant", "content": r.content}, {"role": "user", "content": ts.run(r.content)}]
 ```
 
+**🧩 Embedded**: `pageon::Config` gives a Rust program the CLI's exact session (origins,
+secrets, files, recording), and `pageon::mcp::serve_with` serves it.
+[mrun](https://github.com/hupe1980/mrun) ships pageon this way (`mrun mcp serve browser`).
+
 **🏋️ BrowserGym and AgentLab** run on pageon with one line:
 `pageon.browsergym.register(replace=True)`.
 
@@ -158,7 +162,7 @@ including the ones pageon loses.
 
 ## 🚧 Status
 
-pageon 0.1 is early: the API may still change between minor versions. The [threat model](THREAT_MODEL.md) lists what it defends against and
+pageon 0.1 is early: the API may still change between minor versions. The [threat model](crates/pageon/THREAT_MODEL.md) lists what it defends against and
 every known gap; read it before pointing an agent at anything that matters. Report
 vulnerabilities privately ([SECURITY.md](SECURITY.md)).
 

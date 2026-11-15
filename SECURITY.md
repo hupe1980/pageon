@@ -12,7 +12,7 @@ and command that show the problem.
 ## Scope
 
 What pageon is meant to defend against, what it trusts and where it stops is described in the
-[threat model](THREAT_MODEL.md), together with every known threat class and its status. Reports
+[threat model](crates/pageon/THREAT_MODEL.md), together with every known threat class and its status. Reports
 about classes listed there as open are still welcome when they show a new variant or a worse
 impact.
 

@@ -6,6 +6,24 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Anthropic's browser and computer toolsets and OpenAI's computer tool run on pageon:
+  `Browser.toolset(...)` in Python, `pageon/toolset/*` on `pageon mcp`.
+- Right, middle, double and triple clicks, modifier keys, key chords and sequences, held keys,
+  typing into the focused field, and the wheel at a point, for every client (Playwright's
+  `dblclick`, right clicks and `Control+A` over CDP).
+- `pageon::Config` and `pageon::mcp::serve_with`: embed a session configured as the CLI's
+  flags configure it.
+- `pageon::threat_model` on docs.rs.
+
+### Changed
+
+- Secrets are filled into fields at once, as a password manager fills them, never key by key.
+- Chinese, Japanese, Thai, Lao, Khmer and Burmese break lines by dictionary, without ICU4X
+  warnings.
+- Release binaries are built with LTO and without symbols: smaller downloads.
+
 ## [0.1.0]
 
 The first release.

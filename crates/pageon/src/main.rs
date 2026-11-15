@@ -7,8 +7,8 @@ use std::time::Duration;
 
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use pageon::{
-    Action, Budget, Dump, Effect, Env, Identity, Limits, Live, LoadError, LoadOptions, Mode,
-    Policy, Recording, Replay, Sandbox, SandboxOptions, Secret, Secrets, Session, StorageState,
+    Action, Budget, Dump, Effect, Env, Identity, LoadError, LoadOptions, Mode, Recording, Replay,
+    Sandbox, SandboxOptions, Session, StorageState,
 };
 
 /// A browser engine for autonomous agents.
@@ -455,74 +455,55 @@ fn ask(effect: &Effect) -> bool {
     matches!(line.trim(), "y" | "Y" | "yes")
 }
 
-/// `--secret NAME@ORIGIN` (or `NAME:totp@ORIGIN`), its value from `PAGEON_SECRET_<NAME>`.
-fn parse_secret(spec: &str) -> Result<(String, Secret), String> {
-    let (name, origin) = spec
-        .split_once('@')
-        .ok_or_else(|| format!("{spec:?}: expected NAME@ORIGIN, e.g. shop@https://shop.example"))?;
-    let (name, totp) = match name.strip_suffix(":totp") {
-        Some(n) => (n, true),
-        None => (name, false),
-    };
-    let var = format!(
-        "PAGEON_SECRET_{}",
-        name.to_ascii_uppercase().replace(['-', '.'], "_")
-    );
-    let value = std::env::var(&var).map_err(|_| {
-        format!("secret {name}: set {var} to its value (it never reaches the page's text)")
-    })?;
-    let secret = if totp {
-        Secret::totp(&value).map_err(|e| format!("{var}: {e}"))?
-    } else {
-        Secret::value(value)
-    };
-    Ok((name.to_string(), secret.origins([origin.to_string()])))
-}
-
-/// `--file NAME@ORIGIN[,ORIGIN…]=PATH`.
-fn parse_file(spec: &str) -> Result<(String, std::path::PathBuf, Vec<String>), String> {
-    let help =
-        || format!("{spec:?}: expected NAME@ORIGIN=PATH, e.g. cv@https://jobs.example=./cv.pdf");
-    let (head, path) = spec.split_once('=').ok_or_else(help)?;
-    let (name, origins) = head.split_once('@').ok_or_else(help)?;
-    if name.is_empty() || path.is_empty() || name.starts_with("download:") {
-        return Err(help());
-    }
-    let origins: Vec<String> = origins.split(',').map(|o| o.trim().to_string()).collect();
-    for o in &origins {
-        pageon::check_origin(o).map_err(|e| format!("--file {name}: {e}"))?;
-    }
-    Ok((name.to_string(), path.into(), origins))
-}
-
-/// The session flags, checked: load options, secrets and the starting state.
+/// The session flags, checked: load options, the environment and the starting state.
 struct Prepared {
     options: LoadOptions,
-    secrets: Vec<(String, Secret)>,
+    config: pageon::Config,
     state: Option<StorageState>,
 }
 
 fn prepare(s: &SessionArgs) -> Result<Prepared, ExitCode> {
-    for (flag, origins) in [("--origin", &s.origin), ("--read-origin", &s.read_origin)] {
-        for o in origins {
-            if let Err(e) = pageon::check_origin(o) {
-                eprintln!("error: {flag} {e}");
-                return Err(ExitCode::from(2));
-            }
-        }
+    let mut config = pageon::Config::new()
+        .timeout(Duration::from_secs(s.timeout))
+        .max_bytes(s.max_bytes)
+        .profile(match s.profile {
+            ProfileArg::Agent => pageon::Profile::Agent,
+            ProfileArg::BrowserCompatible => pageon::Profile::BrowserCompatible,
+        });
+    for o in &s.origin {
+        config = config.origin(o);
+    }
+    for o in &s.read_origin {
+        config = config.read_origin(o);
+    }
+    for spec in &s.secret {
+        config = config.secret_spec(spec);
     }
     for spec in &s.staged_file {
-        parse_file(spec).map_err(|e| {
-            eprintln!("error: {e}");
-            ExitCode::from(2)
-        })?;
+        config = config.file_spec(spec);
     }
-    let mut secrets = Vec::new();
-    for spec in &s.secret {
-        secrets.push(parse_secret(spec).map_err(|e| {
-            eprintln!("error: {e}");
-            ExitCode::from(2)
-        })?);
+    if let Some(g) = &s.guard {
+        config = config.guard(g);
+    }
+    if let Some(p) = &s.proxy {
+        config = config.proxy(p);
+    }
+    if let Some(p) = &s.identity {
+        config = config.identity(p);
+    }
+    if let Some(p) = &s.record {
+        config = config.record(p);
+    }
+    if let Some(p) = &s.replay {
+        config = config.replay(p);
+    }
+    match config.check() {
+        Ok(warnings) => {
+            for w in warnings {
+                eprintln!("warning: {w}");
+            }
+        }
+        Err(e) => return Err(config_failed(&e)),
     }
     let state = match s.state.as_ref().or(s.cookies.as_ref()) {
         Some(path) => {
@@ -544,9 +525,36 @@ fn prepare(s: &SessionArgs) -> Result<Prepared, ExitCode> {
             robots: s.robots == RobotsArg::Respect,
             ..LoadOptions::default()
         },
-        secrets,
+        config,
         state,
     })
+}
+
+/// Prints a configuration error with its fix; the exit code (3 for files, else 2).
+fn config_failed(e: &pageon::ConfigError) -> ExitCode {
+    eprintln!("error: {e}\n  {}", e.guidance());
+    ExitCode::from(if e.is_io() { 3 } else { 2 })
+}
+
+/// Runs `job` over the session's environment (with the terminal approver when asked; `keep`
+/// keeps the steps in memory for MCP's resets).
+fn with_env<T>(
+    config: &pageon::Config,
+    approve: bool,
+    keep: bool,
+    job: impl FnOnce(&dyn Env) -> Result<T, ExitCode>,
+) -> Result<T, ExitCode> {
+    let config = if approve {
+        config.clone().approver(ask)
+    } else {
+        config.clone()
+    };
+    let r = if keep {
+        config.run_keeping(job)
+    } else {
+        config.run(job)
+    };
+    r.map_err(|e| config_failed(&e))?
 }
 
 fn save_state(path: Option<&PathBuf>, s: &StorageState) -> Result<(), ExitCode> {
@@ -556,135 +564,6 @@ fn save_state(path: Option<&PathBuf>, s: &StorageState) -> Result<(), ExitCode> 
             .map_err(|e| fail(&LoadError::Io(format!("{}: {e}", path.display()))))?;
     }
     Ok(())
-}
-
-/// A job over the session's environment.
-type Job<'a, T> = Box<dyn FnOnce(&dyn Env) -> Result<T, ExitCode> + 'a>;
-
-/// Runs `job` with the secrets vault around the origin policy around `base`; returns the
-/// result and every secret value handed out.
-fn guarded<T>(
-    base: &dyn Env,
-    s: &SessionArgs,
-    secrets: &[(String, Secret)],
-    approve: bool,
-    hold_writes: bool,
-    job: Job<'_, T>,
-) -> (Result<T, ExitCode>, Vec<String>) {
-    let mut policy = Policy::new(base)
-        .read_write(&s.origin)
-        .read_only(&s.read_origin);
-    if approve {
-        policy = policy.approver(ask);
-    }
-    if hold_writes {
-        policy = policy.hold_writes();
-    }
-    if let Some(cmd) = &s.guard {
-        let guard = pageon::CommandGuard::new(cmd.clone());
-        policy = policy.guard(move |e| guard.verdict(e));
-    }
-    let mut vault = Secrets::new(&policy);
-    for (name, secret) in secrets {
-        vault = vault.with(name, secret.clone());
-    }
-    let mut files = pageon::Files::new(&vault);
-    for spec in &s.staged_file {
-        // Checked in `prepare`.
-        if let Ok((name, path, origins)) = parse_file(spec) {
-            files = files.with(&name, path, origins);
-        }
-    }
-    let r = job(&files);
-    (r, vault.values())
-}
-
-/// Most response-body bytes an in-memory session recording keeps (MCP's resets); past that it
-/// stops, and resets reach only the steps before.
-const KEEP_LIMIT: usize = 64 << 20;
-
-/// Runs `job` over the session's environment stack: secrets around the policy around the
-/// network (live, recorded or replayed). A recording is saved afterwards, with every secret
-/// value handed out redacted.
-///
-/// `keep` records in memory even without `--record` (MCP keeps its steps for resets).
-fn with_env<T>(
-    s: &SessionArgs,
-    secrets: &[(String, Secret)],
-    approve: bool,
-    keep: bool,
-    job: impl FnOnce(&dyn Env) -> Result<T, ExitCode>,
-) -> Result<T, ExitCode> {
-    let job: Job<'_, T> = Box::new(job);
-    if let Some(path) = &s.replay {
-        let env = Replay::load(path).map_err(|e| {
-            eprintln!(
-                "error: {e}\n  record one with `pageon fetch <url> --record {}`",
-                path.display()
-            );
-            ExitCode::from(3)
-        })?;
-        if keep {
-            let rec = Recording::new(env).with_body_limit(KEEP_LIMIT);
-            return guarded(&rec, s, secrets, approve, false, job).0;
-        }
-        return guarded(&env, s, secrets, approve, false, job).0;
-    }
-    let limits = Limits {
-        timeout: Duration::from_secs(s.timeout),
-        max_bytes: s.max_bytes,
-    };
-    let live = live_env(s, limits)?;
-    let Some(path) = &s.record else {
-        if keep {
-            let rec = Recording::new(live).with_body_limit(KEEP_LIMIT);
-            return guarded(&rec, s, secrets, approve, false, job).0;
-        }
-        return guarded(&live, s, secrets, approve, false, job).0;
-    };
-    let env = Recording::new(live);
-    let (r, values) = guarded(&env, s, secrets, approve, false, job);
-    env.redact(values);
-    if let Err(e) = env.save(path) {
-        eprintln!(
-            "error: could not write the recording {}: {e}\n  check the directory exists and is writable",
-            path.display()
-        );
-        return Err(ExitCode::from(3));
-    }
-    r
-}
-
-/// The live network of a session: its profile, proxy and identity.
-fn live_env(s: &SessionArgs, limits: Limits) -> Result<Live, ExitCode> {
-    let mut live = match s.profile {
-        ProfileArg::Agent => Live::new(limits),
-        ProfileArg::BrowserCompatible => Live::browser_compatible(limits).map_err(|e| {
-            eprintln!("error: {e}");
-            ExitCode::from(2)
-        })?,
-    };
-    if let Some(p) = &s.proxy {
-        live = live.with_proxy(p).map_err(|e| {
-            eprintln!("error: {e}\n  pass a proxy URL such as http://127.0.0.1:3128");
-            ExitCode::from(2)
-        })?;
-    }
-    if let Some(path) = &s.identity {
-        let id = Identity::load(path).map_err(|e| {
-            eprintln!("error: {e}");
-            ExitCode::from(2)
-        })?;
-        if Identity::exposed(path) {
-            eprintln!(
-                "warning: {} is readable by others; run `chmod 600 {}`",
-                path.display(),
-                path.display()
-            );
-        }
-        live = live.with_identity(id);
-    }
-    Ok(live)
 }
 
 fn identity(command: IdentityCommand) -> ExitCode {
@@ -996,13 +875,9 @@ fn replay(
     let base: Box<dyn Env> = if live {
         // The live web, as this command's session would reach it: its profile, identity and
         // proxy, not the recording's.
-        let limits = Limits {
-            timeout: Duration::from_secs(s.timeout),
-            max_bytes: s.max_bytes,
-        };
-        match live_env(s, limits) {
+        match prepared.config.network() {
             Ok(l) => Box::new(l),
-            Err(code) => return code,
+            Err(e) => return config_failed(&e),
         }
     } else {
         Box::new(Replay::new(log.clone()))
@@ -1024,7 +899,7 @@ fn replay(
             println!("{line}");
         }
     };
-    let job: Job<'_, u8> = Box::new(|env: &dyn Env| {
+    let job = |env: &dyn Env| -> Result<u8, ExitCode> {
         let mut progress = |i: usize, st: &pageon_env::Step| say(format!("✓ {i} {}", st.action));
         let mut run = |d: &mut dyn pageon::replay::Driver| -> Result<u8, ExitCode> {
             match pageon::replay::rerun(d, &steps, upto, &mut progress) {
@@ -1069,10 +944,15 @@ fn replay(
             }
             run_as(&mut pageon::replay::Caged::new(&mut sb))
         }
-    });
-    match guarded(&rec, s, &prepared.secrets, approve, live, job).0 {
-        Ok(code) => ExitCode::from(code),
-        Err(code) => code,
+    };
+    let mut config = prepared.config.clone().hold_writes(live);
+    if approve {
+        config = config.approver(ask);
+    }
+    match config.run_on(&rec, job) {
+        Ok(Ok(code)) => ExitCode::from(code),
+        Ok(Err(code)) => code,
+        Err(e) => config_failed(&e),
     }
 }
 
@@ -1163,7 +1043,7 @@ fn workflow(command: WorkflowCommand) -> ExitCode {
                 Err(code) => return code,
             };
             let options = prepared.options;
-            let r = with_env(&s, &prepared.secrets, false, false, |env| {
+            let r = with_env(&prepared.config, false, false, |env| {
                 let go = |d: &mut dyn pageon::replay::Driver| -> Result<u8, ExitCode> {
                     let report = pageon::workflow::run(d, &wf, &values, options, &mut |l| {
                         eprintln!("{l}");
@@ -1226,31 +1106,29 @@ fn mcp(
     };
     // An agent drives this session: local files only when the operator says so.
     prepared.options.allow_files = s.allow_files;
-    let r = with_env(s, &prepared.secrets, false, true, |env| {
-        let options = pageon::mcp::McpOptions {
-            sandbox: !s.no_sandbox,
-            load: prepared.options,
-            budget: Budget::o200k(s.budget),
-            state: prepared.state.clone(),
-            http: http.map(|port| pageon::mcp::HttpOptions {
-                port,
-                allow_origins: allow_origins.clone(),
-            }),
-            allow_javascript_exec,
-            staged_files: !s.staged_file.is_empty(),
-            ..pageon::mcp::McpOptions::default()
-        };
-        let stdin = std::io::stdin();
-        let state =
-            pageon::mcp::serve(env, options, stdin.lock(), std::io::stdout()).map_err(|e| {
-                eprintln!("error: {e}");
-                ExitCode::from(3)
-            })?;
-        save_state(s.save_state.as_ref(), &state)
-    });
-    match r {
-        Ok(()) => ExitCode::SUCCESS,
-        Err(code) => code,
+    let options = pageon::mcp::McpOptions {
+        sandbox: !s.no_sandbox,
+        load: prepared.options,
+        budget: Budget::o200k(s.budget),
+        state: prepared.state.clone(),
+        http: http.map(|port| pageon::mcp::HttpOptions {
+            port,
+            allow_origins: allow_origins.clone(),
+        }),
+        allow_javascript_exec,
+        ..pageon::mcp::McpOptions::default()
+    };
+    // The same assembly an embedder gets.
+    let stdin = std::io::stdin();
+    match pageon::mcp::serve_with(&prepared.config, options, stdin.lock(), std::io::stdout()) {
+        Ok(state) => match save_state(s.save_state.as_ref(), &state) {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(code) => code,
+        },
+        Err(e) => {
+            eprintln!("error: {e}");
+            ExitCode::from(3)
+        }
     }
 }
 
@@ -1266,7 +1144,7 @@ fn cdp(port: u16, allow_origins: Vec<String>, discovery: bool, s: &SessionArgs) 
     };
     // Clients (and agents behind them) drive this session: local files only when allowed.
     prepared.options.allow_files = s.allow_files;
-    let r = with_env(s, &prepared.secrets, false, false, |env| {
+    let r = with_env(&prepared.config, false, false, |env| {
         let server = pageon::cdp::server::Server::bind(pageon::cdp::server::ServerOptions {
             port,
             allow_origins,
@@ -1394,7 +1272,7 @@ fn main() -> ExitCode {
         Ok(p) => p,
         Err(code) => return code,
     };
-    let result = with_env(&session, &prepared.secrets, approve, false, |env| {
+    let result = with_env(&prepared.config, approve, false, |env| {
         fetch(
             env,
             Fetch {

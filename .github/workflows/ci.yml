@@ -31,6 +31,9 @@ jobs:
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo xtask idl --check
+      - run: cargo doc -p pageon --no-deps
+        env:
+          RUSTDOCFLAGS: -Dwarnings
       - run: cargo test --workspace
 
   deny:

@@ -50,7 +50,7 @@ pub enum Area {
     /// The viewport (scroll position 0, 0).
     #[default]
     Viewport,
-    /// The whole document, capped at [`MAX_SIDE`] device pixels a side.
+    /// The whole document, capped at 16,384 device pixels a side.
     FullPage,
     /// A rectangle in document CSS px (may extend below the fold).
     Clip(Rect),
@@ -243,7 +243,7 @@ pub enum PaintError {
         /// Document height (CSS px).
         height: f32,
     },
-    /// The image would exceed [`MAX_SIDE`] pixels a side.
+    /// The image would exceed 16,384 pixels a side.
     TooLarge {
         /// Width asked for.
         width: u32,

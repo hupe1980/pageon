@@ -30,7 +30,7 @@ type e4 secret://shop
   value when the page echoes it, in every tab of the session, also after the tab that typed it
   closed. A page that transforms the value before echoing it (reverses or splits it) is not
   caught; see the
-  [threat model](https://github.com/hupe1980/pageon/blob/main/THREAT_MODEL.md) (P-07).
+  [threat model](https://docs.rs/pageon/latest/pageon/threat_model/) (P-07).
 - **Refused at egress.** If a page tries to send the secret to any origin outside its binding,
   the request is refused. The check covers the raw value and its common encodings
   (URL-encoded, form-encoded, JSON-escaped, base64) in URLs and bodies up to 1 MiB; header

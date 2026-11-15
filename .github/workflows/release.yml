@@ -73,11 +73,12 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: rustup toolchain install && rustup target add "$TARGET"
-      - run: cargo build --release --locked -p pageon --target "$TARGET"
+      # Whole-program LTO, one codegen unit, no symbols (the `dist` profile).
+      - run: cargo build --profile dist --locked -p pageon --target "$TARGET"
       # The binary on its own: its version, and a page in the sandbox.
       - name: Smoke
         run: |
-          bin="target/$TARGET/release/pageon"
+          bin="target/$TARGET/dist/pageon"
           [ "$("$bin" --version)" = "pageon $VERSION" ] || { "$bin" --version; exit 1; }
           printf '<h1>Hello</h1><button>Go</button>' > "$RUNNER_TEMP/page.html"
           "$bin" fetch "$RUNNER_TEMP/page.html" --dump ax | grep -q 'button e1 "Go"'
@@ -85,7 +86,7 @@ jobs:
         run: |
           name="pageon-$VERSION-$TARGET"
           mkdir -p "dist/$name"
-          cp "target/$TARGET/release/pageon" LICENSE-APACHE LICENSE-MIT README.md THIRD_PARTY.md CHANGELOG.md "dist/$name/"
+          cp "target/$TARGET/dist/pageon" LICENSE-APACHE LICENSE-MIT README.md THIRD_PARTY.md CHANGELOG.md "dist/$name/"
           cp crates/pageon-layout/fonts/LICENSE "dist/$name/LICENSE-fonts"
           tar -czf "dist/$name.tar.gz" -C dist "$name"
           rm -rf "dist/$name"
@@ -118,7 +119,7 @@ jobs:
           working-directory: bindings/python
           target: ${{ matrix.target }}
           manylinux: auto
-          args: --release --locked --out dist
+          args: --profile dist --locked --out dist
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: wheels-${{ matrix.target }}

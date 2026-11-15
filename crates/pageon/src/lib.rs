@@ -39,6 +39,7 @@ pub mod bidi;
 mod boxes;
 mod capture;
 pub mod cdp;
+mod config;
 #[doc(hidden)]
 pub mod content;
 mod error;
@@ -58,8 +59,10 @@ mod secrets;
 mod session;
 mod tab;
 pub mod takeover;
+pub mod threat_model;
 pub mod workflow;
 
+pub use config::{Config, ConfigError};
 pub use error::LoadError;
 pub use files::{Files, mime_type};
 pub use frames::{Frame, FrameState, MAX_DEPTH, MAX_FRAMES};

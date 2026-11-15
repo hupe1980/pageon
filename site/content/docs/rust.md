@@ -52,6 +52,32 @@ Every request, clock reading and random draw goes through one `Env`:
 
 They compose: `Session::new(&Secrets::new(Policy::new(Live::default())...))`.
 
+## Embedding a configured browser
+
+`pageon::Config` is the session the `pageon` binary assembles from its flags: origin sets,
+secrets, staged files, a guard, a recording or replay, the identity and profile. A program that
+embeds pageon gets exactly the same stack, and can pass its users' flags through verbatim:
+
+```rust
+let config = pageon::Config::new()
+    .origin("https://shop.example")
+    .secret_spec("shop@https://shop.example")       // PAGEON_SECRET_SHOP holds the value
+    .file_spec("cv@https://jobs.example=./cv.pdf")
+    .record("session.rec.json");
+for warning in config.check()? {
+    eprintln!("warning: {warning}");
+}
+let stdin = std::io::stdin();
+pageon::mcp::serve_with(&config, Default::default(), stdin.lock(), std::io::stdout())?;
+```
+
+`check()` reports what is wrong and how to fix it; `run(|env| …)` runs any job over the stack
+and saves the recording with every secret redacted. [mrun](https://github.com/hupe1980/mrun), a
+runner for local models, embeds pageon this way and serves it as `mrun mcp serve browser`.
+
+What pageon defends against, and every known gap, is in
+[`pageon::threat_model`](https://docs.rs/pageon/latest/pageon/threat_model/).
+
 ## The sandbox
 
 `Sandbox::new(env, SandboxOptions::default())` starts a caged content process; its tabs

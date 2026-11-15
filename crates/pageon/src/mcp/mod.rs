@@ -530,6 +530,22 @@ impl Default for McpOptions {
     }
 }
 
+/// Serves MCP over a configured session (origins, secrets, files, guard, recording; see
+/// [`crate::Config`]) on `input`/`output` until `input` closes, as `pageon mcp` does; returns
+/// the session's final storage state. The vendor toolsets offer `file_upload` when files are
+/// staged.
+pub fn serve_with(
+    config: &crate::Config,
+    mut options: McpOptions,
+    input: impl BufRead,
+    output: impl Write,
+) -> Result<StorageState, String> {
+    options.staged_files |= config.has_files();
+    config
+        .run_keeping(|env| serve(env, options, input, output))
+        .map_err(|e| format!("{e}; {}", e.guidance()))?
+}
+
 /// Serves MCP on `input`/`output` until `input` closes; returns the session's final storage
 /// state (to save). Fails only if the sandbox cannot start.
 pub fn serve<E: Env>(
