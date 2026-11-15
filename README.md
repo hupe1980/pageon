@@ -162,7 +162,7 @@ including the ones pageon loses.
 
 ## 🚧 Status
 
-pageon 0.1 is early: the API may still change between minor versions. The [threat model](crates/pageon/THREAT_MODEL.md) lists what it defends against and
+pageon 0.2 is early: the API may still change between minor versions. The [threat model](crates/pageon/THREAT_MODEL.md) lists what it defends against and
 every known gap; read it before pointing an agent at anything that matters. Report
 vulnerabilities privately ([SECURITY.md](SECURITY.md)).
 

@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0]
+
 ### Added
 
 - Anthropic's browser and computer toolsets and OpenAI's computer tool run on pageon:
@@ -48,5 +50,6 @@ The first release.
   `2026-07-28` and earlier), CDP for Puppeteer and Playwright, WebDriver BiDi, a Python package
   with a BrowserGym backend, and the Rust crates.
 
-[Unreleased]: https://github.com/hupe1980/pageon/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/hupe1980/pageon/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/hupe1980/pageon/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/hupe1980/pageon/releases/tag/v0.1.0

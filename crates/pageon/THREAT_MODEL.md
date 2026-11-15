@@ -6,7 +6,7 @@ ones. Report a suspected vulnerability privately as described in [SECURITY.md](h
 
 ## Release status
 
-This describes pageon 0.1.0, a pre-release. The model was built with
+This describes pageon 0.2.0, a pre-release. The model was built with
 [ThreatSpec](https://github.com/hupe1980/spec-kit-threatspec) (STRIDE, the OWASP Top 10 for LLM
 and for Agentic Applications 2026, MITRE ATLAS, MAESTRO) over every feature. Every status below
 is checked against the code and its tests; classes marked *reproduced* were also confirmed by
