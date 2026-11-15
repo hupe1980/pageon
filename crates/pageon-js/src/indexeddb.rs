@@ -16,7 +16,10 @@ pub(crate) const SOURCE: &str = include_str!("indexeddb/fake-indexeddb.js");
 pub(crate) const MAX_BYTES: usize = 50 << 20;
 
 fn origin(cx: &Cx<'_, '_, '_>) -> Option<String> {
-    let o = cx.st().origin.clone();
+    origin_of(&cx.st().origin).map(str::to_string)
+}
+
+fn origin_of(o: &str) -> Option<&str> {
     (o != "null" && !o.is_empty()).then_some(o)
 }
 
@@ -87,6 +90,7 @@ pub(crate) fn load(
     mut rv: v8::ReturnValue,
 ) {
     crate::cv::call(scope, &args, &mut rv, |cx, _| {
+        let cx_origin = cx.st().origin.clone();
         let scope = &mut *cx.scope;
         let context = scope.get_current_context();
         let global = context.global(scope);
@@ -127,6 +131,25 @@ pub(crate) fn load(
         let Some(api) = init.call(tc, undefined, &[host.into()]) else {
             return Err(Error::Type("IndexedDB failed to start".into()));
         };
+        // An opaque origin (a sandboxed frame without `allow-same-origin`) may not use it.
+        if origin_of(&cx_origin).is_none() {
+            let deny = "(f) => { const deny = () => { throw new DOMException(\
+                \"Failed to execute 'open' on 'IDBFactory': access to the Indexed Database API is denied in this context.\", \
+                'SecurityError'); }; f.open = deny; f.deleteDatabase = deny; \
+                f.databases = () => Promise.reject(new DOMException('access to the Indexed Database API is denied in this context.', 'SecurityError')); }";
+            let patched = v8::String::new(tc, deny)
+                .and_then(|src| v8::Script::compile(tc, src, None))
+                .and_then(|s| s.run(tc))
+                .and_then(|f| v8::Local::<v8::Function>::try_from(f).ok())
+                .zip(api.to_object(tc).and_then(|o| {
+                    let k = v8::String::new(tc, "indexedDB")?;
+                    o.get(tc, k.into())
+                }))
+                .and_then(|(f, factory)| f.call(tc, undefined, &[factory]));
+            if patched.is_none() {
+                return Err(Error::Type("IndexedDB failed to start".into()));
+            }
+        }
         let api = v8::Global::new(tc, api);
         Ok(Out::Value(api))
     });

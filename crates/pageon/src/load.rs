@@ -120,6 +120,8 @@ pub(crate) struct Start<'a> {
     pub(crate) page: Option<(&'a crate::frames::Page, u32)>,
     /// The URL and origin of a document that inherits its origin (`about:srcdoc`).
     pub(crate) inherit: Option<(&'a str, &'a str)>,
+    /// The frame's `sandbox` attribute (on top of its parent's sandbox).
+    pub(crate) sandbox: Option<&'a str>,
 }
 
 /// A navigation's result: a page, or a file to download.
@@ -205,9 +207,10 @@ pub(crate) fn inline(
     start: Start<'_>,
 ) -> Result<Document, LoadError> {
     let started = env.now_ms()?;
+    let client = parent.clone().sandboxed(start.sandbox);
     let ran = crate::scripts::run(
         html,
-        parent,
+        &client,
         env,
         net,
         started,
@@ -345,8 +348,8 @@ pub(crate) fn fetch(
     let client = match start.parent {
         None => Client::top(&url),
         Some(p) => {
-            let mut c = p.frame(&url);
-            c.tools |= p.tools && start.delegate_tools;
+            let mut c = p.frame(&url).sandboxed(start.sandbox);
+            c.tools |= p.tools && start.delegate_tools && !c.opaque();
             c
         }
     };

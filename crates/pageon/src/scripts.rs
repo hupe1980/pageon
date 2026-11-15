@@ -173,7 +173,11 @@ impl Run<'_> {
             return;
         }
         if let Some(r) = self.engine.borrow().realm(self.realm).cloned() {
-            r.st.borrow_mut().started_scripts.insert(node);
+            let mut st = r.st.borrow_mut();
+            st.started_scripts.insert(node);
+            if st.scripting_disabled() {
+                return;
+            }
         }
         let joined = match src.as_deref().map(|s| self.base.join(s.trim())) {
             Some(Ok(u)) => Some(u),
@@ -278,14 +282,24 @@ fn realm(
     start: &crate::load::Start<'_>,
     (url, origin): (&str, &str),
 ) -> Result<(Rc<RefCell<Engine>>, usize), pageon_env::NetError> {
-    let engine = match start.page.and_then(|(p, _)| p.engine(origin)) {
+    let engine = match start
+        .page
+        .filter(|_| origin != "null")
+        .and_then(|(p, _)| p.engine(origin))
+    {
         Some(e) => e,
         None => {
             let now = env.now_ms()?;
             let seed = env.random_u64()?;
             let e = Rc::new(RefCell::new(Engine::new(now, seed, Limits::default())));
             if let Some((p, _)) = start.page {
-                p.engines.borrow_mut().insert(origin.to_string(), e.clone());
+                // Every opaque origin is its own: its engine is never shared.
+                let key = if origin == "null" {
+                    format!("null#{}", p.engines.borrow().len())
+                } else {
+                    origin.to_string()
+                };
+                p.engines.borrow_mut().insert(key, e.clone());
             }
             e
         }
@@ -317,11 +331,13 @@ fn has_inline_handlers(dom: &Dom) -> bool {
 
 /// The URL and origin of a document: its client's, or what it inherits (`about:srcdoc`).
 fn identity(client: &Client, start: &crate::load::Start<'_>) -> (String, String) {
+    // A sandbox without `allow-same-origin`: an opaque origin.
+    let opaque = client.opaque().then(|| "null".to_string());
     match start.inherit {
-        Some((url, origin)) => (url.to_string(), origin.to_string()),
+        Some((url, origin)) => (url.to_string(), opaque.unwrap_or_else(|| origin.to_string())),
         None => (
             client.url.to_string(),
-            crate::frames::origin_of(client.url.as_str()),
+            opaque.unwrap_or_else(|| crate::frames::origin_of(client.url.as_str())),
         ),
     }
 }

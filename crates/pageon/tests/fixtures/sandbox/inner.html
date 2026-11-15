@@ -1,0 +1,21 @@
+<!doctype html>
+<meta charset=utf-8>
+<script>
+// Runs inside <iframe sandbox="allow-scripts">: an opaque origin.
+const results = [];
+const check = (name, ok) => results.push([name, !!ok]);
+const throwsSecurity = (f) => { try { f(); return false; } catch (e) { return e.name === 'SecurityError'; } };
+check('origin is null', self.origin === 'null');
+check('the parent document is cross-origin', throwsSecurity(() => parent.document.title));
+check('document.cookie throws', throwsSecurity(() => document.cookie));
+check('localStorage throws', throwsSecurity(() => localStorage));
+check('sessionStorage throws', throwsSecurity(() => sessionStorage));
+check('indexedDB.open throws', throwsSecurity(() => indexedDB.open('x')));
+check('confirm is blocked without allow-modals', confirm('go?') === false);
+check('window.open returns null', window.open('https://a.test/popup') === null);
+fetch('https://a.test/api', { method: 'POST', body: 'x' }).catch(() => {}).finally(() => {
+  parent.postMessage(JSON.stringify(results), '*');
+});
+</script>
+<form action=https://a.test/sent><button id=send>Send</button></form>
+<iframe srcdoc="<script>top.postMessage('nested ' + self.origin, '*')</script>"></iframe>

@@ -208,6 +208,7 @@ pub mod document {
     /// `document.cookie`: the cookies of the document's URL that script may see (not
     /// `HttpOnly`), at the virtual time.
     pub fn get_cookie(cx: &mut Cx<'_, '_, '_>, _this: Obj) -> R<String> {
+        crate::dom::opaque_storage(cx, "cookie")?;
         let now = cx.realm.shared.borrow().now as u64;
         let st = cx.realm.st.borrow();
         let r = st.net.borrow().document_cookie(&st.client, now);
@@ -216,6 +217,7 @@ pub mod document {
 
     /// `document.cookie = "…"`: stored as if from a response, but never `HttpOnly`.
     pub fn set_cookie(cx: &mut Cx<'_, '_, '_>, _this: Obj, v: String) -> R<()> {
+        crate::dom::opaque_storage(cx, "cookie")?;
         let now = cx.realm.shared.borrow().now as u64;
         let st = cx.realm.st.borrow();
         st.net.borrow_mut().set_document_cookie(&st.client, &v, now);

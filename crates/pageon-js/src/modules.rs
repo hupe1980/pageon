@@ -504,9 +504,10 @@ pub(crate) fn inserted(cx: &Cx<'_, '_, '_>, nodes: &[NodeId]) {
         return;
     }
     let mut st = cx.st();
+    let disabled = st.scripting_disabled();
     let fresh: Vec<NodeId> = found
         .into_iter()
-        .filter(|n| st.started_scripts.insert(*n))
+        .filter(|n| st.started_scripts.insert(*n) && !disabled)
         .collect();
     drop(st);
     let mut sh = cx.realm.shared.borrow_mut();

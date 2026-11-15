@@ -21,6 +21,9 @@ All notable changes to this project are documented here. The format follows
 - Writes carry `read-from:<site>` labels for guards and approvers; `--cross-site-writes refuse`
   refuses a write to a site after the agent read another site's content, unless approved.
 - IndexedDB, kept per origin for the session across reloads and tabs.
+- `<iframe sandbox>`: sandboxed frames get an opaque origin without `allow-same-origin`, run no
+  script without `allow-scripts`, and need `allow-forms`, `allow-popups` and `allow-modals` for
+  forms, popups and dialogs.
 
 ### Changed
 

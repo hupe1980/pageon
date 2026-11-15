@@ -85,6 +85,7 @@ pub mod window_local_storage {
     use super::*;
 
     pub fn get_local_storage(cx: &mut Cx<'_, '_, '_>, _this: Obj) -> R<Obj> {
+        crate::dom::opaque_storage(cx, "localStorage")?;
         Ok(storage_object(cx, "localStorage", true))
     }
 }
@@ -94,6 +95,7 @@ pub mod window_session_storage {
     use super::*;
 
     pub fn get_session_storage(cx: &mut Cx<'_, '_, '_>, _this: Obj) -> R<Obj> {
+        crate::dom::opaque_storage(cx, "sessionStorage")?;
         Ok(storage_object(cx, "sessionStorage", false))
     }
 }

@@ -165,6 +165,13 @@ work and anything else throws `SecurityError`. A frame cannot navigate its paren
 page. `postMessage` delivers only to the origin the sender named, with the sender's real origin
 on the event. At most 1024 messages wait at once.
 
+`<iframe sandbox>` applies as in browsers. Without `allow-same-origin` the frame's origin is
+opaque (`null`): it reaches no other document, its cookie, storage and IndexedDB access throws
+`SecurityError`, and its requests carry `Origin: null` and no `SameSite` cookies. Without
+`allow-scripts` none of its scripts, inline handlers or `javascript:` URLs run. Forms, popups
+and dialogs need `allow-forms`, `allow-popups` and `allow-modals`; a blocked one does nothing
+and the console says which flag is missing. Nested frames keep every restriction above them.
+
 ## Protocol clients
 
 Puppeteer's and Playwright's helpers (utility worlds) and WebDriver BiDi sandboxes run in
@@ -188,8 +195,6 @@ built-ins cannot change what a client computes.
 pageon is pre-release, and its [threat model](https://docs.rs/pageon/latest/pageon/threat_model/)
 lists every known threat class with its status, including the open ones. The most important:
 
-- **Sandboxed frames.** `<iframe sandbox>` is not applied yet: a sandboxed frame runs with its
-  parent's origin (its storage, its cookies, script access to the parent).
 - **Defaults are permissive.** Without `--origin`, an approver or a guard, every request is
   sent. Configure origin sets for every task that matters.
 - **Local endpoints.** The `pageon cdp` and `pageon mcp --http` URLs carry a per-run secret:

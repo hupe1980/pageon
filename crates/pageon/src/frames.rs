@@ -211,12 +211,19 @@ pub(crate) fn load_all(
                 }
                 count += 1;
                 let inherits = srcdoc.is_some() || url == "about:blank";
+                let sandbox = attr("sandbox");
+                // A sandbox without `allow-same-origin` (its own or an ancestor's): opaque.
+                let opaque = client
+                    .as_ref()
+                    .is_some_and(|c| c.clone().sandboxed(sandbox.as_deref()).opaque());
                 // The frame's place in the page's tree, while it loads (removed if it fails).
                 let context = page.map(|p| {
                     p.frames.borrow_mut().add(pageon_js::frames::FrameEntry {
                         parent: Some(parent_context),
                         owner: Some(owner),
-                        origin: if inherits {
+                        origin: if opaque {
+                            "null".into()
+                        } else if inherits {
                             parent_origin.clone()
                         } else {
                             origin_of(&url)
@@ -228,6 +235,7 @@ pub(crate) fn load_all(
                 let start = crate::load::Start {
                     parent: client.as_ref(),
                     page: page.zip(context),
+                    sandbox: sandbox.as_deref(),
                     ..Default::default()
                 };
                 let loaded = if inherits {
@@ -283,7 +291,9 @@ pub(crate) fn load_all(
                         child.context = context.unwrap_or(0);
                         Frame {
                             owner,
-                            origin: if inherits {
+                            origin: if opaque {
+                                "null".into()
+                            } else if inherits {
                                 parent_origin.clone()
                             } else {
                                 origin_of(child.final_url())
@@ -301,7 +311,17 @@ pub(crate) fn load_all(
                 });
             }
             doc.frames = frames;
-            for f in &mut doc.frames {
+            let sandboxes: Vec<Option<String>> = doc
+                .frames
+                .iter()
+                .map(|f| {
+                    doc.dom()
+                        .get(f.owner)
+                        .and_then(|n| n.attr("sandbox"))
+                        .map(str::to_string)
+                })
+                .collect();
+            for (f, sandbox) in doc.frames.iter_mut().zip(sandboxes) {
                 let inherits = f.url.starts_with("about:");
                 let child_base = if inherits {
                     base.clone()
@@ -316,7 +336,8 @@ pub(crate) fn load_all(
                         (Some(c), Some(u)) => Some(c.frame(u)),
                         _ => None,
                     }
-                };
+                }
+                .map(|c| c.sandboxed(sandbox.as_deref()));
                 if let Some(child) = f.document.as_deref_mut() {
                     next.push((child, chain.clone(), child_origin, child_base, child_client));
                 }

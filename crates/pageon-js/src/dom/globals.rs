@@ -52,6 +52,9 @@ pub mod window {
     pub fn install_extras(_scope: &mut v8::PinScope<'_, '_>, _global: v8::Local<'_, v8::Object>) {}
 
     fn dialog(cx: &mut Cx<'_, '_, '_>, kind: &'static str, message: String) -> bool {
+        if crate::dom::sandbox_blocks(cx, |s| s.modals, "allow-modals", kind) {
+            return false;
+        }
         let accepted = kind == "alert" || cx.st().accept_dialogs;
         cx.st().push_dialog(crate::realm::Dialog {
             kind: kind.into(),
@@ -93,6 +96,7 @@ pub mod window {
     ) -> R<Option<Obj>> {
         if !url.trim().is_empty()
             && let Some(u) = crate::dom::resolve_url(cx, &url)
+            && !crate::dom::sandbox_blocks(cx, |s| s.popups, "allow-popups", "window.open")
         {
             cx.st().push_popup(u);
         }

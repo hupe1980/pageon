@@ -157,6 +157,8 @@ enum Relation {
 fn relation(client: Option<&Client>, url: &Url) -> Relation {
     match client {
         None => Relation::None,
+        // An opaque origin is a site of its own.
+        Some(c) if c.opaque() => Relation::CrossSite,
         Some(c) if site::same_origin(&c.url, url) => Relation::SameOrigin,
         Some(c) if site::site(&c.url) == site::site(url) => Relation::SameSite,
         Some(_) => Relation::CrossSite,
@@ -540,7 +542,7 @@ fn main(
     req: &FetchRequest,
     entries: &mut Vec<RequestEntry>,
 ) -> Result<Fetched, FetchError> {
-    let client_origin = req.client.as_ref().map(|c| c.url.origin());
+    let client_origin = req.client.as_ref().map(Client::origin);
     let mut url = req.url.clone();
     let mut method = req.method.clone();
     let mut body = req.body.clone();
@@ -567,7 +569,7 @@ fn main(
         }
         let cors = req.mode == Mode::Cors && !same_origin;
         let origin = match &req.client {
-            Some(c) if !tainted => site::origin(&c.url),
+            Some(c) if !tainted => c.origin().ascii_serialization(),
             Some(_) => "null".into(),
             None => String::new(),
         };
@@ -913,9 +915,9 @@ pub(crate) fn stream_request(
     if client.url.scheme() == "https" && http.scheme() == "http" && !site::trustworthy(&http) {
         return refuse(net, Block::MixedContent);
     }
-    let same_origin = client.url.origin() == http.origin();
+    let same_origin = client.origin() == http.origin();
     let mut headers: Vec<(String, String)> = Vec::new();
-    headers.push(("origin".into(), site::origin(&client.url)));
+    headers.push(("origin".into(), client.origin().ascii_serialization()));
     if dest == Dest::EventSource {
         headers.push(("accept".into(), "text/event-stream".into()));
         headers.push(("cache-control".into(), "no-cache".into()));

@@ -606,7 +606,10 @@ fn follow_link(cx: &mut Cx<'_, '_, '_>, href: &str, target: Option<&str>) {
     let mods = cx.st().mods;
     let new_tab = mods.ctrl || mods.meta || mods.shift || cx.st().button == Button::Middle;
     if new_tab || target.is_some_and(|t| t.eq_ignore_ascii_case("_blank")) {
-        cx.st().push_popup(url.to_string());
+        if !crate::dom::sandbox_blocks(cx, |s| s.popups, "allow-popups", "opening a new window")
+        {
+            cx.st().push_popup(url.to_string());
+        }
     } else {
         navigate(cx, url.as_str(), false);
     }
@@ -614,6 +617,9 @@ fn follow_link(cx: &mut Cx<'_, '_, '_>, href: &str, target: Option<&str>) {
 
 /// Runs the code of a `javascript:` URL (`javascript:void(0)` does nothing).
 fn run_javascript_url(cx: &mut Cx<'_, '_, '_>, code: &str) {
+    if cx.st().scripting_disabled() {
+        return;
+    }
     let code = percent_decode(code);
     let scope = &mut *cx.scope;
     v8::tc_scope!(let tc, scope);
@@ -710,6 +716,9 @@ pub(crate) fn submit_form(
             let rv = submitter.and_then(|s| attr(cx, s, "value"));
             crate::dom::html_dialog_element::close(cx, Obj::Node(d), rv)?;
         }
+        return Ok(());
+    }
+    if crate::dom::sandbox_blocks(cx, |s| s.forms, "allow-forms", "form submission") {
         return Ok(());
     }
     let Some(base) = base_url(cx) else {

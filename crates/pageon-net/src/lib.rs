@@ -143,6 +143,55 @@ pub struct Client {
     /// top-level document and same-origin frames; cross-origin frames only when delegated
     /// with `<iframe allow="tools">`.
     pub tools: bool,
+    /// The sandbox of the document's frame (`<iframe sandbox>`, inherited by nested frames).
+    pub sandbox: Option<Sandbox>,
+}
+
+/// What a sandboxed frame may do (`<iframe sandbox="allow-…">`): everything not allowed is
+/// off. Without `allow-same-origin` the document has an opaque origin. (Frames never navigate
+/// the top-level page here, so the top-navigation flags have nothing to allow.)
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct Sandbox {
+    /// `allow-same-origin`: the document keeps its origin.
+    pub same_origin: bool,
+    /// `allow-scripts`.
+    pub scripts: bool,
+    /// `allow-forms`.
+    pub forms: bool,
+    /// `allow-popups`.
+    pub popups: bool,
+    /// `allow-modals`.
+    pub modals: bool,
+}
+
+impl Sandbox {
+    /// The flags of a `sandbox` attribute's value.
+    pub fn parse(value: &str) -> Self {
+        let mut s = Self::default();
+        for t in value.split_ascii_whitespace() {
+            match t.to_ascii_lowercase().as_str() {
+                "allow-same-origin" => s.same_origin = true,
+                "allow-scripts" => s.scripts = true,
+                "allow-forms" => s.forms = true,
+                "allow-popups" => s.popups = true,
+                "allow-modals" => s.modals = true,
+                _ => {}
+            }
+        }
+        s
+    }
+
+    /// What both allow (a nested frame keeps its ancestors' restrictions).
+    #[must_use]
+    pub fn and(self, o: Self) -> Self {
+        Self {
+            same_origin: self.same_origin && o.same_origin,
+            scripts: self.scripts && o.scripts,
+            forms: self.forms && o.forms,
+            popups: self.popups && o.popups,
+            modals: self.modals && o.modals,
+        }
+    }
 }
 
 impl Client {
@@ -154,7 +203,32 @@ impl Client {
             same_site_ancestors: true,
             top_origin: url.origin().ascii_serialization(),
             tools: true,
+            sandbox: None,
         }
+    }
+
+    /// The document's origin: opaque (unique) in a sandbox without `allow-same-origin`.
+    pub fn origin(&self) -> url::Origin {
+        if self.sandbox.is_some_and(|s| !s.same_origin) {
+            url::Origin::new_opaque()
+        } else {
+            self.url.origin()
+        }
+    }
+
+    /// Whether the document's origin is opaque (a sandbox without `allow-same-origin`).
+    pub fn opaque(&self) -> bool {
+        self.sandbox.is_some_and(|s| !s.same_origin)
+    }
+
+    /// This client inside a frame sandboxed with `attr` (on top of its own sandbox).
+    #[must_use]
+    pub fn sandboxed(mut self, attr: Option<&str>) -> Self {
+        if let Some(a) = attr {
+            let s = Sandbox::parse(a);
+            self.sandbox = Some(self.sandbox.map_or(s, |own| own.and(s)));
+        }
+        self
     }
 
     /// A frame at `url` inside this document; `delegated` when its `<iframe>` allows "tools".
@@ -164,7 +238,8 @@ impl Client {
             top_site: self.top_site.clone(),
             same_site_ancestors: self.same_site_ancestors && site::site(url) == self.top_site,
             top_origin: self.top_origin.clone(),
-            tools: self.tools && url.origin() == self.url.origin(),
+            tools: self.tools && !self.opaque() && url.origin() == self.url.origin(),
+            sandbox: self.sandbox,
         }
     }
 
@@ -544,5 +619,29 @@ fn script_cx(client: &Client) -> cookie::Context<'_> {
         same_site: client.same_site_ancestors && site::site(&client.url) == client.top_site,
         top_level_safe_nav: false,
         script: true,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sandbox_flags_parse_and_nest() {
+        let s = Sandbox::parse(" allow-scripts\tALLOW-FORMS allow-unknown ");
+        assert!(s.scripts && s.forms && !s.same_origin && !s.popups && !s.modals);
+        let top = Url::parse("https://a.test/").unwrap_or_else(|e| panic!("{e}"));
+        let frame = Client::top(&top)
+            .sandboxed(Some("allow-scripts allow-same-origin"))
+            .frame(&top);
+        assert!(!frame.opaque());
+        // A nested sandbox keeps the outer restrictions: no `allow-same-origin` anywhere above.
+        let inner = Client::top(&top)
+            .sandboxed(Some("allow-scripts"))
+            .frame(&top)
+            .sandboxed(Some("allow-scripts allow-same-origin"));
+        assert!(inner.opaque());
+        assert_eq!(inner.origin().ascii_serialization(), "null");
+        assert!(Client::top(&top).sandboxed(None).sandbox.is_none());
     }
 }

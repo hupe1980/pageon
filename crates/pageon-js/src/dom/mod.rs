@@ -126,6 +126,43 @@ use crate::cv::{Cx, Error, Obj, R};
 use crate::generated::Iface;
 use crate::realm::{Coll, Slot};
 
+/// Whether a sandboxed document lacks the flag `allowed` reads: if so, the console says what
+/// was blocked and why, as browsers do.
+pub(crate) fn sandbox_blocks(
+    cx: &Cx<'_, '_, '_>,
+    allowed: fn(&pageon_net::Sandbox) -> bool,
+    flag: &str,
+    what: &str,
+) -> bool {
+    let Some(s) = cx.realm.st.borrow().client.sandbox else {
+        return false;
+    };
+    if allowed(&s) {
+        return false;
+    }
+    let mut sh = cx.realm.shared.borrow_mut();
+    if sh.console.len() >= 1000 {
+        sh.console.remove(0);
+    }
+    sh.console.push((
+        "error".into(),
+        format!("Blocked {what}: the document is sandboxed and lacks the '{flag}' flag."),
+    ));
+    sh.console_total += 1;
+    true
+}
+
+/// `SecurityError` for storage in a document whose origin is opaque.
+pub(crate) fn opaque_storage(cx: &Cx<'_, '_, '_>, what: &str) -> crate::cv::R<()> {
+    if cx.realm.st.borrow().client.opaque() {
+        return Err(crate::cv::Error::Dom(
+            "SecurityError",
+            format!("Failed to read '{what}': the document is sandboxed and lacks the 'allow-same-origin' flag."),
+        ));
+    }
+    Ok(())
+}
+
 /// Resolves a URL against the document URL.
 pub fn resolve_url(cx: &Cx<'_, '_, '_>, s: &str) -> Option<String> {
     let base = ::url::Url::parse(&cx.realm.st.borrow().url).ok()?;

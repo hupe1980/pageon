@@ -836,6 +836,12 @@ impl State {
         }
     }
 
+    /// A sandboxed document without `allow-scripts`: none of its own scripts, inline handlers
+    /// or `javascript:` URLs run.
+    pub fn scripting_disabled(&self) -> bool {
+        self.client.sandbox.is_some_and(|s| !s.scripts)
+    }
+
     /// Records a popup URL (kept up to [`MAX_PER_ACTION`], then counted).
     pub fn push_popup(&mut self, url: String) {
         if self.popups.len() < MAX_PER_ACTION {

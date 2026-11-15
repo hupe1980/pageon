@@ -328,6 +328,9 @@ pub mod event_target {
     }
 
     fn compile_handler(cx: &mut Cx<'_, '_, '_>, body: &str) -> Option<Value> {
+        if cx.st().scripting_disabled() {
+            return None;
+        }
         let code = format!("(function (event) {{\n{body}\n}})");
         let src = v8::String::new(cx.scope, &code)?;
         let scope = &mut *cx.scope;

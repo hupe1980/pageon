@@ -1,0 +1,43 @@
+<!doctype html>
+<meta charset=utf-8>
+<title>Sandbox</title>
+<pre id=out></pre>
+<p id=nested></p>
+<p id=modals></p>
+<iframe id=opaque sandbox="allow-scripts" src="/inner.html"></iframe>
+<iframe id=noscript sandbox="allow-same-origin" srcdoc="<p>x</p><script>parent.postMessage('ran', '*')</script><img src=x onerror=&quot;parent.postMessage('ran', '*')&quot;>"></iframe>
+<iframe id=allowmodals sandbox="allow-scripts allow-modals" srcdoc="<script>parent.postMessage('modals ' + confirm('ok?'), '*')</script>"></iframe>
+<iframe id=same sandbox="allow-scripts allow-same-origin" srcdoc="<script>parent.postMessage('same ' + typeof localStorage.getItem, '*')</script>"></iframe>
+<script>
+const results = [];
+const check = (name, ok) => results.push([name, !!ok]);
+let inner = null, loaded = false, ran = false;
+const render = () => { if (inner && loaded) out.textContent = JSON.stringify(inner.concat(results)); };
+addEventListener('message', (e) => {
+  if (typeof e.data === 'string' && e.data.startsWith('nested ')) {
+    nested.textContent = e.data;
+    return;
+  }
+  if (typeof e.data === 'string' && e.data.startsWith('modals ')) {
+    modals.textContent = e.data;
+    return;
+  }
+  if (e.data === 'ran') {
+    ran = true;
+    return;
+  }
+  if (typeof e.data === 'string' && e.data.startsWith('same ')) {
+    check('no script runs without allow-scripts', !ran);
+    check('a frame without allow-scripts still has a document', document.getElementById('noscript').contentDocument !== null);
+    check('allow-same-origin keeps storage', e.data === 'same function');
+    loaded = true;
+    render();
+    return;
+  }
+  inner = JSON.parse(e.data);
+  check('the message comes from origin null', e.origin === 'null');
+  check('its source is the frame', e.source === document.getElementById('opaque').contentWindow);
+  check('the opaque frame has no contentDocument', document.getElementById('opaque').contentDocument === null);
+  render();
+});
+</script>
