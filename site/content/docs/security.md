@@ -188,6 +188,8 @@ built-ins cannot change what a client computes.
 pageon is pre-release, and its [threat model](https://docs.rs/pageon/latest/pageon/threat_model/)
 lists every known threat class with its status, including the open ones. The most important:
 
+- **Sandboxed frames.** `<iframe sandbox>` is not applied yet: a sandboxed frame runs with its
+  parent's origin (its storage, its cookies, script access to the parent).
 - **Defaults are permissive.** Without `--origin`, an approver or a guard, every request is
   sent. Configure origin sets for every task that matters.
 - **Local endpoints.** The `pageon cdp` and `pageon mcp --http` URLs carry a per-run secret:

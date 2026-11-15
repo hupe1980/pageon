@@ -20,12 +20,17 @@ All notable changes to this project are documented here. The format follows
   signature (`Accept-Signature`) is reported as `signature required`.
 - Writes carry `read-from:<site>` labels for guards and approvers; `--cross-site-writes refuse`
   refuses a write to a site after the agent read another site's content, unless approved.
+- IndexedDB, kept per origin for the session across reloads and tabs.
 
 ### Changed
 
 - `type REF` into an editor types over its content key by key instead of replacing it.
 - `--profile browser-compatible` is now `--profile chrome` (the old name still works) and
   reports the host's platform instead of Linux.
+
+### Fixed
+
+- `DOMException` is an `Error` (`instanceof Error`, `String(e)` gives its name and message).
 
 ## [0.2.0]
 

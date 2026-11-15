@@ -1,0 +1,21 @@
+<!doctype html><meta charset=utf-8><title>Storage libraries</title>
+<pre id=out>pending</pre>
+<script src=/idb-keyval.umd.js></script>
+<script src=/localforage.min.js></script>
+<script>
+// Writes on the first visit (?write), reads on the next.
+(async () => {
+  const write = location.search === '?write';
+  const value = { n: 42, when: new Date(0), bytes: new Uint8Array([1, 2, 3]) };
+  if (write) {
+    await idbKeyval.set('k', value);
+    await localforage.setItem('lf', value);
+    out.textContent = 'written ' + localforage.driver();
+    return;
+  }
+  const a = await idbKeyval.get('k');
+  const b = await localforage.getItem('lf');
+  const ok = (v) => v && v.n === 42 && v.when instanceof Date && v.bytes instanceof Uint8Array && v.bytes[2] === 3;
+  out.textContent = 'read ' + ok(a) + ' ' + ok(b) + ' ' + localforage.driver();
+})().catch((e) => out.textContent = 'error ' + e);
+</script>

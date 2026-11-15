@@ -14,6 +14,7 @@ pub mod frames;
 mod modules;
 #[rustfmt::skip]
 mod generated;
+mod indexeddb;
 pub mod realm;
 mod select;
 mod serialize;

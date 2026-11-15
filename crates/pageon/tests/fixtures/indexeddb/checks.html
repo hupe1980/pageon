@@ -1,0 +1,97 @@
+<!doctype html>
+<html><head><meta charset=utf-8><title>IndexedDB</title></head>
+<body><pre id=out></pre>
+<script>
+// Behaviour derived from the web-platform-tests of IndexedDB (idbfactory_cmp, idbkeyrange,
+// idbcursor-direction, idbindex_get, idbobjectstore_add (unique, autoincrement), idbindex-multientry,
+// transaction-abort, idbdatabase_createObjectStore, idbfactory-databases).
+const results = [];
+const check = (name, ok) => results.push([name, !!ok]);
+const req = (r) => new Promise((resolve, reject) => { r.onsuccess = () => resolve(r.result); r.onerror = (e) => { e.preventDefault && e.preventDefault(); reject(r.error); }; });
+const done = (t) => new Promise((resolve, reject) => { t.oncomplete = () => resolve(); t.onabort = () => reject(t.error || new Error('abort')); });
+
+async function main() {
+  // ----- keys -----
+  check('cmp orders number < date < string < binary < array',
+    indexedDB.cmp(1, new Date(0)) < 0 && indexedDB.cmp(new Date(0), 'a') < 0 &&
+    indexedDB.cmp('a', new Uint8Array([0])) < 0 && indexedDB.cmp(new Uint8Array([0]), [0]) < 0);
+  check('cmp of equal keys', indexedDB.cmp([1, 'a'], [1, 'a']) === 0);
+  check('invalid keys throw DataError', (() => { try { indexedDB.cmp({}, 1); return false; } catch (e) { return e.name === 'DataError'; } })());
+  check('IDBKeyRange.bound', IDBKeyRange.bound(1, 5, true).includes(5) && !IDBKeyRange.bound(1, 5, true).includes(1));
+
+  // ----- open and upgrade -----
+  const open = indexedDB.open('checks', 1);
+  let upgraded = 0;
+  open.onupgradeneeded = (e) => {
+    upgraded = e.oldVersion === 0 && e.newVersion === 1;
+    const db = open.result;
+    const people = db.createObjectStore('people', { keyPath: 'id' });
+    people.createIndex('email', 'email', { unique: true });
+    people.createIndex('tags', 'tags', { multiEntry: true });
+    db.createObjectStore('log', { autoIncrement: true });
+  };
+  const db = await req(open);
+  check('upgradeneeded with old and new versions', upgraded);
+  check('objectStoreNames', [...db.objectStoreNames].join() === 'log,people');
+
+  let t = db.transaction(['people', 'log'], 'readwrite');
+  const people = t.objectStore('people');
+  for (const [id, email, tags] of [[3, 'c@x', ['b']], [1, 'a@x', ['a', 'b']], [2, 'b@x', ['a']]]) people.put({ id, email, tags });
+  const log = t.objectStore('log');
+  const k1 = await req(log.add('first'));
+  const k2 = await req(log.add('second'));
+  check('auto-increment keys', k1 === 1 && k2 === 2);
+  const dup = people.add({ id: 1, email: 'z@x', tags: [] });
+  check('add of an existing key fails with ConstraintError', await req(dup).then(() => false, (e) => e.name === 'ConstraintError'));
+  await done(t).catch(() => {});
+
+  t = db.transaction('people', 'readwrite');
+  const unique = t.objectStore('people').put({ id: 9, email: 'a@x', tags: [] });
+  check('a unique index refuses duplicates', await req(unique).then(() => false, (e) => e.name === 'ConstraintError'));
+  await done(t).catch(() => {});
+
+  // ----- reads -----
+  t = db.transaction('people');
+  const s = t.objectStore('people');
+  check('getAll in key order', (await req(s.getAll())).map((p) => p.id).join() === '1,2,3');
+  check('getAllKeys with a range', (await req(s.getAllKeys(IDBKeyRange.lowerBound(2)))).join() === '2,3');
+  check('count', (await req(s.count())) === 3);
+  check('index get', (await req(s.index('email').get('b@x'))).id === 2);
+  check('multiEntry index', (await req(s.index('tags').getAll('b'))).map((p) => p.id).join() === '1,3');
+  const seen = [];
+  await new Promise((resolve) => {
+    s.openCursor(null, 'prev').onsuccess = (e) => { const c = e.target.result; if (c) { seen.push(c.key); c.continue(); } else resolve(); };
+  });
+  check('a cursor in reverse', seen.join() === '3,2,1');
+  const uniq = [];
+  await new Promise((resolve) => {
+    s.index('tags').openKeyCursor(null, 'nextunique').onsuccess = (e) => { const c = e.target.result; if (c) { uniq.push(c.key); c.continue(); } else resolve(); };
+  });
+  check('nextunique over an index', uniq.join() === 'a,b');
+  await done(t);
+
+  // ----- abort rolls back -----
+  t = db.transaction('people', 'readwrite');
+  t.objectStore('people').delete(1);
+  t.abort();
+  await done(t).catch(() => {});
+  const still = await req(db.transaction('people').objectStore('people').get(1));
+  check('an aborted transaction changes nothing', still && still.email === 'a@x');
+
+  // ----- versionchange -----
+  db.close();
+  const up = indexedDB.open('checks', 2);
+  up.onupgradeneeded = () => up.result.createObjectStore('extra');
+  const db2 = await req(up);
+  check('a new version adds a store', db2.version === 2 && db2.objectStoreNames.contains('extra'));
+  const list = await indexedDB.databases();
+  check('databases()', list.some((d) => d.name === 'checks' && d.version === 2));
+  db2.close();
+  await req(indexedDB.deleteDatabase('checks'));
+  check('deleteDatabase', !(await indexedDB.databases()).some((d) => d.name === 'checks'));
+
+  document.getElementById('out').textContent = JSON.stringify(results);
+}
+main().catch((e) => { document.getElementById('out').textContent = JSON.stringify([['main threw ' + e + ' ' + e.stack, false]]); });
+</script>
+</body></html>

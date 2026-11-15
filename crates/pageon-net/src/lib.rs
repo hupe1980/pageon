@@ -40,7 +40,7 @@ pub mod site;
 pub mod state;
 pub mod storage;
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fmt;
 
 pub use cookie::{Cookie, SameSite};
@@ -439,6 +439,8 @@ pub struct Net {
     /// robots.txt per origin, fetched once per session.
     pub(crate) robots_txt: HashMap<String, robots::Robots>,
     log: Vec<RequestEntry>,
+    /// IndexedDB databases per origin: name → structured-clone snapshot.
+    idb: BTreeMap<String, BTreeMap<String, Vec<u8>>>,
 }
 
 impl Net {
@@ -527,6 +529,11 @@ impl Net {
     /// The `sessionStorage` area of an origin.
     pub fn session_storage(&mut self, origin: &str) -> &mut Storage {
         self.session.entry(origin.to_string()).or_default()
+    }
+
+    /// The IndexedDB databases of an origin (name → snapshot).
+    pub fn idb(&mut self, origin: &str) -> &mut BTreeMap<String, Vec<u8>> {
+        self.idb.entry(origin.to_string()).or_default()
     }
 }
 

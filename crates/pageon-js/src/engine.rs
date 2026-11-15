@@ -230,6 +230,8 @@ const PRELUDE: &str = r#"(() => {
   Date.UTC = NativeDate.UTC;
   Object.defineProperty(globalThis, 'Date', { value: Date, writable: true, configurable: true });
   Object.defineProperty(Math, 'random', { value: host.random, writable: true, configurable: true });
+  // WebIDL: DOMException's prototype inherits Error.prototype (`instanceof Error`, `toString`).
+  if (globalThis.DOMException) Object.setPrototypeOf(DOMException.prototype, Error.prototype);
   // WebAuthn: options become JSON for the host (buffers as base64url); the answers are the
   // engine's own objects. Secure pages only (the classes are gone elsewhere).
   if (globalThis.CredentialsContainer) {
@@ -330,6 +332,24 @@ const PRELUDE: &str = r#"(() => {
     };
     for (const name of Object.keys(statics)) {
       Object.defineProperty(PublicKeyCredential, name, { value: statics[name], writable: true, configurable: true });
+    }
+  }
+  // IndexedDB: loaded on first use (see indexeddb.rs).
+  {
+    let idb = null;
+    const idbNames = ['indexedDB', 'IDBCursor', 'IDBCursorWithValue', 'IDBDatabase', 'IDBFactory',
+      'IDBIndex', 'IDBKeyRange', 'IDBObjectStore', 'IDBOpenDBRequest', 'IDBRecord', 'IDBRequest',
+      'IDBTransaction', 'IDBVersionChangeEvent'];
+    const keep = (n, v) => Object.defineProperty(globalThis, n, { value: v, writable: true, configurable: true });
+    for (const n of idbNames) {
+      Object.defineProperty(globalThis, n, {
+        configurable: true,
+        get() {
+          if (!idb) { idb = host.idb(); for (const k of idbNames) keep(k, idb[k]); }
+          return idb[n];
+        },
+        set(v) { keep(n, v); },
+      });
     }
   }
   // Streams: loaded on first use (see streams.rs).
@@ -671,6 +691,12 @@ impl Engine {
         if let (Some(k), Some(func)) = (
             v8::String::new(scope, "streams"),
             v8::Function::new(scope, crate::streams::load),
+        ) {
+            host.set(scope, k.into(), func.into());
+        }
+        if let (Some(k), Some(func)) = (
+            v8::String::new(scope, "idb"),
+            v8::Function::new(scope, crate::indexeddb::load),
         ) {
             host.set(scope, k.into(), func.into());
         }

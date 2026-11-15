@@ -7,6 +7,7 @@ own licences.
 | --- | --- | --- |
 | Liberation fonts 2.1.5 (Sans, Serif, Mono) | `crates/pageon-layout/fonts/` (built into `pageon-layout`) | SIL Open Font License 1.1 (`fonts/LICENSE`) |
 | web-streams-polyfill 4.5.1 (`dist/ponyfill.js`, unmodified, SHA-256 pinned by a test) | `crates/pageon-js/src/streams/` (built into `pageon-js`) | MIT (header in the file) |
+| fake-indexeddb 6.2.8, bundled with pageon's persistence (`indexeddb/fake-indexeddb.js`) | `crates/pageon-js/src/indexeddb/` (in the binary) | Apache-2.0 |
 | html5lib tree-construction tests | `crates/pageon-dom/tests/html5lib/` (tests only) | MIT |
 | WebIDL from `@webref/idl` 3.86.0 and the WebMCP draft (the specifications listed in `idl/SOURCE`) | `crates/pageon-js/idl/` (generator input) | WHATWG: CC BY 4.0; W3C: W3C Software and Document License (see `idl/SOURCE`) |
 | Web Platform Tests: html-aam, wai-aria role, accname files | `crates/pageon-ax/tests/wpt/` (tests only) | W3C 3-clause BSD (see `tests/wpt/SOURCE`) |
@@ -17,6 +18,7 @@ own licences.
 | DOMPurify 3.4.18 (`purify.min.js`) | `crates/pageon/tests/fixtures/platform2/` (tests only) | Apache-2.0 or MPL-2.0 (header in the file) |
 | ProseMirror 1.42.9, Lexical 0.53.0, Quill 2.0.3 (bundled, `*.min.js`) | `crates/pageon/tests/fixtures/editing/` (tests only) | MIT (ProseMirror, Lexical), BSD-3-Clause (Quill) |
 | SimpleWebAuthn browser 14.0.0 (`simplewebauthn.umd.min.js`) | `crates/pageon/tests/fixtures/passkeys/` (tests only) | MIT |
+| idb-keyval 6.3.0, localForage 1.10.0 | `crates/pageon/tests/fixtures/indexeddb/` (tests only) | Apache-2.0 |
 | Lit 3 production modules (lit 3.3.3, lit-element 4.2.2, lit-html 3.3.3, @lit/reactive-element 2.1.2) | `crates/pageon/tests/fixtures/lit/` (tests only) | BSD-3-Clause (`fixtures/lit/LICENSE`) |
 
 Rust dependencies and their licences are checked by `cargo deny` (`deny.toml`). The Puppeteer
