@@ -34,8 +34,12 @@ pub enum Action {
     Upload(String, Vec<String>),
     /// Press a key on the focused element (`Enter`, `Tab`, `Escape`, `Backspace`, `a`, …).
     Press(String),
-    /// Select options of a `<select>` by value or label.
+    /// Select options of a `<select>` by value or label; on any other element, select that
+    /// text in it (the first occurrence).
     Select(String, Vec<String>),
+    /// Put text on the session clipboard and paste it (Ctrl+V) into the element, or into the
+    /// focused one.
+    Paste(Option<String>, String),
     /// Move the pointer onto an element.
     Hover(String),
     /// Drag an element onto another (centre to centre): a trusted press, moves and release,
@@ -267,6 +271,8 @@ impl fmt::Display for Action {
             }
             Self::Hold(k, ms) => write!(f, "hold {k} {ms}"),
             Self::TypeFocused(t) => write!(f, "type {t:?}"),
+            Self::Paste(Some(r), t) => write!(f, "paste {r} {t:?}"),
+            Self::Paste(None, t) => write!(f, "paste {t:?}"),
             Self::Eval(e) => write!(f, "eval {e}"),
             Self::Wait(ms) => write!(f, "wait {ms}"),
             Self::Goto(u) => write!(f, "goto {u}"),
@@ -380,6 +386,12 @@ impl FromStr for Action {
             // `type "text"`: into the focused element.
             "type" if rest.starts_with('"') => Self::TypeFocused(unquote(rest)),
             "type" => Self::Type(need("a ref and text, e.g. `type e3 hello`")?, unquote(tail)),
+            // `paste "text"`: into the focused element.
+            "paste" if rest.starts_with('"') => Self::Paste(None, unquote(rest)),
+            "paste" => Self::Paste(
+                Some(need("a ref and text, e.g. `paste e3 hello`")?),
+                unquote(tail),
+            ),
             "hold" => {
                 let key = need("a key and milliseconds, e.g. `hold shift 2000`")?;
                 let ms = tail.trim().parse().map_err(|_| {
@@ -415,7 +427,7 @@ impl FromStr for Action {
                 Self::Upload(r, names)
             }
             "select" => Self::Select(
-                need("a ref and an option, e.g. `select e7 Germany`")?,
+                need("a ref and an option or text, e.g. `select e7 Germany`")?,
                 vec![unquote(tail)],
             ),
             // A key, a chord or a sequence: `press Enter`, `press ctrl+a`, `press Down Down`.
@@ -631,6 +643,10 @@ pub struct Outcome {
     /// `type "…"` found nothing editable focused: the keys went to the page.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub unfocused: bool,
+    /// What the action put on the session clipboard (a copy, a page's Copy button), cut at
+    /// 2,000 characters: page data.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub copied: Option<String>,
     /// What a drag did (HTML drag and drop, dropped or not; or the data of an intercepted
     /// drag).
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -787,6 +803,12 @@ impl fmt::Display for Outcome {
         if self.consequential {
             parts.push("consequential tool".into());
         }
+        if let Some(c) = &self.copied {
+            parts.push(format!(
+                "copied (page data) {}",
+                pageon_agent::quote::quote(c)
+            ));
+        }
         if let Some(r) = &self.tool_result {
             let from = self
                 .tool_origin
@@ -875,6 +897,15 @@ pub enum ActionError {
         /// The options' labels.
         available: Vec<String>,
     },
+    /// The text to select is not in the element.
+    NoSuchText {
+        /// The element's ref.
+        target: String,
+        /// The text asked for.
+        text: String,
+        /// How the element's text starts.
+        starts: String,
+    },
     /// The navigation the action started failed.
     Navigation(LoadError),
     /// Not supported yet.
@@ -918,6 +949,10 @@ impl ActionError {
                 Reason::OneFile => "upload one file".into(),
             },
             Self::NoSuchOption { available, .. } => format!("use one of: {}", available.join(", ")),
+            Self::NoSuchText { starts, .. } => format!(
+                "select text that is in it (it reads {})",
+                pageon_agent::quote::quote(starts)
+            ),
             Self::Navigation(e) => e.guidance(),
             Self::Unsupported(_) => "use another action".into(),
             Self::Secret(_) => {
@@ -952,6 +987,13 @@ impl fmt::Display for ActionError {
             Self::NoSuchOption {
                 target, missing, ..
             } => write!(f, "{target} has no option {}", missing.join(", ")),
+            Self::NoSuchText { target, text, .. } => {
+                write!(
+                    f,
+                    "{target} has no text {}",
+                    pageon_agent::quote::quote(text)
+                )
+            }
             Self::Navigation(e) => write!(f, "navigation failed: {e}"),
             Self::Unsupported(w) => write!(f, "{w} is not supported yet"),
             Self::Secret(m) => write!(f, "secret refused: {m}"),
@@ -1386,6 +1428,44 @@ impl<'s, E: Env> Tab<'s, E> {
             .collect();
     }
 
+    /// Gives every started engine of the tab the session clipboard.
+    fn push_clipboard(&self) {
+        let clip = self.session.clipboard();
+        for frame in 0..self.frames_meta().len() {
+            if let Some(live) = self.live_if_started(frame) {
+                live.engine.borrow_mut().set_clipboard(clip.clone());
+            }
+        }
+    }
+
+    /// Takes what the action put on the clipboard: kept for the session (never a secret's
+    /// value) and reported, cut.
+    fn pull_clipboard(&self, out: &mut Outcome) {
+        let mut changed = None;
+        for frame in 0..self.frames_meta().len() {
+            if let Some(live) = self.live_if_started(frame)
+                && let Some(c) = live.engine.borrow_mut().take_clipboard()
+            {
+                changed = Some(c);
+            }
+        }
+        let Some(clip) = changed else { return };
+        let secret = clip.as_ref().is_some_and(|c| {
+            self.session.secrets().iter().any(|(v, _)| {
+                !v.is_empty()
+                    && (c.text.contains(v.as_str())
+                        || c.html.as_deref().is_some_and(|h| h.contains(v.as_str())))
+            })
+        });
+        if secret {
+            return;
+        }
+        if let Some(c) = &clip {
+            out.copied = Some(c.text.chars().take(2000).collect());
+        }
+        self.session.set_clipboard(clip);
+    }
+
     fn redact_outcome(&self, o: &mut Outcome) {
         o.target = o.target.take().map(|t| self.redact(t));
         for (_, text) in &mut o.console {
@@ -1406,6 +1486,7 @@ impl<'s, E: Env> Tab<'s, E> {
         }
         o.navigated = o.navigated.take().map(|u| self.redact(u));
         o.tool_result = o.tool_result.take().map(|r| self.redact(r));
+        o.copied = o.copied.take().map(|c| self.redact(c));
         o.popups = o.popups.drain(..).map(|u| self.redact(u)).collect();
         for f in &mut o.invalid {
             f.message = self.redact(std::mem::take(&mut f.message));
@@ -1576,6 +1657,7 @@ impl<'s, E: Env> Tab<'s, E> {
         | Action::Drag(r, _)
         | Action::Type(r, _)
         | Action::Select(r, _)
+        | Action::Paste(Some(r), _)
         | Action::Upload(r, _)) = action
         else {
             return None;
@@ -1615,7 +1697,9 @@ impl<'s, E: Env> Tab<'s, E> {
             ..Outcome::default()
         };
         let top = self.doc.js.scroll.viewport;
+        self.push_clipboard();
         let result = self.run(&action, &mut out);
+        self.pull_clipboard(&mut out);
         // Any scroll the action caused (keys, in-page links, the page's own scripts), unless
         // the action reported it already or loaded another page.
         let now = self.doc.js.scroll.viewport;
@@ -1924,6 +2008,39 @@ impl<'s, E: Env> Tab<'s, E> {
                 out.settled.virtual_ms += ms;
                 r
             }
+            Action::Paste(r, text) => {
+                let (frame, node) = match r {
+                    Some(r) => {
+                        let (frame, node, _) = self.resolve(r)?;
+                        self.scroll_into_view(frame, node, out)?;
+                        let (frame, node, _) = self.resolve(r)?;
+                        self.check(frame, node, r, action)?;
+                        (frame, Some(node))
+                    }
+                    None => (self.focused_frame(), None),
+                };
+                if let (Some(r), Some(n)) = (r, node) {
+                    let live = self.live(frame)?;
+                    if live.engine.borrow_mut().editable(live.realm, n).is_none() {
+                        return Err(ActionError::NotActionable {
+                            target: r.clone(),
+                            reason: Reason::NotEditable,
+                        });
+                    }
+                }
+                self.session.set_clipboard(Some(pageon_js::Clip {
+                    text: text.clone(),
+                    html: None,
+                }));
+                self.push_clipboard();
+                let live = self.live(frame)?;
+                let errors = self.frame_errors(frame);
+                let pasted = live.engine.borrow_mut().paste(live.realm, node, text);
+                if !pasted {
+                    out.unfocused = true;
+                }
+                self.after(frame, &live, errors, out)
+            }
             Action::TypeFocused(text) => {
                 let frame = self.focused_frame();
                 let value = match text.strip_prefix("secret://") {
@@ -1954,7 +2071,7 @@ impl<'s, E: Env> Tab<'s, E> {
                     let mut engine = live.engine.borrow_mut();
                     match (text.starts_with("secret://"), engine.focused(live.realm)) {
                         (true, Some(f)) => {
-                            engine.fill(live.realm, f, &value);
+                            engine.fill_secret(live.realm, f, &value);
                             true
                         }
                         _ => engine.type_focused(live.realm, &value),
@@ -2209,9 +2326,19 @@ impl<'s, E: Env> Tab<'s, E> {
                                         .secret(name, &origin)
                                         .map_err(|e| ActionError::Secret(e.to_string()))?;
                                     self.session.keep_secret(v.clone(), text.clone());
-                                    engine.fill(live.realm, node, &v);
+                                    engine.fill_secret(live.realm, node, &v);
                                 }
                                 None => engine.type_text(live.realm, node, text),
+                            }
+                        }
+                        Action::Select(_, values) if !engine.is_select(live.realm, node) => {
+                            let text = values.join(" ");
+                            if !engine.select_text(live.realm, node, &text) {
+                                return Err(ActionError::NoSuchText {
+                                    target: r.clone(),
+                                    starts: engine.text_start(live.realm, node, 60),
+                                    text,
+                                });
                             }
                         }
                         Action::Select(_, values) => {
@@ -2781,13 +2908,6 @@ impl<'s, E: Env> Tab<'s, E> {
             && !doc.dom.ancestors(node).any(|a| a == modal)
         {
             return Err(not(Reason::Inert));
-        }
-        if matches!(action, Action::Select(..))
-            && !doc.dom.get(node).is_some_and(|n| n.is_html("select"))
-        {
-            return Err(ActionError::Unsupported(format!(
-                "select on {r}, which is not a <select> (click its options instead)"
-            )));
         }
         Ok(())
     }

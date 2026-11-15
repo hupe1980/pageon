@@ -889,6 +889,10 @@ pub mod html_or_svg_or_math_ml_element {
         if n.attr("tabindex").and_then(crate::cv::parse_int).is_some() {
             return true;
         }
+        // An editing host takes focus.
+        if crate::dom::editing::editing_host(&dom, id) == Some(id) {
+            return true;
+        }
         ((n.is_html("a") || n.is_html("area")) && n.attr("href").is_some())
             || (["button", "input", "select", "textarea", "iframe", "summary"]
                 .iter()

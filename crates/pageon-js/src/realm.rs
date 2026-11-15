@@ -177,8 +177,10 @@ pub struct EventData {
     pub message: Option<Box<(String, String, Option<crate::cv::Obj>)>>,
     /// `CloseEvent`: wasClean, code, reason.
     pub close: Option<Box<(bool, u16, String)>>,
-    /// `DragEvent`: its `DataTransfer` (slab id).
+    /// `DragEvent`, `ClipboardEvent`, `InputEvent`: its `DataTransfer` (slab id).
     pub drag: Option<u32>,
+    /// `InputEvent.getTargetRanges()`.
+    pub ranges: Vec<(pageon_dom::Boundary, pageon_dom::Boundary)>,
     /// `InputEvent`: `inputType`, `data`, `isComposing`.
     pub input_kind: Option<Box<(String, Option<String>, bool)>>,
 }
@@ -307,6 +309,16 @@ pub enum Slot {
     CryptoKey(Box<crate::dom::subtle::Key>),
     /// A `MessagePort` of a `MessageChannel`.
     Port(Box<crate::dom::basics::Port>),
+    /// A `Range`: a live range of the document.
+    Range(pageon_dom::RangeId),
+    /// A `StaticRange`.
+    StaticRange(pageon_dom::Boundary, pageon_dom::Boundary),
+    /// The document's `Selection`.
+    Selection,
+    /// A `CaretPosition`: node and offset.
+    CaretPosition(NodeId, u32),
+    /// `navigator.clipboard`.
+    Clipboard,
     /// A `MessageChannel`: its two ports.
     Channel(u32, u32),
     /// A `PerformanceMark` or `PerformanceMeasure`.
@@ -515,6 +527,12 @@ pub struct State {
     pub perf_observers: Vec<u32>,
     /// `NodeIterator`s (slab ids), adjusted when nodes are removed.
     pub iterators: Vec<u32>,
+    /// The `Range` object of the selection's range, once a script asked for it.
+    pub sel_obj: Option<(pageon_dom::RangeId, u32)>,
+    /// Text controls whose selection changed (`selectionchange` at them).
+    pub control_sel: Vec<NodeId>,
+    /// Values the vault filled into this page: never put on the clipboard.
+    pub vault_values: Vec<String>,
     /// The modifier keys held during the current input action.
     pub mods: crate::dom::input::Mods,
     /// The mouse button of the current input action.
@@ -627,6 +645,10 @@ pub struct Shared {
     pub streams: crate::dom::realtime::Streams,
     /// Messages for `MessagePort`s (realm, port, data), in posting order.
     pub port_mail: std::collections::VecDeque<(usize, u32, Value)>,
+    /// The session clipboard, as this page holds it.
+    pub clipboard: Option<crate::dom::editing::Clip>,
+    /// The page changed the clipboard (copy, cut, `writeText`) since the last action.
+    pub clipboard_changed: bool,
     /// Inserted scripts and dynamic imports, run before other tasks.
     pub scripts: std::collections::VecDeque<crate::modules::ScriptJob>,
     /// Virtual time in ms since the Unix epoch.

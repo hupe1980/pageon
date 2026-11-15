@@ -402,6 +402,9 @@ impl Engine {
                 timing: Vec::new(),
                 perf_observers: Vec::new(),
                 iterators: Vec::new(),
+                sel_obj: None,
+                control_sel: Vec::new(),
+                vault_values: Vec::new(),
                 button: Default::default(),
                 click_count: 0,
                 drag: None,
@@ -1298,6 +1301,72 @@ impl Engine {
         let _ = self.input(realm, "fill", |cx| crate::dom::input::fill(cx, node, value));
     }
 
+    /// Fills a value from the vault (see [`crate::dom::input::fill_secret`]).
+    pub fn fill_secret(&mut self, realm: usize, node: NodeId, value: &str) {
+        self.activate(realm);
+        let _ = self.input(realm, "fill", |cx| {
+            crate::dom::input::fill_secret(cx, node, value)
+        });
+    }
+
+    /// Gives the page the session clipboard (before an action).
+    pub fn set_clipboard(&mut self, clip: Option<crate::dom::editing::Clip>) {
+        let mut sh = self.shared.borrow_mut();
+        sh.clipboard = clip;
+        sh.clipboard_changed = false;
+    }
+
+    /// What the page put on the clipboard since [`Engine::set_clipboard`], if it changed it.
+    pub fn take_clipboard(&mut self) -> Option<Option<crate::dom::editing::Clip>> {
+        let mut sh = self.shared.borrow_mut();
+        std::mem::take(&mut sh.clipboard_changed).then(|| sh.clipboard.clone())
+    }
+
+    /// Selects `text` in an element (see [`crate::dom::input::select_text`]); `false` when it
+    /// is not there.
+    pub fn select_text(&mut self, realm: usize, node: NodeId, text: &str) -> bool {
+        self.activate(realm);
+        self.input(realm, "select", |cx| {
+            crate::dom::input::select_text(cx, node, text)
+        })
+        .unwrap_or(false)
+    }
+
+    /// Pastes `text` (put on the clipboard first) into `node` at the end of its content, or
+    /// into the focused element; `false` when nothing editable takes it.
+    pub fn paste(&mut self, realm: usize, node: Option<NodeId>, text: &str) -> bool {
+        self.activate(realm);
+        self.input(realm, "paste", |cx| {
+            if let Some(n) = node {
+                crate::dom::event_target::move_focus(cx, Some(n))?;
+                crate::dom::editing::caret_to_end(cx, n)?;
+            }
+            let focused = cx.st().focused;
+            let editable = focused.is_some_and(|f| crate::dom::input::editable(cx, f).is_some());
+            crate::dom::input::paste_text(cx, text)?;
+            Ok(editable)
+        })
+        .unwrap_or(false)
+    }
+
+    /// Whether `node` is a `<select>`.
+    pub fn is_select(&self, realm: usize, node: NodeId) -> bool {
+        self.realm(realm).is_some_and(|r| {
+            r.dom
+                .borrow()
+                .get(node)
+                .is_some_and(|n| n.is_html("select"))
+        })
+    }
+
+    /// The start of an element's text, at most `max` characters.
+    pub fn text_start(&self, realm: usize, node: NodeId, max: usize) -> String {
+        self.realm(realm).map_or_else(String::new, |r| {
+            let t = r.dom.borrow().text(node);
+            pageon_agent_text(&t, max)
+        })
+    }
+
     /// The focused element of a realm, if any.
     pub fn focused(&self, realm: usize) -> Option<NodeId> {
         self.realm(realm).and_then(|r| r.st.borrow().focused)
@@ -1772,6 +1841,7 @@ fn notify_observers(cx: &mut Cx<'_, '_, '_>) {
         let media = crate::dom::platform::deliver_media(cx);
         let resized = crate::dom::platform::deliver_resize(cx, resize_pass);
         let timed = crate::dom::timing::deliver(cx);
+        let selected = crate::dom::selecting::deliver(cx);
         if matches!(resized, Ok(true)) {
             resize_pass += 1;
         }
@@ -1781,6 +1851,7 @@ fn notify_observers(cx: &mut Cx<'_, '_, '_>) {
             || matches!(intersections, Ok(true))
             || matches!(media, Ok(true))
             || matches!(timed, Ok(true))
+            || matches!(selected, Ok(true))
             || matches!(resized, Ok(true));
         if !ran || cx.scope.is_execution_terminating() {
             break;
@@ -1832,4 +1903,15 @@ fn hide(
     if let Some(proto) = proto {
         let _ = proto.delete(scope, m.into());
     }
+}
+
+/// Whitespace-collapsed text cut at `max` characters (`…` when cut).
+fn pageon_agent_text(t: &str, max: usize) -> String {
+    let t = t.split_whitespace().collect::<Vec<_>>().join(" ");
+    if t.chars().count() <= max {
+        return t;
+    }
+    let mut s: String = t.chars().take(max.saturating_sub(1)).collect();
+    s.push('…');
+    s
 }

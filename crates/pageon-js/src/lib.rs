@@ -19,6 +19,7 @@ mod select;
 mod serialize;
 mod streams;
 
+pub use dom::editing::Clip;
 pub use dom::input::{Button, ClickKind, DragKind, Dragged, Mods, chord, key_name};
 pub use dom::scroll::{Amount, Scroller, Wheeled};
 pub use dom::session::{HistoryOp, State as SavedState};

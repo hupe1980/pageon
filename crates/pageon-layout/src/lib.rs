@@ -20,6 +20,7 @@
 //! ```
 
 mod actionability;
+mod caret;
 mod fonts;
 mod images;
 mod media;

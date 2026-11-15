@@ -386,4 +386,24 @@ pub mod input_event {
     pub fn get_is_composing(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<bool> {
         Ok(kind(cx, this)?.2)
     }
+
+    pub fn get_data_transfer(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<Option<Obj>> {
+        crate::dom::editing::event_transfer(cx, this)
+    }
+
+    /// `getTargetRanges()`: what a `beforeinput` would change, as static ranges.
+    pub fn get_target_ranges(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<Vec<Obj>> {
+        let Obj::Slab(id) = this else {
+            return Err(Error::Type("Illegal invocation".into()));
+        };
+        let ranges = match cx.st().slot(id) {
+            Some(Slot::Event(e)) if e.dispatching && e.ty == "beforeinput" => e.ranges.clone(),
+            Some(Slot::Event(_)) => Vec::new(),
+            _ => return Err(Error::Type("Illegal invocation".into())),
+        };
+        Ok(ranges
+            .into_iter()
+            .map(|(s, e)| crate::dom::ranges::new_static(cx, s, e))
+            .collect())
+    }
 }

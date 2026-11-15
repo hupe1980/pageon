@@ -272,7 +272,7 @@ pub struct Dom {
     controls: std::collections::HashMap<NodeId, ControlState>,
     /// Whether changes are logged (while a `MutationObserver` exists).
     pub(crate) observing: bool,
-    mutations: Vec<Mutation>,
+    pub(crate) mutations: Vec<Mutation>,
     /// Hosts and their shadow roots.
     pub(crate) shadow: std::collections::HashMap<NodeId, NodeId>,
     /// In a composed tree: each shadow-tree node's original shadow root.
@@ -281,6 +281,8 @@ pub struct Dom {
     pub(crate) internals: std::collections::HashMap<NodeId, crate::forms::Internals>,
     /// Adopted stylesheets of the document or a shadow root: CSS texts in order.
     pub(crate) adopted: std::collections::HashMap<NodeId, Vec<String>>,
+    /// Live ranges and the selection (see [`crate::ranges`]).
+    pub(crate) ranges: crate::ranges::Ranges,
 }
 
 /// A change to the tree, logged for `MutationObserver` while [`Dom::set_observing`] is on.
@@ -328,8 +330,11 @@ pub struct ControlState {
     pub checked: Option<bool>,
     /// The current selectedness (`option`).
     pub selected: Option<bool>,
-    /// The whole value is selected (`select()`): the next keystroke replaces it.
-    pub all_selected: bool,
+    /// The selection in the value: start, end (UTF-16) and direction; `None` is a caret at
+    /// the end.
+    pub selection: Option<(u32, u32, crate::Direction)>,
+    /// The value came from the vault: it is never copied or cut.
+    pub from_vault: bool,
     /// The custom validity message (`setCustomValidity`); empty or `None`: no custom error.
     pub custom_error: Option<String>,
     /// The value was last changed by a user action (`tooLong`/`tooShort` apply only then).
@@ -363,6 +368,7 @@ impl Dom {
             scopes: std::collections::HashMap::new(),
             internals: std::collections::HashMap::new(),
             adopted: std::collections::HashMap::new(),
+            ranges: crate::ranges::Ranges::default(),
         };
         dom.root = dom.create(NodeData::Document);
         dom
@@ -499,6 +505,7 @@ impl Dom {
             (n.parent, n.prev_sibling, n.next_sibling)
         };
         let Some(parent) = parent else { return Ok(()) };
+        self.ranges_before_remove(id, parent);
         if self.observing {
             self.mutations.push(Mutation::ChildList {
                 target: parent,
@@ -541,6 +548,7 @@ impl Dom {
             None => self.node_mut(parent)?.first_child = Some(child),
         }
         self.node_mut(parent)?.last_child = Some(child);
+        self.ranges_after_insert(child);
         if self.observing {
             self.mutations.push(Mutation::ChildList {
                 target: parent,
@@ -582,6 +590,7 @@ impl Dom {
             Some(p) => self.node_mut(p)?.next_sibling = Some(child),
             None => self.node_mut(parent)?.first_child = Some(child),
         }
+        self.ranges_after_insert(child);
         if self.observing {
             self.mutations.push(Mutation::ChildList {
                 target: parent,
@@ -623,6 +632,7 @@ impl Dom {
                 stack.push(t);
             }
         }
+        self.ranges_after_free();
         Ok(())
     }
 
@@ -670,21 +680,10 @@ impl Dom {
         Ok(())
     }
 
-    /// Replaces a text or comment node's data.
+    /// Replaces a text or comment node's data (DOM's replace data over the whole node).
     pub fn set_text(&mut self, id: NodeId, text: &str) -> Result<(), DomError> {
-        let old = match &mut self.node_mut(id)?.data {
-            NodeData::Text(t) | NodeData::Comment(t) => {
-                Some(std::mem::replace(t, text.to_string()))
-            }
-            _ => None,
-        };
-        if self.observing
-            && let Some(old) = old
-        {
-            self.mutations
-                .push(Mutation::CharacterData { target: id, old });
-        }
-        Ok(())
+        let len = self.node_length(id);
+        self.replace_data(id, 0, len, text)
     }
 
     /// Starts or stops logging changes (for `MutationObserver`); stopping drops the log.

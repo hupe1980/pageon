@@ -1082,10 +1082,18 @@ fn tools() -> Vec<Value> {
         ),
         tool(
             "browser_select",
-            "Select options",
-            "Select options of a <select> by value or label.",
+            "Select options or text",
+            "Select options of a <select> by value or label; on any other element, select that text in it (one value), e.g. to replace or format it.",
             json!({"ref": r, "values": {"type": "array", "items": {"type": "string"}, "minItems": 1}}),
             &["ref", "values"],
+            act.clone(),
+        ),
+        tool(
+            "browser_paste",
+            "Paste",
+            "Paste text into an editable element at the end of its content, or into the focused one at the caret (the page gets a paste event, as from Ctrl+V).",
+            json!({"ref": r, "text": {"type": "string"}}),
+            &["text"],
             act.clone(),
         ),
         tool(
@@ -1237,6 +1245,7 @@ pub(crate) fn kind_of(e: &ActionError) -> &'static str {
         ActionError::StaleRef(_) => "stale_ref",
         ActionError::NotActionable { .. } => "not_actionable",
         ActionError::NoSuchOption { .. } => "no_such_option",
+        ActionError::NoSuchText { .. } => "no_such_text",
         ActionError::Navigation(_) => "navigation",
         ActionError::Unsupported(m) if m.starts_with("no page is open") => "no_page",
         ActionError::Unsupported(_) => "unsupported",
@@ -1967,6 +1976,10 @@ fn call_tool(
             vec![Action::Upload(s("ref")?, files)]
         }
         "browser_press" => vec![Action::Press(s("key")?)],
+        "browser_paste" => vec![Action::Paste(
+            args.get("ref").and_then(Value::as_str).map(str::to_string),
+            s("text")?,
+        )],
         "browser_select" => {
             let values: Vec<String> = args
                 .get("values")

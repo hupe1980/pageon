@@ -1,0 +1,13 @@
+<!doctype html><meta charset=utf-8><title>ProseMirror</title>
+<div id=editor></div><pre id=out></pre>
+<script src=/pm.min.js></script>
+<script>
+const { EditorState, EditorView, schema, exampleSetup } = PM;
+const show = state => out.textContent = JSON.stringify(state.doc.toJSON());
+window.view = new EditorView(editor, {
+  state: EditorState.create({ schema, plugins: exampleSetup({ schema, menuBar: false }) }),
+  attributes: { 'aria-label': 'Comment' },
+  dispatchTransaction(tr) { const s = view.state.apply(tr); view.updateState(s); show(s); },
+});
+show(view.state);
+</script>

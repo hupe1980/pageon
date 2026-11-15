@@ -547,6 +547,29 @@ pub fn error_value<'s>(cx: &mut Cx<'_, 's, '_>, e: Error) -> Option<v8::Local<'s
     })
 }
 
+thread_local! {
+    /// Host functions running (called from script): script is on the stack.
+    static HOST_DEPTH: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+}
+
+/// Whether script is on the stack (a host function called from it is running).
+pub(crate) fn script_running() -> bool {
+    HOST_DEPTH.with(|d| d.get() > 0)
+}
+
+/// HTML's "clean up after running script": with no script on the stack, the microtasks run
+/// and mutation observers hear of changes (between the listeners of an event the engine
+/// dispatches, as between a person's keystrokes).
+pub(crate) fn clean_up(cx: &mut Cx<'_, '_, '_>) {
+    if script_running() || cx.scope.is_execution_terminating() {
+        return;
+    }
+    cx.scope.perform_microtask_checkpoint();
+    if matches!(crate::dom::observers::deliver(cx), Ok(true)) {
+        cx.scope.perform_microtask_checkpoint();
+    }
+}
+
 /// Runs a generated callback body: builds the context, converts the result or throws.
 pub fn call<F>(
     scope: &mut v8::PinScope,
@@ -567,7 +590,9 @@ pub fn call<F>(
     };
     // A bug in a binding must never unwind into V8 (that aborts the process): it becomes a
     // `TypeError` for the page and a recorded page error.
+    HOST_DEPTH.with(|d| d.set(d.get() + 1));
     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| f(&mut cx, args)));
+    HOST_DEPTH.with(|d| d.set(d.get().saturating_sub(1)));
     let result = result.unwrap_or_else(|p| {
         let why = p
             .downcast_ref::<&str>()

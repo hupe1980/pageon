@@ -9,6 +9,7 @@ mod collections;
 pub(crate) mod custom_elements;
 pub mod dnd;
 mod documents;
+pub(crate) mod editing;
 mod elements;
 mod events;
 mod globals;
@@ -20,8 +21,10 @@ pub(crate) mod net;
 mod nodes;
 pub(crate) mod observers;
 pub(crate) mod platform;
+pub(crate) mod ranges;
 pub mod realtime;
 pub(crate) mod scroll;
+pub(crate) mod selecting;
 pub(crate) mod session;
 pub(crate) mod shadow;
 pub(crate) mod sheets;
@@ -87,12 +90,15 @@ pub use basics::{
 };
 pub use blobs::{blob, file, file_list, file_reader};
 pub use dnd::{data_transfer, data_transfer_item, data_transfer_item_list};
+pub use editing::{clipboard, clipboard_event, element_content_editable, navigator};
 pub use internals::{aria_mixin, custom_state_set, element_internals};
 pub use net::{
     abort_controller, abort_signal, body, headers, progress_event, request, response,
     xml_http_request,
 };
+pub use ranges::{abstract_range, caret_position, range, static_range};
 pub use realtime::{close_event, event_source, web_socket};
+pub use selecting::selection;
 pub use sheets::css_style_sheet;
 pub use subtle::{crypto_key, subtle_crypto};
 pub use timing::{

@@ -6,6 +6,18 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Editing: selection and live ranges, `contenteditable` editing through `beforeinput`, text
+  selection in fields, and the clipboard (one per session, never the host's). ProseMirror,
+  Lexical and Quill take typing, formatting shortcuts and paste.
+- `select REF TEXT` selects text in any element; `paste` pastes; outcomes report what an action
+  copied.
+
+### Changed
+
+- `type REF` into an editor types over its content key by key instead of replacing it.
+
 ## [0.2.0]
 
 ### Added

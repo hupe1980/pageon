@@ -12,6 +12,8 @@ use crate::cv::{self, Cx, NodeOrString, Obj, R, Value};
 pub enum Iface {
     /// `AbortController`.
     AbortController,
+    /// `AbstractRange`.
+    AbstractRange,
     /// `Blob`.
     Blob,
     /// `CSS`.
@@ -22,6 +24,8 @@ pub enum Iface {
     CSSStyleProperties,
     /// `CanvasRenderingContext2D`.
     CanvasRenderingContext2D,
+    /// `CaretPosition`.
+    CaretPosition,
     /// `Crypto`.
     Crypto,
     /// `CryptoKey`.
@@ -128,6 +132,8 @@ pub enum Iface {
     PopStateEvent,
     /// `ProgressEvent`.
     ProgressEvent,
+    /// `Range`.
+    Range,
     /// `Request`.
     Request,
     /// `ResizeObserver`.
@@ -140,6 +146,10 @@ pub enum Iface {
     Response,
     /// `Screen`.
     Screen,
+    /// `Selection`.
+    Selection,
+    /// `StaticRange`.
+    StaticRange,
     /// `Storage`.
     Storage,
     /// `StyleSheet`.
@@ -180,6 +190,10 @@ pub enum Iface {
     CSSStyleSheet,
     /// `CharacterData`.
     CharacterData,
+    /// `Clipboard`.
+    Clipboard,
+    /// `ClipboardEvent`.
+    ClipboardEvent,
     /// `CloseEvent`.
     CloseEvent,
     /// `Comment`.
@@ -370,17 +384,19 @@ pub enum Iface {
 
 impl Iface {
     /// All interfaces.
-    pub const ALL: &'static [Iface] = &[Iface::AbortController, Iface::Blob, Iface::CSS, Iface::CSSStyleDeclaration, Iface::CSSStyleProperties, Iface::CanvasRenderingContext2D, Iface::Crypto, Iface::CryptoKey, Iface::CustomElementRegistry, Iface::CustomStateSet, Iface::DOMException, Iface::DOMImplementation, Iface::DOMParser, Iface::DOMRectList, Iface::DOMRectReadOnly, Iface::DOMStringMap, Iface::DOMTokenList, Iface::DataTransfer, Iface::DataTransferItem, Iface::DataTransferItemList, Iface::ElementInternals, Iface::Event, Iface::EventTarget, Iface::File, Iface::FileList, Iface::FileReader, Iface::FormData, Iface::HTMLCollection, Iface::HTMLFormControlsCollection, Iface::HTMLOptionsCollection, Iface::Headers, Iface::History, Iface::IdleDeadline, Iface::IntersectionObserver, Iface::IntersectionObserverEntry, Iface::Location, Iface::MediaQueryList, Iface::MediaQueryListEvent, Iface::MessageChannel, Iface::MessageEvent, Iface::MessagePort, Iface::ModelContext, Iface::MutationObserver, Iface::MutationRecord, Iface::NamedNodeMap, Iface::Navigator, Iface::NavigatorUAData, Iface::Node, Iface::NodeFilter, Iface::NodeIterator, Iface::NodeList, Iface::Performance, Iface::PerformanceEntry, Iface::PerformanceMark, Iface::PerformanceMeasure, Iface::PerformanceObserver, Iface::PerformanceObserverEntryList, Iface::PopStateEvent, Iface::ProgressEvent, Iface::Request, Iface::ResizeObserver, Iface::ResizeObserverEntry, Iface::ResizeObserverSize, Iface::Response, Iface::Screen, Iface::Storage, Iface::StyleSheet, Iface::SubtleCrypto, Iface::TextDecoder, Iface::TextEncoder, Iface::TreeWalker, Iface::UIEvent, Iface::URL, Iface::URLSearchParams, Iface::ValidityState, Iface::VisualViewport, Iface::WebSocket, Iface::Window, Iface::XMLHttpRequestEventTarget, Iface::XMLSerializer, Iface::console, Iface::AbortSignal, Iface::Attr, Iface::CSSStyleSheet, Iface::CharacterData, Iface::CloseEvent, Iface::Comment, Iface::CustomEvent, Iface::DOMRect, Iface::Document, Iface::DocumentFragment, Iface::DocumentType, Iface::Element, Iface::EventSource, Iface::FocusEvent, Iface::HTMLElement, Iface::HTMLEmbedElement, Iface::HTMLFieldSetElement, Iface::HTMLFontElement, Iface::HTMLFormElement, Iface::HTMLFrameElement, Iface::HTMLFrameSetElement, Iface::HTMLHRElement, Iface::HTMLHeadElement, Iface::HTMLHeadingElement, Iface::HTMLHtmlElement, Iface::HTMLIFrameElement, Iface::HTMLImageElement, Iface::HTMLInputElement, Iface::HTMLLIElement, Iface::HTMLLabelElement, Iface::HTMLLegendElement, Iface::HTMLLinkElement, Iface::HTMLMapElement, Iface::HTMLMarqueeElement, Iface::HTMLMediaElement, Iface::HTMLMenuElement, Iface::HTMLMetaElement, Iface::HTMLMeterElement, Iface::HTMLModElement, Iface::HTMLOListElement, Iface::HTMLObjectElement, Iface::HTMLOptGroupElement, Iface::HTMLOptionElement, Iface::HTMLOutputElement, Iface::HTMLParagraphElement, Iface::HTMLParamElement, Iface::HTMLPictureElement, Iface::HTMLPreElement, Iface::HTMLProgressElement, Iface::HTMLQuoteElement, Iface::HTMLScriptElement, Iface::HTMLSelectElement, Iface::HTMLSelectedContentElement, Iface::HTMLSlotElement, Iface::HTMLSourceElement, Iface::HTMLSpanElement, Iface::HTMLStyleElement, Iface::HTMLTableCaptionElement, Iface::HTMLTableCellElement, Iface::HTMLTableColElement, Iface::HTMLTableElement, Iface::HTMLTableRowElement, Iface::HTMLTableSectionElement, Iface::HTMLTemplateElement, Iface::HTMLTextAreaElement, Iface::HTMLTimeElement, Iface::HTMLTitleElement, Iface::HTMLTrackElement, Iface::HTMLUListElement, Iface::HTMLUnknownElement, Iface::HTMLVideoElement, Iface::InputEvent, Iface::KeyboardEvent, Iface::MouseEvent, Iface::PointerEvent, Iface::SVGElement, Iface::SVGGraphicsElement, Iface::ShadowRoot, Iface::Text, Iface::WheelEvent, Iface::XMLHttpRequest, Iface::DragEvent, Iface::HTMLAnchorElement, Iface::HTMLAreaElement, Iface::HTMLAudioElement, Iface::HTMLBRElement, Iface::HTMLBaseElement, Iface::HTMLBodyElement, Iface::HTMLButtonElement, Iface::HTMLCanvasElement, Iface::HTMLDListElement, Iface::HTMLDataElement, Iface::HTMLDataListElement, Iface::HTMLDetailsElement, Iface::HTMLDialogElement, Iface::HTMLDirectoryElement, Iface::HTMLDivElement];
+    pub const ALL: &'static [Iface] = &[Iface::AbortController, Iface::AbstractRange, Iface::Blob, Iface::CSS, Iface::CSSStyleDeclaration, Iface::CSSStyleProperties, Iface::CanvasRenderingContext2D, Iface::CaretPosition, Iface::Crypto, Iface::CryptoKey, Iface::CustomElementRegistry, Iface::CustomStateSet, Iface::DOMException, Iface::DOMImplementation, Iface::DOMParser, Iface::DOMRectList, Iface::DOMRectReadOnly, Iface::DOMStringMap, Iface::DOMTokenList, Iface::DataTransfer, Iface::DataTransferItem, Iface::DataTransferItemList, Iface::ElementInternals, Iface::Event, Iface::EventTarget, Iface::File, Iface::FileList, Iface::FileReader, Iface::FormData, Iface::HTMLCollection, Iface::HTMLFormControlsCollection, Iface::HTMLOptionsCollection, Iface::Headers, Iface::History, Iface::IdleDeadline, Iface::IntersectionObserver, Iface::IntersectionObserverEntry, Iface::Location, Iface::MediaQueryList, Iface::MediaQueryListEvent, Iface::MessageChannel, Iface::MessageEvent, Iface::MessagePort, Iface::ModelContext, Iface::MutationObserver, Iface::MutationRecord, Iface::NamedNodeMap, Iface::Navigator, Iface::NavigatorUAData, Iface::Node, Iface::NodeFilter, Iface::NodeIterator, Iface::NodeList, Iface::Performance, Iface::PerformanceEntry, Iface::PerformanceMark, Iface::PerformanceMeasure, Iface::PerformanceObserver, Iface::PerformanceObserverEntryList, Iface::PopStateEvent, Iface::ProgressEvent, Iface::Range, Iface::Request, Iface::ResizeObserver, Iface::ResizeObserverEntry, Iface::ResizeObserverSize, Iface::Response, Iface::Screen, Iface::Selection, Iface::StaticRange, Iface::Storage, Iface::StyleSheet, Iface::SubtleCrypto, Iface::TextDecoder, Iface::TextEncoder, Iface::TreeWalker, Iface::UIEvent, Iface::URL, Iface::URLSearchParams, Iface::ValidityState, Iface::VisualViewport, Iface::WebSocket, Iface::Window, Iface::XMLHttpRequestEventTarget, Iface::XMLSerializer, Iface::console, Iface::AbortSignal, Iface::Attr, Iface::CSSStyleSheet, Iface::CharacterData, Iface::Clipboard, Iface::ClipboardEvent, Iface::CloseEvent, Iface::Comment, Iface::CustomEvent, Iface::DOMRect, Iface::Document, Iface::DocumentFragment, Iface::DocumentType, Iface::Element, Iface::EventSource, Iface::FocusEvent, Iface::HTMLElement, Iface::HTMLEmbedElement, Iface::HTMLFieldSetElement, Iface::HTMLFontElement, Iface::HTMLFormElement, Iface::HTMLFrameElement, Iface::HTMLFrameSetElement, Iface::HTMLHRElement, Iface::HTMLHeadElement, Iface::HTMLHeadingElement, Iface::HTMLHtmlElement, Iface::HTMLIFrameElement, Iface::HTMLImageElement, Iface::HTMLInputElement, Iface::HTMLLIElement, Iface::HTMLLabelElement, Iface::HTMLLegendElement, Iface::HTMLLinkElement, Iface::HTMLMapElement, Iface::HTMLMarqueeElement, Iface::HTMLMediaElement, Iface::HTMLMenuElement, Iface::HTMLMetaElement, Iface::HTMLMeterElement, Iface::HTMLModElement, Iface::HTMLOListElement, Iface::HTMLObjectElement, Iface::HTMLOptGroupElement, Iface::HTMLOptionElement, Iface::HTMLOutputElement, Iface::HTMLParagraphElement, Iface::HTMLParamElement, Iface::HTMLPictureElement, Iface::HTMLPreElement, Iface::HTMLProgressElement, Iface::HTMLQuoteElement, Iface::HTMLScriptElement, Iface::HTMLSelectElement, Iface::HTMLSelectedContentElement, Iface::HTMLSlotElement, Iface::HTMLSourceElement, Iface::HTMLSpanElement, Iface::HTMLStyleElement, Iface::HTMLTableCaptionElement, Iface::HTMLTableCellElement, Iface::HTMLTableColElement, Iface::HTMLTableElement, Iface::HTMLTableRowElement, Iface::HTMLTableSectionElement, Iface::HTMLTemplateElement, Iface::HTMLTextAreaElement, Iface::HTMLTimeElement, Iface::HTMLTitleElement, Iface::HTMLTrackElement, Iface::HTMLUListElement, Iface::HTMLUnknownElement, Iface::HTMLVideoElement, Iface::InputEvent, Iface::KeyboardEvent, Iface::MouseEvent, Iface::PointerEvent, Iface::SVGElement, Iface::SVGGraphicsElement, Iface::ShadowRoot, Iface::Text, Iface::WheelEvent, Iface::XMLHttpRequest, Iface::DragEvent, Iface::HTMLAnchorElement, Iface::HTMLAreaElement, Iface::HTMLAudioElement, Iface::HTMLBRElement, Iface::HTMLBaseElement, Iface::HTMLBodyElement, Iface::HTMLButtonElement, Iface::HTMLCanvasElement, Iface::HTMLDListElement, Iface::HTMLDataElement, Iface::HTMLDataListElement, Iface::HTMLDetailsElement, Iface::HTMLDialogElement, Iface::HTMLDirectoryElement, Iface::HTMLDivElement];
 
     /// The interface name.
     pub fn name(self) -> &'static str {
         match self {
             Iface::AbortController => "AbortController",
+            Iface::AbstractRange => "AbstractRange",
             Iface::Blob => "Blob",
             Iface::CSS => "CSS",
             Iface::CSSStyleDeclaration => "CSSStyleDeclaration",
             Iface::CSSStyleProperties => "CSSStyleProperties",
             Iface::CanvasRenderingContext2D => "CanvasRenderingContext2D",
+            Iface::CaretPosition => "CaretPosition",
             Iface::Crypto => "Crypto",
             Iface::CryptoKey => "CryptoKey",
             Iface::CustomElementRegistry => "CustomElementRegistry",
@@ -434,12 +450,15 @@ impl Iface {
             Iface::PerformanceObserverEntryList => "PerformanceObserverEntryList",
             Iface::PopStateEvent => "PopStateEvent",
             Iface::ProgressEvent => "ProgressEvent",
+            Iface::Range => "Range",
             Iface::Request => "Request",
             Iface::ResizeObserver => "ResizeObserver",
             Iface::ResizeObserverEntry => "ResizeObserverEntry",
             Iface::ResizeObserverSize => "ResizeObserverSize",
             Iface::Response => "Response",
             Iface::Screen => "Screen",
+            Iface::Selection => "Selection",
+            Iface::StaticRange => "StaticRange",
             Iface::Storage => "Storage",
             Iface::StyleSheet => "StyleSheet",
             Iface::SubtleCrypto => "SubtleCrypto",
@@ -460,6 +479,8 @@ impl Iface {
             Iface::Attr => "Attr",
             Iface::CSSStyleSheet => "CSSStyleSheet",
             Iface::CharacterData => "CharacterData",
+            Iface::Clipboard => "Clipboard",
+            Iface::ClipboardEvent => "ClipboardEvent",
             Iface::CloseEvent => "CloseEvent",
             Iface::Comment => "Comment",
             Iface::CustomEvent => "CustomEvent",
@@ -560,11 +581,13 @@ impl Iface {
     pub fn parent(self) -> Option<Iface> {
         match self {
             Iface::AbortController => None,
+            Iface::AbstractRange => None,
             Iface::Blob => None,
             Iface::CSS => None,
             Iface::CSSStyleDeclaration => None,
             Iface::CSSStyleProperties => Some(Iface::CSSStyleDeclaration),
             Iface::CanvasRenderingContext2D => None,
+            Iface::CaretPosition => None,
             Iface::Crypto => None,
             Iface::CryptoKey => None,
             Iface::CustomElementRegistry => None,
@@ -618,12 +641,15 @@ impl Iface {
             Iface::PerformanceObserverEntryList => None,
             Iface::PopStateEvent => Some(Iface::Event),
             Iface::ProgressEvent => Some(Iface::Event),
+            Iface::Range => Some(Iface::AbstractRange),
             Iface::Request => None,
             Iface::ResizeObserver => None,
             Iface::ResizeObserverEntry => None,
             Iface::ResizeObserverSize => None,
             Iface::Response => None,
             Iface::Screen => None,
+            Iface::Selection => None,
+            Iface::StaticRange => Some(Iface::AbstractRange),
             Iface::Storage => None,
             Iface::StyleSheet => None,
             Iface::SubtleCrypto => None,
@@ -644,6 +670,8 @@ impl Iface {
             Iface::Attr => Some(Iface::Node),
             Iface::CSSStyleSheet => Some(Iface::StyleSheet),
             Iface::CharacterData => Some(Iface::Node),
+            Iface::Clipboard => Some(Iface::EventTarget),
+            Iface::ClipboardEvent => Some(Iface::Event),
             Iface::CloseEvent => Some(Iface::Event),
             Iface::Comment => Some(Iface::CharacterData),
             Iface::CustomEvent => Some(Iface::Event),
@@ -785,6 +813,51 @@ fn ctor__AbortController(scope: &mut v8::PinScope, args: v8::FunctionCallbackArg
     cv::call(scope, &args, &mut rv, |cx, args| {
         if args.new_target().is_undefined() { return Err(cv::Error::Type("Failed to construct 'AbortController': Please use the 'new' operator.".into())); }
         let r: Obj = crate::dom::abort_controller::constructor(cx, )?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__AbstractRange__startContainer(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::AbstractRange)?;
+        let r: Obj = crate::dom::abstract_range::get_start_container(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__AbstractRange__startOffset(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::AbstractRange)?;
+        let r: u32 = crate::dom::abstract_range::get_start_offset(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__AbstractRange__endContainer(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::AbstractRange)?;
+        let r: Obj = crate::dom::abstract_range::get_end_container(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__AbstractRange__endOffset(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::AbstractRange)?;
+        let r: u32 = crate::dom::abstract_range::get_end_offset(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__AbstractRange__collapsed(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::AbstractRange)?;
+        let r: bool = crate::dom::abstract_range::get_collapsed(cx, this)?;
         cx.ret(r)
     });
 }
@@ -1366,6 +1439,33 @@ fn op__CanvasRenderingContext2D__arc(scope: &mut v8::PinScope, args: v8::Functio
         let a4: f64 = { let v = args.get(4); cv::float(cx, v, false)? };
         let a5: bool = { let v = args.get(5); if v.is_undefined() { false } else { cv::boolean(cx, v) } };
         let r: () = crate::dom::canvas_path::arc(cx, this, a0, a1, a2, a3, a4, a5)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__CaretPosition__offsetNode(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::CaretPosition)?;
+        let r: Obj = crate::dom::caret_position::get_offset_node(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__CaretPosition__offset(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::CaretPosition)?;
+        let r: u32 = crate::dom::caret_position::get_offset(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__CaretPosition__getClientRect(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::CaretPosition)?;
+        let r: Option<Obj> = crate::dom::caret_position::get_client_rect(cx, this)?;
         cx.ret(r)
     });
 }
@@ -4701,6 +4801,15 @@ fn op__NamedNodeMap__getNamedItemNS(scope: &mut v8::PinScope, args: v8::Function
 }
 
 #[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Navigator__clipboard(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Navigator)?;
+        let r: Obj = crate::dom::navigator::get_clipboard(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
 fn get__Navigator__appCodeName(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::Navigator)?;
@@ -5550,6 +5659,270 @@ fn ctor__ProgressEvent(scope: &mut v8::PinScope, args: v8::FunctionCallbackArgum
 }
 
 #[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Range__commonAncestorContainer(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Range)?;
+        let r: Obj = crate::dom::range::get_common_ancestor_container(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Range__setStart(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Range)?;
+        if args.length() <= 0 { return Err(cv::Error::args("Range.setStart", 0)); }
+        let a0: Obj = { let v = args.get(0); cv::obj(cx, v, Iface::Node)? };
+        if args.length() <= 1 { return Err(cv::Error::args("Range.setStart", 1)); }
+        let a1: u32 = { let v = args.get(1); cv::int::<u32>(cx, v)? };
+        let r: () = crate::dom::range::set_start(cx, this, a0, a1)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Range__setEnd(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Range)?;
+        if args.length() <= 0 { return Err(cv::Error::args("Range.setEnd", 0)); }
+        let a0: Obj = { let v = args.get(0); cv::obj(cx, v, Iface::Node)? };
+        if args.length() <= 1 { return Err(cv::Error::args("Range.setEnd", 1)); }
+        let a1: u32 = { let v = args.get(1); cv::int::<u32>(cx, v)? };
+        let r: () = crate::dom::range::set_end(cx, this, a0, a1)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Range__setStartBefore(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Range)?;
+        if args.length() <= 0 { return Err(cv::Error::args("Range.setStartBefore", 0)); }
+        let a0: Obj = { let v = args.get(0); cv::obj(cx, v, Iface::Node)? };
+        let r: () = crate::dom::range::set_start_before(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Range__setStartAfter(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Range)?;
+        if args.length() <= 0 { return Err(cv::Error::args("Range.setStartAfter", 0)); }
+        let a0: Obj = { let v = args.get(0); cv::obj(cx, v, Iface::Node)? };
+        let r: () = crate::dom::range::set_start_after(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Range__setEndBefore(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Range)?;
+        if args.length() <= 0 { return Err(cv::Error::args("Range.setEndBefore", 0)); }
+        let a0: Obj = { let v = args.get(0); cv::obj(cx, v, Iface::Node)? };
+        let r: () = crate::dom::range::set_end_before(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Range__setEndAfter(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Range)?;
+        if args.length() <= 0 { return Err(cv::Error::args("Range.setEndAfter", 0)); }
+        let a0: Obj = { let v = args.get(0); cv::obj(cx, v, Iface::Node)? };
+        let r: () = crate::dom::range::set_end_after(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Range__collapse(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Range)?;
+        let a0: bool = { let v = args.get(0); if v.is_undefined() { false } else { cv::boolean(cx, v) } };
+        let r: () = crate::dom::range::collapse(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Range__selectNode(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Range)?;
+        if args.length() <= 0 { return Err(cv::Error::args("Range.selectNode", 0)); }
+        let a0: Obj = { let v = args.get(0); cv::obj(cx, v, Iface::Node)? };
+        let r: () = crate::dom::range::select_node(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Range__selectNodeContents(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Range)?;
+        if args.length() <= 0 { return Err(cv::Error::args("Range.selectNodeContents", 0)); }
+        let a0: Obj = { let v = args.get(0); cv::obj(cx, v, Iface::Node)? };
+        let r: () = crate::dom::range::select_node_contents(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Range__compareBoundaryPoints(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Range)?;
+        if args.length() <= 0 { return Err(cv::Error::args("Range.compareBoundaryPoints", 0)); }
+        let a0: u16 = { let v = args.get(0); cv::int::<u16>(cx, v)? };
+        if args.length() <= 1 { return Err(cv::Error::args("Range.compareBoundaryPoints", 1)); }
+        let a1: Obj = { let v = args.get(1); cv::obj(cx, v, Iface::Range)? };
+        let r: i16 = crate::dom::range::compare_boundary_points(cx, this, a0, a1)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Range__deleteContents(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Range)?;
+        let r: () = crate::dom::range::delete_contents(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Range__extractContents(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Range)?;
+        let r: Obj = crate::dom::range::extract_contents(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Range__cloneContents(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Range)?;
+        let r: Obj = crate::dom::range::clone_contents(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Range__insertNode(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Range)?;
+        if args.length() <= 0 { return Err(cv::Error::args("Range.insertNode", 0)); }
+        let a0: Obj = { let v = args.get(0); cv::obj(cx, v, Iface::Node)? };
+        let r: () = crate::dom::range::insert_node(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Range__surroundContents(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Range)?;
+        if args.length() <= 0 { return Err(cv::Error::args("Range.surroundContents", 0)); }
+        let a0: Obj = { let v = args.get(0); cv::obj(cx, v, Iface::Node)? };
+        let r: () = crate::dom::range::surround_contents(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Range__cloneRange(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Range)?;
+        let r: Obj = crate::dom::range::clone_range(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Range__detach(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Range)?;
+        let r: () = crate::dom::range::detach(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Range__isPointInRange(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Range)?;
+        if args.length() <= 0 { return Err(cv::Error::args("Range.isPointInRange", 0)); }
+        let a0: Obj = { let v = args.get(0); cv::obj(cx, v, Iface::Node)? };
+        if args.length() <= 1 { return Err(cv::Error::args("Range.isPointInRange", 1)); }
+        let a1: u32 = { let v = args.get(1); cv::int::<u32>(cx, v)? };
+        let r: bool = crate::dom::range::is_point_in_range(cx, this, a0, a1)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Range__comparePoint(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Range)?;
+        if args.length() <= 0 { return Err(cv::Error::args("Range.comparePoint", 0)); }
+        let a0: Obj = { let v = args.get(0); cv::obj(cx, v, Iface::Node)? };
+        if args.length() <= 1 { return Err(cv::Error::args("Range.comparePoint", 1)); }
+        let a1: u32 = { let v = args.get(1); cv::int::<u32>(cx, v)? };
+        let r: i16 = crate::dom::range::compare_point(cx, this, a0, a1)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Range__intersectsNode(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Range)?;
+        if args.length() <= 0 { return Err(cv::Error::args("Range.intersectsNode", 0)); }
+        let a0: Obj = { let v = args.get(0); cv::obj(cx, v, Iface::Node)? };
+        let r: bool = crate::dom::range::intersects_node(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Range__toString(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Range)?;
+        let r: String = crate::dom::range::to_string(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Range__getClientRects(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Range)?;
+        let r: Obj = crate::dom::range::get_client_rects(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Range__getBoundingClientRect(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Range)?;
+        let r: Obj = crate::dom::range::get_bounding_client_rect(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn ctor__Range(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        if args.new_target().is_undefined() { return Err(cv::Error::Type("Failed to construct 'Range': Please use the 'new' operator.".into())); }
+        let r: Obj = crate::dom::range::constructor(cx, )?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
 fn get__Request__method(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::Request)?;
@@ -6028,6 +6401,264 @@ fn get__Screen__pixelDepth(scope: &mut v8::PinScope, args: v8::FunctionCallbackA
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::Screen)?;
         let r: u32 = crate::dom::screen::get_pixel_depth(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Selection__anchorNode(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Selection)?;
+        let r: Option<Obj> = crate::dom::selection::get_anchor_node(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Selection__anchorOffset(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Selection)?;
+        let r: u32 = crate::dom::selection::get_anchor_offset(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Selection__focusNode(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Selection)?;
+        let r: Option<Obj> = crate::dom::selection::get_focus_node(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Selection__focusOffset(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Selection)?;
+        let r: u32 = crate::dom::selection::get_focus_offset(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Selection__isCollapsed(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Selection)?;
+        let r: bool = crate::dom::selection::get_is_collapsed(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Selection__rangeCount(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Selection)?;
+        let r: u32 = crate::dom::selection::get_range_count(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Selection__type(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Selection)?;
+        let r: String = crate::dom::selection::get_type_(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Selection__direction(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Selection)?;
+        let r: String = crate::dom::selection::get_direction(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Selection__getRangeAt(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Selection)?;
+        if args.length() <= 0 { return Err(cv::Error::args("Selection.getRangeAt", 0)); }
+        let a0: u32 = { let v = args.get(0); cv::int::<u32>(cx, v)? };
+        let r: Obj = crate::dom::selection::get_range_at(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Selection__addRange(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Selection)?;
+        if args.length() <= 0 { return Err(cv::Error::args("Selection.addRange", 0)); }
+        let a0: Obj = { let v = args.get(0); cv::obj(cx, v, Iface::Range)? };
+        let r: () = crate::dom::selection::add_range(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Selection__removeRange(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Selection)?;
+        if args.length() <= 0 { return Err(cv::Error::args("Selection.removeRange", 0)); }
+        let a0: Obj = { let v = args.get(0); cv::obj(cx, v, Iface::Range)? };
+        let r: () = crate::dom::selection::remove_range(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Selection__removeAllRanges(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Selection)?;
+        let r: () = crate::dom::selection::remove_all_ranges(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Selection__empty(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Selection)?;
+        let r: () = crate::dom::selection::empty(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Selection__collapse(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Selection)?;
+        if args.length() <= 0 { return Err(cv::Error::args("Selection.collapse", 0)); }
+        let a0: Option<Obj> = { let v = args.get(0); if v.is_null_or_undefined() { None } else { Some(cv::obj(cx, v, Iface::Node)?) } };
+        let a1: u32 = { let v = args.get(1); if v.is_undefined() { 0 } else { cv::int::<u32>(cx, v)? } };
+        let r: () = crate::dom::selection::collapse(cx, this, a0, a1)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Selection__setPosition(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Selection)?;
+        if args.length() <= 0 { return Err(cv::Error::args("Selection.setPosition", 0)); }
+        let a0: Option<Obj> = { let v = args.get(0); if v.is_null_or_undefined() { None } else { Some(cv::obj(cx, v, Iface::Node)?) } };
+        let a1: u32 = { let v = args.get(1); if v.is_undefined() { 0 } else { cv::int::<u32>(cx, v)? } };
+        let r: () = crate::dom::selection::set_position(cx, this, a0, a1)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Selection__collapseToStart(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Selection)?;
+        let r: () = crate::dom::selection::collapse_to_start(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Selection__collapseToEnd(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Selection)?;
+        let r: () = crate::dom::selection::collapse_to_end(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Selection__extend(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Selection)?;
+        if args.length() <= 0 { return Err(cv::Error::args("Selection.extend", 0)); }
+        let a0: Obj = { let v = args.get(0); cv::obj(cx, v, Iface::Node)? };
+        let a1: u32 = { let v = args.get(1); if v.is_undefined() { 0 } else { cv::int::<u32>(cx, v)? } };
+        let r: () = crate::dom::selection::extend(cx, this, a0, a1)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Selection__setBaseAndExtent(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Selection)?;
+        if args.length() <= 0 { return Err(cv::Error::args("Selection.setBaseAndExtent", 0)); }
+        let a0: Obj = { let v = args.get(0); cv::obj(cx, v, Iface::Node)? };
+        if args.length() <= 1 { return Err(cv::Error::args("Selection.setBaseAndExtent", 1)); }
+        let a1: u32 = { let v = args.get(1); cv::int::<u32>(cx, v)? };
+        if args.length() <= 2 { return Err(cv::Error::args("Selection.setBaseAndExtent", 2)); }
+        let a2: Obj = { let v = args.get(2); cv::obj(cx, v, Iface::Node)? };
+        if args.length() <= 3 { return Err(cv::Error::args("Selection.setBaseAndExtent", 3)); }
+        let a3: u32 = { let v = args.get(3); cv::int::<u32>(cx, v)? };
+        let r: () = crate::dom::selection::set_base_and_extent(cx, this, a0, a1, a2, a3)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Selection__selectAllChildren(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Selection)?;
+        if args.length() <= 0 { return Err(cv::Error::args("Selection.selectAllChildren", 0)); }
+        let a0: Obj = { let v = args.get(0); cv::obj(cx, v, Iface::Node)? };
+        let r: () = crate::dom::selection::select_all_children(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Selection__modify(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Selection)?;
+        let a0: Option<String> = { let v = args.get(0); if v.is_undefined() { None } else { Some(cv::string(cx, v)?) } };
+        let a1: Option<String> = { let v = args.get(1); if v.is_undefined() { None } else { Some(cv::string(cx, v)?) } };
+        let a2: Option<String> = { let v = args.get(2); if v.is_undefined() { None } else { Some(cv::string(cx, v)?) } };
+        let r: () = crate::dom::selection::modify(cx, this, a0, a1, a2)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Selection__deleteFromDocument(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Selection)?;
+        let r: () = crate::dom::selection::delete_from_document(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Selection__containsNode(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Selection)?;
+        if args.length() <= 0 { return Err(cv::Error::args("Selection.containsNode", 0)); }
+        let a0: Obj = { let v = args.get(0); cv::obj(cx, v, Iface::Node)? };
+        let a1: bool = { let v = args.get(1); if v.is_undefined() { false } else { cv::boolean(cx, v) } };
+        let r: bool = crate::dom::selection::contains_node(cx, this, a0, a1)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Selection__toString(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Selection)?;
+        let r: String = crate::dom::selection::to_string(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn ctor__StaticRange(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        if args.new_target().is_undefined() { return Err(cv::Error::Type("Failed to construct 'StaticRange': Please use the 'new' operator.".into())); }
+        if args.length() <= 0 { return Err(cv::Error::args("StaticRange constructor", 0)); }
+        let a0: StaticRangeInit = { let v = args.get(0); dict_static_range_init(cx, v)? };
+        let r: Obj = crate::dom::static_range::constructor(cx, a0)?;
         cx.ret(r)
     });
 }
@@ -7667,6 +8298,15 @@ fn op__Window__cancelIdleCallback(scope: &mut v8::PinScope, args: v8::FunctionCa
         if args.length() <= 0 { return Err(cv::Error::args("Window.cancelIdleCallback", 0)); }
         let a0: u32 = { let v = args.get(0); cv::int::<u32>(cx, v)? };
         let r: () = crate::dom::window::cancel_idle_callback(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Window__getSelection(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = Obj::Window;
+        let r: Option<Obj> = crate::dom::window::get_selection(cx, this)?;
         cx.ret(r)
     });
 }
@@ -9325,6 +9965,44 @@ fn set__Window__onlostpointercapture(scope: &mut v8::PinScope, args: v8::Functio
 }
 
 #[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Window__onselectstart(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = Obj::Window;
+        let r = cv::handler_get(cx, this, "selectstart")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Window__onselectstart(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = Obj::Window;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "selectstart", v)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Window__onselectionchange(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = Obj::Window;
+        let r = cv::handler_get(cx, this, "selectionchange")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Window__onselectionchange(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = Obj::Window;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "selectionchange", v)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
 fn get__Window__onafterprint(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = Obj::Window;
@@ -10406,12 +11084,66 @@ fn get__CharacterData__length(scope: &mut v8::PinScope, args: v8::FunctionCallba
 }
 
 #[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__CharacterData__substringData(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::CharacterData)?;
+        if args.length() <= 0 { return Err(cv::Error::args("CharacterData.substringData", 0)); }
+        let a0: u32 = { let v = args.get(0); cv::int::<u32>(cx, v)? };
+        if args.length() <= 1 { return Err(cv::Error::args("CharacterData.substringData", 1)); }
+        let a1: u32 = { let v = args.get(1); cv::int::<u32>(cx, v)? };
+        let r: String = crate::dom::character_data::substring_data(cx, this, a0, a1)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
 fn op__CharacterData__appendData(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::CharacterData)?;
         if args.length() <= 0 { return Err(cv::Error::args("CharacterData.appendData", 0)); }
         let a0: String = { let v = args.get(0); cv::string(cx, v)? };
         let r: () = crate::dom::character_data::append_data(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__CharacterData__insertData(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::CharacterData)?;
+        if args.length() <= 0 { return Err(cv::Error::args("CharacterData.insertData", 0)); }
+        let a0: u32 = { let v = args.get(0); cv::int::<u32>(cx, v)? };
+        if args.length() <= 1 { return Err(cv::Error::args("CharacterData.insertData", 1)); }
+        let a1: String = { let v = args.get(1); cv::string(cx, v)? };
+        let r: () = crate::dom::character_data::insert_data(cx, this, a0, a1)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__CharacterData__deleteData(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::CharacterData)?;
+        if args.length() <= 0 { return Err(cv::Error::args("CharacterData.deleteData", 0)); }
+        let a0: u32 = { let v = args.get(0); cv::int::<u32>(cx, v)? };
+        if args.length() <= 1 { return Err(cv::Error::args("CharacterData.deleteData", 1)); }
+        let a1: u32 = { let v = args.get(1); cv::int::<u32>(cx, v)? };
+        let r: () = crate::dom::character_data::delete_data(cx, this, a0, a1)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__CharacterData__replaceData(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::CharacterData)?;
+        if args.length() <= 0 { return Err(cv::Error::args("CharacterData.replaceData", 0)); }
+        let a0: u32 = { let v = args.get(0); cv::int::<u32>(cx, v)? };
+        if args.length() <= 1 { return Err(cv::Error::args("CharacterData.replaceData", 1)); }
+        let a1: u32 = { let v = args.get(1); cv::int::<u32>(cx, v)? };
+        if args.length() <= 2 { return Err(cv::Error::args("CharacterData.replaceData", 2)); }
+        let a2: String = { let v = args.get(2); cv::string(cx, v)? };
+        let r: () = crate::dom::character_data::replace_data(cx, this, a0, a1, a2)?;
         cx.ret(r)
     });
 }
@@ -10472,6 +11204,47 @@ fn op__CharacterData__remove(scope: &mut v8::PinScope, args: v8::FunctionCallbac
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::CharacterData)?;
         let r: () = crate::dom::child_node::remove(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Clipboard__readText(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Clipboard)?;
+        let r: Value = crate::dom::clipboard::read_text(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Clipboard__writeText(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Clipboard)?;
+        if args.length() <= 0 { return Err(cv::Error::args("Clipboard.writeText", 0)); }
+        let a0: String = { let v = args.get(0); cv::string(cx, v)? };
+        let r: Value = crate::dom::clipboard::write_text(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ClipboardEvent__clipboardData(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ClipboardEvent)?;
+        let r: Option<Obj> = crate::dom::clipboard_event::get_clipboard_data(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn ctor__ClipboardEvent(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        if args.new_target().is_undefined() { return Err(cv::Error::Type("Failed to construct 'ClipboardEvent': Please use the 'new' operator.".into())); }
+        if args.length() <= 0 { return Err(cv::Error::args("ClipboardEvent constructor", 0)); }
+        let a0: String = { let v = args.get(0); cv::string(cx, v)? };
+        let a1: ClipboardEventInit = { let v = args.get(1); if v.is_undefined() { ClipboardEventInit::default() } else { dict_clipboard_event_init(cx, v)? } };
+        let r: Obj = crate::dom::clipboard_event::constructor(cx, a0, a1)?;
         cx.ret(r)
     });
 }
@@ -10777,6 +11550,15 @@ fn op__Document__createEvent(scope: &mut v8::PinScope, args: v8::FunctionCallbac
 }
 
 #[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Document__createRange(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Document)?;
+        let r: Obj = crate::dom::document::create_range(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
 fn op__Document__createNodeIterator(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::Document)?;
@@ -10824,6 +11606,20 @@ fn op__Document__elementsFromPoint(scope: &mut v8::PinScope, args: v8::FunctionC
         if args.length() <= 1 { return Err(cv::Error::args("Document.elementsFromPoint", 1)); }
         let a1: f64 = { let v = args.get(1); cv::float(cx, v, true)? };
         let r: Vec<Obj> = crate::dom::document::elements_from_point(cx, this, a0, a1)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Document__caretPositionFromPoint(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Document)?;
+        if args.length() <= 0 { return Err(cv::Error::args("Document.caretPositionFromPoint", 0)); }
+        let a0: f64 = { let v = args.get(0); cv::float(cx, v, true)? };
+        if args.length() <= 1 { return Err(cv::Error::args("Document.caretPositionFromPoint", 1)); }
+        let a1: f64 = { let v = args.get(1); cv::float(cx, v, true)? };
+        let a2: CaretPositionFromPointOptions = { let v = args.get(2); if v.is_undefined() { CaretPositionFromPointOptions::default() } else { dict_caret_position_from_point_options(cx, v)? } };
+        let r: Option<Obj> = crate::dom::document::caret_position_from_point(cx, this, a0, a1, a2)?;
         cx.ret(r)
     });
 }
@@ -11065,6 +11861,74 @@ fn op__Document__hasFocus(scope: &mut v8::PinScope, args: v8::FunctionCallbackAr
 }
 
 #[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Document__execCommand(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Document)?;
+        if args.length() <= 0 { return Err(cv::Error::args("Document.execCommand", 0)); }
+        let a0: String = { let v = args.get(0); cv::string(cx, v)? };
+        let a1: bool = { let v = args.get(1); if v.is_undefined() { false } else { cv::boolean(cx, v) } };
+        let a2: String = { let v = args.get(2); if v.is_undefined() { "".to_string() } else { cv::string(cx, v)? } };
+        let r: bool = crate::dom::document::exec_command(cx, this, a0, a1, a2)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Document__queryCommandEnabled(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Document)?;
+        if args.length() <= 0 { return Err(cv::Error::args("Document.queryCommandEnabled", 0)); }
+        let a0: String = { let v = args.get(0); cv::string(cx, v)? };
+        let r: bool = crate::dom::document::query_command_enabled(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Document__queryCommandIndeterm(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Document)?;
+        if args.length() <= 0 { return Err(cv::Error::args("Document.queryCommandIndeterm", 0)); }
+        let a0: String = { let v = args.get(0); cv::string(cx, v)? };
+        let r: bool = crate::dom::document::query_command_indeterm(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Document__queryCommandState(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Document)?;
+        if args.length() <= 0 { return Err(cv::Error::args("Document.queryCommandState", 0)); }
+        let a0: String = { let v = args.get(0); cv::string(cx, v)? };
+        let r: bool = crate::dom::document::query_command_state(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Document__queryCommandSupported(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Document)?;
+        if args.length() <= 0 { return Err(cv::Error::args("Document.queryCommandSupported", 0)); }
+        let a0: String = { let v = args.get(0); cv::string(cx, v)? };
+        let r: bool = crate::dom::document::query_command_supported(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Document__queryCommandValue(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Document)?;
+        if args.length() <= 0 { return Err(cv::Error::args("Document.queryCommandValue", 0)); }
+        let a0: String = { let v = args.get(0); cv::string(cx, v)? };
+        let r: String = crate::dom::document::query_command_value(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
 fn get__Document__hidden(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::Document)?;
@@ -11117,6 +11981,15 @@ fn set__Document__onvisibilitychange(scope: &mut v8::PinScope, args: v8::Functio
         let v = cv::opt_value(cx, args.get(0));
         cv::handler_set(cx, this, "visibilitychange", v)?;
         cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Document__getSelection(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Document)?;
+        let r: Option<Obj> = crate::dom::document::get_selection(cx, this)?;
+        cx.ret(r)
     });
 }
 
@@ -12909,6 +13782,44 @@ fn set__Document__onlostpointercapture(scope: &mut v8::PinScope, args: v8::Funct
         let this = cx.this(args, Iface::Document)?;
         let v = cv::opt_value(cx, args.get(0));
         cv::handler_set(cx, this, "lostpointercapture", v)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Document__onselectstart(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Document)?;
+        let r = cv::handler_get(cx, this, "selectstart")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Document__onselectstart(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Document)?;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "selectstart", v)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Document__onselectionchange(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Document)?;
+        let r = cv::handler_get(cx, this, "selectionchange")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Document__onselectionchange(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Document)?;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "selectionchange", v)?;
         cx.ret(())
     });
 }
@@ -16680,6 +17591,73 @@ fn set__HTMLElement__onlostpointercapture(scope: &mut v8::PinScope, args: v8::Fu
 }
 
 #[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__HTMLElement__onselectstart(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLElement)?;
+        let r = cv::handler_get(cx, this, "selectstart")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__HTMLElement__onselectstart(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLElement)?;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "selectstart", v)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__HTMLElement__onselectionchange(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLElement)?;
+        let r = cv::handler_get(cx, this, "selectionchange")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__HTMLElement__onselectionchange(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLElement)?;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "selectionchange", v)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__HTMLElement__contentEditable(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLElement)?;
+        let r: String = crate::dom::element_content_editable::get_content_editable(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__HTMLElement__contentEditable(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLElement)?;
+        let v = args.get(0);
+        let a0: String = cv::string(cx, v)?;
+        crate::dom::element_content_editable::set_content_editable(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__HTMLElement__isContentEditable(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLElement)?;
+        let r: bool = crate::dom::element_content_editable::get_is_content_editable(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
 fn get__HTMLElement__dataset(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::HTMLElement)?;
@@ -18883,6 +19861,80 @@ fn op__HTMLInputElement__select(scope: &mut v8::PinScope, args: v8::FunctionCall
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::HTMLInputElement)?;
         let r: () = crate::dom::html_input_element::select(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__HTMLInputElement__selectionStart(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLInputElement)?;
+        let r: Option<u32> = crate::dom::html_input_element::get_selection_start(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__HTMLInputElement__selectionStart(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLInputElement)?;
+        let v = args.get(0);
+        let a0: Option<u32> = if v.is_null_or_undefined() { None } else { Some(cv::int::<u32>(cx, v)?) };
+        crate::dom::html_input_element::set_selection_start(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__HTMLInputElement__selectionEnd(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLInputElement)?;
+        let r: Option<u32> = crate::dom::html_input_element::get_selection_end(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__HTMLInputElement__selectionEnd(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLInputElement)?;
+        let v = args.get(0);
+        let a0: Option<u32> = if v.is_null_or_undefined() { None } else { Some(cv::int::<u32>(cx, v)?) };
+        crate::dom::html_input_element::set_selection_end(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__HTMLInputElement__selectionDirection(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLInputElement)?;
+        let r: Option<String> = crate::dom::html_input_element::get_selection_direction(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__HTMLInputElement__selectionDirection(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLInputElement)?;
+        let v = args.get(0);
+        let a0: Option<String> = if v.is_null_or_undefined() { None } else { Some(cv::string(cx, v)?) };
+        crate::dom::html_input_element::set_selection_direction(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__HTMLInputElement__setSelectionRange(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLInputElement)?;
+        if args.length() <= 0 { return Err(cv::Error::args("HTMLInputElement.setSelectionRange", 0)); }
+        let a0: u32 = { let v = args.get(0); cv::int::<u32>(cx, v)? };
+        if args.length() <= 1 { return Err(cv::Error::args("HTMLInputElement.setSelectionRange", 1)); }
+        let a1: u32 = { let v = args.get(1); cv::int::<u32>(cx, v)? };
+        let a2: Option<String> = { let v = args.get(2); if v.is_undefined() { None } else { Some(cv::string(cx, v)?) } };
+        let r: () = crate::dom::html_input_element::set_selection_range(cx, this, a0, a1, a2)?;
         cx.ret(r)
     });
 }
@@ -22169,6 +23221,80 @@ fn op__HTMLTextAreaElement__select(scope: &mut v8::PinScope, args: v8::FunctionC
 }
 
 #[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__HTMLTextAreaElement__selectionStart(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLTextAreaElement)?;
+        let r: u32 = crate::dom::html_text_area_element::get_selection_start(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__HTMLTextAreaElement__selectionStart(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLTextAreaElement)?;
+        let v = args.get(0);
+        let a0: u32 = cv::int::<u32>(cx, v)?;
+        crate::dom::html_text_area_element::set_selection_start(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__HTMLTextAreaElement__selectionEnd(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLTextAreaElement)?;
+        let r: u32 = crate::dom::html_text_area_element::get_selection_end(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__HTMLTextAreaElement__selectionEnd(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLTextAreaElement)?;
+        let v = args.get(0);
+        let a0: u32 = cv::int::<u32>(cx, v)?;
+        crate::dom::html_text_area_element::set_selection_end(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__HTMLTextAreaElement__selectionDirection(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLTextAreaElement)?;
+        let r: String = crate::dom::html_text_area_element::get_selection_direction(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__HTMLTextAreaElement__selectionDirection(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLTextAreaElement)?;
+        let v = args.get(0);
+        let a0: String = cv::string(cx, v)?;
+        crate::dom::html_text_area_element::set_selection_direction(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__HTMLTextAreaElement__setSelectionRange(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLTextAreaElement)?;
+        if args.length() <= 0 { return Err(cv::Error::args("HTMLTextAreaElement.setSelectionRange", 0)); }
+        let a0: u32 = { let v = args.get(0); cv::int::<u32>(cx, v)? };
+        if args.length() <= 1 { return Err(cv::Error::args("HTMLTextAreaElement.setSelectionRange", 1)); }
+        let a1: u32 = { let v = args.get(1); cv::int::<u32>(cx, v)? };
+        let a2: Option<String> = { let v = args.get(2); if v.is_undefined() { None } else { Some(cv::string(cx, v)?) } };
+        let r: () = crate::dom::html_text_area_element::set_selection_range(cx, this, a0, a1, a2)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
 fn get__HTMLTimeElement__dateTime(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::HTMLTimeElement)?;
@@ -22389,6 +23515,24 @@ fn get__InputEvent__inputType(scope: &mut v8::PinScope, args: v8::FunctionCallba
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::InputEvent)?;
         let r: String = crate::dom::input_event::get_input_type(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__InputEvent__dataTransfer(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::InputEvent)?;
+        let r: Option<Obj> = crate::dom::input_event::get_data_transfer(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__InputEvent__getTargetRanges(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::InputEvent)?;
+        let r: Vec<Obj> = crate::dom::input_event::get_target_ranges(cx, this)?;
         cx.ret(r)
     });
 }
@@ -24385,6 +25529,44 @@ fn set__SVGElement__onlostpointercapture(scope: &mut v8::PinScope, args: v8::Fun
 }
 
 #[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__SVGElement__onselectstart(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGElement)?;
+        let r = cv::handler_get(cx, this, "selectstart")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__SVGElement__onselectstart(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGElement)?;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "selectstart", v)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__SVGElement__onselectionchange(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGElement)?;
+        let r = cv::handler_get(cx, this, "selectionchange")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__SVGElement__onselectionchange(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGElement)?;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "selectionchange", v)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
 fn get__SVGElement__dataset(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::SVGElement)?;
@@ -24595,6 +25777,17 @@ fn get__ShadowRoot__activeElement(scope: &mut v8::PinScope, args: v8::FunctionCa
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::ShadowRoot)?;
         let r: Option<Obj> = crate::dom::document_or_shadow_root::get_active_element(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Text__splitText(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Text)?;
+        if args.length() <= 0 { return Err(cv::Error::args("Text.splitText", 0)); }
+        let a0: u32 = { let v = args.get(0); cv::int::<u32>(cx, v)? };
+        let r: Obj = crate::dom::text::split_text(cx, this, a0)?;
         cx.ret(r)
     });
 }
@@ -26644,6 +27837,31 @@ fn dict_css_style_sheet_init(cx: &mut Cx<'_, '_, '_>, v: v8::Local<'_, v8::Value
     Ok(d)
 }
 
+/// The `CaretPositionFromPointOptions` dictionary.
+#[derive(Debug, Clone)]
+#[allow(missing_docs)]
+pub struct CaretPositionFromPointOptions {
+    /// `shadowRoots`.
+    pub shadow_roots: Vec<Obj>,
+}
+
+impl Default for CaretPositionFromPointOptions {
+    fn default() -> Self {
+        Self {
+            shadow_roots: Vec::new(),
+        }
+    }
+}
+
+#[allow(unused_variables, unused_mut, clippy::all)]
+fn dict_caret_position_from_point_options(cx: &mut Cx<'_, '_, '_>, v: v8::Local<'_, v8::Value>) -> R<CaretPositionFromPointOptions> {
+    let mut d = CaretPositionFromPointOptions::default();
+    if v.is_null_or_undefined() { return Ok(d); }
+    let obj = cv::object(cx, v, "CaretPositionFromPointOptions")?;
+    { let v = cv::get(cx, obj, "shadowRoots")?; if !v.is_undefined() { d.shadow_roots = cv::seq(cx, v, |cx, v| Ok(cv::obj(cx, v, Iface::ShadowRoot)?))?; } }
+    Ok(d)
+}
+
 /// The `CheckVisibilityOptions` dictionary.
 #[derive(Debug, Clone)]
 #[allow(missing_docs)]
@@ -26682,6 +27900,43 @@ fn dict_check_visibility_options(cx: &mut Cx<'_, '_, '_>, v: v8::Local<'_, v8::V
     { let v = cv::get(cx, obj, "contentVisibilityAuto")?; if !v.is_undefined() { d.content_visibility_auto = cv::boolean(cx, v); } }
     { let v = cv::get(cx, obj, "opacityProperty")?; if !v.is_undefined() { d.opacity_property = cv::boolean(cx, v); } }
     { let v = cv::get(cx, obj, "visibilityProperty")?; if !v.is_undefined() { d.visibility_property = cv::boolean(cx, v); } }
+    Ok(d)
+}
+
+/// The `ClipboardEventInit` dictionary.
+#[derive(Debug, Clone)]
+#[allow(missing_docs)]
+pub struct ClipboardEventInit {
+    /// `bubbles`.
+    pub bubbles: bool,
+    /// `cancelable`.
+    pub cancelable: bool,
+    /// `clipboardData`.
+    pub clipboard_data: Option<Obj>,
+    /// `composed`.
+    pub composed: bool,
+}
+
+impl Default for ClipboardEventInit {
+    fn default() -> Self {
+        Self {
+            bubbles: false,
+            cancelable: false,
+            clipboard_data: None,
+            composed: false,
+        }
+    }
+}
+
+#[allow(unused_variables, unused_mut, clippy::all)]
+fn dict_clipboard_event_init(cx: &mut Cx<'_, '_, '_>, v: v8::Local<'_, v8::Value>) -> R<ClipboardEventInit> {
+    let mut d = ClipboardEventInit::default();
+    if v.is_null_or_undefined() { return Ok(d); }
+    let obj = cv::object(cx, v, "ClipboardEventInit")?;
+    { let v = cv::get(cx, obj, "bubbles")?; if !v.is_undefined() { d.bubbles = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "cancelable")?; if !v.is_undefined() { d.cancelable = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "clipboardData")?; if !v.is_undefined() { d.clipboard_data = if v.is_null_or_undefined() { None } else { Some(cv::obj(cx, v, Iface::DataTransfer)?) }; } }
+    { let v = cv::get(cx, obj, "composed")?; if !v.is_undefined() { d.composed = cv::boolean(cx, v); } }
     Ok(d)
 }
 
@@ -27210,12 +28465,16 @@ pub struct InputEventInit {
     pub composed: bool,
     /// `data`.
     pub data: Option<String>,
+    /// `dataTransfer`.
+    pub data_transfer: Option<Obj>,
     /// `detail`.
     pub detail: i32,
     /// `inputType`.
     pub input_type: String,
     /// `isComposing`.
     pub is_composing: bool,
+    /// `targetRanges`.
+    pub target_ranges: Vec<Obj>,
     /// `view`.
     pub view: Option<Obj>,
     /// `which`.
@@ -27229,9 +28488,11 @@ impl Default for InputEventInit {
             cancelable: false,
             composed: false,
             data: None,
+            data_transfer: None,
             detail: 0,
             input_type: "".to_string(),
             is_composing: false,
+            target_ranges: Vec::new(),
             view: None,
             which: 0,
         }
@@ -27247,9 +28508,11 @@ fn dict_input_event_init(cx: &mut Cx<'_, '_, '_>, v: v8::Local<'_, v8::Value>) -
     { let v = cv::get(cx, obj, "cancelable")?; if !v.is_undefined() { d.cancelable = cv::boolean(cx, v); } }
     { let v = cv::get(cx, obj, "composed")?; if !v.is_undefined() { d.composed = cv::boolean(cx, v); } }
     { let v = cv::get(cx, obj, "data")?; if !v.is_undefined() { d.data = if v.is_null_or_undefined() { None } else { Some(cv::string(cx, v)?) }; } }
+    { let v = cv::get(cx, obj, "dataTransfer")?; if !v.is_undefined() { d.data_transfer = if v.is_null_or_undefined() { None } else { Some(cv::obj(cx, v, Iface::DataTransfer)?) }; } }
     { let v = cv::get(cx, obj, "detail")?; if !v.is_undefined() { d.detail = cv::int::<i32>(cx, v)?; } }
     { let v = cv::get(cx, obj, "inputType")?; if !v.is_undefined() { d.input_type = cv::string(cx, v)?; } }
     { let v = cv::get(cx, obj, "isComposing")?; if !v.is_undefined() { d.is_composing = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "targetRanges")?; if !v.is_undefined() { d.target_ranges = cv::seq(cx, v, |cx, v| Ok(cv::obj(cx, v, Iface::StaticRange)?))?; } }
     { let v = cv::get(cx, obj, "view")?; if !v.is_undefined() { d.view = if v.is_null_or_undefined() { None } else { Some(cv::obj(cx, v, Iface::Window)?) }; } }
     { let v = cv::get(cx, obj, "which")?; if !v.is_undefined() { d.which = cv::int::<u32>(cx, v)?; } }
     Ok(d)
@@ -28403,6 +29666,43 @@ fn dict_shadow_root_init(cx: &mut Cx<'_, '_, '_>, v: v8::Local<'_, v8::Value>) -
     Ok(d)
 }
 
+/// The `StaticRangeInit` dictionary.
+#[derive(Debug, Clone)]
+#[allow(missing_docs)]
+pub struct StaticRangeInit {
+    /// `endContainer`.
+    pub end_container: Option<Obj>,
+    /// `endOffset`.
+    pub end_offset: Option<u32>,
+    /// `startContainer`.
+    pub start_container: Option<Obj>,
+    /// `startOffset`.
+    pub start_offset: Option<u32>,
+}
+
+impl Default for StaticRangeInit {
+    fn default() -> Self {
+        Self {
+            end_container: None,
+            end_offset: None,
+            start_container: None,
+            start_offset: None,
+        }
+    }
+}
+
+#[allow(unused_variables, unused_mut, clippy::all)]
+fn dict_static_range_init(cx: &mut Cx<'_, '_, '_>, v: v8::Local<'_, v8::Value>) -> R<StaticRangeInit> {
+    let mut d = StaticRangeInit::default();
+    if v.is_null_or_undefined() { return Ok(d); }
+    let obj = cv::object(cx, v, "StaticRangeInit")?;
+    { let v = cv::get(cx, obj, "endContainer")?; if !v.is_undefined() { d.end_container = Some(cv::obj(cx, v, Iface::Node)?); } }
+    { let v = cv::get(cx, obj, "endOffset")?; if !v.is_undefined() { d.end_offset = Some(cv::int::<u32>(cx, v)?); } }
+    { let v = cv::get(cx, obj, "startContainer")?; if !v.is_undefined() { d.start_container = Some(cv::obj(cx, v, Iface::Node)?); } }
+    { let v = cv::get(cx, obj, "startOffset")?; if !v.is_undefined() { d.start_offset = Some(cv::int::<u32>(cx, v)?); } }
+    Ok(d)
+}
+
 /// The `StructuredSerializeOptions` dictionary.
 #[derive(Debug, Clone)]
 #[allow(missing_docs)]
@@ -28787,6 +30087,19 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         crate::dom::hooks::template(scope, Iface::AbortController, f);
         out.push(v8::Global::new(scope, f));
     }
+    { // AbstractRange
+        let f = cv::interface(scope, "AbstractRange", cv::illegal_constructor);
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "startContainer", get__AbstractRange__startContainer, None);
+        cv::accessor(scope, proto, "startOffset", get__AbstractRange__startOffset, None);
+        cv::accessor(scope, proto, "endContainer", get__AbstractRange__endContainer, None);
+        cv::accessor(scope, proto, "endOffset", get__AbstractRange__endOffset, None);
+        cv::accessor(scope, proto, "collapsed", get__AbstractRange__collapsed, None);
+        crate::dom::hooks::template(scope, Iface::AbstractRange, f);
+        out.push(v8::Global::new(scope, f));
+    }
     { // Blob
         let f = cv::interface(scope, "Blob", ctor__Blob);
         let inst = f.instance_template(scope);
@@ -28866,6 +30179,17 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::method(scope, proto.into(), "rect", op__CanvasRenderingContext2D__rect, 4);
         cv::method(scope, proto.into(), "arc", op__CanvasRenderingContext2D__arc, 5);
         crate::dom::hooks::template(scope, Iface::CanvasRenderingContext2D, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // CaretPosition
+        let f = cv::interface(scope, "CaretPosition", cv::illegal_constructor);
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "offsetNode", get__CaretPosition__offsetNode, None);
+        cv::accessor(scope, proto, "offset", get__CaretPosition__offset, None);
+        cv::method(scope, proto.into(), "getClientRect", op__CaretPosition__getClientRect, 0);
+        crate::dom::hooks::template(scope, Iface::CaretPosition, f);
         out.push(v8::Global::new(scope, f));
     }
     { // Crypto
@@ -29467,6 +30791,7 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         let inst = f.instance_template(scope);
         inst.set_internal_field_count(cv::FIELDS);
         let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "clipboard", get__Navigator__clipboard, None);
         cv::accessor(scope, proto, "appCodeName", get__Navigator__appCodeName, None);
         cv::accessor(scope, proto, "appName", get__Navigator__appName, None);
         cv::accessor(scope, proto, "appVersion", get__Navigator__appVersion, None);
@@ -29694,6 +31019,43 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         crate::dom::hooks::template(scope, Iface::ProgressEvent, f);
         out.push(v8::Global::new(scope, f));
     }
+    { // Range
+        let f = cv::interface(scope, "Range", ctor__Range);
+        f.inherit(v8::Local::new(scope, &out[Iface::AbstractRange as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "commonAncestorContainer", get__Range__commonAncestorContainer, None);
+        cv::method(scope, proto.into(), "setStart", op__Range__setStart, 2);
+        cv::method(scope, proto.into(), "setEnd", op__Range__setEnd, 2);
+        cv::method(scope, proto.into(), "setStartBefore", op__Range__setStartBefore, 1);
+        cv::method(scope, proto.into(), "setStartAfter", op__Range__setStartAfter, 1);
+        cv::method(scope, proto.into(), "setEndBefore", op__Range__setEndBefore, 1);
+        cv::method(scope, proto.into(), "setEndAfter", op__Range__setEndAfter, 1);
+        cv::method(scope, proto.into(), "collapse", op__Range__collapse, 0);
+        cv::method(scope, proto.into(), "selectNode", op__Range__selectNode, 1);
+        cv::method(scope, proto.into(), "selectNodeContents", op__Range__selectNodeContents, 1);
+        cv::constant(scope, f, proto, "START_TO_START", 0 as f64);
+        cv::constant(scope, f, proto, "START_TO_END", 1 as f64);
+        cv::constant(scope, f, proto, "END_TO_END", 2 as f64);
+        cv::constant(scope, f, proto, "END_TO_START", 3 as f64);
+        cv::method(scope, proto.into(), "compareBoundaryPoints", op__Range__compareBoundaryPoints, 2);
+        cv::method(scope, proto.into(), "deleteContents", op__Range__deleteContents, 0);
+        cv::method(scope, proto.into(), "extractContents", op__Range__extractContents, 0);
+        cv::method(scope, proto.into(), "cloneContents", op__Range__cloneContents, 0);
+        cv::method(scope, proto.into(), "insertNode", op__Range__insertNode, 1);
+        cv::method(scope, proto.into(), "surroundContents", op__Range__surroundContents, 1);
+        cv::method(scope, proto.into(), "cloneRange", op__Range__cloneRange, 0);
+        cv::method(scope, proto.into(), "detach", op__Range__detach, 0);
+        cv::method(scope, proto.into(), "isPointInRange", op__Range__isPointInRange, 2);
+        cv::method(scope, proto.into(), "comparePoint", op__Range__comparePoint, 2);
+        cv::method(scope, proto.into(), "intersectsNode", op__Range__intersectsNode, 1);
+        cv::method(scope, proto.into(), "toString", op__Range__toString, 0);
+        cv::method(scope, proto.into(), "getClientRects", op__Range__getClientRects, 0);
+        cv::method(scope, proto.into(), "getBoundingClientRect", op__Range__getBoundingClientRect, 0);
+        crate::dom::hooks::template(scope, Iface::Range, f);
+        out.push(v8::Global::new(scope, f));
+    }
     { // Request
         let f = cv::interface(scope, "Request", ctor__Request);
         let inst = f.instance_template(scope);
@@ -29789,6 +31151,47 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::accessor(scope, proto, "colorDepth", get__Screen__colorDepth, None);
         cv::accessor(scope, proto, "pixelDepth", get__Screen__pixelDepth, None);
         crate::dom::hooks::template(scope, Iface::Screen, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // Selection
+        let f = cv::interface(scope, "Selection", cv::illegal_constructor);
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "anchorNode", get__Selection__anchorNode, None);
+        cv::accessor(scope, proto, "anchorOffset", get__Selection__anchorOffset, None);
+        cv::accessor(scope, proto, "focusNode", get__Selection__focusNode, None);
+        cv::accessor(scope, proto, "focusOffset", get__Selection__focusOffset, None);
+        cv::accessor(scope, proto, "isCollapsed", get__Selection__isCollapsed, None);
+        cv::accessor(scope, proto, "rangeCount", get__Selection__rangeCount, None);
+        cv::accessor(scope, proto, "type", get__Selection__type, None);
+        cv::accessor(scope, proto, "direction", get__Selection__direction, None);
+        cv::method(scope, proto.into(), "getRangeAt", op__Selection__getRangeAt, 1);
+        cv::method(scope, proto.into(), "addRange", op__Selection__addRange, 1);
+        cv::method(scope, proto.into(), "removeRange", op__Selection__removeRange, 1);
+        cv::method(scope, proto.into(), "removeAllRanges", op__Selection__removeAllRanges, 0);
+        cv::method(scope, proto.into(), "empty", op__Selection__empty, 0);
+        cv::method(scope, proto.into(), "collapse", op__Selection__collapse, 1);
+        cv::method(scope, proto.into(), "setPosition", op__Selection__setPosition, 1);
+        cv::method(scope, proto.into(), "collapseToStart", op__Selection__collapseToStart, 0);
+        cv::method(scope, proto.into(), "collapseToEnd", op__Selection__collapseToEnd, 0);
+        cv::method(scope, proto.into(), "extend", op__Selection__extend, 1);
+        cv::method(scope, proto.into(), "setBaseAndExtent", op__Selection__setBaseAndExtent, 4);
+        cv::method(scope, proto.into(), "selectAllChildren", op__Selection__selectAllChildren, 1);
+        cv::method(scope, proto.into(), "modify", op__Selection__modify, 0);
+        cv::method(scope, proto.into(), "deleteFromDocument", op__Selection__deleteFromDocument, 0);
+        cv::method(scope, proto.into(), "containsNode", op__Selection__containsNode, 1);
+        cv::method(scope, proto.into(), "toString", op__Selection__toString, 0);
+        crate::dom::hooks::template(scope, Iface::Selection, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // StaticRange
+        let f = cv::interface(scope, "StaticRange", ctor__StaticRange);
+        f.inherit(v8::Local::new(scope, &out[Iface::AbstractRange as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        crate::dom::hooks::template(scope, Iface::StaticRange, f);
         out.push(v8::Global::new(scope, f));
     }
     { // Storage
@@ -30032,6 +31435,7 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::method(scope, inst.into(), "getComputedStyle", op__Window__getComputedStyle, 1);
         cv::method(scope, inst.into(), "requestIdleCallback", op__Window__requestIdleCallback, 1);
         cv::method(scope, inst.into(), "cancelIdleCallback", op__Window__cancelIdleCallback, 1);
+        cv::method(scope, inst.into(), "getSelection", op__Window__getSelection, 0);
         cv::accessor(scope, inst, "onabort", get__Window__onabort, Some(set__Window__onabort.map_fn_to()));
         cv::accessor(scope, inst, "onauxclick", get__Window__onauxclick, Some(set__Window__onauxclick.map_fn_to()));
         cv::accessor(scope, inst, "onbeforeinput", get__Window__onbeforeinput, Some(set__Window__onbeforeinput.map_fn_to()));
@@ -30119,6 +31523,8 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::accessor(scope, inst, "onpointerleave", get__Window__onpointerleave, Some(set__Window__onpointerleave.map_fn_to()));
         cv::accessor(scope, inst, "ongotpointercapture", get__Window__ongotpointercapture, Some(set__Window__ongotpointercapture.map_fn_to()));
         cv::accessor(scope, inst, "onlostpointercapture", get__Window__onlostpointercapture, Some(set__Window__onlostpointercapture.map_fn_to()));
+        cv::accessor(scope, inst, "onselectstart", get__Window__onselectstart, Some(set__Window__onselectstart.map_fn_to()));
+        cv::accessor(scope, inst, "onselectionchange", get__Window__onselectionchange, Some(set__Window__onselectionchange.map_fn_to()));
         cv::accessor(scope, inst, "onafterprint", get__Window__onafterprint, Some(set__Window__onafterprint.map_fn_to()));
         cv::accessor(scope, inst, "onbeforeprint", get__Window__onbeforeprint, Some(set__Window__onbeforeprint.map_fn_to()));
         cv::accessor(scope, inst, "onbeforeunload", get__Window__onbeforeunload, Some(set__Window__onbeforeunload.map_fn_to()));
@@ -30257,7 +31663,11 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         let proto = f.prototype_template(scope);
         cv::accessor(scope, proto, "data", get__CharacterData__data, Some(set__CharacterData__data.map_fn_to()));
         cv::accessor(scope, proto, "length", get__CharacterData__length, None);
+        cv::method(scope, proto.into(), "substringData", op__CharacterData__substringData, 2);
         cv::method(scope, proto.into(), "appendData", op__CharacterData__appendData, 1);
+        cv::method(scope, proto.into(), "insertData", op__CharacterData__insertData, 2);
+        cv::method(scope, proto.into(), "deleteData", op__CharacterData__deleteData, 2);
+        cv::method(scope, proto.into(), "replaceData", op__CharacterData__replaceData, 3);
         cv::accessor(scope, proto, "previousElementSibling", get__CharacterData__previousElementSibling, None);
         cv::accessor(scope, proto, "nextElementSibling", get__CharacterData__nextElementSibling, None);
         cv::method(scope, proto.into(), "before", op__CharacterData__before, 0);
@@ -30265,6 +31675,27 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::method(scope, proto.into(), "replaceWith", op__CharacterData__replaceWith, 0);
         cv::method(scope, proto.into(), "remove", op__CharacterData__remove, 0);
         crate::dom::hooks::template(scope, Iface::CharacterData, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // Clipboard
+        let f = cv::interface(scope, "Clipboard", cv::illegal_constructor);
+        f.inherit(v8::Local::new(scope, &out[Iface::EventTarget as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::method(scope, proto.into(), "readText", op__Clipboard__readText, 0);
+        cv::method(scope, proto.into(), "writeText", op__Clipboard__writeText, 1);
+        crate::dom::hooks::template(scope, Iface::Clipboard, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // ClipboardEvent
+        let f = cv::interface(scope, "ClipboardEvent", ctor__ClipboardEvent);
+        f.inherit(v8::Local::new(scope, &out[Iface::Event as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "clipboardData", get__ClipboardEvent__clipboardData, None);
+        crate::dom::hooks::template(scope, Iface::ClipboardEvent, f);
         out.push(v8::Global::new(scope, f));
     }
     { // CloseEvent
@@ -30335,10 +31766,12 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::method(scope, proto.into(), "importNode", op__Document__importNode, 1);
         cv::method(scope, proto.into(), "adoptNode", op__Document__adoptNode, 1);
         cv::method(scope, proto.into(), "createEvent", op__Document__createEvent, 1);
+        cv::method(scope, proto.into(), "createRange", op__Document__createRange, 0);
         cv::method(scope, proto.into(), "createNodeIterator", op__Document__createNodeIterator, 1);
         cv::method(scope, proto.into(), "createTreeWalker", op__Document__createTreeWalker, 1);
         cv::method(scope, proto.into(), "elementFromPoint", op__Document__elementFromPoint, 2);
         cv::method(scope, proto.into(), "elementsFromPoint", op__Document__elementsFromPoint, 2);
+        cv::method(scope, proto.into(), "caretPositionFromPoint", op__Document__caretPositionFromPoint, 2);
         cv::accessor(scope, proto, "scrollingElement", get__Document__scrollingElement, None);
         cv::accessor(scope, proto, "location", get__Document__location, Some(set__Document__location.map_fn_to()));
         cv::accessor(scope, proto, "domain", get__Document__domain, Some(set__Document__domain.map_fn_to()));
@@ -30358,10 +31791,17 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::accessor(scope, proto, "currentScript", get__Document__currentScript, None);
         cv::accessor(scope, proto, "defaultView", get__Document__defaultView, None);
         cv::method(scope, proto.into(), "hasFocus", op__Document__hasFocus, 0);
+        cv::method(scope, proto.into(), "execCommand", op__Document__execCommand, 1);
+        cv::method(scope, proto.into(), "queryCommandEnabled", op__Document__queryCommandEnabled, 1);
+        cv::method(scope, proto.into(), "queryCommandIndeterm", op__Document__queryCommandIndeterm, 1);
+        cv::method(scope, proto.into(), "queryCommandState", op__Document__queryCommandState, 1);
+        cv::method(scope, proto.into(), "queryCommandSupported", op__Document__queryCommandSupported, 1);
+        cv::method(scope, proto.into(), "queryCommandValue", op__Document__queryCommandValue, 1);
         cv::accessor(scope, proto, "hidden", get__Document__hidden, None);
         cv::accessor(scope, proto, "visibilityState", get__Document__visibilityState, None);
         cv::accessor(scope, proto, "onreadystatechange", get__Document__onreadystatechange, Some(set__Document__onreadystatechange.map_fn_to()));
         cv::accessor(scope, proto, "onvisibilitychange", get__Document__onvisibilitychange, Some(set__Document__onvisibilitychange.map_fn_to()));
+        cv::method(scope, proto.into(), "getSelection", op__Document__getSelection, 0);
         cv::accessor(scope, proto, "modelContext", get__Document__modelContext, None);
         cv::method(scope, proto.into(), "getElementById", op__Document__getElementById, 1);
         cv::accessor(scope, proto, "adoptedStyleSheets", get__Document__adoptedStyleSheets, Some(set__Document__adoptedStyleSheets.map_fn_to()));
@@ -30462,6 +31902,8 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::accessor(scope, proto, "onpointerleave", get__Document__onpointerleave, Some(set__Document__onpointerleave.map_fn_to()));
         cv::accessor(scope, proto, "ongotpointercapture", get__Document__ongotpointercapture, Some(set__Document__ongotpointercapture.map_fn_to()));
         cv::accessor(scope, proto, "onlostpointercapture", get__Document__onlostpointercapture, Some(set__Document__onlostpointercapture.map_fn_to()));
+        cv::accessor(scope, proto, "onselectstart", get__Document__onselectstart, Some(set__Document__onselectstart.map_fn_to()));
+        cv::accessor(scope, proto, "onselectionchange", get__Document__onselectionchange, Some(set__Document__onselectionchange.map_fn_to()));
         crate::dom::hooks::template(scope, Iface::Document, f);
         out.push(v8::Global::new(scope, f));
     }
@@ -30757,6 +32199,10 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::accessor(scope, proto, "onpointerleave", get__HTMLElement__onpointerleave, Some(set__HTMLElement__onpointerleave.map_fn_to()));
         cv::accessor(scope, proto, "ongotpointercapture", get__HTMLElement__ongotpointercapture, Some(set__HTMLElement__ongotpointercapture.map_fn_to()));
         cv::accessor(scope, proto, "onlostpointercapture", get__HTMLElement__onlostpointercapture, Some(set__HTMLElement__onlostpointercapture.map_fn_to()));
+        cv::accessor(scope, proto, "onselectstart", get__HTMLElement__onselectstart, Some(set__HTMLElement__onselectstart.map_fn_to()));
+        cv::accessor(scope, proto, "onselectionchange", get__HTMLElement__onselectionchange, Some(set__HTMLElement__onselectionchange.map_fn_to()));
+        cv::accessor(scope, proto, "contentEditable", get__HTMLElement__contentEditable, Some(set__HTMLElement__contentEditable.map_fn_to()));
+        cv::accessor(scope, proto, "isContentEditable", get__HTMLElement__isContentEditable, None);
         cv::accessor(scope, proto, "dataset", get__HTMLElement__dataset, None);
         cv::accessor(scope, proto, "autofocus", get__HTMLElement__autofocus, Some(set__HTMLElement__autofocus.map_fn_to()));
         cv::accessor(scope, proto, "tabIndex", get__HTMLElement__tabIndex, Some(set__HTMLElement__tabIndex.map_fn_to()));
@@ -31008,6 +32454,10 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::method(scope, proto.into(), "setCustomValidity", op__HTMLInputElement__setCustomValidity, 1);
         cv::accessor(scope, proto, "labels", get__HTMLInputElement__labels, None);
         cv::method(scope, proto.into(), "select", op__HTMLInputElement__select, 0);
+        cv::accessor(scope, proto, "selectionStart", get__HTMLInputElement__selectionStart, Some(set__HTMLInputElement__selectionStart.map_fn_to()));
+        cv::accessor(scope, proto, "selectionEnd", get__HTMLInputElement__selectionEnd, Some(set__HTMLInputElement__selectionEnd.map_fn_to()));
+        cv::accessor(scope, proto, "selectionDirection", get__HTMLInputElement__selectionDirection, Some(set__HTMLInputElement__selectionDirection.map_fn_to()));
+        cv::method(scope, proto.into(), "setSelectionRange", op__HTMLInputElement__setSelectionRange, 2);
         cv::accessor(scope, proto, "align", get__HTMLInputElement__align, Some(set__HTMLInputElement__align.map_fn_to()));
         cv::accessor(scope, proto, "useMap", get__HTMLInputElement__useMap, Some(set__HTMLInputElement__useMap.map_fn_to()));
         cv::accessor(scope, proto, "hspace", get__HTMLInputElement__hspace, Some(set__HTMLInputElement__hspace.map_fn_to()));
@@ -31546,6 +32996,10 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::method(scope, proto.into(), "reportValidity", op__HTMLTextAreaElement__reportValidity, 0);
         cv::method(scope, proto.into(), "setCustomValidity", op__HTMLTextAreaElement__setCustomValidity, 1);
         cv::method(scope, proto.into(), "select", op__HTMLTextAreaElement__select, 0);
+        cv::accessor(scope, proto, "selectionStart", get__HTMLTextAreaElement__selectionStart, Some(set__HTMLTextAreaElement__selectionStart.map_fn_to()));
+        cv::accessor(scope, proto, "selectionEnd", get__HTMLTextAreaElement__selectionEnd, Some(set__HTMLTextAreaElement__selectionEnd.map_fn_to()));
+        cv::accessor(scope, proto, "selectionDirection", get__HTMLTextAreaElement__selectionDirection, Some(set__HTMLTextAreaElement__selectionDirection.map_fn_to()));
+        cv::method(scope, proto.into(), "setSelectionRange", op__HTMLTextAreaElement__setSelectionRange, 2);
         crate::dom::hooks::template(scope, Iface::HTMLTextAreaElement, f);
         out.push(v8::Global::new(scope, f));
     }
@@ -31627,6 +33081,8 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::accessor(scope, proto, "data", get__InputEvent__data, None);
         cv::accessor(scope, proto, "isComposing", get__InputEvent__isComposing, None);
         cv::accessor(scope, proto, "inputType", get__InputEvent__inputType, None);
+        cv::accessor(scope, proto, "dataTransfer", get__InputEvent__dataTransfer, None);
+        cv::method(scope, proto.into(), "getTargetRanges", op__InputEvent__getTargetRanges, 0);
         crate::dom::hooks::template(scope, Iface::InputEvent, f);
         out.push(v8::Global::new(scope, f));
     }
@@ -31786,6 +33242,8 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::accessor(scope, proto, "onpointerleave", get__SVGElement__onpointerleave, Some(set__SVGElement__onpointerleave.map_fn_to()));
         cv::accessor(scope, proto, "ongotpointercapture", get__SVGElement__ongotpointercapture, Some(set__SVGElement__ongotpointercapture.map_fn_to()));
         cv::accessor(scope, proto, "onlostpointercapture", get__SVGElement__onlostpointercapture, Some(set__SVGElement__onlostpointercapture.map_fn_to()));
+        cv::accessor(scope, proto, "onselectstart", get__SVGElement__onselectstart, Some(set__SVGElement__onselectstart.map_fn_to()));
+        cv::accessor(scope, proto, "onselectionchange", get__SVGElement__onselectionchange, Some(set__SVGElement__onselectionchange.map_fn_to()));
         cv::accessor(scope, proto, "dataset", get__SVGElement__dataset, None);
         cv::accessor(scope, proto, "autofocus", get__SVGElement__autofocus, Some(set__SVGElement__autofocus.map_fn_to()));
         cv::accessor(scope, proto, "tabIndex", get__SVGElement__tabIndex, Some(set__SVGElement__tabIndex.map_fn_to()));
@@ -31830,6 +33288,7 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         let inst = f.instance_template(scope);
         inst.set_internal_field_count(cv::FIELDS);
         let proto = f.prototype_template(scope);
+        cv::method(scope, proto.into(), "splitText", op__Text__splitText, 1);
         cv::accessor(scope, proto, "wholeText", get__Text__wholeText, None);
         cv::accessor(scope, proto, "assignedSlot", get__Text__assignedSlot, None);
         crate::dom::hooks::template(scope, Iface::Text, f);
@@ -32125,11 +33584,13 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
 /// Puts interface objects and namespaces on a new global.
 pub fn expose(scope: &mut v8::PinScope<'_, '_>, global: v8::Local<'_, v8::Object>, t: &[v8::Global<v8::FunctionTemplate>]) {
     cv::expose(scope, global, &t[Iface::AbortController as usize], "AbortController");
+    cv::expose(scope, global, &t[Iface::AbstractRange as usize], "AbstractRange");
     cv::expose(scope, global, &t[Iface::Blob as usize], "Blob");
     cv::expose_namespace(scope, global, &t[Iface::CSS as usize], "CSS");
     cv::expose(scope, global, &t[Iface::CSSStyleDeclaration as usize], "CSSStyleDeclaration");
     cv::expose(scope, global, &t[Iface::CSSStyleProperties as usize], "CSSStyleProperties");
     cv::expose(scope, global, &t[Iface::CanvasRenderingContext2D as usize], "CanvasRenderingContext2D");
+    cv::expose(scope, global, &t[Iface::CaretPosition as usize], "CaretPosition");
     cv::expose(scope, global, &t[Iface::Crypto as usize], "Crypto");
     cv::expose(scope, global, &t[Iface::CryptoKey as usize], "CryptoKey");
     cv::expose(scope, global, &t[Iface::CustomElementRegistry as usize], "CustomElementRegistry");
@@ -32183,12 +33644,15 @@ pub fn expose(scope: &mut v8::PinScope<'_, '_>, global: v8::Local<'_, v8::Object
     cv::expose(scope, global, &t[Iface::PerformanceObserverEntryList as usize], "PerformanceObserverEntryList");
     cv::expose(scope, global, &t[Iface::PopStateEvent as usize], "PopStateEvent");
     cv::expose(scope, global, &t[Iface::ProgressEvent as usize], "ProgressEvent");
+    cv::expose(scope, global, &t[Iface::Range as usize], "Range");
     cv::expose(scope, global, &t[Iface::Request as usize], "Request");
     cv::expose(scope, global, &t[Iface::ResizeObserver as usize], "ResizeObserver");
     cv::expose(scope, global, &t[Iface::ResizeObserverEntry as usize], "ResizeObserverEntry");
     cv::expose(scope, global, &t[Iface::ResizeObserverSize as usize], "ResizeObserverSize");
     cv::expose(scope, global, &t[Iface::Response as usize], "Response");
     cv::expose(scope, global, &t[Iface::Screen as usize], "Screen");
+    cv::expose(scope, global, &t[Iface::Selection as usize], "Selection");
+    cv::expose(scope, global, &t[Iface::StaticRange as usize], "StaticRange");
     cv::expose(scope, global, &t[Iface::Storage as usize], "Storage");
     cv::expose(scope, global, &t[Iface::StyleSheet as usize], "StyleSheet");
     cv::expose(scope, global, &t[Iface::SubtleCrypto as usize], "SubtleCrypto");
@@ -32208,6 +33672,8 @@ pub fn expose(scope: &mut v8::PinScope<'_, '_>, global: v8::Local<'_, v8::Object
     cv::expose(scope, global, &t[Iface::Attr as usize], "Attr");
     cv::expose(scope, global, &t[Iface::CSSStyleSheet as usize], "CSSStyleSheet");
     cv::expose(scope, global, &t[Iface::CharacterData as usize], "CharacterData");
+    cv::expose(scope, global, &t[Iface::Clipboard as usize], "Clipboard");
+    cv::expose(scope, global, &t[Iface::ClipboardEvent as usize], "ClipboardEvent");
     cv::expose(scope, global, &t[Iface::CloseEvent as usize], "CloseEvent");
     cv::expose(scope, global, &t[Iface::Comment as usize], "Comment");
     cv::expose(scope, global, &t[Iface::CustomEvent as usize], "CustomEvent");

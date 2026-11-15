@@ -3,7 +3,7 @@
 //! submission, labels, `<details>`. Navigations are recorded on the realm and performed by the
 //! caller after the task (never inside a V8 callback).
 
-use pageon_dom::{Edge, NodeData, NodeId};
+use pageon_dom::{Edge, NodeId};
 
 use crate::cv::{Cx, Obj, R};
 use crate::dom::event_target::{dispatch, fire, move_focus};
@@ -374,10 +374,33 @@ pub fn click(cx: &mut Cx<'_, '_, '_>, el: NodeId, point: Option<(f64, f64)>) -> 
             target = cx.dom().parent(t);
         }
         move_focus(cx, target)?;
+        let (count, shift) = {
+            let st = cx.st();
+            (u32::from(st.click_count.max(1)), st.mods.shift)
+        };
+        crate::dom::editing::pointer_down(cx, p.0, p.1, count, shift)?;
     }
     mouse(cx, el, "pointerup", p, None)?;
     mouse(cx, el, "mouseup", p, None)?;
     crate::dom::event_target::click_with(cx, el, true, p)
+}
+
+/// Selects `text` inside `el` (the first occurrence): in a text control's value or in the
+/// element's text, focusing the control or editing host. `false` when it is not there.
+pub fn select_text(cx: &mut Cx<'_, '_, '_>, el: NodeId, text: &str) -> R<bool> {
+    crate::dom::editing::select_text(cx, el, text)
+}
+
+/// Puts `text` on the session clipboard and pastes it into the focused element (Ctrl+V).
+pub fn paste_text(cx: &mut Cx<'_, '_, '_>, text: &str) -> R<()> {
+    {
+        let mut sh = cx.realm.shared.borrow_mut();
+        sh.clipboard = Some(crate::dom::editing::Clip {
+            text: text.to_string(),
+            html: None,
+        });
+    }
+    press_chord(cx, Mods::default().with("ctrl").unwrap_or_default(), "v")
 }
 
 /// A trusted click with any button, click count (1–3) and modifiers, as a person's: for the
@@ -773,7 +796,8 @@ pub(crate) fn reset_form(cx: &mut Cx<'_, '_, '_>, form: NodeId) -> R<()> {
             let st = dom.control_mut(c);
             st.value = None;
             st.checked = None;
-            st.all_selected = false;
+            st.selection = None;
+            st.from_vault = false;
             st.user_edited = false;
             st.user_validity = false;
         }
@@ -930,32 +954,6 @@ fn value_of(cx: &mut Cx<'_, '_, '_>, el: NodeId) -> R<String> {
     }
 }
 
-fn set_value(cx: &mut Cx<'_, '_, '_>, el: NodeId, v: &str) {
-    if editable(cx, el) == Some(false) {
-        let kids: Vec<NodeId> = cx.dom().children(el).collect();
-        let mut dom = cx.dom_mut();
-        for k in kids {
-            let _ = dom.remove(k);
-        }
-        let t = dom.create(NodeData::Text(v.to_string()));
-        let _ = dom.append(el, t);
-    } else {
-        let mut dom = cx.dom_mut();
-        let c = dom.control_mut(el);
-        c.value = Some(v.to_string());
-        c.all_selected = false;
-    }
-}
-
-/// Takes the "whole value selected" mark of a field (`select()`): whether it was set.
-fn take_selection(cx: &mut Cx<'_, '_, '_>, el: NodeId) -> bool {
-    let selected = cx.dom().control(el).is_some_and(|c| c.all_selected);
-    if selected {
-        cx.dom_mut().control_mut(el).all_selected = false;
-    }
-    selected
-}
-
 fn input_event(cx: &mut Cx<'_, '_, '_>, el: NodeId, ty: &str, cancelable: bool) -> R<bool> {
     // A user edit (`tooLong`/`tooShort` apply) and a committed change (`:user-invalid`).
     match ty {
@@ -977,8 +975,7 @@ fn input_event(cx: &mut Cx<'_, '_, '_>, el: NodeId, ty: &str, cancelable: bool) 
     dispatch(cx, Target::Node(el), e)
 }
 
-/// A trusted `beforeinput` or `input` `InputEvent` of an edit (`insertText`,
-/// `deleteContentBackward`, …).
+/// A trusted `input` `InputEvent` of a fill (`insertReplacementText`).
 fn edit_event(
     cx: &mut Cx<'_, '_, '_>,
     el: NodeId,
@@ -1005,56 +1002,65 @@ fn edit_event(
     dispatch(cx, Target::Node(el), e)
 }
 
-/// Inserts one character the way a keystroke does (respecting `maxlength`).
-fn insert(cx: &mut Cx<'_, '_, '_>, el: NodeId, ch: char) -> R<()> {
-    let kind = if ch == '\n' {
-        "insertLineBreak"
+/// One typed character in an editable element: a line break or text at the selection.
+fn type_char(cx: &mut Cx<'_, '_, '_>, el: NodeId, ch: char) -> R<()> {
+    use crate::dom::editing::{Kind, edit};
+    if ch == '\n' {
+        match editable(cx, el) {
+            Some(true) if tag(cx, el) != "textarea" => implicit_submit(cx, el),
+            Some(true) => edit(cx, el, Kind::InsertLineBreak, None, false).map(|_| ()),
+            _ => edit(cx, el, Kind::InsertParagraph, None, false).map(|_| ()),
+        }
     } else {
-        "insertText"
-    };
-    let data = (ch != '\n').then(|| ch.to_string());
-    if !edit_event(cx, el, "beforeinput", true, kind, data.clone())? {
-        return Ok(());
+        let mut b = [0u8; 4];
+        edit(
+            cx,
+            el,
+            Kind::InsertText,
+            Some(ch.encode_utf8(&mut b)),
+            false,
+        )
+        .map(|_| ())
     }
-    // A selected value is replaced by what is typed.
-    let mut v = if take_selection(cx, el) {
-        String::new()
-    } else {
-        value_of(cx, el)?
-    };
-    let max = attr(cx, el, "maxlength").and_then(|m| m.parse::<usize>().ok());
-    if max.is_some_and(|m| v.encode_utf16().count() >= m) {
-        return Ok(());
-    }
-    v.push(ch);
-    set_value(cx, el, &v);
-    edit_event(cx, el, "input", false, kind, data).map(|_| ())
 }
 
-/// Replaces an editable element's text with `text`, typed key by key.
-pub fn type_text(cx: &mut Cx<'_, '_, '_>, el: NodeId, text: &str) -> R<()> {
-    move_focus(cx, Some(el))?;
-    let initial = value_of(cx, el)?;
-    if !initial.is_empty() {
-        set_value(cx, el, "");
-        edit_event(cx, el, "input", false, "deleteContentBackward", None)?;
-    }
+/// Types `text` key by key into `el` at its selection.
+fn type_keys(cx: &mut Cx<'_, '_, '_>, el: NodeId, text: &str) -> R<()> {
     for ch in text.chars() {
+        if cx.dom().get(el).is_none() {
+            break;
+        }
         let key = if ch == '\n' {
             "Enter".to_string()
         } else {
             ch.to_string()
         };
         if key_event(cx, el, "keydown", &key)? && key_event(cx, el, "keypress", &key)? {
-            if ch == '\n' && tag(cx, el) != "textarea" {
-                implicit_submit(cx, el)?;
-            } else {
-                insert(cx, el, ch)?;
-            }
+            type_char(cx, el, ch)?;
         }
         key_event(cx, el, "keyup", &key)?;
     }
-    if value_of(cx, el)? != initial {
+    Ok(())
+}
+
+/// Replaces an editable element's content with `text`, typed key by key: everything in it
+/// is selected first, as a person selects all and types over it.
+pub fn type_text(cx: &mut Cx<'_, '_, '_>, el: NodeId, text: &str) -> R<()> {
+    move_focus(cx, Some(el))?;
+    let initial = value_of(cx, el)?;
+    crate::dom::editing::select_all(cx, Some(el))?;
+    if text.is_empty() {
+        crate::dom::editing::edit(
+            cx,
+            el,
+            crate::dom::editing::Kind::DeleteBackward,
+            None,
+            false,
+        )?;
+    }
+    type_keys(cx, el, text)?;
+    if editable(cx, el) == Some(true) && cx.dom().get(el).is_some() && value_of(cx, el)? != initial
+    {
         input_event(cx, el, "change", false)?;
     }
     Ok(())
@@ -1067,9 +1073,35 @@ pub fn fill(cx: &mut Cx<'_, '_, '_>, el: NodeId, value: &str) -> R<()> {
     if cx.dom().get(el).is_none() || value_of(cx, el)? == value {
         return Ok(());
     }
-    set_value(cx, el, value);
+    if editable(cx, el) == Some(false) {
+        crate::dom::editing::select_all(cx, Some(el))?;
+        crate::dom::editing::edit(
+            cx,
+            el,
+            crate::dom::editing::Kind::InsertReplacementText,
+            Some(value),
+            false,
+        )?;
+        return Ok(());
+    }
+    {
+        let mut dom = cx.dom_mut();
+        let c = dom.control_mut(el);
+        c.value = Some(value.to_string());
+        c.selection = None;
+    }
     edit_event(cx, el, "input", false, "insertReplacementText", None)?;
     input_event(cx, el, "change", false).map(|_| ())
+}
+
+/// Fills a value from the vault: as [`fill`], and the value is never copied from the field
+/// or put on the clipboard.
+pub fn fill_secret(cx: &mut Cx<'_, '_, '_>, el: NodeId, value: &str) -> R<()> {
+    cx.st().vault_values.push(value.to_string());
+    fill(cx, el, value)?;
+    let host = crate::dom::editing::editing_host(&cx.dom(), el).unwrap_or(el);
+    cx.dom_mut().control_mut(host).from_vault = true;
+    Ok(())
 }
 
 /// Implicit submission (Enter in a field): the form's default button, else the form.
@@ -1216,22 +1248,9 @@ pub fn type_focused(cx: &mut Cx<'_, '_, '_>, text: &str) -> R<bool> {
         return Ok(false);
     };
     let initial = value_of(cx, el)?;
-    for ch in text.chars() {
-        let key = if ch == '\n' {
-            "Enter".to_string()
-        } else {
-            ch.to_string()
-        };
-        if key_event(cx, el, "keydown", &key)? && key_event(cx, el, "keypress", &key)? {
-            if ch == '\n' && tag(cx, el) != "textarea" {
-                implicit_submit(cx, el)?;
-            } else {
-                insert(cx, el, ch)?;
-            }
-        }
-        key_event(cx, el, "keyup", &key)?;
-    }
-    if cx.dom().get(el).is_some() && value_of(cx, el)? != initial {
+    type_keys(cx, el, text)?;
+    if editable(cx, el) == Some(true) && cx.dom().get(el).is_some() && value_of(cx, el)? != initial
+    {
         input_event(cx, el, "change", false)?;
     }
     Ok(true)
@@ -1262,19 +1281,28 @@ fn press_key(cx: &mut Cx<'_, '_, '_>, key: &str) -> R<()> {
     if go {
         let tg = tag(cx, t);
         match key {
-            // Select all in a text control (full selection and the clipboard come later).
-            "a" | "A" if command => {
-                if editable(cx, t) == Some(true) {
-                    cx.dom_mut().control_mut(t).all_selected = true;
-                }
-            }
+            "a" | "A" if command => crate::dom::editing::select_all(cx, Some(t))?,
+            "c" | "C" if command => crate::dom::editing::copy(cx, false)?,
+            "x" | "X" if command => crate::dom::editing::copy(cx, true)?,
+            "v" | "V" if command => crate::dom::editing::paste(cx)?,
             _ if command && printable => {}
             "Tab" if mods.shift => {
                 let prev = prev_focusable(cx, t);
                 move_focus(cx, prev)?;
             }
-            "Enter" if tg == "textarea" => insert(cx, t, '\n')?,
-            "Enter" if editable(cx, t) == Some(true) => implicit_submit(cx, t)?,
+            "Enter" if editable(cx, t).is_some() => {
+                use crate::dom::editing::Kind;
+                if editable(cx, t) == Some(true) && tg != "textarea" {
+                    implicit_submit(cx, t)?;
+                } else {
+                    let kind = if mods.shift || tg == "textarea" {
+                        Kind::InsertLineBreak
+                    } else {
+                        Kind::InsertParagraph
+                    };
+                    crate::dom::editing::edit(cx, t, kind, None, false)?;
+                }
+            }
             "Enter" if matches!(tg.as_str(), "a" | "button" | "summary") => {
                 crate::dom::event_target::click_with(cx, t, true, center(cx, t))?;
             }
@@ -1292,24 +1320,32 @@ fn press_key(cx: &mut Cx<'_, '_, '_>, key: &str) -> R<()> {
                 move_focus(cx, next)?;
             }
             "Backspace" | "Delete" if editable(cx, t).is_some() => {
-                // The caret is at the end: Backspace deletes the last character, Delete
-                // nothing; with the whole value selected, both clear it.
-                let mut v = value_of(cx, t)?;
-                let changed = if take_selection(cx, t) {
-                    v.clear();
-                    true
-                } else {
-                    key == "Backspace" && v.pop().is_some()
+                use crate::dom::editing::Kind;
+                let word = mods.ctrl || mods.alt;
+                let kind = match (key == "Delete", word) {
+                    (false, false) => Kind::DeleteBackward,
+                    (false, true) => Kind::DeleteWordBackward,
+                    (true, false) => Kind::DeleteForward,
+                    (true, true) => Kind::DeleteWordForward,
                 };
-                if changed {
-                    set_value(cx, t, &v);
-                    let kind = if key == "Delete" {
-                        "deleteContentForward"
-                    } else {
-                        "deleteContentBackward"
-                    };
-                    edit_event(cx, t, "input", false, kind, None)?;
-                }
+                crate::dom::editing::edit(cx, t, kind, None, false)?;
+            }
+            "ArrowLeft" | "ArrowRight" | "ArrowUp" | "ArrowDown" | "Home" | "End"
+                if editable(cx, t).is_some() || mods.shift =>
+            {
+                use crate::dom::editing::{Granularity, Step};
+                let forward = matches!(key, "ArrowRight" | "ArrowDown" | "End");
+                let unit = match key {
+                    "ArrowLeft" | "ArrowRight" if mods.ctrl || mods.alt => Granularity::Word,
+                    "ArrowLeft" | "ArrowRight" if mods.meta => Granularity::LineBoundary,
+                    "ArrowLeft" | "ArrowRight" => Granularity::Character,
+                    "ArrowUp" | "ArrowDown" if mods.meta => Granularity::DocumentBoundary,
+                    "ArrowUp" | "ArrowDown" => Granularity::Line,
+                    _ if mods.ctrl || mods.meta => Granularity::DocumentBoundary,
+                    _ => Granularity::LineBoundary,
+                };
+                let el = editable(cx, t).is_some().then_some(t);
+                crate::dom::editing::move_caret(cx, el, Step { forward, unit }, mods.shift)?;
             }
             "Escape" => {
                 let top = cx.st().modals.last().copied();
@@ -1321,7 +1357,7 @@ fn press_key(cx: &mut Cx<'_, '_, '_>, key: &str) -> R<()> {
             }
             k if printable && editable(cx, t).is_some() => {
                 if let Some(c) = k.chars().next() {
-                    insert(cx, t, c)?;
+                    type_char(cx, t, c)?;
                 }
             }
             // Scrolling keys, outside fields and selects: the focused element's nearest
@@ -1600,6 +1636,8 @@ pub fn pointer_down(cx: &mut Cx<'_, '_, '_>, el: NodeId, point: (f64, f64)) -> R
             target = cx.dom().parent(t);
         }
         move_focus(cx, target)?;
+        let shift = cx.st().mods.shift;
+        crate::dom::editing::pointer_down(cx, point.0, point.1, 1, shift)?;
     }
     Ok(())
 }
@@ -1735,6 +1773,10 @@ pub fn pointer_up(cx: &mut Cx<'_, '_, '_>, el: NodeId, point: (f64, f64)) -> R<D
     }
     mouse(cx, el, "pointerup", point, None)?;
     mouse(cx, el, "mouseup", point, None)?;
+    // A press that moved selected what it passed over.
+    if press.as_ref().is_some_and(|p| p.moved) {
+        crate::dom::editing::pointer_drag(cx, point.0, point.1)?;
+    }
     if let Some(p) = press
         && !p.moved
         && p.node == el

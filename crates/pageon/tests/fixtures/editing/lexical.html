@@ -1,0 +1,16 @@
+<!doctype html><meta charset=utf-8><title>Lexical</title>
+<div id=editor contenteditable=true aria-label="Comment"></div><pre id=out></pre>
+<script src=/lexical.min.js></script>
+<script>
+const { createEditor, registerRichText, registerHistory, createEmptyHistoryState, HeadingNode, QuoteNode, $getRoot, $createParagraphNode } = Lexical;
+const ed = createEditor({ namespace: 'fixture', nodes: [HeadingNode, QuoteNode], onError: e => { throw e; } });
+ed.setRootElement(editor);
+registerRichText(ed);
+registerHistory(ed, createEmptyHistoryState(), 300);
+const show = () => out.textContent = JSON.stringify(ed.getEditorState().toJSON().root.children.map(p =>
+  (p.children || []).map(t => (t.format & 1 ? '**' + t.text + '**' : t.text || (t.type === 'linebreak' ? '\n' : ''))).join('')));
+ed.update(() => { const root = $getRoot(); if (root.isEmpty()) root.append($createParagraphNode()); }, { discrete: true });
+ed.registerUpdateListener(show);
+show();
+window.ed = ed;
+</script>

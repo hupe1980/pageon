@@ -14,6 +14,11 @@ fn viewport(cx: &Cx<'_, '_, '_>) -> (i32, i32) {
 
 /// `Window`.
 pub mod window {
+    pub fn get_selection(cx: &mut Cx<'_, '_, '_>, _this: Obj) -> R<Option<Obj>> {
+        let root = cx.dom().root();
+        Ok(crate::dom::selecting::object(cx, root))
+    }
+
     use super::*;
 
     pub fn get_history(cx: &mut Cx<'_, '_, '_>, _this: Obj) -> R<Obj> {

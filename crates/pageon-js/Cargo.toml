@@ -29,6 +29,7 @@ chacha20 = { version = "0.10", default-features = false, features = ["rng"] }
 rand_core = "0.10"
 aws-lc-rs = "1.19"
 base64 = "0.22"
+icu_segmenter = "2.4"
 p256 = { version = "0.14", default-features = false, features = ["ecdsa", "pkcs8", "alloc"] }
 
 [dev-dependencies]

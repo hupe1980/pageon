@@ -259,6 +259,7 @@ pub mod event_target {
             let worlds = u32::try_from(cx.realm.worlds.borrow().len()).unwrap_or(1);
             for w in 0..worlds.max(1) {
                 cx.in_world(w, |cx| handler(cx, cur, event, ty))?;
+                crate::cv::clean_up(cx);
             }
         }
         for l in listeners {
@@ -279,6 +280,7 @@ pub mod event_target {
                 let ev_js = cx.wrap(event);
                 cx.invoke(&l.cb, this.into(), &[ev_js.into()])
             })?;
+            crate::cv::clean_up(cx);
             if ev(cx, event, |e| e.stop_immediate)? {
                 break;
             }
@@ -468,6 +470,7 @@ pub mod event_target {
             dispatch(cx, Target::Node(t), e)?;
             let e = focus_event(cx, "focusin", true, from);
             dispatch(cx, Target::Node(t), e)?;
+            crate::dom::editing::focused(cx, t);
         }
         Ok(())
     }

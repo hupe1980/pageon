@@ -1,0 +1,11 @@
+<!doctype html><meta charset=utf-8><title>Quill</title>
+<div id=editor></div><pre id=out></pre>
+<script src=/quill.min.js></script>
+<script>
+const quill = new Quill('#editor', {});
+quill.root.setAttribute('aria-label', 'Comment');
+const show = () => out.textContent = JSON.stringify(quill.getContents().ops);
+quill.on('text-change', show);
+show();
+window.quill = quill;
+</script>

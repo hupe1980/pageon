@@ -154,6 +154,7 @@ fn handshake_and_tools() {
             "browser_upload",
             "browser_press",
             "browser_select",
+            "browser_paste",
             "browser_hover",
             "browser_drag",
             "browser_scroll",

@@ -2409,6 +2409,7 @@ dependencies = [
  "chacha20",
  "encoding_rs",
  "html5ever",
+ "icu_segmenter",
  "p256",
  "pageon-dom",
  "pageon-env",

@@ -279,7 +279,7 @@ fn typing_dispatches_input_events() {
     let log = text_of(tab.document(), "log");
     assert_eq!(
         log.trim(),
-        "b:insertText:a i:insertText b:insertText:b i:insertText i:deleteContentBackward"
+        "b:insertText:a i:insertText b:insertText:b i:insertText b:deleteContentBackward:null i:deleteContentBackward"
     );
 }
 

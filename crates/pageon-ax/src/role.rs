@@ -463,8 +463,37 @@ pub(crate) fn role(dom: &Dom, ix: &Index<'_>, id: NodeId) -> &'static str {
         }
         Some(r) => r,
         None if inherits_presentation(dom, ix, id) => "none",
-        None => implicit_role(),
+        // An editing host is a text field, as Chromium exposes it.
+        None => match implicit_role() {
+            "generic" | "paragraph" if editing_root(dom, id) => "textbox",
+            r => r,
+        },
     }
+}
+
+/// Whether `id` is the root of editable content (`contenteditable` true, its parent not
+/// editable).
+fn editing_root(dom: &Dom, id: NodeId) -> bool {
+    let editable = |n: NodeId| {
+        dom.get(n)
+            .and_then(|x| x.attr("contenteditable"))
+            .map(str::to_ascii_lowercase)
+    };
+    let on =
+        |v: Option<String>| v.is_some_and(|v| v.is_empty() || v == "true" || v == "plaintext-only");
+    if !on(editable(id)) {
+        return false;
+    }
+    let mut cur = dom.parent(id);
+    while let Some(p) = cur {
+        match editable(p) {
+            Some(v) if v == "false" => return true,
+            v @ Some(_) if on(v.clone()) => return false,
+            _ => {}
+        }
+        cur = dom.parent(p);
+    }
+    true
 }
 
 #[cfg(test)]

@@ -21,7 +21,8 @@ toggling labels).
 | Upload staged files into a file input, the chooser a button opens, or a drop zone | `upload e9 cv` · `upload e9 cv,photo` · `upload e9 download:1` |
 | Press a key, a chord or a sequence on the focused element | `press Enter` · `press ctrl+a` · `press shift+Tab` · `press Down Down Enter` · `press Tab x3` |
 | Hold a key (ms of virtual time, with key repeat) | `hold shift 2000` |
-| Select options by value or label | `select e7 Germany` |
+| Select options by value or label, or text in any element | `select e7 Germany` · `select e5 quick brown` |
+| Paste text into an element, or at the focused caret | `paste e9 Thanks for the review` · `paste "text"` |
 | Hover | `hover e2` · `hover 120,40` |
 | Drag an element onto another | `drag e3 e7` |
 | Scroll the page, a container, what is at a point, or to an element | `scroll down` · `scroll down 300` · `scroll e5 down` · `scroll 640,380 down 300` · `scroll e12` |
@@ -74,6 +75,7 @@ An outcome reports what actually happened, not what was attempted:
   apps that change the URL in place (`history.pushState`, fragments) report
   `navigated to "…" (same page)`;
 - dialogs the page opened (answered by the dialog policy), popups, downloads;
+- what the action put on the clipboard, as page data (`copied (page data) "sk-…"`);
 - requests made, and requests held or blocked by the policy;
 - new script errors;
 - a form the page refused to submit, with each invalid field's ref, name and reason;
@@ -114,6 +116,23 @@ When an action cannot be done, the error has a kind and guidance the model can f
 | `tool` | the page's tool failed: its message, quoted |
 | `script` | an `eval` (the toolsets' `javascript_exec`) threw: its message, quoted |
 | `unsupported` | use another action |
+
+## Editing
+
+`type e3 text` selects what the field or editor holds and types over it, key by key, through
+`beforeinput` and `input` as a keyboard does, so rich-text editors (ProseMirror, Lexical, Quill)
+update their own documents. `type "text"` types at the caret. The keys edit as in Chrome: the
+arrows (with Shift to select), Home and End, Backspace and Delete (with Ctrl, by word), Enter
+for a new paragraph, Shift+Enter for a line break, `ctrl+a`, and the editor's own shortcuts
+(`press ctrl+b`).
+
+`select e5 quick brown` selects that text inside `e5` (on a `<select>` it chooses options). Then
+`press ctrl+b` formats it, `type "…"` replaces it, `press ctrl+c` copies it.
+
+The clipboard is the session's, shared by its tabs and never the host's. `paste e9 text` puts the
+text on it and pastes; `press ctrl+v` pastes what is there. Pages receive pasted data in their
+`paste` event and cannot read the clipboard otherwise. Password fields and secrets are never
+copied.
 
 ## Files
 

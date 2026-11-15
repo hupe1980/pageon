@@ -77,6 +77,15 @@ pub fn template(
                 1,
             );
         }
+        Iface::HTMLInputElement | Iface::HTMLTextAreaElement => {
+            cv::method(
+                scope,
+                proto.into(),
+                "setRangeText",
+                crate::dom::editing::set_range_text_any,
+                1,
+            );
+        }
         Iface::Performance => {
             // `measure` takes a mark name or an options object: one method reads both.
             cv::method(

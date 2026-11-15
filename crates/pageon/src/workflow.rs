@@ -452,6 +452,12 @@ pub fn compile(steps: &[Step]) -> Result<Workflow, String> {
                     step.action
                 ));
             }
+            Action::Paste(..) => {
+                return Err(format!(
+                    "step `{}` pastes; workflows type (record the step with type)",
+                    step.action
+                ));
+            }
             Action::Drag(..) => {
                 return Err(format!(
                     "step `{}` drags; workflows do not drag yet (finish this part by hand)",

@@ -141,7 +141,8 @@ pub mod html_input_element {
             let mut dom = cx.dom_mut();
             let c = dom.control_mut(id);
             c.value = Some(v);
-            c.all_selected = false;
+            c.selection = None;
+            c.from_vault = false;
         }
         Ok(())
     }
@@ -175,11 +176,43 @@ pub mod html_input_element {
             .map_err(|_| gone())
     }
 
-    /// `select()`: selects the whole value, so the next keystroke replaces it (pageon keeps
-    /// no finer caret or range in fields).
+    /// `select()`: selects the whole value.
     pub fn select(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<()> {
-        cx.dom_mut().control_mut(this.node()?).all_selected = true;
-        Ok(())
+        crate::dom::editing::sel::select(cx, this)
+    }
+
+    pub fn get_selection_start(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<Option<u32>> {
+        crate::dom::editing::sel::start(cx, this)
+    }
+
+    pub fn set_selection_start(cx: &mut Cx<'_, '_, '_>, this: Obj, v: Option<u32>) -> R<()> {
+        crate::dom::editing::sel::set_start(cx, this, v.unwrap_or(0))
+    }
+
+    pub fn get_selection_end(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<Option<u32>> {
+        crate::dom::editing::sel::end(cx, this)
+    }
+
+    pub fn set_selection_end(cx: &mut Cx<'_, '_, '_>, this: Obj, v: Option<u32>) -> R<()> {
+        crate::dom::editing::sel::set_end(cx, this, v.unwrap_or(0))
+    }
+
+    pub fn get_selection_direction(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<Option<String>> {
+        crate::dom::editing::sel::direction(cx, this)
+    }
+
+    pub fn set_selection_direction(cx: &mut Cx<'_, '_, '_>, this: Obj, v: Option<String>) -> R<()> {
+        crate::dom::editing::sel::set_direction(cx, this, v)
+    }
+
+    pub fn set_selection_range(
+        cx: &mut Cx<'_, '_, '_>,
+        this: Obj,
+        start: u32,
+        end: u32,
+        direction: Option<String>,
+    ) -> R<()> {
+        crate::dom::editing::sel::set_range(cx, this, start, end, direction)
     }
 
     pub fn get_form(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<Option<Obj>> {
@@ -253,7 +286,8 @@ pub mod html_text_area_element {
             let mut dom = cx.dom_mut();
             let c = dom.control_mut(id);
             c.value = Some(v.replace("\r\n", "\n"));
-            c.all_selected = false;
+            c.selection = None;
+            c.from_vault = false;
         }
         Ok(())
     }
@@ -270,11 +304,43 @@ pub mod html_text_area_element {
         Ok("textarea".into())
     }
 
-    /// `select()`: selects the whole value, so the next keystroke replaces it (pageon keeps
-    /// no finer caret or range in fields).
+    /// `select()`: selects the whole value.
     pub fn select(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<()> {
-        cx.dom_mut().control_mut(this.node()?).all_selected = true;
-        Ok(())
+        crate::dom::editing::sel::select(cx, this)
+    }
+
+    pub fn get_selection_start(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<u32> {
+        Ok(crate::dom::editing::sel::start(cx, this)?.unwrap_or(0))
+    }
+
+    pub fn set_selection_start(cx: &mut Cx<'_, '_, '_>, this: Obj, v: u32) -> R<()> {
+        crate::dom::editing::sel::set_start(cx, this, v)
+    }
+
+    pub fn get_selection_end(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<u32> {
+        Ok(crate::dom::editing::sel::end(cx, this)?.unwrap_or(0))
+    }
+
+    pub fn set_selection_end(cx: &mut Cx<'_, '_, '_>, this: Obj, v: u32) -> R<()> {
+        crate::dom::editing::sel::set_end(cx, this, v)
+    }
+
+    pub fn get_selection_direction(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<String> {
+        Ok(crate::dom::editing::sel::direction(cx, this)?.unwrap_or_default())
+    }
+
+    pub fn set_selection_direction(cx: &mut Cx<'_, '_, '_>, this: Obj, v: String) -> R<()> {
+        crate::dom::editing::sel::set_direction(cx, this, Some(v))
+    }
+
+    pub fn set_selection_range(
+        cx: &mut Cx<'_, '_, '_>,
+        this: Obj,
+        start: u32,
+        end: u32,
+        direction: Option<String>,
+    ) -> R<()> {
+        crate::dom::editing::sel::set_range(cx, this, start, end, direction)
     }
 
     pub fn get_text_length(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<u32> {

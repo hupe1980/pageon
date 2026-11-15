@@ -1,7 +1,8 @@
 @webref/idl 3.86.0 (https://www.npmjs.com/package/@webref/idl), files: FileAPI, dom, html, cssom, pointerevents, webidl, SVG,
 wai-aria, cssom-view, uievents, hr-time, console, geometry, fetch, xhr, url, intersection-observer,
 webdriver, ua-client-hints, webcrypto, webcrypto-modern-algos, encoding, resize-observer,
-requestidlecallback, websockets, user-timing, performance-timeline, css-conditional. Extracted from the W3C/WHATWG specifications
+requestidlecallback, websockets, user-timing, performance-timeline, css-conditional,
+selection-api, clipboard-apis, input-events. Extracted from the W3C/WHATWG specifications
 by Webref. Licence: the specifications' licences (WHATWG: CC BY 4.0; W3C: W3C Software and
 Document License). Used unmodified, as generator input.
 webmcp.idl: the WebIDL blocks of the WebMCP draft (https://github.com/webmachinelearning/webmcp,

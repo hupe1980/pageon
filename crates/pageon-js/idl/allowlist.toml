@@ -86,7 +86,9 @@ members = [
   "location", "domain", "referrer", "lastModified", "readyState", "title", "dir", "body", "head",
   "images", "links", "forms", "scripts", "getElementsByName", "currentScript", "defaultView",
   "hasFocus", "implementation", "cookie", "createTreeWalker", "createNodeIterator", "elementFromPoint", "elementsFromPoint",
-  "scrollingElement", "hidden", "visibilityState",
+  "scrollingElement", "hidden", "visibilityState", "createRange", "getSelection",
+  "caretPositionFromPoint", "execCommand", "queryCommandEnabled", "queryCommandIndeterm",
+  "queryCommandState", "queryCommandSupported", "queryCommandValue",
 ]
 
 [DOMImplementation]
@@ -128,10 +130,12 @@ members = [
 members = ["assignedSlot"]
 
 [CharacterData]
-members = ["data", "length", "appendData"]
+members = [
+  "data", "length", "substringData", "appendData", "insertData", "deleteData", "replaceData",
+]
 
 [Text]
-members = ["constructor", "wholeText"]
+members = ["constructor", "wholeText", "splitText"]
 
 [Comment]
 members = ["constructor"]
@@ -148,10 +152,18 @@ members = ["dataset", "tabIndex", "focus", "blur"]
 members = ["style"]
 
 [HTMLInputElement]
-members = ["files", "value", "checked", "defaultValue", "type", "select", "form", "labels", "willValidate", "validity", "validationMessage", "checkValidity", "reportValidity", "setCustomValidity"]
+members = [
+  "files", "value", "checked", "defaultValue", "type", "select", "form", "labels", "willValidate",
+  "validity", "validationMessage", "checkValidity", "reportValidity", "setCustomValidity",
+  "selectionStart", "selectionEnd", "selectionDirection", "setSelectionRange",
+]
 
 [HTMLTextAreaElement]
-members = ["value", "defaultValue", "type", "select", "textLength", "form", "willValidate", "validity", "validationMessage", "checkValidity", "reportValidity", "setCustomValidity"]
+members = [
+  "value", "defaultValue", "type", "select", "textLength", "form", "willValidate", "validity",
+  "validationMessage", "checkValidity", "reportValidity", "setCustomValidity", "selectionStart",
+  "selectionEnd", "selectionDirection", "setSelectionRange",
+]
 
 [HTMLSelectElement]
 members = ["value", "selectedIndex", "options", "length", "type", "item", "form", "willValidate", "validity", "validationMessage", "checkValidity", "reportValidity", "setCustomValidity"]
@@ -201,7 +213,7 @@ members = [
   "innerWidth", "innerHeight", "outerWidth", "outerHeight", "scrollX", "scrollY", "pageXOffset",
   "pageYOffset", "devicePixelRatio", "alert", "confirm", "prompt", "open", "visualViewport",
   "scroll", "scrollTo", "scrollBy", "customElements", "history", "matchMedia",
-  "requestIdleCallback", "cancelIdleCallback", "screen",
+  "requestIdleCallback", "cancelIdleCallback", "screen", "getSelection",
 ]
 
 # The visual viewport: the layout viewport at its scroll position, at scale 1.
@@ -224,7 +236,7 @@ members = [
 ]
 
 [Navigator]
-members = []
+members = ["clipboard"]
 
 [NavigatorID]
 members = ["appCodeName", "appName", "appVersion", "platform", "product", "productSub", "userAgent", "vendor", "vendorSub"]
@@ -591,10 +603,50 @@ members = ["constructor", "port1", "port2"]
 members = ["start", "close", "onmessage", "onmessageerror"]
 
 [InputEvent]
-members = ["constructor", "data", "isComposing", "inputType"]
+members = [
+  "constructor", "data", "isComposing", "inputType", "dataTransfer", "getTargetRanges",
+]
 
 [NodeIterator]
 members = [
   "root", "referenceNode", "pointerBeforeReferenceNode", "whatToShow", "filter", "nextNode",
   "previousNode", "detach",
 ]
+
+# Editing: live ranges, the selection, editable content and the session clipboard. Overloads
+# (`setRangeText`) are in `src/dom/hooks.rs`.
+[AbstractRange]
+members = ["startContainer", "startOffset", "endContainer", "endOffset", "collapsed"]
+
+[Range]
+members = [
+  "constructor", "commonAncestorContainer", "setStart", "setEnd", "setStartBefore", "setStartAfter",
+  "setEndBefore", "setEndAfter", "collapse", "selectNode", "selectNodeContents",
+  "compareBoundaryPoints", "deleteContents", "extractContents", "cloneContents", "insertNode",
+  "surroundContents", "cloneRange", "detach", "isPointInRange", "comparePoint", "intersectsNode",
+  "toString", "getClientRects", "getBoundingClientRect",
+]
+
+[StaticRange]
+members = ["constructor"]
+
+[Selection]
+members = [
+  "anchorNode", "anchorOffset", "focusNode", "focusOffset", "isCollapsed", "rangeCount", "type",
+  "direction", "getRangeAt", "addRange", "removeRange", "removeAllRanges", "empty", "collapse",
+  "setPosition", "collapseToStart", "collapseToEnd", "extend", "setBaseAndExtent",
+  "selectAllChildren", "modify", "deleteFromDocument", "containsNode", "toString",
+]
+
+[CaretPosition]
+members = ["offsetNode", "offset", "getClientRect"]
+
+[ElementContentEditable]
+members = ["contentEditable", "isContentEditable"]
+
+[ClipboardEvent]
+members = ["constructor", "clipboardData"]
+
+[Clipboard]
+members = ["readText", "writeText"]
+

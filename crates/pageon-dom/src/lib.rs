@@ -18,6 +18,7 @@ mod dump;
 pub mod encoding;
 pub mod forms;
 mod parser;
+mod ranges;
 mod serialize;
 mod shadow;
 mod sink;
@@ -27,5 +28,6 @@ pub use dom::{
     NodeId, QuirksMode, Traverse,
 };
 pub use parser::{Parser, Step};
+pub use ranges::{Boundary, Direction, Position, RangeId};
 pub use shadow::{AttachError, Composed, ShadowInit, ShadowMode, SlotAssignment, is_custom_name};
 pub use sink::{ParseOptions, parse_document, parse_fragment};

@@ -683,8 +683,58 @@ pub mod character_data {
 
     pub fn append_data(cx: &mut Cx<'_, '_, '_>, this: Obj, v: String) -> R<()> {
         let id = this.node()?;
-        let d = data(cx, id)? + &v;
-        cx.dom_mut().set_text(id, &d).map_err(|_| gone())
+        let len = cx.dom().node_length(id);
+        cx.dom_mut()
+            .replace_data(id, len, 0, &v)
+            .map_err(|_| gone())
+    }
+
+    fn check(cx: &Cx<'_, '_, '_>, id: NodeId, offset: u32) -> R<u32> {
+        let len = cx.dom().node_length(id);
+        if offset > len {
+            return Err(Error::dom(
+                "IndexSizeError",
+                format!("The offset {offset} is greater than the node's length ({len})."),
+            ));
+        }
+        Ok(len)
+    }
+
+    pub fn substring_data(
+        cx: &mut Cx<'_, '_, '_>,
+        this: Obj,
+        offset: u32,
+        count: u32,
+    ) -> R<String> {
+        let id = this.node()?;
+        let len = check(cx, id, offset)?;
+        let units: Vec<u16> = data(cx, id)?.encode_utf16().collect();
+        let end = offset.saturating_add(count).min(len);
+        Ok(String::from_utf16_lossy(
+            &units[offset as usize..end as usize],
+        ))
+    }
+
+    pub fn insert_data(cx: &mut Cx<'_, '_, '_>, this: Obj, offset: u32, v: String) -> R<()> {
+        replace_data(cx, this, offset, 0, v)
+    }
+
+    pub fn delete_data(cx: &mut Cx<'_, '_, '_>, this: Obj, offset: u32, count: u32) -> R<()> {
+        replace_data(cx, this, offset, count, String::new())
+    }
+
+    pub fn replace_data(
+        cx: &mut Cx<'_, '_, '_>,
+        this: Obj,
+        offset: u32,
+        count: u32,
+        v: String,
+    ) -> R<()> {
+        let id = this.node()?;
+        check(cx, id, offset)?;
+        cx.dom_mut()
+            .replace_data(id, offset, count, &v)
+            .map_err(|_| gone())
     }
 }
 
@@ -694,6 +744,20 @@ pub mod text {
 
     pub fn constructor(cx: &mut Cx<'_, '_, '_>, data: String) -> R<Obj> {
         Ok(Obj::Node(cx.dom_mut().create(NodeData::Text(data))))
+    }
+
+    pub fn split_text(cx: &mut Cx<'_, '_, '_>, this: Obj, offset: u32) -> R<Obj> {
+        let id = this.node()?;
+        let len = cx.dom().node_length(id);
+        if offset > len {
+            return Err(Error::dom(
+                "IndexSizeError",
+                format!("The offset {offset} is larger than the Text node's length."),
+            ));
+        }
+        Ok(Obj::Node(
+            cx.dom_mut().split_text(id, offset).map_err(|_| gone())?,
+        ))
     }
 
     pub fn get_whole_text(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<String> {

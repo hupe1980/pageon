@@ -68,7 +68,7 @@ send, `run(response_content)` returns the results to send back. See
 | --- | --- |
 | `observe(full=False)` | The agent view (what changed since the last one, unless `full`) |
 | `view(kind)` | `"markdown"`, `"text"`, `"requests"` or `"errors"` |
-| `click`, `type`, `upload(ref, *names)`, `press`, `select`, `hover`, `drag(ref, to)`, `wait`, `back`, `forward` | An `Outcome`, or raises `ActionError` |
+| `click`, `type`, `upload(ref, *names)`, `press`, `select`, `paste(text, ref=None)`, `hover`, `drag(ref, to)`, `wait`, `back`, `forward` | An `Outcome`, or raises `ActionError` |
 | `scroll(direction="down", pixels=None, ref=None)` | Scroll the page or the container `ref` (`scroll(None, ref="e12")` brings e12 into view) |
 | `screenshot(marks, full_page, format, mask)`, `crop(ref)` | A `Screenshot` (`.save(path)`, `.legend`) |
 | `reset(step=None)` | Back to a step exactly, sending nothing again |

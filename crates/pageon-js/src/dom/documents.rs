@@ -60,6 +60,78 @@ fn valid_name(name: &str) -> R<()> {
 
 /// `Document`.
 pub mod document {
+    pub fn create_range(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<Obj> {
+        let doc = doc_of(cx, this);
+        let p = pageon_dom::Boundary::new(doc, 0);
+        Ok(crate::dom::ranges::new_range(cx, p, p))
+    }
+
+    pub fn get_selection(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<Option<Obj>> {
+        let doc = doc_of(cx, this);
+        Ok(crate::dom::selecting::object(cx, doc))
+    }
+
+    pub fn caret_position_from_point(
+        cx: &mut Cx<'_, '_, '_>,
+        this: Obj,
+        x: f64,
+        y: f64,
+        _options: crate::generated::CaretPositionFromPointOptions,
+    ) -> R<Option<Obj>> {
+        if doc_of(cx, this) != cx.dom().root() {
+            return Ok(None);
+        }
+        let hit = cx.realm.layout().caret_at(x as f32, y as f32);
+        Ok(hit.map(|(n, o)| {
+            Obj::Slab(cx.st().alloc(
+                crate::generated::Iface::CaretPosition,
+                crate::realm::Slot::CaretPosition(n, o),
+            ))
+        }))
+    }
+
+    pub fn exec_command(
+        cx: &mut Cx<'_, '_, '_>,
+        _this: Obj,
+        command: String,
+        _show_ui: bool,
+        value: String,
+    ) -> R<bool> {
+        crate::dom::editing::exec(cx, &command, &value)
+    }
+
+    pub fn query_command_enabled(cx: &mut Cx<'_, '_, '_>, _this: Obj, command: String) -> R<bool> {
+        Ok(crate::dom::editing::enabled(cx, &command))
+    }
+
+    pub fn query_command_supported(
+        _cx: &mut Cx<'_, '_, '_>,
+        _this: Obj,
+        command: String,
+    ) -> R<bool> {
+        Ok(crate::dom::editing::supported(&command))
+    }
+
+    pub fn query_command_state(_cx: &mut Cx<'_, '_, '_>, _this: Obj, _command: String) -> R<bool> {
+        Ok(false)
+    }
+
+    pub fn query_command_indeterm(
+        _cx: &mut Cx<'_, '_, '_>,
+        _this: Obj,
+        _command: String,
+    ) -> R<bool> {
+        Ok(false)
+    }
+
+    pub fn query_command_value(
+        _cx: &mut Cx<'_, '_, '_>,
+        _this: Obj,
+        _command: String,
+    ) -> R<String> {
+        Ok(String::new())
+    }
+
     use super::*;
 
     /// `document.elementFromPoint(x, y)`: the element painted at a viewport point (`null`

@@ -515,7 +515,14 @@ class Tab:
         return self._act("browser_press", {"key": key})
 
     def select(self, ref: str, *values: str) -> Outcome:
+        """Choose options of a ``<select>``; on any other element, select that text in it."""
         return self._act("browser_select", {"ref": ref, "values": list(values)})
+
+    def paste(self, text: str, ref: str | None = None) -> Outcome:
+        """Paste ``text`` into ``ref`` (at the end of its content) or the focused element; the
+        page gets a ``paste`` event, as from Ctrl+V."""
+        args = {"text": text} if ref is None else {"ref": ref, "text": text}
+        return self._act("browser_paste", args)
 
     def hover(self, ref: str) -> Outcome:
         return self._act("browser_hover", {"ref": ref})

@@ -30,6 +30,8 @@ pub struct Session<E: Env> {
     /// Secret values typed so far in any tab, with their handles: redacted from everything the
     /// session reports, also after the tab that typed them closed.
     secrets: RefCell<Vec<(String, String)>>,
+    /// The session clipboard: one for every tab, never the host's.
+    clipboard: RefCell<Option<pageon_js::Clip>>,
 }
 
 impl<E: Env> std::fmt::Debug for Session<E> {
@@ -46,7 +48,18 @@ impl<E: Env> Session<E> {
             net: Rc::new(RefCell::new(Net::default())),
             now: Cell::new(0),
             secrets: RefCell::default(),
+            clipboard: RefCell::default(),
         }
+    }
+
+    /// What the session clipboard holds.
+    pub fn clipboard(&self) -> Option<pageon_js::Clip> {
+        self.clipboard.borrow().clone()
+    }
+
+    /// Replaces what the session clipboard holds.
+    pub fn set_clipboard(&self, clip: Option<pageon_js::Clip>) {
+        *self.clipboard.borrow_mut() = clip;
     }
 
     /// The secret values typed so far, with their handles.
