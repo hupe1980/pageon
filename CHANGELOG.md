@@ -6,9 +6,9 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
-## [0.0.2]
+## [0.1.0]
 
-The first release (0.0.1 was a crates.io name placeholder).
+The first release.
 
 ### Added
 
@@ -27,5 +27,5 @@ The first release (0.0.1 was a crates.io name placeholder).
   `2026-07-28` and earlier), CDP for Puppeteer and Playwright, WebDriver BiDi, a Python package
   with a BrowserGym backend, and the Rust crates.
 
-[Unreleased]: https://github.com/hupe1980/pageon/compare/v0.0.2...HEAD
-[0.0.2]: https://github.com/hupe1980/pageon/releases/tag/v0.0.2
+[Unreleased]: https://github.com/hupe1980/pageon/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/hupe1980/pageon/releases/tag/v0.1.0
