@@ -79,20 +79,18 @@ high. The findings are still concrete:
 
 | Site | Score | What it found |
 | --- | --- | --- |
-| github.com | 97 | Six targets under 24 px with neighbours too close; no Markdown |
+| github.com | 96 | Nine targets under 24 px with neighbours too close; no Markdown |
 | gov.uk | 96 | No llms.txt, no Markdown |
 | docs.python.org | 96 | Two search boxes under 24 px next to their buttons |
+| bbc.com/news | 96 | One small target; no llms.txt, no Markdown |
 | rust-lang.org | 95 | No robots.txt |
-| bbc.com/news | 94 | A script error; one small target |
-| Hacker News | 92 | 68 links share 4 names ("upvote", "hide", …); an unnamed search box |
+| Hacker News | 92 | 69 links share 5 names ("upvote", "hide", …); an unnamed search box |
 | TodoMVC | 92 | Its only field is named by a placeholder |
-| crates.io search | 80 | An agent sees 50 tokens: the app did not render in pageon |
+| crates.io search | 88 | Agents that run no scripts see 3 % of the page; 21 controls share 3 names |
 
-Two of these say as much about pageon as about the site. The audit reports only errors the
-site's scripts raised, but an error that appears only in pageon may be a gap in pageon. Running
-this audit found six such gaps, now fixed (`select.add`, `performance.measure` options,
-`new EventTarget()` and subclasses, `new DOMRect()`, `Symbol.toStringTag`, `document.fonts`).
-crates.io's app still does not render in pageon. Please
+An error that appears only in pageon may be a gap in pageon, so the audit counts only errors the
+site's own scripts raise. Running it on these sites found such gaps, now fixed: the first run
+showed script errors on Python's docs, BBC and GitHub, and an empty crates.io. Please
 [report](https://github.com/hupe1980/pageon/issues) any you meet.
 
 The audit judges one page as pageon's agent meets it. Other agents see similar pages, but not

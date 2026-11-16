@@ -94,15 +94,39 @@ fn entries(cx: &Cx<'_, '_, '_>, name: Option<&str>, kind: Option<&str>) -> Vec<O
 }
 
 /// The start time of the latest mark named `name`.
+/// The `PerformanceTiming` attributes, which `measure` takes as mark names (User Timing).
+const TIMING: [&str; 21] = [
+    "navigationStart",
+    "unloadEventStart",
+    "unloadEventEnd",
+    "redirectStart",
+    "redirectEnd",
+    "fetchStart",
+    "domainLookupStart",
+    "domainLookupEnd",
+    "connectStart",
+    "connectEnd",
+    "secureConnectionStart",
+    "requestStart",
+    "responseStart",
+    "responseEnd",
+    "domLoading",
+    "domInteractive",
+    "domContentLoadedEventStart",
+    "domContentLoadedEventEnd",
+    "domComplete",
+    "loadEventStart",
+    "loadEventEnd",
+];
+
 fn mark_time(cx: &Cx<'_, '_, '_>, name: &str) -> R<f64> {
     let st = cx.st();
-    st.timing
-        .iter()
-        .rev()
-        .find_map(|&id| match st.slot(id) {
-            Some(Slot::PerfEntry(e)) if e.kind == "mark" && e.name == name => Some(e.start),
-            _ => None,
-        })
+    let mark = st.timing.iter().rev().find_map(|&id| match st.slot(id) {
+        Some(Slot::PerfEntry(e)) if e.kind == "mark" && e.name == name => Some(e.start),
+        _ => None,
+    });
+    // A navigation's timing points: the network takes no page time, so they are the origin.
+    mark.or_else(|| TIMING.contains(&name).then_some(0.0))
         .ok_or_else(|| {
             Error::dom(
                 "SyntaxError",

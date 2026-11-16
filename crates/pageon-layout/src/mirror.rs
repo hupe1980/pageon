@@ -103,12 +103,13 @@ fn sheet_css<'a>(
     pseudo: bool,
     scope: Option<crate::scope::Scope>,
 ) -> std::borrow::Cow<'a, str> {
-    let css: std::borrow::Cow<'a, str> = match pseudo.then(|| crate::scope::pseudo(css)).flatten() {
-        Some(r) => r.into(),
-        None => css.into(),
-    };
+    let css: std::borrow::Cow<'a, str> =
+        match pseudo.then(|| crate::scope::pseudo_memo(css)).flatten() {
+            Some(r) => String::from(&*r).into(),
+            None => css.into(),
+        };
     match scope {
-        Some(s) => crate::scope::rewrite(&css, s).into(),
+        Some(s) => String::from(&*crate::scope::rewrite_memo(&css, s)).into(),
         None => css,
     }
 }
@@ -117,14 +118,14 @@ fn sheet_css<'a>(
 fn uses_pseudo(dom: &Dom, stylesheets: &[Stylesheet]) -> bool {
     stylesheets
         .iter()
-        .any(|s| crate::scope::uses_pseudo(&s.css))
+        .any(|s| crate::scope::uses_pseudo_memo(&s.css))
         || dom.traverse(dom.root()).any(|e| match e {
             Edge::Enter(id) => match dom.get(id).map(|n| &n.data) {
                 Some(NodeData::Text(t)) => {
                     dom.parent(id)
                         .and_then(|p| dom.get(p))
                         .is_some_and(|p| p.is_html("style"))
-                        && crate::scope::uses_pseudo(t)
+                        && crate::scope::uses_pseudo_memo(t)
                 }
                 _ => false,
             },
@@ -132,7 +133,8 @@ fn uses_pseudo(dom: &Dom, stylesheets: &[Stylesheet]) -> bool {
         })
         || adopted(dom, None)
             .iter()
-            .any(|(_, css)| crate::scope::uses_pseudo(css))
+            .any(|(_, css)| crate::scope::uses_pseudo_memo(css))
+        || dom.cssom_texts().any(crate::scope::uses_pseudo_memo)
 }
 
 /// The adopted stylesheets to apply, in cascade order: the document's, then each connected
@@ -404,11 +406,50 @@ pub(crate) fn build(
                                 if dom.popover_open(id) {
                                     attrs.push(attr("pageon-popover-open", String::new()));
                                 }
-                                let el = m.create_element(name.clone(), attrs);
+                                // With scripting on, `<noscript>` is not rendered (UA sheet).
+                                if &*name.local == "noscript" && dom.scripting() {
+                                    attrs.push(attr("pageon-scripting", String::new()));
+                                }
+                                // A `<link>` stylesheet a script inserted: its CSS, loaded by
+                                // the engine, applies as a `<style>`.
+                                let linked =
+                                    (local == "link").then(|| dom.cssom_text(id)).flatten();
+                                let el = match linked {
+                                    Some(_) => m.create_element(
+                                        html5ever::QualName::new(
+                                            None,
+                                            html5ever::ns!(html),
+                                            html5ever::LocalName::from("style"),
+                                        ),
+                                        Vec::new(),
+                                    ),
+                                    None => m.create_element(name.clone(), attrs),
+                                };
+                                if let Some(css) = linked {
+                                    let scope = composed.map(|c| match c.scope_of.get(&id) {
+                                        Some(&n) => crate::scope::Scope::Shadow(n),
+                                        None => crate::scope::Scope::Document,
+                                    });
+                                    let t = m.create_text_node(&sheet_css(css, pseudo, scope));
+                                    m.append_children(el, &[t]);
+                                }
                                 if local == "textarea"
                                     && let Some(v) = state.and_then(|c| c.value.as_ref())
                                 {
                                     let t = m.create_text_node(&redact(v, secrets));
+                                    m.append_children(el, &[t]);
+                                    skip_inside = Some(id);
+                                }
+                                // A `<style>` whose rules a script changed (`insertRule`):
+                                // those rules, not its text.
+                                if local == "style"
+                                    && let Some(css) = dom.cssom_text(id)
+                                {
+                                    let scope = composed.map(|c| match c.scope_of.get(&id) {
+                                        Some(&n) => crate::scope::Scope::Shadow(n),
+                                        None => crate::scope::Scope::Document,
+                                    });
+                                    let t = m.create_text_node(&sheet_css(css, pseudo, scope));
                                     m.append_children(el, &[t]);
                                     skip_inside = Some(id);
                                 }

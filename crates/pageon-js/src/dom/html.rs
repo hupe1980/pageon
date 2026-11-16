@@ -1277,3 +1277,77 @@ pub(crate) mod select_options {
         });
     }
 }
+
+/// `<link>`: its URL and relation (its sheet is `LinkStyle`).
+pub mod html_link_element {
+    use super::*;
+
+    pub fn get_href(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<String> {
+        let id = this.node()?;
+        Ok(href_url(cx, id)
+            .map(|u| u.to_string())
+            .or_else(|| attr(cx, id, "href"))
+            .unwrap_or_default())
+    }
+
+    pub fn set_href(cx: &mut Cx<'_, '_, '_>, this: Obj, v: String) -> R<()> {
+        cx.dom_mut()
+            .set_attr(this.node()?, "href", &v)
+            .map_err(|_| gone())
+    }
+
+    pub fn get_rel(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<String> {
+        Ok(attr(cx, this.node()?, "rel").unwrap_or_default())
+    }
+
+    /// `as`: a known destination, lower-cased; anything else is empty.
+    pub fn get_as_(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<String> {
+        let v = attr(cx, this.node()?, "as")
+            .unwrap_or_default()
+            .to_ascii_lowercase();
+        const KNOWN: [&str; 13] = [
+            "fetch",
+            "audio",
+            "audioworklet",
+            "document",
+            "embed",
+            "font",
+            "image",
+            "manifest",
+            "object",
+            "paintworklet",
+            "report",
+            "script",
+            "style",
+        ];
+        Ok(
+            if KNOWN.contains(&v.as_str())
+                || [
+                    "track",
+                    "video",
+                    "worker",
+                    "serviceworker",
+                    "sharedworker",
+                    "xslt",
+                ]
+                .contains(&v.as_str())
+            {
+                v
+            } else {
+                String::new()
+            },
+        )
+    }
+
+    pub fn set_as_(cx: &mut Cx<'_, '_, '_>, this: Obj, v: String) -> R<()> {
+        cx.dom_mut()
+            .set_attr(this.node()?, "as", &v)
+            .map_err(|_| gone())
+    }
+
+    pub fn set_rel(cx: &mut Cx<'_, '_, '_>, this: Obj, v: String) -> R<()> {
+        cx.dom_mut()
+            .set_attr(this.node()?, "rel", &v)
+            .map_err(|_| gone())
+    }
+}

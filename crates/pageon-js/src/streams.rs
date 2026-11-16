@@ -11,23 +11,16 @@ pub(crate) fn load(
     _args: v8::FunctionCallbackArguments,
     mut rv: v8::ReturnValue,
 ) {
-    let context = scope.get_current_context();
-    let global = context.global(scope);
-    let (Some(src), Some(name)) = (
-        v8::String::new(scope, SOURCE),
-        v8::String::new(scope, "WebStreamsPolyfill"),
-    ) else {
+    // The bundle is UMD: given its own `exports` (and no `define`), it fills them, whatever
+    // the page has put on the global (`define` of an AMD loader, `module`, `exports`).
+    let code = format!(
+        "(function () {{ var exports = {{}}, module = {{ exports: exports }}, define;\n{SOURCE}\n;return exports; }})()"
+    );
+    let Some(src) = v8::String::new(scope, &code) else {
         return;
     };
     v8::tc_scope!(let tc, scope);
-    if v8::Script::compile(tc, src, None)
-        .and_then(|s| s.run(tc))
-        .is_none()
-    {
-        return;
-    }
-    if let Some(m) = global.get(tc, name.into()) {
-        global.delete(tc, name.into());
+    if let Some(m) = v8::Script::compile(tc, src, None).and_then(|s| s.run(tc)) {
         rv.set(m);
     }
 }

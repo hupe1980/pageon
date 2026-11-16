@@ -122,6 +122,33 @@ impl Dom {
     pub fn has_adopted(&self) -> bool {
         !self.adopted.is_empty()
     }
+
+    /// The rules of a `<style>` as the CSSOM changed them (`None`: its text applies).
+    pub fn cssom_text(&self, style: NodeId) -> Option<&str> {
+        self.cssom.get(&style).map(String::as_str)
+    }
+
+    /// Whether the document was parsed with scripting on (`<noscript>` is not rendered).
+    pub fn scripting(&self) -> bool {
+        self.scripting
+    }
+
+    /// Every `<style>`'s CSSOM rules.
+    pub fn cssom_texts(&self) -> impl Iterator<Item = &str> + '_ {
+        self.cssom.values().map(String::as_str)
+    }
+
+    /// Sets (or, with `None`, clears) the CSSOM rules of a `<style>`.
+    pub fn set_cssom_text(&mut self, style: NodeId, css: Option<String>) {
+        match css {
+            Some(c) => {
+                self.cssom.insert(style, c);
+            }
+            None => {
+                self.cssom.remove(&style);
+            }
+        }
+    }
 }
 
 fn html(dom: &Dom, id: NodeId, local: &str) -> bool {

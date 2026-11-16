@@ -8,8 +8,8 @@ use pageon_dom::NodeId;
 use crate::cv::{Cx, Error, Obj, OrBool, R, Value};
 use crate::generated::{
     AddEventListenerOptions, CustomEventInit, EventInit, EventListenerOptions, FocusEventInit,
-    Iface, KeyboardEventInit, MouseEventInit, SubmitEventInit, ToggleEventInit, UIEventInit,
-    WheelEventInit,
+    Iface, KeyboardEventInit, MouseEventInit, PromiseRejectionEventInit, SubmitEventInit,
+    ToggleEventInit, UIEventInit, WheelEventInit,
 };
 use crate::realm::{EventData, InputData, Listener, Slot, Target};
 
@@ -98,7 +98,7 @@ pub mod event_target {
         let mut st = cx.st();
         let list = st.listeners.entry(t).or_default();
         let exists = list.iter().any(|l| {
-            !l.removed.get() && l.ty == ty && l.capture == capture && {
+            !l.removed.get() && l.handler.is_none() && l.ty == ty && l.capture == capture && {
                 let other = v8::Local::new(&*cx.scope, &l.cb);
                 other.strict_equals(cb_local)
             }
@@ -110,6 +110,7 @@ pub mod event_target {
                 capture,
                 once,
                 removed: Rc::new(Cell::new(false)),
+                handler: None,
             });
         }
         Ok(())
@@ -132,7 +133,7 @@ pub mod event_target {
         let mut st = cx.st();
         if let Some(list) = st.listeners.get_mut(&t) {
             list.retain(|l| {
-                let same = l.ty == ty && l.capture == capture && {
+                let same = l.handler.is_none() && l.ty == ty && l.capture == capture && {
                     let other = v8::Local::new(&*cx.scope, &l.cb);
                     other.strict_equals(cb_local)
                 };
@@ -259,16 +260,28 @@ pub mod event_target {
                     .collect()
             })
             .unwrap_or_default();
-        // The event handler attributes (one per world) run with the non-capture listeners.
+        // Event handlers run in the place they were first set; one without a place (a content
+        // attribute, `onclick="…"`, set as the page parsed) runs before the listeners.
         if capture != Some(true) {
             let worlds = u32::try_from(cx.realm.worlds.borrow().len()).unwrap_or(1);
             for w in 0..worlds.max(1) {
+                if listeners.iter().any(|l| l.handler == Some(w)) {
+                    continue;
+                }
                 cx.in_world(w, |cx| handler(cx, cur, event, ty))?;
                 crate::cv::clean_up(cx);
             }
         }
         for l in listeners {
             if l.removed.get() {
+                continue;
+            }
+            if let Some(w) = l.handler {
+                cx.in_world(w, |cx| handler(cx, cur, event, ty))?;
+                crate::cv::clean_up(cx);
+                if ev(cx, event, |e| e.stop_immediate)? {
+                    break;
+                }
                 continue;
             }
             if l.once {
@@ -317,6 +330,34 @@ pub mod event_target {
         }
         let Some(f) = f else { return Ok(()) };
         let this = cx.wrap(target_obj(cur));
+        // `window.onerror(message, source, lineno, colno, error)`: returning true cancels.
+        let info = if ty == "error" && cur == Target::Window {
+            ev(cx, event, |e| e.error.clone())?
+        } else {
+            None
+        };
+        if let Some(info) = info {
+            let (message, source, line, col, error) = *info;
+            let args: [v8::Local<'_, v8::Value>; 5] = [
+                cx.str(&message).into(),
+                cx.str(&source).into(),
+                v8::Integer::new_from_unsigned(cx.scope, line).into(),
+                v8::Integer::new_from_unsigned(cx.scope, col).into(),
+                match &error {
+                    Some(v) => cx.local(v),
+                    None => v8::null(cx.scope).into(),
+                },
+            ];
+            let r = cx.invoke(&f, this.into(), &args)?;
+            if r.is_some_and(|v| cx.local(&v).is_true()) {
+                ev_mut(cx, event, |e| {
+                    if e.cancelable {
+                        e.canceled = true;
+                    }
+                })?;
+            }
+            return Ok(());
+        }
         let ev_js = cx.wrap(event);
         let r = cx.invoke(&f, this.into(), &[ev_js.into()])?;
         if let Some(v) = r {
@@ -1181,4 +1222,139 @@ pub mod pointer_event {
     pub fn get_is_primary(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<bool> {
         ev(cx, this, |e| e.input.pointer.2)
     }
+}
+
+/// `PromiseRejectionEvent`.
+pub mod promise_rejection_event {
+    use super::*;
+
+    pub fn constructor(
+        cx: &mut Cx<'_, '_, '_>,
+        ty: String,
+        init: PromiseRejectionEventInit,
+    ) -> R<Obj> {
+        let promise = init.promise.ok_or_else(|| {
+            Error::Type("Failed to construct 'PromiseRejectionEvent': required member promise is undefined.".into())
+        })?;
+        let reason = init.reason.unwrap_or_else(|| {
+            let u: v8::Local<'_, v8::Value> = v8::undefined(cx.scope).into();
+            v8::Global::new(cx.scope, u)
+        });
+        let ev = EventData {
+            ty,
+            bubbles: init.bubbles,
+            cancelable: init.cancelable,
+            composed: init.composed,
+            initialized: true,
+            rejection: Some(Box::new((promise, reason))),
+            ..EventData::default()
+        };
+        Ok(cx.alloc(Iface::PromiseRejectionEvent, Slot::Event(Box::new(ev))))
+    }
+
+    fn field(cx: &Cx<'_, '_, '_>, this: Obj, second: bool) -> R<Value> {
+        match cx.st().slot(this.slab()?) {
+            Some(Slot::Event(e)) => e
+                .rejection
+                .as_deref()
+                .map(|(p, r)| if second { r.clone() } else { p.clone() })
+                .ok_or_else(|| Error::Type("Illegal invocation".into())),
+            _ => Err(Error::Type("Illegal invocation".into())),
+        }
+    }
+
+    pub fn get_promise(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<Value> {
+        field(cx, this, false)
+    }
+
+    pub fn get_reason(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<Value> {
+        field(cx, this, true)
+    }
+}
+
+/// Tells the window about the realm's uncaught exceptions (`error`, an `ErrorEvent`) and
+/// unhandled rejections (`unhandledrejection`), as browsers do after a task; a page that
+/// cancels one has handled it, so it is not recorded as a page error. Errors thrown by these
+/// listeners are recorded without another event. `true` if any event was fired.
+pub(crate) fn deliver_page_errors(cx: &mut Cx<'_, '_, '_>) -> R<bool> {
+    if cx.world != 0 || cx.realm.worker.is_some() {
+        return Ok(false);
+    }
+    let context = cx.scope.get_current_context();
+    let (rejected, thrown) = crate::engine::take_page_errors(cx.scope, context);
+    if rejected.is_empty() && thrown.is_empty() {
+        return Ok(false);
+    }
+    let time = now(cx);
+    let origin = cx.st().origin.clone();
+    let mut handled = Vec::new();
+    for t in thrown {
+        let e = &t.error;
+        // Errors of another origin's scripts are muted, as browsers mute them: the page
+        // learns that one happened, not what or where (pageon's own record keeps it).
+        let foreign = url::Url::parse(&e.source)
+            .ok()
+            .filter(|u| matches!(u.scheme(), "http" | "https"))
+            .is_some_and(|u| u.origin().ascii_serialization() != origin);
+        let info = if foreign {
+            ("Script error.".to_string(), String::new(), 0, 0, None)
+        } else {
+            (
+                e.message.clone(),
+                e.source.clone(),
+                e.line,
+                e.column,
+                Some(t.value),
+            )
+        };
+        let ev = EventData {
+            ty: "error".into(),
+            cancelable: true,
+            initialized: true,
+            trusted: true,
+            time,
+            error: Some(Box::new(info)),
+            ..EventData::default()
+        };
+        let obj = cx.alloc(Iface::ErrorEvent, Slot::Event(Box::new(ev)));
+        if !event_target::dispatch(cx, Target::Window, obj)? {
+            handled.push(t.error);
+        }
+    }
+    let mut unhandled = Vec::new();
+    for r in rejected {
+        let ev = EventData {
+            ty: "unhandledrejection".into(),
+            cancelable: true,
+            initialized: true,
+            trusted: true,
+            time,
+            rejection: Some(Box::new((
+                {
+                    let p: v8::Local<'_, v8::Value> = v8::Local::new(cx.scope, &r.promise).into();
+                    v8::Global::new(cx.scope, p)
+                },
+                r.reason,
+            ))),
+            ..EventData::default()
+        };
+        let obj = cx.alloc(Iface::PromiseRejectionEvent, Slot::Event(Box::new(ev)));
+        if event_target::dispatch(cx, Target::Window, obj)? {
+            unhandled.push(r.error);
+        }
+    }
+    // What the listeners threw is recorded already; it gets no event of its own.
+    let _ = crate::engine::take_page_errors(cx.scope, context);
+    let mut sh = cx.realm.shared.borrow_mut();
+    for e in handled {
+        if let Some(i) = sh.errors.iter().rposition(|x| *x == e) {
+            sh.errors.remove(i);
+        }
+    }
+    for e in unhandled {
+        if sh.errors.len() < 1000 {
+            sh.errors.push(e);
+        }
+    }
+    Ok(true)
 }

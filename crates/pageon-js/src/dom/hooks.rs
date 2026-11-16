@@ -69,6 +69,8 @@ pub fn template(
         | Iface::PluginArray
         | Iface::MimeTypeArray
         | Iface::Plugin
+        | Iface::CSSRuleList
+        | Iface::StyleSheetList
         | Iface::RadioNodeList => {
             inst.set_indexed_property_handler(
                 v8::IndexedPropertyHandlerConfiguration::new().getter(indexed_get),
@@ -327,6 +329,14 @@ fn indexed_get<'s>(
                 .flatten()
                 .map(Out::Str),
             Iface::DOMRectList => crate::dom::dom_rect_list::item(cx, obj, index)
+                .ok()
+                .flatten()
+                .map(Out::Obj),
+            Iface::CSSRuleList => crate::dom::css_rule_list::item(cx, obj, index)
+                .ok()
+                .flatten()
+                .map(Out::Obj),
+            Iface::StyleSheetList => crate::dom::style_sheet_list::item(cx, obj, index)
                 .ok()
                 .flatten()
                 .map(Out::Obj),

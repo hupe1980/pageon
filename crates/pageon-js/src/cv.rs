@@ -1192,10 +1192,31 @@ pub fn handler_set(cx: &mut Cx<'_, '_, '_>, this: Obj, event: &str, v: Option<Va
     let mut st = cx.st();
     match v {
         Some(f) => {
+            // Its place among the listeners is where it is first set.
+            let list = st.listeners.entry(t).or_default();
+            if !list.iter().any(|l| l.handler == Some(w) && l.ty == event) {
+                list.push(crate::realm::Listener {
+                    ty: event.to_string(),
+                    cb: f.clone(),
+                    capture: false,
+                    once: false,
+                    removed: std::rc::Rc::new(std::cell::Cell::new(false)),
+                    handler: Some(w),
+                });
+            }
             st.handlers.insert((w, t, event.to_string()), f);
         }
         None => {
             st.handlers.remove(&(w, t, event.to_string()));
+            if let Some(list) = st.listeners.get_mut(&t) {
+                list.retain(|l| {
+                    let place = l.handler == Some(w) && l.ty == event;
+                    if place {
+                        l.removed.set(true);
+                    }
+                    !place
+                });
+            }
         }
     }
     Ok(())

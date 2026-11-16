@@ -20,6 +20,10 @@ pub enum Iface {
     Blob,
     /// `CSS`.
     CSS,
+    /// `CSSRule`.
+    CSSRule,
+    /// `CSSRuleList`.
+    CSSRuleList,
     /// `CSSStyleDeclaration`.
     CSSStyleDeclaration,
     /// `CSSStyleProperties`.
@@ -154,6 +158,8 @@ pub enum Iface {
     PopStateEvent,
     /// `ProgressEvent`.
     ProgressEvent,
+    /// `PromiseRejectionEvent`.
+    PromiseRejectionEvent,
     /// `PublicKeyCredential`.
     PublicKeyCredential,
     /// `RadioNodeList`.
@@ -182,6 +188,8 @@ pub enum Iface {
     Storage,
     /// `StyleSheet`.
     StyleSheet,
+    /// `StyleSheetList`.
+    StyleSheetList,
     /// `SubmitEvent`.
     SubmitEvent,
     /// `SubtleCrypto`.
@@ -394,8 +402,44 @@ pub enum Iface {
     PointerEvent,
     /// `SVGElement`.
     SVGElement,
+    /// `SVGGradientElement`.
+    SVGGradientElement,
     /// `SVGGraphicsElement`.
     SVGGraphicsElement,
+    /// `SVGImageElement`.
+    SVGImageElement,
+    /// `SVGLinearGradientElement`.
+    SVGLinearGradientElement,
+    /// `SVGMarkerElement`.
+    SVGMarkerElement,
+    /// `SVGMetadataElement`.
+    SVGMetadataElement,
+    /// `SVGPatternElement`.
+    SVGPatternElement,
+    /// `SVGRadialGradientElement`.
+    SVGRadialGradientElement,
+    /// `SVGSVGElement`.
+    SVGSVGElement,
+    /// `SVGStopElement`.
+    SVGStopElement,
+    /// `SVGStyleElement`.
+    SVGStyleElement,
+    /// `SVGSwitchElement`.
+    SVGSwitchElement,
+    /// `SVGSymbolElement`.
+    SVGSymbolElement,
+    /// `SVGTextContentElement`.
+    SVGTextContentElement,
+    /// `SVGTextPathElement`.
+    SVGTextPathElement,
+    /// `SVGTextPositioningElement`.
+    SVGTextPositioningElement,
+    /// `SVGTitleElement`.
+    SVGTitleElement,
+    /// `SVGUseElement`.
+    SVGUseElement,
+    /// `SVGViewElement`.
+    SVGViewElement,
     /// `ShadowRoot`.
     ShadowRoot,
     /// `Text`.
@@ -436,11 +480,39 @@ pub enum Iface {
     HTMLDirectoryElement,
     /// `HTMLDivElement`.
     HTMLDivElement,
+    /// `SVGAElement`.
+    SVGAElement,
+    /// `SVGDefsElement`.
+    SVGDefsElement,
+    /// `SVGDescElement`.
+    SVGDescElement,
+    /// `SVGForeignObjectElement`.
+    SVGForeignObjectElement,
+    /// `SVGGElement`.
+    SVGGElement,
+    /// `SVGGeometryElement`.
+    SVGGeometryElement,
+    /// `SVGLineElement`.
+    SVGLineElement,
+    /// `SVGPolygonElement`.
+    SVGPolygonElement,
+    /// `SVGPolylineElement`.
+    SVGPolylineElement,
+    /// `SVGRectElement`.
+    SVGRectElement,
+    /// `SVGTSpanElement`.
+    SVGTSpanElement,
+    /// `SVGTextElement`.
+    SVGTextElement,
+    /// `SVGCircleElement`.
+    SVGCircleElement,
+    /// `SVGEllipseElement`.
+    SVGEllipseElement,
 }
 
 impl Iface {
     /// All interfaces.
-    pub const ALL: &'static [Iface] = &[Iface::AbortController, Iface::AbstractRange, Iface::AuthenticatorResponse, Iface::Blob, Iface::CSS, Iface::CSSStyleDeclaration, Iface::CSSStyleProperties, Iface::CanvasRenderingContext2D, Iface::CaretPosition, Iface::Credential, Iface::CredentialsContainer, Iface::Crypto, Iface::CryptoKey, Iface::CustomElementRegistry, Iface::CustomStateSet, Iface::DOMException, Iface::DOMImplementation, Iface::DOMParser, Iface::DOMRectList, Iface::DOMRectReadOnly, Iface::DOMStringMap, Iface::DOMTokenList, Iface::DataTransfer, Iface::DataTransferItem, Iface::DataTransferItemList, Iface::ElementInternals, Iface::Event, Iface::EventTarget, Iface::File, Iface::FileList, Iface::FileReader, Iface::FontFaceSet, Iface::FormData, Iface::HTMLCollection, Iface::HTMLFormControlsCollection, Iface::HTMLOptionsCollection, Iface::Headers, Iface::History, Iface::IdleDeadline, Iface::IntersectionObserver, Iface::IntersectionObserverEntry, Iface::Location, Iface::MediaQueryList, Iface::MediaQueryListEvent, Iface::MessageChannel, Iface::MessageEvent, Iface::MessagePort, Iface::MimeType, Iface::MimeTypeArray, Iface::ModelContext, Iface::MutationObserver, Iface::MutationRecord, Iface::NamedNodeMap, Iface::Navigator, Iface::NavigatorUAData, Iface::Node, Iface::NodeFilter, Iface::NodeIterator, Iface::NodeList, Iface::Notification, Iface::Performance, Iface::PerformanceEntry, Iface::PerformanceMark, Iface::PerformanceMeasure, Iface::PerformanceObserver, Iface::PerformanceObserverEntryList, Iface::PermissionStatus, Iface::Permissions, Iface::Plugin, Iface::PluginArray, Iface::PopStateEvent, Iface::ProgressEvent, Iface::PublicKeyCredential, Iface::RadioNodeList, Iface::Range, Iface::Request, Iface::ResizeObserver, Iface::ResizeObserverEntry, Iface::ResizeObserverSize, Iface::Response, Iface::Screen, Iface::ScreenOrientation, Iface::Selection, Iface::StaticRange, Iface::Storage, Iface::StyleSheet, Iface::SubmitEvent, Iface::SubtleCrypto, Iface::TextDecoder, Iface::TextEncoder, Iface::TextMetrics, Iface::ToggleEvent, Iface::ToolActivatedEvent, Iface::ToolCancelEvent, Iface::TreeWalker, Iface::UIEvent, Iface::URL, Iface::URLSearchParams, Iface::UserActivation, Iface::ValidityState, Iface::VisualViewport, Iface::WebSocket, Iface::Window, Iface::Worker, Iface::WorkerGlobalScope, Iface::WorkerLocation, Iface::WorkerNavigator, Iface::XMLHttpRequestEventTarget, Iface::XMLSerializer, Iface::console, Iface::AbortSignal, Iface::Attr, Iface::AuthenticatorAssertionResponse, Iface::AuthenticatorAttestationResponse, Iface::CSSStyleSheet, Iface::CharacterData, Iface::Clipboard, Iface::ClipboardEvent, Iface::CloseEvent, Iface::Comment, Iface::CustomEvent, Iface::DOMRect, Iface::DedicatedWorkerGlobalScope, Iface::Document, Iface::DocumentFragment, Iface::DocumentType, Iface::Element, Iface::ErrorEvent, Iface::EventSource, Iface::FocusEvent, Iface::HTMLElement, Iface::HTMLEmbedElement, Iface::HTMLFieldSetElement, Iface::HTMLFontElement, Iface::HTMLFormElement, Iface::HTMLFrameElement, Iface::HTMLFrameSetElement, Iface::HTMLHRElement, Iface::HTMLHeadElement, Iface::HTMLHeadingElement, Iface::HTMLHtmlElement, Iface::HTMLIFrameElement, Iface::HTMLImageElement, Iface::HTMLInputElement, Iface::HTMLLIElement, Iface::HTMLLabelElement, Iface::HTMLLegendElement, Iface::HTMLLinkElement, Iface::HTMLMapElement, Iface::HTMLMarqueeElement, Iface::HTMLMediaElement, Iface::HTMLMenuElement, Iface::HTMLMetaElement, Iface::HTMLMeterElement, Iface::HTMLModElement, Iface::HTMLOListElement, Iface::HTMLObjectElement, Iface::HTMLOptGroupElement, Iface::HTMLOptionElement, Iface::HTMLOutputElement, Iface::HTMLParagraphElement, Iface::HTMLParamElement, Iface::HTMLPictureElement, Iface::HTMLPreElement, Iface::HTMLProgressElement, Iface::HTMLQuoteElement, Iface::HTMLScriptElement, Iface::HTMLSelectElement, Iface::HTMLSelectedContentElement, Iface::HTMLSlotElement, Iface::HTMLSourceElement, Iface::HTMLSpanElement, Iface::HTMLStyleElement, Iface::HTMLTableCaptionElement, Iface::HTMLTableCellElement, Iface::HTMLTableColElement, Iface::HTMLTableElement, Iface::HTMLTableRowElement, Iface::HTMLTableSectionElement, Iface::HTMLTemplateElement, Iface::HTMLTextAreaElement, Iface::HTMLTimeElement, Iface::HTMLTitleElement, Iface::HTMLTrackElement, Iface::HTMLUListElement, Iface::HTMLUnknownElement, Iface::HTMLVideoElement, Iface::InputEvent, Iface::KeyboardEvent, Iface::MouseEvent, Iface::PointerEvent, Iface::SVGElement, Iface::SVGGraphicsElement, Iface::ShadowRoot, Iface::Text, Iface::WheelEvent, Iface::XMLHttpRequest, Iface::DragEvent, Iface::HTMLAnchorElement, Iface::HTMLAreaElement, Iface::HTMLAudioElement, Iface::HTMLBRElement, Iface::HTMLBaseElement, Iface::HTMLBodyElement, Iface::HTMLButtonElement, Iface::HTMLCanvasElement, Iface::HTMLDListElement, Iface::HTMLDataElement, Iface::HTMLDataListElement, Iface::HTMLDetailsElement, Iface::HTMLDialogElement, Iface::HTMLDirectoryElement, Iface::HTMLDivElement];
+    pub const ALL: &'static [Iface] = &[Iface::AbortController, Iface::AbstractRange, Iface::AuthenticatorResponse, Iface::Blob, Iface::CSS, Iface::CSSRule, Iface::CSSRuleList, Iface::CSSStyleDeclaration, Iface::CSSStyleProperties, Iface::CanvasRenderingContext2D, Iface::CaretPosition, Iface::Credential, Iface::CredentialsContainer, Iface::Crypto, Iface::CryptoKey, Iface::CustomElementRegistry, Iface::CustomStateSet, Iface::DOMException, Iface::DOMImplementation, Iface::DOMParser, Iface::DOMRectList, Iface::DOMRectReadOnly, Iface::DOMStringMap, Iface::DOMTokenList, Iface::DataTransfer, Iface::DataTransferItem, Iface::DataTransferItemList, Iface::ElementInternals, Iface::Event, Iface::EventTarget, Iface::File, Iface::FileList, Iface::FileReader, Iface::FontFaceSet, Iface::FormData, Iface::HTMLCollection, Iface::HTMLFormControlsCollection, Iface::HTMLOptionsCollection, Iface::Headers, Iface::History, Iface::IdleDeadline, Iface::IntersectionObserver, Iface::IntersectionObserverEntry, Iface::Location, Iface::MediaQueryList, Iface::MediaQueryListEvent, Iface::MessageChannel, Iface::MessageEvent, Iface::MessagePort, Iface::MimeType, Iface::MimeTypeArray, Iface::ModelContext, Iface::MutationObserver, Iface::MutationRecord, Iface::NamedNodeMap, Iface::Navigator, Iface::NavigatorUAData, Iface::Node, Iface::NodeFilter, Iface::NodeIterator, Iface::NodeList, Iface::Notification, Iface::Performance, Iface::PerformanceEntry, Iface::PerformanceMark, Iface::PerformanceMeasure, Iface::PerformanceObserver, Iface::PerformanceObserverEntryList, Iface::PermissionStatus, Iface::Permissions, Iface::Plugin, Iface::PluginArray, Iface::PopStateEvent, Iface::ProgressEvent, Iface::PromiseRejectionEvent, Iface::PublicKeyCredential, Iface::RadioNodeList, Iface::Range, Iface::Request, Iface::ResizeObserver, Iface::ResizeObserverEntry, Iface::ResizeObserverSize, Iface::Response, Iface::Screen, Iface::ScreenOrientation, Iface::Selection, Iface::StaticRange, Iface::Storage, Iface::StyleSheet, Iface::StyleSheetList, Iface::SubmitEvent, Iface::SubtleCrypto, Iface::TextDecoder, Iface::TextEncoder, Iface::TextMetrics, Iface::ToggleEvent, Iface::ToolActivatedEvent, Iface::ToolCancelEvent, Iface::TreeWalker, Iface::UIEvent, Iface::URL, Iface::URLSearchParams, Iface::UserActivation, Iface::ValidityState, Iface::VisualViewport, Iface::WebSocket, Iface::Window, Iface::Worker, Iface::WorkerGlobalScope, Iface::WorkerLocation, Iface::WorkerNavigator, Iface::XMLHttpRequestEventTarget, Iface::XMLSerializer, Iface::console, Iface::AbortSignal, Iface::Attr, Iface::AuthenticatorAssertionResponse, Iface::AuthenticatorAttestationResponse, Iface::CSSStyleSheet, Iface::CharacterData, Iface::Clipboard, Iface::ClipboardEvent, Iface::CloseEvent, Iface::Comment, Iface::CustomEvent, Iface::DOMRect, Iface::DedicatedWorkerGlobalScope, Iface::Document, Iface::DocumentFragment, Iface::DocumentType, Iface::Element, Iface::ErrorEvent, Iface::EventSource, Iface::FocusEvent, Iface::HTMLElement, Iface::HTMLEmbedElement, Iface::HTMLFieldSetElement, Iface::HTMLFontElement, Iface::HTMLFormElement, Iface::HTMLFrameElement, Iface::HTMLFrameSetElement, Iface::HTMLHRElement, Iface::HTMLHeadElement, Iface::HTMLHeadingElement, Iface::HTMLHtmlElement, Iface::HTMLIFrameElement, Iface::HTMLImageElement, Iface::HTMLInputElement, Iface::HTMLLIElement, Iface::HTMLLabelElement, Iface::HTMLLegendElement, Iface::HTMLLinkElement, Iface::HTMLMapElement, Iface::HTMLMarqueeElement, Iface::HTMLMediaElement, Iface::HTMLMenuElement, Iface::HTMLMetaElement, Iface::HTMLMeterElement, Iface::HTMLModElement, Iface::HTMLOListElement, Iface::HTMLObjectElement, Iface::HTMLOptGroupElement, Iface::HTMLOptionElement, Iface::HTMLOutputElement, Iface::HTMLParagraphElement, Iface::HTMLParamElement, Iface::HTMLPictureElement, Iface::HTMLPreElement, Iface::HTMLProgressElement, Iface::HTMLQuoteElement, Iface::HTMLScriptElement, Iface::HTMLSelectElement, Iface::HTMLSelectedContentElement, Iface::HTMLSlotElement, Iface::HTMLSourceElement, Iface::HTMLSpanElement, Iface::HTMLStyleElement, Iface::HTMLTableCaptionElement, Iface::HTMLTableCellElement, Iface::HTMLTableColElement, Iface::HTMLTableElement, Iface::HTMLTableRowElement, Iface::HTMLTableSectionElement, Iface::HTMLTemplateElement, Iface::HTMLTextAreaElement, Iface::HTMLTimeElement, Iface::HTMLTitleElement, Iface::HTMLTrackElement, Iface::HTMLUListElement, Iface::HTMLUnknownElement, Iface::HTMLVideoElement, Iface::InputEvent, Iface::KeyboardEvent, Iface::MouseEvent, Iface::PointerEvent, Iface::SVGElement, Iface::SVGGradientElement, Iface::SVGGraphicsElement, Iface::SVGImageElement, Iface::SVGLinearGradientElement, Iface::SVGMarkerElement, Iface::SVGMetadataElement, Iface::SVGPatternElement, Iface::SVGRadialGradientElement, Iface::SVGSVGElement, Iface::SVGStopElement, Iface::SVGStyleElement, Iface::SVGSwitchElement, Iface::SVGSymbolElement, Iface::SVGTextContentElement, Iface::SVGTextPathElement, Iface::SVGTextPositioningElement, Iface::SVGTitleElement, Iface::SVGUseElement, Iface::SVGViewElement, Iface::ShadowRoot, Iface::Text, Iface::WheelEvent, Iface::XMLHttpRequest, Iface::DragEvent, Iface::HTMLAnchorElement, Iface::HTMLAreaElement, Iface::HTMLAudioElement, Iface::HTMLBRElement, Iface::HTMLBaseElement, Iface::HTMLBodyElement, Iface::HTMLButtonElement, Iface::HTMLCanvasElement, Iface::HTMLDListElement, Iface::HTMLDataElement, Iface::HTMLDataListElement, Iface::HTMLDetailsElement, Iface::HTMLDialogElement, Iface::HTMLDirectoryElement, Iface::HTMLDivElement, Iface::SVGAElement, Iface::SVGDefsElement, Iface::SVGDescElement, Iface::SVGForeignObjectElement, Iface::SVGGElement, Iface::SVGGeometryElement, Iface::SVGLineElement, Iface::SVGPolygonElement, Iface::SVGPolylineElement, Iface::SVGRectElement, Iface::SVGTSpanElement, Iface::SVGTextElement, Iface::SVGCircleElement, Iface::SVGEllipseElement];
 
     /// The interface name.
     pub fn name(self) -> &'static str {
@@ -450,6 +522,8 @@ impl Iface {
             Iface::AuthenticatorResponse => "AuthenticatorResponse",
             Iface::Blob => "Blob",
             Iface::CSS => "CSS",
+            Iface::CSSRule => "CSSRule",
+            Iface::CSSRuleList => "CSSRuleList",
             Iface::CSSStyleDeclaration => "CSSStyleDeclaration",
             Iface::CSSStyleProperties => "CSSStyleProperties",
             Iface::CanvasRenderingContext2D => "CanvasRenderingContext2D",
@@ -517,6 +591,7 @@ impl Iface {
             Iface::PluginArray => "PluginArray",
             Iface::PopStateEvent => "PopStateEvent",
             Iface::ProgressEvent => "ProgressEvent",
+            Iface::PromiseRejectionEvent => "PromiseRejectionEvent",
             Iface::PublicKeyCredential => "PublicKeyCredential",
             Iface::RadioNodeList => "RadioNodeList",
             Iface::Range => "Range",
@@ -531,6 +606,7 @@ impl Iface {
             Iface::StaticRange => "StaticRange",
             Iface::Storage => "Storage",
             Iface::StyleSheet => "StyleSheet",
+            Iface::StyleSheetList => "StyleSheetList",
             Iface::SubmitEvent => "SubmitEvent",
             Iface::SubtleCrypto => "SubtleCrypto",
             Iface::TextDecoder => "TextDecoder",
@@ -637,7 +713,25 @@ impl Iface {
             Iface::MouseEvent => "MouseEvent",
             Iface::PointerEvent => "PointerEvent",
             Iface::SVGElement => "SVGElement",
+            Iface::SVGGradientElement => "SVGGradientElement",
             Iface::SVGGraphicsElement => "SVGGraphicsElement",
+            Iface::SVGImageElement => "SVGImageElement",
+            Iface::SVGLinearGradientElement => "SVGLinearGradientElement",
+            Iface::SVGMarkerElement => "SVGMarkerElement",
+            Iface::SVGMetadataElement => "SVGMetadataElement",
+            Iface::SVGPatternElement => "SVGPatternElement",
+            Iface::SVGRadialGradientElement => "SVGRadialGradientElement",
+            Iface::SVGSVGElement => "SVGSVGElement",
+            Iface::SVGStopElement => "SVGStopElement",
+            Iface::SVGStyleElement => "SVGStyleElement",
+            Iface::SVGSwitchElement => "SVGSwitchElement",
+            Iface::SVGSymbolElement => "SVGSymbolElement",
+            Iface::SVGTextContentElement => "SVGTextContentElement",
+            Iface::SVGTextPathElement => "SVGTextPathElement",
+            Iface::SVGTextPositioningElement => "SVGTextPositioningElement",
+            Iface::SVGTitleElement => "SVGTitleElement",
+            Iface::SVGUseElement => "SVGUseElement",
+            Iface::SVGViewElement => "SVGViewElement",
             Iface::ShadowRoot => "ShadowRoot",
             Iface::Text => "Text",
             Iface::WheelEvent => "WheelEvent",
@@ -658,6 +752,20 @@ impl Iface {
             Iface::HTMLDialogElement => "HTMLDialogElement",
             Iface::HTMLDirectoryElement => "HTMLDirectoryElement",
             Iface::HTMLDivElement => "HTMLDivElement",
+            Iface::SVGAElement => "SVGAElement",
+            Iface::SVGDefsElement => "SVGDefsElement",
+            Iface::SVGDescElement => "SVGDescElement",
+            Iface::SVGForeignObjectElement => "SVGForeignObjectElement",
+            Iface::SVGGElement => "SVGGElement",
+            Iface::SVGGeometryElement => "SVGGeometryElement",
+            Iface::SVGLineElement => "SVGLineElement",
+            Iface::SVGPolygonElement => "SVGPolygonElement",
+            Iface::SVGPolylineElement => "SVGPolylineElement",
+            Iface::SVGRectElement => "SVGRectElement",
+            Iface::SVGTSpanElement => "SVGTSpanElement",
+            Iface::SVGTextElement => "SVGTextElement",
+            Iface::SVGCircleElement => "SVGCircleElement",
+            Iface::SVGEllipseElement => "SVGEllipseElement",
         }
     }
 
@@ -669,6 +777,8 @@ impl Iface {
             Iface::AuthenticatorResponse => None,
             Iface::Blob => None,
             Iface::CSS => None,
+            Iface::CSSRule => None,
+            Iface::CSSRuleList => None,
             Iface::CSSStyleDeclaration => None,
             Iface::CSSStyleProperties => Some(Iface::CSSStyleDeclaration),
             Iface::CanvasRenderingContext2D => None,
@@ -736,6 +846,7 @@ impl Iface {
             Iface::PluginArray => None,
             Iface::PopStateEvent => Some(Iface::Event),
             Iface::ProgressEvent => Some(Iface::Event),
+            Iface::PromiseRejectionEvent => Some(Iface::Event),
             Iface::PublicKeyCredential => Some(Iface::Credential),
             Iface::RadioNodeList => Some(Iface::NodeList),
             Iface::Range => Some(Iface::AbstractRange),
@@ -750,6 +861,7 @@ impl Iface {
             Iface::StaticRange => Some(Iface::AbstractRange),
             Iface::Storage => None,
             Iface::StyleSheet => None,
+            Iface::StyleSheetList => None,
             Iface::SubmitEvent => Some(Iface::Event),
             Iface::SubtleCrypto => None,
             Iface::TextDecoder => None,
@@ -856,7 +968,25 @@ impl Iface {
             Iface::MouseEvent => Some(Iface::UIEvent),
             Iface::PointerEvent => Some(Iface::MouseEvent),
             Iface::SVGElement => Some(Iface::Element),
+            Iface::SVGGradientElement => Some(Iface::SVGElement),
             Iface::SVGGraphicsElement => Some(Iface::SVGElement),
+            Iface::SVGImageElement => Some(Iface::SVGGraphicsElement),
+            Iface::SVGLinearGradientElement => Some(Iface::SVGGradientElement),
+            Iface::SVGMarkerElement => Some(Iface::SVGElement),
+            Iface::SVGMetadataElement => Some(Iface::SVGElement),
+            Iface::SVGPatternElement => Some(Iface::SVGElement),
+            Iface::SVGRadialGradientElement => Some(Iface::SVGGradientElement),
+            Iface::SVGSVGElement => Some(Iface::SVGGraphicsElement),
+            Iface::SVGStopElement => Some(Iface::SVGElement),
+            Iface::SVGStyleElement => Some(Iface::SVGElement),
+            Iface::SVGSwitchElement => Some(Iface::SVGGraphicsElement),
+            Iface::SVGSymbolElement => Some(Iface::SVGGraphicsElement),
+            Iface::SVGTextContentElement => Some(Iface::SVGGraphicsElement),
+            Iface::SVGTextPathElement => Some(Iface::SVGTextContentElement),
+            Iface::SVGTextPositioningElement => Some(Iface::SVGTextContentElement),
+            Iface::SVGTitleElement => Some(Iface::SVGElement),
+            Iface::SVGUseElement => Some(Iface::SVGGraphicsElement),
+            Iface::SVGViewElement => Some(Iface::SVGElement),
             Iface::ShadowRoot => Some(Iface::DocumentFragment),
             Iface::Text => Some(Iface::CharacterData),
             Iface::WheelEvent => Some(Iface::MouseEvent),
@@ -877,6 +1007,20 @@ impl Iface {
             Iface::HTMLDialogElement => Some(Iface::HTMLElement),
             Iface::HTMLDirectoryElement => Some(Iface::HTMLElement),
             Iface::HTMLDivElement => Some(Iface::HTMLElement),
+            Iface::SVGAElement => Some(Iface::SVGGraphicsElement),
+            Iface::SVGDefsElement => Some(Iface::SVGGraphicsElement),
+            Iface::SVGDescElement => Some(Iface::SVGElement),
+            Iface::SVGForeignObjectElement => Some(Iface::SVGGraphicsElement),
+            Iface::SVGGElement => Some(Iface::SVGGraphicsElement),
+            Iface::SVGGeometryElement => Some(Iface::SVGGraphicsElement),
+            Iface::SVGLineElement => Some(Iface::SVGGeometryElement),
+            Iface::SVGPolygonElement => Some(Iface::SVGGeometryElement),
+            Iface::SVGPolylineElement => Some(Iface::SVGGeometryElement),
+            Iface::SVGRectElement => Some(Iface::SVGGeometryElement),
+            Iface::SVGTSpanElement => Some(Iface::SVGTextPositioningElement),
+            Iface::SVGTextElement => Some(Iface::SVGTextPositioningElement),
+            Iface::SVGCircleElement => Some(Iface::SVGGeometryElement),
+            Iface::SVGEllipseElement => Some(Iface::SVGGeometryElement),
         }
     }
 
@@ -1070,6 +1214,73 @@ fn op__CSS__escape(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments
         if args.length() <= 0 { return Err(cv::Error::args("CSS.escape", 0)); }
         let a0: String = { let v = args.get(0); cv::string(cx, v)? };
         let r: String = crate::dom::css::escape(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__CSSRule__cssText(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::CSSRule)?;
+        let r: String = crate::dom::css_rule::get_css_text(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__CSSRule__cssText(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::CSSRule)?;
+        let v = args.get(0);
+        let a0: String = cv::string(cx, v)?;
+        crate::dom::css_rule::set_css_text(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__CSSRule__parentRule(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::CSSRule)?;
+        let r: Option<Obj> = crate::dom::css_rule::get_parent_rule(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__CSSRule__parentStyleSheet(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::CSSRule)?;
+        let r: Option<Obj> = crate::dom::css_rule::get_parent_style_sheet(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__CSSRule__type(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::CSSRule)?;
+        let r: u16 = crate::dom::css_rule::get_type_(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__CSSRuleList__item(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::CSSRuleList)?;
+        if args.length() <= 0 { return Err(cv::Error::args("CSSRuleList.item", 0)); }
+        let a0: u32 = { let v = args.get(0); cv::int::<u32>(cx, v)? };
+        let r: Option<Obj> = crate::dom::css_rule_list::item(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__CSSRuleList__length(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::CSSRuleList)?;
+        let r: u32 = crate::dom::css_rule_list::get_length(cx, this)?;
         cx.ret(r)
     });
 }
@@ -6400,6 +6611,37 @@ fn ctor__ProgressEvent(scope: &mut v8::PinScope, args: v8::FunctionCallbackArgum
 }
 
 #[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__PromiseRejectionEvent__promise(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::PromiseRejectionEvent)?;
+        let r: Value = crate::dom::promise_rejection_event::get_promise(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__PromiseRejectionEvent__reason(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::PromiseRejectionEvent)?;
+        let r: Value = crate::dom::promise_rejection_event::get_reason(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn ctor__PromiseRejectionEvent(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        if args.new_target().is_undefined() { return Err(cv::Error::Type("Failed to construct 'PromiseRejectionEvent': Please use the 'new' operator.".into())); }
+        if args.length() <= 0 { return Err(cv::Error::args("PromiseRejectionEvent constructor", 0)); }
+        let a0: String = { let v = args.get(0); cv::string(cx, v)? };
+        if args.length() <= 1 { return Err(cv::Error::args("PromiseRejectionEvent constructor", 1)); }
+        let a1: PromiseRejectionEventInit = { let v = args.get(1); dict_promise_rejection_event_init(cx, v)? };
+        let r: Obj = crate::dom::promise_rejection_event::constructor(cx, a0, a1)?;
+        cx.constructed(args, r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
 fn get__PublicKeyCredential__rawId(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::PublicKeyCredential)?;
@@ -7593,6 +7835,82 @@ fn op__Storage__clear(scope: &mut v8::PinScope, args: v8::FunctionCallbackArgume
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::Storage)?;
         let r: () = crate::dom::storage::clear(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__StyleSheet__type(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::StyleSheet)?;
+        let r: String = crate::dom::style_sheet::get_type_(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__StyleSheet__href(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::StyleSheet)?;
+        let r: Option<String> = crate::dom::style_sheet::get_href(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__StyleSheet__ownerNode(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::StyleSheet)?;
+        let r: Option<Obj> = crate::dom::style_sheet::get_owner_node(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__StyleSheet__title(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::StyleSheet)?;
+        let r: Option<String> = crate::dom::style_sheet::get_title(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__StyleSheet__disabled(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::StyleSheet)?;
+        let r: bool = crate::dom::style_sheet::get_disabled(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__StyleSheet__disabled(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::StyleSheet)?;
+        let v = args.get(0);
+        let a0: bool = cv::boolean(cx, v);
+        crate::dom::style_sheet::set_disabled(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__StyleSheetList__item(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::StyleSheetList)?;
+        if args.length() <= 0 { return Err(cv::Error::args("StyleSheetList.item", 0)); }
+        let a0: u32 = { let v = args.get(0); cv::int::<u32>(cx, v)? };
+        let r: Option<Obj> = crate::dom::style_sheet_list::item(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__StyleSheetList__length(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::StyleSheetList)?;
+        let r: u32 = crate::dom::style_sheet_list::get_length(cx, this)?;
         cx.ret(r)
     });
 }
@@ -12817,6 +13135,24 @@ fn op__AuthenticatorAttestationResponse__getPublicKeyAlgorithm(scope: &mut v8::P
 }
 
 #[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__CSSStyleSheet__ownerRule(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::CSSStyleSheet)?;
+        let r: Option<Obj> = crate::dom::css_style_sheet::get_owner_rule(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__CSSStyleSheet__cssRules(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::CSSStyleSheet)?;
+        let r: Obj = crate::dom::css_style_sheet::get_css_rules(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
 fn op__CSSStyleSheet__insertRule(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::CSSStyleSheet)?;
@@ -12857,6 +13193,15 @@ fn op__CSSStyleSheet__replaceSync(scope: &mut v8::PinScope, args: v8::FunctionCa
         if args.length() <= 0 { return Err(cv::Error::args("CSSStyleSheet.replaceSync", 0)); }
         let a0: String = { let v = args.get(0); cv::string(cx, v)? };
         let r: () = crate::dom::css_style_sheet::replace_sync(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__CSSStyleSheet__rules(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::CSSStyleSheet)?;
+        let r: Obj = crate::dom::css_style_sheet::get_rules(cx, this)?;
         cx.ret(r)
     });
 }
@@ -14006,6 +14351,15 @@ fn op__Document__getElementById(scope: &mut v8::PinScope, args: v8::FunctionCall
         if args.length() <= 0 { return Err(cv::Error::args("Document.getElementById", 0)); }
         let a0: String = { let v = args.get(0); cv::string(cx, v)? };
         let r: Option<Obj> = crate::dom::non_element_parent_node::get_element_by_id(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Document__styleSheets(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Document)?;
+        let r: Obj = crate::dom::document_or_shadow_root::get_style_sheets(cx, this)?;
         cx.ret(r)
     });
 }
@@ -22440,8 +22794,8 @@ fn set__HTMLLegendElement__align(scope: &mut v8::PinScope, args: v8::FunctionCal
 fn get__HTMLLinkElement__href(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::HTMLLinkElement)?;
-        let r = cv::reflect_get(cx, this, "href", cv::Reflect::Url)?;
-        cx.ret_value(r)
+        let r: String = crate::dom::html_link_element::get_href(cx, this)?;
+        cx.ret(r)
     });
 }
 
@@ -22449,7 +22803,9 @@ fn get__HTMLLinkElement__href(scope: &mut v8::PinScope, args: v8::FunctionCallba
 fn set__HTMLLinkElement__href(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::HTMLLinkElement)?;
-        cv::reflect_set(cx, this, "href", args.get(0), cv::Reflect::Url)?;
+        let v = args.get(0);
+        let a0: String = cv::string(cx, v)?;
+        crate::dom::html_link_element::set_href(cx, this, a0)?;
         cx.ret(())
     });
 }
@@ -22458,8 +22814,8 @@ fn set__HTMLLinkElement__href(scope: &mut v8::PinScope, args: v8::FunctionCallba
 fn get__HTMLLinkElement__rel(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::HTMLLinkElement)?;
-        let r = cv::reflect_get(cx, this, "rel", cv::Reflect::Str)?;
-        cx.ret_value(r)
+        let r: String = crate::dom::html_link_element::get_rel(cx, this)?;
+        cx.ret(r)
     });
 }
 
@@ -22467,7 +22823,29 @@ fn get__HTMLLinkElement__rel(scope: &mut v8::PinScope, args: v8::FunctionCallbac
 fn set__HTMLLinkElement__rel(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::HTMLLinkElement)?;
-        cv::reflect_set(cx, this, "rel", args.get(0), cv::Reflect::Str)?;
+        let v = args.get(0);
+        let a0: String = cv::string(cx, v)?;
+        crate::dom::html_link_element::set_rel(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__HTMLLinkElement__as(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLLinkElement)?;
+        let r: String = crate::dom::html_link_element::get_as_(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__HTMLLinkElement__as(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLLinkElement)?;
+        let v = args.get(0);
+        let a0: String = cv::string(cx, v)?;
+        crate::dom::html_link_element::set_as_(cx, this, a0)?;
         cx.ret(())
     });
 }
@@ -22649,6 +23027,15 @@ fn set__HTMLLinkElement__target(scope: &mut v8::PinScope, args: v8::FunctionCall
         let this = cx.this(args, Iface::HTMLLinkElement)?;
         cv::reflect_set(cx, this, "target", args.get(0), cv::Reflect::Str)?;
         cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__HTMLLinkElement__sheet(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLLinkElement)?;
+        let r: Option<Obj> = crate::dom::link_style::get_sheet(cx, this)?;
+        cx.ret(r)
     });
 }
 
@@ -24493,6 +24880,15 @@ fn set__HTMLStyleElement__type(scope: &mut v8::PinScope, args: v8::FunctionCallb
         let this = cx.this(args, Iface::HTMLStyleElement)?;
         cv::reflect_set(cx, this, "type", args.get(0), cv::Reflect::Str)?;
         cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__HTMLStyleElement__sheet(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::HTMLStyleElement)?;
+        let r: Option<Obj> = crate::dom::link_style::get_sheet(cx, this)?;
+        cx.ret(r)
     });
 }
 
@@ -28071,6 +28467,402 @@ fn op__SVGGraphicsElement__getBBox(scope: &mut v8::PinScope, args: v8::FunctionC
 }
 
 #[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__SVGSVGElement__onafterprint(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGSVGElement)?;
+        let r = cv::handler_get(cx, this, "afterprint")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__SVGSVGElement__onafterprint(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGSVGElement)?;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "afterprint", v)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__SVGSVGElement__onbeforeprint(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGSVGElement)?;
+        let r = cv::handler_get(cx, this, "beforeprint")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__SVGSVGElement__onbeforeprint(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGSVGElement)?;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "beforeprint", v)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__SVGSVGElement__onbeforeunload(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGSVGElement)?;
+        let r = cv::handler_get(cx, this, "beforeunload")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__SVGSVGElement__onbeforeunload(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGSVGElement)?;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "beforeunload", v)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__SVGSVGElement__onhashchange(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGSVGElement)?;
+        let r = cv::handler_get(cx, this, "hashchange")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__SVGSVGElement__onhashchange(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGSVGElement)?;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "hashchange", v)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__SVGSVGElement__onlanguagechange(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGSVGElement)?;
+        let r = cv::handler_get(cx, this, "languagechange")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__SVGSVGElement__onlanguagechange(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGSVGElement)?;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "languagechange", v)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__SVGSVGElement__onmessage(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGSVGElement)?;
+        let r = cv::handler_get(cx, this, "message")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__SVGSVGElement__onmessage(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGSVGElement)?;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "message", v)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__SVGSVGElement__onmessageerror(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGSVGElement)?;
+        let r = cv::handler_get(cx, this, "messageerror")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__SVGSVGElement__onmessageerror(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGSVGElement)?;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "messageerror", v)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__SVGSVGElement__onoffline(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGSVGElement)?;
+        let r = cv::handler_get(cx, this, "offline")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__SVGSVGElement__onoffline(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGSVGElement)?;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "offline", v)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__SVGSVGElement__ononline(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGSVGElement)?;
+        let r = cv::handler_get(cx, this, "online")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__SVGSVGElement__ononline(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGSVGElement)?;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "online", v)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__SVGSVGElement__onpagehide(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGSVGElement)?;
+        let r = cv::handler_get(cx, this, "pagehide")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__SVGSVGElement__onpagehide(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGSVGElement)?;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "pagehide", v)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__SVGSVGElement__onpagereveal(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGSVGElement)?;
+        let r = cv::handler_get(cx, this, "pagereveal")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__SVGSVGElement__onpagereveal(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGSVGElement)?;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "pagereveal", v)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__SVGSVGElement__onpageshow(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGSVGElement)?;
+        let r = cv::handler_get(cx, this, "pageshow")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__SVGSVGElement__onpageshow(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGSVGElement)?;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "pageshow", v)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__SVGSVGElement__onpageswap(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGSVGElement)?;
+        let r = cv::handler_get(cx, this, "pageswap")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__SVGSVGElement__onpageswap(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGSVGElement)?;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "pageswap", v)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__SVGSVGElement__onpopstate(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGSVGElement)?;
+        let r = cv::handler_get(cx, this, "popstate")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__SVGSVGElement__onpopstate(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGSVGElement)?;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "popstate", v)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__SVGSVGElement__onrejectionhandled(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGSVGElement)?;
+        let r = cv::handler_get(cx, this, "rejectionhandled")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__SVGSVGElement__onrejectionhandled(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGSVGElement)?;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "rejectionhandled", v)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__SVGSVGElement__onstorage(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGSVGElement)?;
+        let r = cv::handler_get(cx, this, "storage")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__SVGSVGElement__onstorage(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGSVGElement)?;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "storage", v)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__SVGSVGElement__onunhandledrejection(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGSVGElement)?;
+        let r = cv::handler_get(cx, this, "unhandledrejection")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__SVGSVGElement__onunhandledrejection(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGSVGElement)?;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "unhandledrejection", v)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__SVGSVGElement__onunload(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGSVGElement)?;
+        let r = cv::handler_get(cx, this, "unload")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__SVGSVGElement__onunload(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGSVGElement)?;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "unload", v)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__SVGStyleElement__type(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGStyleElement)?;
+        let r = cv::reflect_get(cx, this, "type", cv::Reflect::Str)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__SVGStyleElement__type(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGStyleElement)?;
+        cv::reflect_set(cx, this, "type", args.get(0), cv::Reflect::Str)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__SVGStyleElement__media(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGStyleElement)?;
+        let r = cv::reflect_get(cx, this, "media", cv::Reflect::Str)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__SVGStyleElement__media(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGStyleElement)?;
+        cv::reflect_set(cx, this, "media", args.get(0), cv::Reflect::Str)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__SVGStyleElement__title(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGStyleElement)?;
+        let r = cv::reflect_get(cx, this, "title", cv::Reflect::Str)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__SVGStyleElement__title(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGStyleElement)?;
+        cv::reflect_set(cx, this, "title", args.get(0), cv::Reflect::Str)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
 fn get__ShadowRoot__mode(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::ShadowRoot)?;
@@ -28160,6 +28952,15 @@ fn set__ShadowRoot__innerHTML(scope: &mut v8::PinScope, args: v8::FunctionCallba
         let a0: String = cv::string_nte(cx, v)?;
         crate::dom::shadow_root::set_inner_html(cx, this, a0)?;
         cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ShadowRoot__styleSheets(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ShadowRoot)?;
+        let r: Obj = crate::dom::document_or_shadow_root::get_style_sheets(cx, this)?;
+        cx.ret(r)
     });
 }
 
@@ -30184,6 +30985,245 @@ fn set__HTMLDivElement__align(scope: &mut v8::PinScope, args: v8::FunctionCallba
     });
 }
 
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__SVGAElement__download(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGAElement)?;
+        let r = cv::reflect_get(cx, this, "download", cv::Reflect::Str)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__SVGAElement__download(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGAElement)?;
+        cv::reflect_set(cx, this, "download", args.get(0), cv::Reflect::Str)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__SVGAElement__ping(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGAElement)?;
+        let r = cv::reflect_get(cx, this, "ping", cv::Reflect::Str)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__SVGAElement__ping(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGAElement)?;
+        cv::reflect_set(cx, this, "ping", args.get(0), cv::Reflect::Str)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__SVGAElement__rel(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGAElement)?;
+        let r = cv::reflect_get(cx, this, "rel", cv::Reflect::Str)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__SVGAElement__rel(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGAElement)?;
+        cv::reflect_set(cx, this, "rel", args.get(0), cv::Reflect::Str)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__SVGAElement__origin(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGAElement)?;
+        let r: String = crate::dom::hyperlink_element_utils::get_origin(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__SVGAElement__protocol(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGAElement)?;
+        let r: String = crate::dom::hyperlink_element_utils::get_protocol(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__SVGAElement__protocol(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGAElement)?;
+        let v = args.get(0);
+        let a0: String = cv::string(cx, v)?;
+        crate::dom::hyperlink_element_utils::set_protocol(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__SVGAElement__host(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGAElement)?;
+        let r: String = crate::dom::hyperlink_element_utils::get_host(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__SVGAElement__host(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGAElement)?;
+        let v = args.get(0);
+        let a0: String = cv::string(cx, v)?;
+        crate::dom::hyperlink_element_utils::set_host(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__SVGAElement__hostname(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGAElement)?;
+        let r: String = crate::dom::hyperlink_element_utils::get_hostname(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__SVGAElement__hostname(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGAElement)?;
+        let v = args.get(0);
+        let a0: String = cv::string(cx, v)?;
+        crate::dom::hyperlink_element_utils::set_hostname(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__SVGAElement__port(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGAElement)?;
+        let r: String = crate::dom::hyperlink_element_utils::get_port(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__SVGAElement__port(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGAElement)?;
+        let v = args.get(0);
+        let a0: String = cv::string(cx, v)?;
+        crate::dom::hyperlink_element_utils::set_port(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__SVGAElement__pathname(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGAElement)?;
+        let r: String = crate::dom::hyperlink_element_utils::get_pathname(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__SVGAElement__pathname(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGAElement)?;
+        let v = args.get(0);
+        let a0: String = cv::string(cx, v)?;
+        crate::dom::hyperlink_element_utils::set_pathname(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__SVGAElement__search(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGAElement)?;
+        let r: String = crate::dom::hyperlink_element_utils::get_search(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__SVGAElement__search(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGAElement)?;
+        let v = args.get(0);
+        let a0: String = cv::string(cx, v)?;
+        crate::dom::hyperlink_element_utils::set_search(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__SVGAElement__hash(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGAElement)?;
+        let r: String = crate::dom::hyperlink_element_utils::get_hash(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__SVGAElement__hash(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGAElement)?;
+        let v = args.get(0);
+        let a0: String = cv::string(cx, v)?;
+        crate::dom::hyperlink_element_utils::set_hash(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__SVGAElement__hreflang(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGAElement)?;
+        let r = cv::reflect_get(cx, this, "hreflang", cv::Reflect::Str)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__SVGAElement__hreflang(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGAElement)?;
+        cv::reflect_set(cx, this, "hreflang", args.get(0), cv::Reflect::Str)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__SVGAElement__type(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGAElement)?;
+        let r = cv::reflect_get(cx, this, "type", cv::Reflect::Str)?;
+        cx.ret_value(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__SVGAElement__type(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SVGAElement)?;
+        cv::reflect_set(cx, this, "type", args.get(0), cv::Reflect::Str)?;
+        cx.ret(())
+    });
+}
+
 /// The `AddEventListenerOptions` dictionary.
 #[derive(Debug, Clone)]
 #[allow(missing_docs)]
@@ -31903,6 +32943,47 @@ fn dict_progress_event_init(cx: &mut Cx<'_, '_, '_>, v: v8::Local<'_, v8::Value>
     Ok(d)
 }
 
+/// The `PromiseRejectionEventInit` dictionary.
+#[derive(Debug, Clone)]
+#[allow(missing_docs)]
+pub struct PromiseRejectionEventInit {
+    /// `bubbles`.
+    pub bubbles: bool,
+    /// `cancelable`.
+    pub cancelable: bool,
+    /// `composed`.
+    pub composed: bool,
+    /// `promise`.
+    pub promise: Option<Value>,
+    /// `reason`.
+    pub reason: Option<Value>,
+}
+
+impl Default for PromiseRejectionEventInit {
+    fn default() -> Self {
+        Self {
+            bubbles: false,
+            cancelable: false,
+            composed: false,
+            promise: None,
+            reason: None,
+        }
+    }
+}
+
+#[allow(unused_variables, unused_mut, clippy::all)]
+fn dict_promise_rejection_event_init(cx: &mut Cx<'_, '_, '_>, v: v8::Local<'_, v8::Value>) -> R<PromiseRejectionEventInit> {
+    let mut d = PromiseRejectionEventInit::default();
+    if v.is_null_or_undefined() { return Ok(d); }
+    let obj = cv::object(cx, v, "PromiseRejectionEventInit")?;
+    { let v = cv::get(cx, obj, "bubbles")?; if !v.is_undefined() { d.bubbles = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "cancelable")?; if !v.is_undefined() { d.cancelable = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "composed")?; if !v.is_undefined() { d.composed = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "promise")?; if !v.is_undefined() { d.promise = Some(cv::value(cx, v)); } }
+    { let v = cv::get(cx, obj, "reason")?; if !v.is_undefined() { d.reason = Some(cv::value(cx, v)); } }
+    Ok(d)
+}
+
 /// The `RequestInit` dictionary.
 #[derive(Debug, Clone)]
 #[allow(missing_docs)]
@@ -32867,6 +33948,37 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         let proto = f.prototype_template(scope);
         cv::method(scope, inst.into(), "supports", op__CSS__supports, 1);
         cv::method(scope, inst.into(), "escape", op__CSS__escape, 1);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // CSSRule
+        let f = cv::interface(scope, "CSSRule", cv::illegal_constructor);
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "cssText", get__CSSRule__cssText, Some(set__CSSRule__cssText.map_fn_to()));
+        cv::accessor(scope, proto, "parentRule", get__CSSRule__parentRule, None);
+        cv::accessor(scope, proto, "parentStyleSheet", get__CSSRule__parentStyleSheet, None);
+        cv::accessor(scope, proto, "type", get__CSSRule__type, None);
+        cv::constant(scope, f, proto, "STYLE_RULE", 1 as f64);
+        cv::constant(scope, f, proto, "CHARSET_RULE", 2 as f64);
+        cv::constant(scope, f, proto, "IMPORT_RULE", 3 as f64);
+        cv::constant(scope, f, proto, "MEDIA_RULE", 4 as f64);
+        cv::constant(scope, f, proto, "FONT_FACE_RULE", 5 as f64);
+        cv::constant(scope, f, proto, "PAGE_RULE", 6 as f64);
+        cv::constant(scope, f, proto, "MARGIN_RULE", 9 as f64);
+        cv::constant(scope, f, proto, "NAMESPACE_RULE", 10 as f64);
+        cv::constant(scope, f, proto, "SUPPORTS_RULE", 12 as f64);
+        crate::dom::hooks::template(scope, Iface::CSSRule, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // CSSRuleList
+        let f = cv::interface(scope, "CSSRuleList", cv::illegal_constructor);
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::method(scope, proto.into(), "item", op__CSSRuleList__item, 1);
+        cv::accessor(scope, proto, "length", get__CSSRuleList__length, None);
+        crate::dom::hooks::template(scope, Iface::CSSRuleList, f);
         out.push(v8::Global::new(scope, f));
     }
     { // CSSStyleDeclaration
@@ -33899,6 +35011,17 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         crate::dom::hooks::template(scope, Iface::ProgressEvent, f);
         out.push(v8::Global::new(scope, f));
     }
+    { // PromiseRejectionEvent
+        let f = cv::interface(scope, "PromiseRejectionEvent", ctor__PromiseRejectionEvent);
+        f.inherit(v8::Local::new(scope, &out[Iface::Event as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "promise", get__PromiseRejectionEvent__promise, None);
+        cv::accessor(scope, proto, "reason", get__PromiseRejectionEvent__reason, None);
+        crate::dom::hooks::template(scope, Iface::PromiseRejectionEvent, f);
+        out.push(v8::Global::new(scope, f));
+    }
     { // PublicKeyCredential
         let f = cv::interface(scope, "PublicKeyCredential", cv::illegal_constructor);
         f.inherit(v8::Local::new(scope, &out[Iface::Credential as usize]));
@@ -34132,7 +35255,22 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         let inst = f.instance_template(scope);
         inst.set_internal_field_count(cv::FIELDS);
         let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "type", get__StyleSheet__type, None);
+        cv::accessor(scope, proto, "href", get__StyleSheet__href, None);
+        cv::accessor(scope, proto, "ownerNode", get__StyleSheet__ownerNode, None);
+        cv::accessor(scope, proto, "title", get__StyleSheet__title, None);
+        cv::accessor(scope, proto, "disabled", get__StyleSheet__disabled, Some(set__StyleSheet__disabled.map_fn_to()));
         crate::dom::hooks::template(scope, Iface::StyleSheet, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // StyleSheetList
+        let f = cv::interface(scope, "StyleSheetList", cv::illegal_constructor);
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::method(scope, proto.into(), "item", op__StyleSheetList__item, 1);
+        cv::accessor(scope, proto, "length", get__StyleSheetList__length, None);
+        crate::dom::hooks::template(scope, Iface::StyleSheetList, f);
         out.push(v8::Global::new(scope, f));
     }
     { // SubmitEvent
@@ -34757,10 +35895,13 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         let inst = f.instance_template(scope);
         inst.set_internal_field_count(cv::FIELDS);
         let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "ownerRule", get__CSSStyleSheet__ownerRule, None);
+        cv::accessor(scope, proto, "cssRules", get__CSSStyleSheet__cssRules, None);
         cv::method(scope, proto.into(), "insertRule", op__CSSStyleSheet__insertRule, 1);
         cv::method(scope, proto.into(), "deleteRule", op__CSSStyleSheet__deleteRule, 1);
         cv::method(scope, proto.into(), "replace", op__CSSStyleSheet__replace, 1);
         cv::method(scope, proto.into(), "replaceSync", op__CSSStyleSheet__replaceSync, 1);
+        cv::accessor(scope, proto, "rules", get__CSSStyleSheet__rules, None);
         crate::dom::hooks::template(scope, Iface::CSSStyleSheet, f);
         out.push(v8::Global::new(scope, f));
     }
@@ -34933,6 +36074,7 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::accessor(scope, proto, "modelContext", get__Document__modelContext, None);
         cv::accessor(scope, proto, "fonts", get__Document__fonts, None);
         cv::method(scope, proto.into(), "getElementById", op__Document__getElementById, 1);
+        cv::accessor(scope, proto, "styleSheets", get__Document__styleSheets, None);
         cv::accessor(scope, proto, "adoptedStyleSheets", get__Document__adoptedStyleSheets, Some(set__Document__adoptedStyleSheets.map_fn_to()));
         cv::accessor(scope, proto, "activeElement", get__Document__activeElement, None);
         cv::accessor(scope, proto, "children", get__Document__children, None);
@@ -35663,6 +36805,7 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         let proto = f.prototype_template(scope);
         cv::accessor(scope, proto, "href", get__HTMLLinkElement__href, Some(set__HTMLLinkElement__href.map_fn_to()));
         cv::accessor(scope, proto, "rel", get__HTMLLinkElement__rel, Some(set__HTMLLinkElement__rel.map_fn_to()));
+        cv::accessor(scope, proto, "as", get__HTMLLinkElement__as, Some(set__HTMLLinkElement__as.map_fn_to()));
         cv::accessor(scope, proto, "media", get__HTMLLinkElement__media, Some(set__HTMLLinkElement__media.map_fn_to()));
         cv::accessor(scope, proto, "integrity", get__HTMLLinkElement__integrity, Some(set__HTMLLinkElement__integrity.map_fn_to()));
         cv::accessor(scope, proto, "hreflang", get__HTMLLinkElement__hreflang, Some(set__HTMLLinkElement__hreflang.map_fn_to()));
@@ -35673,6 +36816,7 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::accessor(scope, proto, "charset", get__HTMLLinkElement__charset, Some(set__HTMLLinkElement__charset.map_fn_to()));
         cv::accessor(scope, proto, "rev", get__HTMLLinkElement__rev, Some(set__HTMLLinkElement__rev.map_fn_to()));
         cv::accessor(scope, proto, "target", get__HTMLLinkElement__target, Some(set__HTMLLinkElement__target.map_fn_to()));
+        cv::accessor(scope, proto, "sheet", get__HTMLLinkElement__sheet, None);
         crate::dom::hooks::template(scope, Iface::HTMLLinkElement, f);
         out.push(v8::Global::new(scope, f));
     }
@@ -36018,6 +37162,7 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         let proto = f.prototype_template(scope);
         cv::accessor(scope, proto, "media", get__HTMLStyleElement__media, Some(set__HTMLStyleElement__media.map_fn_to()));
         cv::accessor(scope, proto, "type", get__HTMLStyleElement__type, Some(set__HTMLStyleElement__type.map_fn_to()));
+        cv::accessor(scope, proto, "sheet", get__HTMLStyleElement__sheet, None);
         crate::dom::hooks::template(scope, Iface::HTMLStyleElement, f);
         out.push(v8::Global::new(scope, f));
     }
@@ -36416,6 +37561,19 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         crate::dom::hooks::template(scope, Iface::SVGElement, f);
         out.push(v8::Global::new(scope, f));
     }
+    { // SVGGradientElement
+        let f = cv::interface(scope, "SVGGradientElement", cv::illegal_constructor);
+        f.inherit(v8::Local::new(scope, &out[Iface::SVGElement as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::constant(scope, f, proto, "SVG_SPREADMETHOD_UNKNOWN", 0 as f64);
+        cv::constant(scope, f, proto, "SVG_SPREADMETHOD_PAD", 1 as f64);
+        cv::constant(scope, f, proto, "SVG_SPREADMETHOD_REFLECT", 2 as f64);
+        cv::constant(scope, f, proto, "SVG_SPREADMETHOD_REPEAT", 3 as f64);
+        crate::dom::hooks::template(scope, Iface::SVGGradientElement, f);
+        out.push(v8::Global::new(scope, f));
+    }
     { // SVGGraphicsElement
         let f = cv::interface(scope, "SVGGraphicsElement", cv::illegal_constructor);
         f.inherit(v8::Local::new(scope, &out[Iface::SVGElement as usize]));
@@ -36424,6 +37582,199 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         let proto = f.prototype_template(scope);
         cv::method(scope, proto.into(), "getBBox", op__SVGGraphicsElement__getBBox, 0);
         crate::dom::hooks::template(scope, Iface::SVGGraphicsElement, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // SVGImageElement
+        let f = cv::interface(scope, "SVGImageElement", cv::illegal_constructor);
+        f.inherit(v8::Local::new(scope, &out[Iface::SVGGraphicsElement as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        crate::dom::hooks::template(scope, Iface::SVGImageElement, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // SVGLinearGradientElement
+        let f = cv::interface(scope, "SVGLinearGradientElement", cv::illegal_constructor);
+        f.inherit(v8::Local::new(scope, &out[Iface::SVGGradientElement as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        crate::dom::hooks::template(scope, Iface::SVGLinearGradientElement, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // SVGMarkerElement
+        let f = cv::interface(scope, "SVGMarkerElement", cv::illegal_constructor);
+        f.inherit(v8::Local::new(scope, &out[Iface::SVGElement as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::constant(scope, f, proto, "SVG_MARKERUNITS_UNKNOWN", 0 as f64);
+        cv::constant(scope, f, proto, "SVG_MARKERUNITS_USERSPACEONUSE", 1 as f64);
+        cv::constant(scope, f, proto, "SVG_MARKERUNITS_STROKEWIDTH", 2 as f64);
+        cv::constant(scope, f, proto, "SVG_MARKER_ORIENT_UNKNOWN", 0 as f64);
+        cv::constant(scope, f, proto, "SVG_MARKER_ORIENT_AUTO", 1 as f64);
+        cv::constant(scope, f, proto, "SVG_MARKER_ORIENT_ANGLE", 2 as f64);
+        cv::constant(scope, f, proto, "SVG_MARKER_ORIENT_AUTO_START_REVERSE", 3 as f64);
+        crate::dom::hooks::template(scope, Iface::SVGMarkerElement, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // SVGMetadataElement
+        let f = cv::interface(scope, "SVGMetadataElement", cv::illegal_constructor);
+        f.inherit(v8::Local::new(scope, &out[Iface::SVGElement as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        crate::dom::hooks::template(scope, Iface::SVGMetadataElement, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // SVGPatternElement
+        let f = cv::interface(scope, "SVGPatternElement", cv::illegal_constructor);
+        f.inherit(v8::Local::new(scope, &out[Iface::SVGElement as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        crate::dom::hooks::template(scope, Iface::SVGPatternElement, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // SVGRadialGradientElement
+        let f = cv::interface(scope, "SVGRadialGradientElement", cv::illegal_constructor);
+        f.inherit(v8::Local::new(scope, &out[Iface::SVGGradientElement as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        crate::dom::hooks::template(scope, Iface::SVGRadialGradientElement, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // SVGSVGElement
+        let f = cv::interface(scope, "SVGSVGElement", cv::illegal_constructor);
+        f.inherit(v8::Local::new(scope, &out[Iface::SVGGraphicsElement as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "onafterprint", get__SVGSVGElement__onafterprint, Some(set__SVGSVGElement__onafterprint.map_fn_to()));
+        cv::accessor(scope, proto, "onbeforeprint", get__SVGSVGElement__onbeforeprint, Some(set__SVGSVGElement__onbeforeprint.map_fn_to()));
+        cv::accessor(scope, proto, "onbeforeunload", get__SVGSVGElement__onbeforeunload, Some(set__SVGSVGElement__onbeforeunload.map_fn_to()));
+        cv::accessor(scope, proto, "onhashchange", get__SVGSVGElement__onhashchange, Some(set__SVGSVGElement__onhashchange.map_fn_to()));
+        cv::accessor(scope, proto, "onlanguagechange", get__SVGSVGElement__onlanguagechange, Some(set__SVGSVGElement__onlanguagechange.map_fn_to()));
+        cv::accessor(scope, proto, "onmessage", get__SVGSVGElement__onmessage, Some(set__SVGSVGElement__onmessage.map_fn_to()));
+        cv::accessor(scope, proto, "onmessageerror", get__SVGSVGElement__onmessageerror, Some(set__SVGSVGElement__onmessageerror.map_fn_to()));
+        cv::accessor(scope, proto, "onoffline", get__SVGSVGElement__onoffline, Some(set__SVGSVGElement__onoffline.map_fn_to()));
+        cv::accessor(scope, proto, "ononline", get__SVGSVGElement__ononline, Some(set__SVGSVGElement__ononline.map_fn_to()));
+        cv::accessor(scope, proto, "onpagehide", get__SVGSVGElement__onpagehide, Some(set__SVGSVGElement__onpagehide.map_fn_to()));
+        cv::accessor(scope, proto, "onpagereveal", get__SVGSVGElement__onpagereveal, Some(set__SVGSVGElement__onpagereveal.map_fn_to()));
+        cv::accessor(scope, proto, "onpageshow", get__SVGSVGElement__onpageshow, Some(set__SVGSVGElement__onpageshow.map_fn_to()));
+        cv::accessor(scope, proto, "onpageswap", get__SVGSVGElement__onpageswap, Some(set__SVGSVGElement__onpageswap.map_fn_to()));
+        cv::accessor(scope, proto, "onpopstate", get__SVGSVGElement__onpopstate, Some(set__SVGSVGElement__onpopstate.map_fn_to()));
+        cv::accessor(scope, proto, "onrejectionhandled", get__SVGSVGElement__onrejectionhandled, Some(set__SVGSVGElement__onrejectionhandled.map_fn_to()));
+        cv::accessor(scope, proto, "onstorage", get__SVGSVGElement__onstorage, Some(set__SVGSVGElement__onstorage.map_fn_to()));
+        cv::accessor(scope, proto, "onunhandledrejection", get__SVGSVGElement__onunhandledrejection, Some(set__SVGSVGElement__onunhandledrejection.map_fn_to()));
+        cv::accessor(scope, proto, "onunload", get__SVGSVGElement__onunload, Some(set__SVGSVGElement__onunload.map_fn_to()));
+        crate::dom::hooks::template(scope, Iface::SVGSVGElement, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // SVGStopElement
+        let f = cv::interface(scope, "SVGStopElement", cv::illegal_constructor);
+        f.inherit(v8::Local::new(scope, &out[Iface::SVGElement as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        crate::dom::hooks::template(scope, Iface::SVGStopElement, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // SVGStyleElement
+        let f = cv::interface(scope, "SVGStyleElement", cv::illegal_constructor);
+        f.inherit(v8::Local::new(scope, &out[Iface::SVGElement as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "type", get__SVGStyleElement__type, Some(set__SVGStyleElement__type.map_fn_to()));
+        cv::accessor(scope, proto, "media", get__SVGStyleElement__media, Some(set__SVGStyleElement__media.map_fn_to()));
+        cv::accessor(scope, proto, "title", get__SVGStyleElement__title, Some(set__SVGStyleElement__title.map_fn_to()));
+        crate::dom::hooks::template(scope, Iface::SVGStyleElement, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // SVGSwitchElement
+        let f = cv::interface(scope, "SVGSwitchElement", cv::illegal_constructor);
+        f.inherit(v8::Local::new(scope, &out[Iface::SVGGraphicsElement as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        crate::dom::hooks::template(scope, Iface::SVGSwitchElement, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // SVGSymbolElement
+        let f = cv::interface(scope, "SVGSymbolElement", cv::illegal_constructor);
+        f.inherit(v8::Local::new(scope, &out[Iface::SVGGraphicsElement as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        crate::dom::hooks::template(scope, Iface::SVGSymbolElement, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // SVGTextContentElement
+        let f = cv::interface(scope, "SVGTextContentElement", cv::illegal_constructor);
+        f.inherit(v8::Local::new(scope, &out[Iface::SVGGraphicsElement as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::constant(scope, f, proto, "LENGTHADJUST_UNKNOWN", 0 as f64);
+        cv::constant(scope, f, proto, "LENGTHADJUST_SPACING", 1 as f64);
+        cv::constant(scope, f, proto, "LENGTHADJUST_SPACINGANDGLYPHS", 2 as f64);
+        crate::dom::hooks::template(scope, Iface::SVGTextContentElement, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // SVGTextPathElement
+        let f = cv::interface(scope, "SVGTextPathElement", cv::illegal_constructor);
+        f.inherit(v8::Local::new(scope, &out[Iface::SVGTextContentElement as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::constant(scope, f, proto, "TEXTPATH_METHODTYPE_UNKNOWN", 0 as f64);
+        cv::constant(scope, f, proto, "TEXTPATH_METHODTYPE_ALIGN", 1 as f64);
+        cv::constant(scope, f, proto, "TEXTPATH_METHODTYPE_STRETCH", 2 as f64);
+        cv::constant(scope, f, proto, "TEXTPATH_SPACINGTYPE_UNKNOWN", 0 as f64);
+        cv::constant(scope, f, proto, "TEXTPATH_SPACINGTYPE_AUTO", 1 as f64);
+        cv::constant(scope, f, proto, "TEXTPATH_SPACINGTYPE_EXACT", 2 as f64);
+        cv::constant(scope, f, proto, "TEXTPATH_SIDETYPE_UNKNOWN", 0 as f64);
+        cv::constant(scope, f, proto, "TEXTPATH_SIDETYPE_LEFT", 1 as f64);
+        cv::constant(scope, f, proto, "TEXTPATH_SIDETYPE_RIGHT", 2 as f64);
+        crate::dom::hooks::template(scope, Iface::SVGTextPathElement, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // SVGTextPositioningElement
+        let f = cv::interface(scope, "SVGTextPositioningElement", cv::illegal_constructor);
+        f.inherit(v8::Local::new(scope, &out[Iface::SVGTextContentElement as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        crate::dom::hooks::template(scope, Iface::SVGTextPositioningElement, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // SVGTitleElement
+        let f = cv::interface(scope, "SVGTitleElement", cv::illegal_constructor);
+        f.inherit(v8::Local::new(scope, &out[Iface::SVGElement as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        crate::dom::hooks::template(scope, Iface::SVGTitleElement, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // SVGUseElement
+        let f = cv::interface(scope, "SVGUseElement", cv::illegal_constructor);
+        f.inherit(v8::Local::new(scope, &out[Iface::SVGGraphicsElement as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        crate::dom::hooks::template(scope, Iface::SVGUseElement, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // SVGViewElement
+        let f = cv::interface(scope, "SVGViewElement", cv::illegal_constructor);
+        f.inherit(v8::Local::new(scope, &out[Iface::SVGElement as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        crate::dom::hooks::template(scope, Iface::SVGViewElement, f);
         out.push(v8::Global::new(scope, f));
     }
     { // ShadowRoot
@@ -36440,6 +37791,7 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::accessor(scope, proto, "host", get__ShadowRoot__host, None);
         cv::accessor(scope, proto, "onslotchange", get__ShadowRoot__onslotchange, Some(set__ShadowRoot__onslotchange.map_fn_to()));
         cv::accessor(scope, proto, "innerHTML", get__ShadowRoot__innerHTML, Some(set__ShadowRoot__innerHTML.map_fn_to()));
+        cv::accessor(scope, proto, "styleSheets", get__ShadowRoot__styleSheets, None);
         cv::accessor(scope, proto, "adoptedStyleSheets", get__ShadowRoot__adoptedStyleSheets, Some(set__ShadowRoot__adoptedStyleSheets.map_fn_to()));
         cv::accessor(scope, proto, "activeElement", get__ShadowRoot__activeElement, None);
         crate::dom::hooks::template(scope, Iface::ShadowRoot, f);
@@ -36744,6 +38096,145 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         crate::dom::hooks::template(scope, Iface::HTMLDivElement, f);
         out.push(v8::Global::new(scope, f));
     }
+    { // SVGAElement
+        let f = cv::interface(scope, "SVGAElement", cv::illegal_constructor);
+        f.inherit(v8::Local::new(scope, &out[Iface::SVGGraphicsElement as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "download", get__SVGAElement__download, Some(set__SVGAElement__download.map_fn_to()));
+        cv::accessor(scope, proto, "ping", get__SVGAElement__ping, Some(set__SVGAElement__ping.map_fn_to()));
+        cv::accessor(scope, proto, "rel", get__SVGAElement__rel, Some(set__SVGAElement__rel.map_fn_to()));
+        cv::accessor(scope, proto, "origin", get__SVGAElement__origin, None);
+        cv::accessor(scope, proto, "protocol", get__SVGAElement__protocol, Some(set__SVGAElement__protocol.map_fn_to()));
+        cv::accessor(scope, proto, "host", get__SVGAElement__host, Some(set__SVGAElement__host.map_fn_to()));
+        cv::accessor(scope, proto, "hostname", get__SVGAElement__hostname, Some(set__SVGAElement__hostname.map_fn_to()));
+        cv::accessor(scope, proto, "port", get__SVGAElement__port, Some(set__SVGAElement__port.map_fn_to()));
+        cv::accessor(scope, proto, "pathname", get__SVGAElement__pathname, Some(set__SVGAElement__pathname.map_fn_to()));
+        cv::accessor(scope, proto, "search", get__SVGAElement__search, Some(set__SVGAElement__search.map_fn_to()));
+        cv::accessor(scope, proto, "hash", get__SVGAElement__hash, Some(set__SVGAElement__hash.map_fn_to()));
+        cv::accessor(scope, proto, "hreflang", get__SVGAElement__hreflang, Some(set__SVGAElement__hreflang.map_fn_to()));
+        cv::accessor(scope, proto, "type", get__SVGAElement__type, Some(set__SVGAElement__type.map_fn_to()));
+        crate::dom::hooks::template(scope, Iface::SVGAElement, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // SVGDefsElement
+        let f = cv::interface(scope, "SVGDefsElement", cv::illegal_constructor);
+        f.inherit(v8::Local::new(scope, &out[Iface::SVGGraphicsElement as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        crate::dom::hooks::template(scope, Iface::SVGDefsElement, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // SVGDescElement
+        let f = cv::interface(scope, "SVGDescElement", cv::illegal_constructor);
+        f.inherit(v8::Local::new(scope, &out[Iface::SVGElement as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        crate::dom::hooks::template(scope, Iface::SVGDescElement, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // SVGForeignObjectElement
+        let f = cv::interface(scope, "SVGForeignObjectElement", cv::illegal_constructor);
+        f.inherit(v8::Local::new(scope, &out[Iface::SVGGraphicsElement as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        crate::dom::hooks::template(scope, Iface::SVGForeignObjectElement, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // SVGGElement
+        let f = cv::interface(scope, "SVGGElement", cv::illegal_constructor);
+        f.inherit(v8::Local::new(scope, &out[Iface::SVGGraphicsElement as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        crate::dom::hooks::template(scope, Iface::SVGGElement, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // SVGGeometryElement
+        let f = cv::interface(scope, "SVGGeometryElement", cv::illegal_constructor);
+        f.inherit(v8::Local::new(scope, &out[Iface::SVGGraphicsElement as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        crate::dom::hooks::template(scope, Iface::SVGGeometryElement, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // SVGLineElement
+        let f = cv::interface(scope, "SVGLineElement", cv::illegal_constructor);
+        f.inherit(v8::Local::new(scope, &out[Iface::SVGGeometryElement as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        crate::dom::hooks::template(scope, Iface::SVGLineElement, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // SVGPolygonElement
+        let f = cv::interface(scope, "SVGPolygonElement", cv::illegal_constructor);
+        f.inherit(v8::Local::new(scope, &out[Iface::SVGGeometryElement as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        crate::dom::hooks::template(scope, Iface::SVGPolygonElement, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // SVGPolylineElement
+        let f = cv::interface(scope, "SVGPolylineElement", cv::illegal_constructor);
+        f.inherit(v8::Local::new(scope, &out[Iface::SVGGeometryElement as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        crate::dom::hooks::template(scope, Iface::SVGPolylineElement, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // SVGRectElement
+        let f = cv::interface(scope, "SVGRectElement", cv::illegal_constructor);
+        f.inherit(v8::Local::new(scope, &out[Iface::SVGGeometryElement as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        crate::dom::hooks::template(scope, Iface::SVGRectElement, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // SVGTSpanElement
+        let f = cv::interface(scope, "SVGTSpanElement", cv::illegal_constructor);
+        f.inherit(v8::Local::new(scope, &out[Iface::SVGTextPositioningElement as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        crate::dom::hooks::template(scope, Iface::SVGTSpanElement, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // SVGTextElement
+        let f = cv::interface(scope, "SVGTextElement", cv::illegal_constructor);
+        f.inherit(v8::Local::new(scope, &out[Iface::SVGTextPositioningElement as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        crate::dom::hooks::template(scope, Iface::SVGTextElement, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // SVGCircleElement
+        let f = cv::interface(scope, "SVGCircleElement", cv::illegal_constructor);
+        f.inherit(v8::Local::new(scope, &out[Iface::SVGGeometryElement as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        crate::dom::hooks::template(scope, Iface::SVGCircleElement, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // SVGEllipseElement
+        let f = cv::interface(scope, "SVGEllipseElement", cv::illegal_constructor);
+        f.inherit(v8::Local::new(scope, &out[Iface::SVGGeometryElement as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        crate::dom::hooks::template(scope, Iface::SVGEllipseElement, f);
+        out.push(v8::Global::new(scope, f));
+    }
     out
 }
 
@@ -36754,6 +38245,8 @@ pub fn expose(scope: &mut v8::PinScope<'_, '_>, global: v8::Local<'_, v8::Object
     cv::expose(scope, global, &t[Iface::AuthenticatorResponse as usize], "AuthenticatorResponse");
     cv::expose(scope, global, &t[Iface::Blob as usize], "Blob");
     cv::expose_namespace(scope, global, &t[Iface::CSS as usize], "CSS");
+    cv::expose(scope, global, &t[Iface::CSSRule as usize], "CSSRule");
+    cv::expose(scope, global, &t[Iface::CSSRuleList as usize], "CSSRuleList");
     cv::expose(scope, global, &t[Iface::CSSStyleDeclaration as usize], "CSSStyleDeclaration");
     cv::expose(scope, global, &t[Iface::CSSStyleProperties as usize], "CSSStyleProperties");
     cv::expose(scope, global, &t[Iface::CanvasRenderingContext2D as usize], "CanvasRenderingContext2D");
@@ -36821,6 +38314,7 @@ pub fn expose(scope: &mut v8::PinScope<'_, '_>, global: v8::Local<'_, v8::Object
     cv::expose(scope, global, &t[Iface::PluginArray as usize], "PluginArray");
     cv::expose(scope, global, &t[Iface::PopStateEvent as usize], "PopStateEvent");
     cv::expose(scope, global, &t[Iface::ProgressEvent as usize], "ProgressEvent");
+    cv::expose(scope, global, &t[Iface::PromiseRejectionEvent as usize], "PromiseRejectionEvent");
     cv::expose(scope, global, &t[Iface::PublicKeyCredential as usize], "PublicKeyCredential");
     cv::expose(scope, global, &t[Iface::RadioNodeList as usize], "RadioNodeList");
     cv::expose(scope, global, &t[Iface::Range as usize], "Range");
@@ -36835,6 +38329,7 @@ pub fn expose(scope: &mut v8::PinScope<'_, '_>, global: v8::Local<'_, v8::Object
     cv::expose(scope, global, &t[Iface::StaticRange as usize], "StaticRange");
     cv::expose(scope, global, &t[Iface::Storage as usize], "Storage");
     cv::expose(scope, global, &t[Iface::StyleSheet as usize], "StyleSheet");
+    cv::expose(scope, global, &t[Iface::StyleSheetList as usize], "StyleSheetList");
     cv::expose(scope, global, &t[Iface::SubmitEvent as usize], "SubmitEvent");
     cv::expose(scope, global, &t[Iface::SubtleCrypto as usize], "SubtleCrypto");
     cv::expose(scope, global, &t[Iface::TextDecoder as usize], "TextDecoder");
@@ -36938,7 +38433,25 @@ pub fn expose(scope: &mut v8::PinScope<'_, '_>, global: v8::Local<'_, v8::Object
     cv::expose(scope, global, &t[Iface::MouseEvent as usize], "MouseEvent");
     cv::expose(scope, global, &t[Iface::PointerEvent as usize], "PointerEvent");
     cv::expose(scope, global, &t[Iface::SVGElement as usize], "SVGElement");
+    cv::expose(scope, global, &t[Iface::SVGGradientElement as usize], "SVGGradientElement");
     cv::expose(scope, global, &t[Iface::SVGGraphicsElement as usize], "SVGGraphicsElement");
+    cv::expose(scope, global, &t[Iface::SVGImageElement as usize], "SVGImageElement");
+    cv::expose(scope, global, &t[Iface::SVGLinearGradientElement as usize], "SVGLinearGradientElement");
+    cv::expose(scope, global, &t[Iface::SVGMarkerElement as usize], "SVGMarkerElement");
+    cv::expose(scope, global, &t[Iface::SVGMetadataElement as usize], "SVGMetadataElement");
+    cv::expose(scope, global, &t[Iface::SVGPatternElement as usize], "SVGPatternElement");
+    cv::expose(scope, global, &t[Iface::SVGRadialGradientElement as usize], "SVGRadialGradientElement");
+    cv::expose(scope, global, &t[Iface::SVGSVGElement as usize], "SVGSVGElement");
+    cv::expose(scope, global, &t[Iface::SVGStopElement as usize], "SVGStopElement");
+    cv::expose(scope, global, &t[Iface::SVGStyleElement as usize], "SVGStyleElement");
+    cv::expose(scope, global, &t[Iface::SVGSwitchElement as usize], "SVGSwitchElement");
+    cv::expose(scope, global, &t[Iface::SVGSymbolElement as usize], "SVGSymbolElement");
+    cv::expose(scope, global, &t[Iface::SVGTextContentElement as usize], "SVGTextContentElement");
+    cv::expose(scope, global, &t[Iface::SVGTextPathElement as usize], "SVGTextPathElement");
+    cv::expose(scope, global, &t[Iface::SVGTextPositioningElement as usize], "SVGTextPositioningElement");
+    cv::expose(scope, global, &t[Iface::SVGTitleElement as usize], "SVGTitleElement");
+    cv::expose(scope, global, &t[Iface::SVGUseElement as usize], "SVGUseElement");
+    cv::expose(scope, global, &t[Iface::SVGViewElement as usize], "SVGViewElement");
     cv::expose(scope, global, &t[Iface::ShadowRoot as usize], "ShadowRoot");
     cv::expose(scope, global, &t[Iface::Text as usize], "Text");
     cv::expose(scope, global, &t[Iface::WheelEvent as usize], "WheelEvent");
@@ -36959,6 +38472,20 @@ pub fn expose(scope: &mut v8::PinScope<'_, '_>, global: v8::Local<'_, v8::Object
     cv::expose(scope, global, &t[Iface::HTMLDialogElement as usize], "HTMLDialogElement");
     cv::expose(scope, global, &t[Iface::HTMLDirectoryElement as usize], "HTMLDirectoryElement");
     cv::expose(scope, global, &t[Iface::HTMLDivElement as usize], "HTMLDivElement");
+    cv::expose(scope, global, &t[Iface::SVGAElement as usize], "SVGAElement");
+    cv::expose(scope, global, &t[Iface::SVGDefsElement as usize], "SVGDefsElement");
+    cv::expose(scope, global, &t[Iface::SVGDescElement as usize], "SVGDescElement");
+    cv::expose(scope, global, &t[Iface::SVGForeignObjectElement as usize], "SVGForeignObjectElement");
+    cv::expose(scope, global, &t[Iface::SVGGElement as usize], "SVGGElement");
+    cv::expose(scope, global, &t[Iface::SVGGeometryElement as usize], "SVGGeometryElement");
+    cv::expose(scope, global, &t[Iface::SVGLineElement as usize], "SVGLineElement");
+    cv::expose(scope, global, &t[Iface::SVGPolygonElement as usize], "SVGPolygonElement");
+    cv::expose(scope, global, &t[Iface::SVGPolylineElement as usize], "SVGPolylineElement");
+    cv::expose(scope, global, &t[Iface::SVGRectElement as usize], "SVGRectElement");
+    cv::expose(scope, global, &t[Iface::SVGTSpanElement as usize], "SVGTSpanElement");
+    cv::expose(scope, global, &t[Iface::SVGTextElement as usize], "SVGTextElement");
+    cv::expose(scope, global, &t[Iface::SVGCircleElement as usize], "SVGCircleElement");
+    cv::expose(scope, global, &t[Iface::SVGEllipseElement as usize], "SVGEllipseElement");
 }
 
 /// Puts the interfaces exposed to dedicated workers on a worker's global.
@@ -36991,6 +38518,7 @@ pub fn expose_worker(scope: &mut v8::PinScope<'_, '_>, global: v8::Local<'_, v8:
     cv::expose(scope, global, &t[Iface::PermissionStatus as usize], "PermissionStatus");
     cv::expose(scope, global, &t[Iface::Permissions as usize], "Permissions");
     cv::expose(scope, global, &t[Iface::ProgressEvent as usize], "ProgressEvent");
+    cv::expose(scope, global, &t[Iface::PromiseRejectionEvent as usize], "PromiseRejectionEvent");
     cv::expose(scope, global, &t[Iface::Request as usize], "Request");
     cv::expose(scope, global, &t[Iface::Response as usize], "Response");
     cv::expose(scope, global, &t[Iface::SubtleCrypto as usize], "SubtleCrypto");

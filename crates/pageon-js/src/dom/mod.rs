@@ -61,9 +61,10 @@ pub use elements::{
     element, element_css_inline_style, html_element, html_or_svg_or_math_ml_element,
     svg_graphics_element,
 };
+pub(crate) use events::deliver_page_errors;
 pub use events::{
     custom_event, drag_event, event, event_target, focus_event, keyboard_event, mouse_event,
-    pointer_event, submit_event, toggle_event, ui_event, wheel_event,
+    pointer_event, promise_rejection_event, submit_event, toggle_event, ui_event, wheel_event,
 };
 pub use fonts::{font_face_set, font_face_source};
 pub use globals::{
@@ -73,9 +74,9 @@ pub use globals::{
 };
 pub use html::{
     html_anchor_element, html_button_element, html_dialog_element, html_form_element,
-    html_hyperlink_element_utils, html_input_element, html_option_element, html_script_element,
-    html_select_element, html_table_element, html_template_element, html_text_area_element,
-    hyperlink_element_utils,
+    html_hyperlink_element_utils, html_input_element, html_link_element, html_option_element,
+    html_script_element, html_select_element, html_table_element, html_template_element,
+    html_text_area_element, hyperlink_element_utils,
 };
 pub use intersection::{intersection_observer, intersection_observer_entry};
 pub use nodes::{
@@ -116,7 +117,9 @@ pub use net::{
 pub use ranges::{abstract_range, caret_position, range, static_range};
 pub use realtime::{close_event, event_source, web_socket};
 pub use selecting::selection;
-pub use sheets::css_style_sheet;
+pub use sheets::{
+    css_rule, css_rule_list, css_style_sheet, link_style, style_sheet, style_sheet_list,
+};
 pub use subtle::{crypto_key, subtle_crypto};
 pub use timing::{
     performance_entry, performance_mark, performance_measure, performance_observer,

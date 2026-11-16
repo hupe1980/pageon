@@ -16,12 +16,13 @@ and `pageon fetch URL --dump errors` names what a page tried to use.
 | Area | What pages get |
 | --- | --- |
 | Scripts | Classic and module scripts, `defer`/`async`, import maps, dynamic `import()`, top-level `await`, JSON modules, script loaders and bundler chunks (Vite, esbuild, webpack) |
-| DOM | The DOM standard's tree, events (capture, bubble, handlers; `new EventTarget()` and classes that extend it), selectors, `innerHTML`, live collections, `MutationObserver`, `IntersectionObserver`, `ResizeObserver`, `TreeWalker`, `NodeIterator`, `DOMParser` and `createHTMLDocument` (HTML, inert: nothing in them runs or loads) |
+| DOM | The DOM standard's tree, events (capture, bubble, handlers in the order they were set; `new EventTarget()` and classes that extend it), `error` and `unhandledrejection` at the window (errors of other origins' scripts muted, as in browsers), selectors, `innerHTML`, live collections, `MutationObserver`, `IntersectionObserver`, `ResizeObserver`, `TreeWalker`, `NodeIterator`, `DOMParser` and `createHTMLDocument` (HTML, inert: nothing in them runs or loads) |
 | CSS and layout | The cascade (Stylo), block, flex and grid (Taffy), text (Parley, with dictionary line breaking for Chinese, Japanese, Thai, Lao, Khmer and Burmese) and bundled fonts, computed style, geometry (`getBoundingClientRect`), `matchMedia`, `CSS.supports`, `CSS.escape`, scrolling of the page and of containers |
 | Editing | `Selection` and live `Range`s, `contenteditable` with the browser's edits through `beforeinput`/`input` (typing, Enter, Backspace and Delete by character or word, paste, cut), caret keys, text-field selection (`selectionStart`, `setSelectionRange`, `setRangeText`), `caretPositionFromPoint` and range rectangles from layout, `execCommand` for the editing commands (`insertText`, `delete`, `insertParagraph`, …; formatting commands return `false`). Editors such as ProseMirror, Lexical and Quill work |
 | Forms | Every control as form state, named access (`form.email`, `form.elements.plan.value` for radio groups, `form[0]`), `action`/`method`/`enctype`, `valueAsNumber`, constraint validation with Chrome's messages, `:invalid`/`:user-invalid`, form-associated custom elements, `FormData`, multipart submission |
 | Popovers | The Popover API (`popover`, `showPopover`/`hidePopover`/`togglePopover`, `beforetoggle` and `toggle`), `popovertarget` buttons, Escape and outside clicks close open popovers, `:popover-open`; views show only open ones |
 | Canvas | 2D drawing and text (`font`, `textAlign`, `textBaseline`, `measureText`, `fillText`, `strokeText`) with the bundled fonts, so metrics are the same everywhere; canvases appear in screenshots |
+| Stylesheets | `document.styleSheets`, `style.sheet` and `link.sheet`, `cssRules`, `insertRule`/`deleteRule`: rules a script inserts (styled-components, emotion) reach layout. Inserted `<link>` stylesheets, `preload` and `modulepreload` load and fire `load` or `error`. A `<link>`'s rules are not readable |
 | Web components | Shadow DOM (open, closed, declarative), slots, custom elements, `ElementInternals`, adopted stylesheets |
 | Frames and messaging | Same- and cross-origin iframes, `postMessage`, `contentWindow`/`contentDocument` across same-origin frames, `<iframe sandbox>` (`allow-same-origin`, `-scripts`, `-forms`, `-popups`, `-modals`), `MessageChannel` within a document (ports are not transferable) |
 | Networking | `fetch`, `XMLHttpRequest`, `AbortController`, CORS, cookies (`SameSite`, CHIPS), `document.cookie` |
@@ -42,7 +43,7 @@ and `pageon fetch URL --dump errors` names what a page tried to use.
 
 ## Not supported
 
-`BroadcastChannel`, iframes a script inserts after load, `blob:` URLs outside worker scripts,
+`BroadcastChannel`, iframes a script inserts (their `contentWindow` is `null`), `blob:` URLs outside worker scripts,
 shared, service and nested workers, transferring anything but `ArrayBuffer`s, IME composition, undo (`historyUndo`) and formatting commands, `designMode`,
 `ClipboardItem`, `PasswordCredential` and `FederatedCredential`, the Navigation API (routers fall
 back to `history`), `document.write` after the page has loaded (it throws), `FontFace` (`document.fonts` reports

@@ -49,8 +49,22 @@ All notable changes to this project are documented here. The format follows
   on every interface (`[object Event]`), and `document.fonts` (`ready`, `status`, `check`,
   `load`).
 
+- Platform, from sites the audit ran on: `error` and `unhandledrejection` events at the window
+  (`onerror` with its five arguments; a handled one is not a page error; other origins'
+  errors muted), `PromiseRejectionEvent`; `document.styleSheets`, `style.sheet`,
+  `insertRule`/`deleteRule` with the inserted rules in layout (CSS-in-JS); inserted `<link>`
+  stylesheets, `preload` and `modulepreload` load and fire `load`/`error`; SVG element
+  interfaces (`SVGAElement`, …); `link.as`. crates.io and BBC News now run without errors.
+
 ### Fixed
 
+- `<noscript>` content no longer shows while scripts run.
+- Event handlers run in the order they were set among listeners (they ran first).
+- Streams work on pages with an AMD loader (`define`) or CommonJS globals.
+- `performance.measure(name, 'navigationStart')` and the other timing names work.
+- A thrown `DOMException` is reported as `Uncaught SyntaxError: …`, not a bare `Uncaught`.
+- Pages that lay out many times (GitHub's home page) load about 45 % faster: stylesheet
+  rewrites are remembered between layouts.
 - `performance.measure(name, {}, endMark)` no longer throws; options follow Chrome's rules.
 - Canvases appear in screenshots (they were painted blank and noted as not painted).
 - Workflow URL checks keep the port, so two local apps on different ports are told apart.

@@ -77,11 +77,64 @@ pub struct Settled {
     pub virtual_ms: u64,
 }
 
+/// A rejected promise, its reason and the error it is reported as.
+type Rejected = (v8::Global<v8::Promise>, v8::Global<v8::Value>, PageError);
+/// An uncaught exception: its realm, its value and the error it is reported as.
+type Uncaught = (v8::Global<v8::Context>, v8::Global<v8::Value>, PageError);
+
 thread_local! {
     static CURRENT: RefCell<Option<(v8::IsolateHandle, std::rc::Rc<std::cell::Cell<bool>>)>> = const { RefCell::new(None) };
     /// Rejected promises without a handler, reported after the task's microtask checkpoint
     /// unless a handler is added by then.
-    static REJECTED: RefCell<Vec<(v8::Global<v8::Promise>, PageError)>> = const { RefCell::new(Vec::new()) };
+    static REJECTED: RefCell<Vec<Rejected>> = const { RefCell::new(Vec::new()) };
+    /// Uncaught exceptions not yet announced to their window (`error` events), with the
+    /// realm they were thrown in.
+    static THROWN: RefCell<Vec<Uncaught>> = const { RefCell::new(Vec::new()) };
+}
+
+/// A promise rejected without a handler, still unhandled after a microtask checkpoint.
+pub(crate) struct Unhandled {
+    pub promise: v8::Global<v8::Promise>,
+    pub reason: v8::Global<v8::Value>,
+    pub error: PageError,
+}
+
+/// An uncaught exception of the current realm, to announce with an `error` event.
+pub(crate) struct Thrown {
+    pub value: v8::Global<v8::Value>,
+    pub error: PageError,
+}
+
+/// Takes the unhandled rejections and uncaught exceptions of `context` (the others stay).
+pub(crate) fn take_page_errors(
+    scope: &mut v8::PinScope<'_, '_>,
+    context: v8::Local<'_, v8::Context>,
+) -> (Vec<Unhandled>, Vec<Thrown>) {
+    let rejected = REJECTED.with(|r| {
+        let all = std::mem::take(&mut *r.borrow_mut());
+        let (mine, rest): (Vec<_>, Vec<_>) = all.into_iter().partition(|(p, _, _)| {
+            v8::Local::new(&*scope, p).get_creation_context(scope) == Some(context)
+        });
+        *r.borrow_mut() = rest;
+        mine.into_iter()
+            .map(|(promise, reason, error)| Unhandled {
+                promise,
+                reason,
+                error,
+            })
+            .collect()
+    });
+    let thrown = THROWN.with(|t| {
+        let all = std::mem::take(&mut *t.borrow_mut());
+        let (mine, rest): (Vec<_>, Vec<_>) = all
+            .into_iter()
+            .partition(|(c, _, _)| v8::Local::new(&*scope, c) == context);
+        *t.borrow_mut() = rest;
+        mine.into_iter()
+            .map(|(_, value, error)| Thrown { value, error })
+            .collect()
+    });
+    (rejected, thrown)
 }
 
 extern "C" fn promise_rejected(msg: v8::PromiseRejectMessage) {
@@ -99,18 +152,19 @@ extern "C" fn promise_rejected(msg: v8::PromiseRejectMessage) {
                     .get_value()
                     .unwrap_or_else(|| v8::undefined(scope).into());
                 let message = v8::Exception::create_message(scope, value);
-                let mut err = page_error(scope, value, Some(message));
+                let mut err = describe(scope, value, Some(message));
                 err.message = format!(
                     "Uncaught (in promise) {}",
                     err.message.trim_start_matches("Uncaught ")
                 );
                 let g = v8::Global::new(scope, promise);
-                REJECTED.with(|r| r.borrow_mut().push((g, err)));
+                let reason = v8::Global::new(scope, value);
+                REJECTED.with(|r| r.borrow_mut().push((g, reason, err)));
             }
             v8::PromiseRejectEvent::PromiseHandlerAddedAfterReject => {
                 REJECTED.with(|r| {
                     r.borrow_mut()
-                        .retain(|(p, _)| v8::Local::new(&*scope, p) != promise);
+                        .retain(|(p, _, _)| v8::Local::new(&*scope, p) != promise);
                 });
             }
             _ => {}
@@ -121,8 +175,10 @@ extern "C" fn promise_rejected(msg: v8::PromiseRejectMessage) {
 /// Reports the rejections still unhandled after a microtask checkpoint.
 pub(crate) fn report_rejections(shared: &RefCell<Shared>) {
     let list = REJECTED.with(|r| std::mem::take(&mut *r.borrow_mut()));
+    // Exceptions of realms without a window to tell (workers) were recorded already.
+    THROWN.with(|t| t.borrow_mut().clear());
     let mut sh = shared.borrow_mut();
-    for (_, e) in list {
+    for (_, _, e) in list {
         if sh.errors.len() < 1000 {
             sh.errors.push(e);
         }
@@ -2126,15 +2182,53 @@ fn run_timer(cx: &mut Cx<'_, '_, '_>, t: &Timer) {
     }
 }
 
-/// A page error from a V8 exception and its message.
+/// A page error from an uncaught V8 exception and its message; the exception is also kept
+/// for the `error` event at the realm's window.
 pub fn page_error(
     scope: &v8::PinScope<'_, '_>,
     ex: v8::Local<'_, v8::Value>,
     msg: Option<v8::Local<'_, v8::Message>>,
 ) -> PageError {
-    let text = msg
+    let err = describe(scope, ex, msg);
+    let context = scope.get_current_context();
+    let entry = (
+        v8::Global::new(scope, context),
+        v8::Global::new(scope, ex),
+        err.clone(),
+    );
+    THROWN.with(|t| {
+        let mut t = t.borrow_mut();
+        if t.len() < 1000 {
+            t.push(entry);
+        }
+    });
+    err
+}
+
+/// A page error from a V8 exception and its message.
+fn describe(
+    scope: &v8::PinScope<'_, '_>,
+    ex: v8::Local<'_, v8::Value>,
+    msg: Option<v8::Local<'_, v8::Message>>,
+) -> PageError {
+    let mut text = msg
         .map(|m| m.get(scope).to_rust_string_lossy(scope))
         .unwrap_or_else(|| ex.to_rust_string_lossy(scope));
+    // A thrown platform object (a `DOMException`) has no message of V8's: "Uncaught
+    // DOMException: …", as browsers say.
+    if text.trim_end() == "Uncaught"
+        && let Ok(o) = v8::Local::<v8::Object>::try_from(ex)
+    {
+        let read = |k: &str| {
+            let key = v8::String::new(scope, k)?;
+            let v = o.get(scope, key.into())?;
+            (!v.is_undefined()).then(|| v.to_rust_string_lossy(scope))
+        };
+        if let Some(m) = read("message") {
+            let name = read("name").unwrap_or_else(|| "Error".into());
+            text = format!("Uncaught {name}: {m}");
+        }
+    }
     let source = msg
         .and_then(|m| m.get_script_resource_name(scope))
         .map(|n| n.to_rust_string_lossy(scope))
@@ -2167,6 +2261,7 @@ fn notify_observers(cx: &mut Cx<'_, '_, '_>) {
         let media = crate::dom::platform::deliver_media(cx);
         let resized = crate::dom::platform::deliver_resize(cx, resize_pass);
         let timed = crate::dom::timing::deliver(cx);
+        let errors = crate::dom::deliver_page_errors(cx);
         let selected = crate::dom::selecting::deliver(cx);
         if matches!(resized, Ok(true)) {
             resize_pass += 1;
@@ -2177,6 +2272,7 @@ fn notify_observers(cx: &mut Cx<'_, '_, '_>) {
             || matches!(intersections, Ok(true))
             || matches!(media, Ok(true))
             || matches!(timed, Ok(true))
+            || matches!(errors, Ok(true))
             || matches!(selected, Ok(true))
             || matches!(resized, Ok(true));
         if !ran || cx.scope.is_execution_terminating() {

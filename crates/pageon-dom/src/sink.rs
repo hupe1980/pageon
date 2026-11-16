@@ -31,7 +31,10 @@ pub(crate) fn opts(o: ParseOptions) -> ParseOpts {
 
 /// Parses a complete document.
 pub fn parse_document(html: &str, options: ParseOptions) -> Dom {
-    html5ever::parse_document(Sink::default(), opts(options)).one(StrTendril::from(html))
+    let mut dom =
+        html5ever::parse_document(Sink::default(), opts(options)).one(StrTendril::from(html));
+    dom.scripting = options.scripting;
+    dom
 }
 
 /// Parses a fragment in the context of an element `context` (HTML namespace unless `context`

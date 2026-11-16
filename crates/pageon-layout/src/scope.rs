@@ -22,6 +22,73 @@ pub enum Scope {
     Shadow(u32),
 }
 
+/// Rewrites of stylesheet text, kept per thread: a page that measures itself as it changes
+/// lays out again and again with the same sheets, and rewriting them dominated that.
+mod memo {
+    use std::cell::RefCell;
+    use std::collections::HashMap;
+    use std::hash::{Hash, Hasher};
+    use std::rc::Rc;
+
+    /// Most bytes of rewritten text kept; past it the cache starts over.
+    const MAX_BYTES: usize = 64 << 20;
+
+    #[derive(Default)]
+    struct Memo {
+        map: HashMap<(u64, usize, u32), Option<Rc<str>>>,
+        bytes: usize,
+    }
+
+    thread_local! {
+        static MEMO: RefCell<Memo> = RefCell::new(Memo::default());
+    }
+
+    /// `f(css)`, remembered by the text and `kind` (which rewrite, which scope).
+    pub(super) fn get(
+        css: &str,
+        kind: u32,
+        f: impl FnOnce(&str) -> Option<String>,
+    ) -> Option<Rc<str>> {
+        let mut h = std::collections::hash_map::DefaultHasher::new();
+        css.hash(&mut h);
+        let key = (h.finish(), css.len(), kind);
+        if let Some(v) = MEMO.with(|m| m.borrow().map.get(&key).cloned()) {
+            return v;
+        }
+        let v: Option<Rc<str>> = f(css).map(Rc::from);
+        MEMO.with(|m| {
+            let mut m = m.borrow_mut();
+            let size = v.as_ref().map_or(0, |s| s.len()) + 32;
+            if m.bytes + size > MAX_BYTES {
+                m.map.clear();
+                m.bytes = 0;
+            }
+            m.bytes += size;
+            m.map.insert(key, v.clone());
+        });
+        v
+    }
+}
+
+/// [`pseudo`], remembered (the same sheets are rewritten at every layout).
+pub fn pseudo_memo(css: &str) -> Option<std::rc::Rc<str>> {
+    memo::get(css, 0, pseudo)
+}
+
+/// [`uses_pseudo`], remembered.
+pub fn uses_pseudo_memo(css: &str) -> bool {
+    memo::get(css, u32::MAX, |c| uses_pseudo(c).then(String::new)).is_some()
+}
+
+/// [`rewrite`], remembered.
+pub fn rewrite_memo(css: &str, scope: Scope) -> std::rc::Rc<str> {
+    let kind = match scope {
+        Scope::Document => 1,
+        Scope::Shadow(n) => 2 + n,
+    };
+    memo::get(css, kind, |c| Some(rewrite(c, scope))).unwrap_or_else(|| css.into())
+}
+
 /// Rewrites a stylesheet's selectors for `scope`.
 pub fn rewrite(css: &str, scope: Scope) -> String {
     let mut out = String::with_capacity(css.len() + css.len() / 4);

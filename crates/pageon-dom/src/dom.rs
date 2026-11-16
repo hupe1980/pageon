@@ -281,6 +281,11 @@ pub struct Dom {
     pub(crate) internals: std::collections::HashMap<NodeId, crate::forms::Internals>,
     /// Adopted stylesheets of the document or a shadow root: CSS texts in order.
     pub(crate) adopted: std::collections::HashMap<NodeId, Vec<String>>,
+    /// The rules of `<style>` elements a script changed through the CSSOM (`insertRule`),
+    /// which layout applies instead of the element's text.
+    pub(crate) cssom: std::collections::HashMap<NodeId, String>,
+    /// The document was parsed with scripting on, so `<noscript>` content is not rendered.
+    pub(crate) scripting: bool,
     /// Live ranges and the selection (see [`crate::ranges`]).
     pub(crate) ranges: crate::ranges::Ranges,
     /// Mutable accesses so far (see [`Dom::changes`]).
@@ -373,6 +378,8 @@ impl Dom {
             scopes: std::collections::HashMap::new(),
             internals: std::collections::HashMap::new(),
             adopted: std::collections::HashMap::new(),
+            cssom: std::collections::HashMap::new(),
+            scripting: false,
             ranges: crate::ranges::Ranges::default(),
             popovers: Vec::new(),
         };

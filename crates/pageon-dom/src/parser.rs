@@ -51,6 +51,7 @@ impl Parser {
     /// A parser for a new document.
     pub fn new(options: ParseOptions) -> Self {
         let dom = Rc::new(RefCell::new(Dom::new()));
+        dom.borrow_mut().scripting = options.scripting;
         let o = opts(options);
         let builder = TreeBuilder::new(
             Sink {

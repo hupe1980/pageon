@@ -113,6 +113,14 @@ pub enum ScriptJob {
         /// The promise's resolver.
         resolver: v8::Global<v8::PromiseResolver>,
     },
+    /// A `<link>` inserted by a DOM method (a stylesheet, `preload`, `modulepreload`): fetched,
+    /// then `load` or `error`.
+    Link {
+        /// Realm.
+        realm: usize,
+        /// The element.
+        node: NodeId,
+    },
     /// A `Worker` to start: its handle in the owner realm.
     Worker {
         /// The realm that created it.
@@ -487,6 +495,7 @@ pub(crate) fn dynamic_import_hook<'s>(
 pub(crate) fn inserted(cx: &Cx<'_, '_, '_>, nodes: &[NodeId]) {
     let dom = cx.dom();
     let mut found = Vec::new();
+    let mut links = Vec::new();
     for &n in nodes {
         // Connected, shadow-including: scripts in shadow trees run too.
         if !dom.is_connected(n) {
@@ -504,10 +513,18 @@ pub(crate) fn inserted(cx: &Cx<'_, '_, '_>, nodes: &[NodeId]) {
                     found.push(x);
                 }
             }
+            if let pageon_dom::Edge::Enter(x) = e
+                && let Some(el) = dom.get(x)
+                && el.is_html("link")
+                && el.attr("href").is_some()
+                && link_kind(el.attr("rel").unwrap_or_default(), el.attr("as")).is_some()
+            {
+                links.push(x);
+            }
         }
     }
     drop(dom);
-    if found.is_empty() {
+    if found.is_empty() && links.is_empty() {
         return;
     }
     let mut st = cx.st();
@@ -516,6 +533,10 @@ pub(crate) fn inserted(cx: &Cx<'_, '_, '_>, nodes: &[NodeId]) {
         .into_iter()
         .filter(|n| st.started_scripts.insert(*n) && !disabled)
         .collect();
+    let links: Vec<NodeId> = links
+        .into_iter()
+        .filter(|n| st.started_scripts.insert(*n))
+        .collect();
     drop(st);
     let mut sh = cx.realm.shared.borrow_mut();
     for node in fresh {
@@ -523,6 +544,34 @@ pub(crate) fn inserted(cx: &Cx<'_, '_, '_>, nodes: &[NodeId]) {
             realm: cx.realm.id,
             node,
         });
+    }
+    for node in links {
+        sh.scripts.push_back(ScriptJob::Link {
+            realm: cx.realm.id,
+            node,
+        });
+    }
+}
+
+/// What a `<link>` loads: a stylesheet (applied), or a resource fetched ahead (`preload`,
+/// `modulepreload`), with its destination; `None` for other relations.
+fn link_kind(rel: &str, as_: Option<&str>) -> Option<(bool, Dest, bool)> {
+    let rel = rel.to_ascii_lowercase();
+    let has = |t: &str| rel.split_ascii_whitespace().any(|x| x == t);
+    if has("stylesheet") && !has("alternate") {
+        Some((true, Dest::Style, false))
+    } else if has("modulepreload") {
+        Some((false, Dest::Script, true))
+    } else if has("preload") {
+        match as_.map(str::to_ascii_lowercase).as_deref() {
+            Some("style") => Some((false, Dest::Style, false)),
+            Some("script") => Some((false, Dest::Script, false)),
+            Some("fetch") => Some((false, Dest::Fetch, true)),
+            Some("image") => Some((false, Dest::Image, false)),
+            _ => None,
+        }
+    } else {
+        None
     }
 }
 
@@ -932,9 +981,72 @@ impl Engine {
                     resolver,
                 } => self.run_import(realm, &url, json, resolver, env),
                 ScriptJob::Worker { owner, handle } => self.start_worker(owner, handle, env),
+                ScriptJob::Link { realm, node } => self.run_link(realm, node, env),
             }
         }
         n
+    }
+
+    /// Loads an inserted `<link>` through the page's network path and fires `load` or
+    /// `error`; a stylesheet's CSS goes to the DOM, where layout applies it.
+    fn run_link(&mut self, realm: usize, node: NodeId, env: &dyn pageon_env::Env) {
+        let Some(r) = self.realm(realm).cloned() else {
+            return;
+        };
+        let (kind, href, base) = {
+            let dom = r.dom.borrow();
+            let Some(el) = dom.get(node) else { return };
+            if !dom.is_connected(node) {
+                return;
+            }
+            (
+                link_kind(el.attr("rel").unwrap_or_default(), el.attr("as")),
+                el.attr("href").unwrap_or_default().trim().to_string(),
+                r.st.borrow().url.clone(),
+            )
+        };
+        let Some((sheet, dest, cors)) = kind else {
+            return;
+        };
+        let url = Url::parse(&base).ok().and_then(|b| b.join(&href).ok());
+        let Some(url) = url else {
+            self.fire(realm, Target::Node(node), "error", false);
+            return;
+        };
+        let (net, client) = {
+            let st = r.st.borrow();
+            (st.net.clone(), st.client.clone())
+        };
+        let mut req = FetchRequest::subresource(url, dest, client);
+        if cors {
+            req.mode = Mode::Cors;
+            req.credentials = Credentials::SameOrigin;
+        }
+        let now = self.shared.borrow().now as u64;
+        let res = net.borrow_mut().fetch(env, req, now);
+        match res {
+            Ok(f) if (200..300).contains(&f.status) => {
+                if sheet {
+                    let charset = f
+                        .headers
+                        .iter()
+                        .find(|(k, _)| k.eq_ignore_ascii_case("content-type"))
+                        .and_then(|(_, v)| pageon_dom::encoding::charset_param(v))
+                        .unwrap_or("utf-8")
+                        .to_string();
+                    let css = pageon_dom::encoding::decode(&f.body, Some(&charset)).0;
+                    r.dom.borrow_mut().set_cssom_text(node, Some(css));
+                }
+                self.fire(realm, Target::Node(node), "load", false);
+            }
+            _ => {
+                // A failed stylesheet has no rules (and is not fetched again).
+                if sheet {
+                    r.dom.borrow_mut().set_cssom_text(node, Some(String::new()));
+                }
+                self.fire(realm, Target::Node(node), "error", false);
+            }
+        }
     }
 
     fn run_inserted(&mut self, realm: usize, node: NodeId, env: &dyn pageon_env::Env) {

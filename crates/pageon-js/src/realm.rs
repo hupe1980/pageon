@@ -126,6 +126,9 @@ pub struct Listener {
     pub once: bool,
     /// Removed (a removal during dispatch must take effect at once).
     pub removed: Rc<std::cell::Cell<bool>>,
+    /// The place of an event handler (`onerror = f`) of this world among the listeners: it
+    /// runs where it was first set, not as a listener of its own.
+    pub handler: Option<u32>,
 }
 
 /// An `ErrorEvent`'s message, filename, lineno, colno and error.
@@ -190,6 +193,8 @@ pub struct EventData {
     pub message: Option<Box<(String, String, Option<crate::cv::Obj>)>>,
     /// `ErrorEvent`: message, filename, lineno, colno, error.
     pub error: Option<Box<ErrorInfo>>,
+    /// `PromiseRejectionEvent`: promise and reason.
+    pub rejection: Option<Box<(Value, Value)>>,
     /// `CloseEvent`: wasClean, code, reason.
     pub close: Option<Box<(bool, u16, String)>>,
     /// `DragEvent`, `ClipboardEvent`, `InputEvent`: its `DataTransfer` (slab id).
@@ -302,6 +307,12 @@ pub enum Slot {
     States(NodeId),
     /// A constructed `CSSStyleSheet` (index into the realm's sheets).
     Sheet(u32),
+    /// A sheet's `cssRules` (the sheet's slab id).
+    RuleList(u32),
+    /// A rule of a sheet: the sheet's slab id and the rule's index.
+    Rule(u32, u32),
+    /// `document.styleSheets` (or a shadow root's).
+    SheetList(pageon_dom::NodeId),
     /// `element.style`.
     Style(NodeId),
     /// `getComputedStyle(element)`.

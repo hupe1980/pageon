@@ -26,31 +26,7 @@ pub mod node {
             NodeData::ProcessingInstruction { .. } => Iface::CharacterData,
             NodeData::Element { .. } => {
                 if n.namespace() == Some(pageon_dom::Namespace::Svg) {
-                    let graphics = matches!(
-                        n.local_name().unwrap_or_default(),
-                        "svg"
-                            | "g"
-                            | "rect"
-                            | "circle"
-                            | "ellipse"
-                            | "line"
-                            | "polyline"
-                            | "polygon"
-                            | "path"
-                            | "text"
-                            | "tspan"
-                            | "textPath"
-                            | "image"
-                            | "use"
-                            | "foreignObject"
-                            | "a"
-                            | "switch"
-                    );
-                    return if graphics {
-                        Iface::SVGGraphicsElement
-                    } else {
-                        Iface::SVGElement
-                    };
+                    return svg_iface(n.local_name().unwrap_or_default());
                 }
                 if n.namespace() != Some(pageon_dom::Namespace::Html) {
                     return Iface::Element;
@@ -59,6 +35,45 @@ pub mod node {
                 html_iface(local)
             }
         }
+    }
+
+    /// The interface of an SVG element by its tag (`a` → `SVGAElement`); tags without one of
+    /// their own are graphics or plain SVG elements.
+    fn svg_iface(local: &str) -> Iface {
+        let name = match local {
+            "svg" => "SVGSVGElement",
+            "g" => "SVGGElement",
+            "defs" => "SVGDefsElement",
+            "desc" => "SVGDescElement",
+            "metadata" => "SVGMetadataElement",
+            "title" => "SVGTitleElement",
+            "symbol" => "SVGSymbolElement",
+            "use" => "SVGUseElement",
+            "switch" => "SVGSwitchElement",
+            "style" => "SVGStyleElement",
+            "rect" => "SVGRectElement",
+            "circle" => "SVGCircleElement",
+            "ellipse" => "SVGEllipseElement",
+            "line" => "SVGLineElement",
+            "polyline" => "SVGPolylineElement",
+            "polygon" => "SVGPolygonElement",
+            "path" => "SVGGeometryElement",
+            "text" => "SVGTextElement",
+            "tspan" => "SVGTSpanElement",
+            "textPath" => "SVGTextPathElement",
+            "image" => "SVGImageElement",
+            "foreignObject" => "SVGForeignObjectElement",
+            "marker" => "SVGMarkerElement",
+            "linearGradient" => "SVGLinearGradientElement",
+            "radialGradient" => "SVGRadialGradientElement",
+            "stop" => "SVGStopElement",
+            "pattern" => "SVGPatternElement",
+            "a" => "SVGAElement",
+            "view" => "SVGViewElement",
+            "clipPath" | "mask" => "SVGElement",
+            _ => "SVGElement",
+        };
+        Iface::from_name(name).unwrap_or(Iface::SVGElement)
     }
 
     fn html_iface(local: &str) -> Iface {

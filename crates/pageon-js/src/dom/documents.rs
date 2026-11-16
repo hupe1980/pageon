@@ -655,6 +655,10 @@ pub mod document {
 pub mod document_or_shadow_root {
     use super::*;
 
+    pub fn get_style_sheets(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<Obj> {
+        crate::dom::sheets::get_style_sheets(cx, this.node()?)
+    }
+
     pub fn get_adopted_style_sheets(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<crate::cv::Value> {
         crate::dom::sheets::get_adopted(cx, this.node()?)
     }

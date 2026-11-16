@@ -85,7 +85,7 @@ members = ["previousElementSibling", "nextElementSibling"]
 members = ["before", "after", "replaceWith", "remove"]
 
 [DocumentOrShadowRoot]
-members = ["activeElement", "adoptedStyleSheets"]
+members = ["activeElement", "adoptedStyleSheets", "styleSheets"]
 
 [Document]
 members = [
@@ -115,6 +115,104 @@ members = []
 
 [SVGGraphicsElement]
 members = ["getBBox"]
+
+# The SVG elements by tag (`instanceof SVGAElement`), with no members of their own yet.
+[SVGGeometryElement]
+members = []
+
+[SVGSVGElement]
+members = []
+
+[SVGGElement]
+members = []
+
+[SVGDefsElement]
+members = []
+
+[SVGDescElement]
+members = []
+
+[SVGMetadataElement]
+members = []
+
+[SVGTitleElement]
+members = []
+
+[SVGSymbolElement]
+members = []
+
+[SVGUseElement]
+members = []
+
+[SVGSwitchElement]
+members = []
+
+[SVGStyleElement]
+members = []
+
+[SVGRectElement]
+members = []
+
+[SVGCircleElement]
+members = []
+
+[SVGEllipseElement]
+members = []
+
+[SVGLineElement]
+members = []
+
+[SVGPolylineElement]
+members = []
+
+[SVGPolygonElement]
+members = []
+
+[SVGTextContentElement]
+members = []
+
+[SVGTextPositioningElement]
+members = []
+
+[SVGTextElement]
+members = []
+
+[SVGTSpanElement]
+members = []
+
+[SVGTextPathElement]
+members = []
+
+[SVGImageElement]
+members = []
+
+[SVGForeignObjectElement]
+members = []
+
+[SVGMarkerElement]
+members = []
+
+[SVGGradientElement]
+members = []
+
+[SVGLinearGradientElement]
+members = []
+
+[SVGRadialGradientElement]
+members = []
+
+[SVGStopElement]
+members = []
+
+[SVGPatternElement]
+members = []
+
+[SVGAElement]
+members = []
+
+[SVGViewElement]
+members = []
+
 
 [DocumentType]
 members = ["name", "publicId", "systemId"]
@@ -515,13 +613,28 @@ members = [
 [XMLSerializer]
 members = ["constructor", "serializeToString"]
 
-# Constructable stylesheets for `adoptedStyleSheets` (sheets of `<style>` and `<link>` are not
-# exposed: `sheet` is absent).
+# Stylesheets: constructed ones (`adoptedStyleSheets`) and those of `<style>` and `<link>`.
+# Rules a script inserts into a `<style>`'s sheet reach layout (CSS-in-JS libraries).
 [StyleSheet]
-members = []
+members = ["type", "href", "ownerNode", "title", "disabled"]
 
 [CSSStyleSheet]
-members = ["constructor", "insertRule", "deleteRule", "replace", "replaceSync"]
+members = ["constructor", "cssRules", "rules", "ownerRule", "insertRule", "deleteRule", "replace", "replaceSync"]
+
+[StyleSheetList]
+members = ["item", "length"]
+
+[CSSRuleList]
+members = ["item", "length"]
+
+[CSSRule]
+members = ["cssText", "type", "parentStyleSheet", "parentRule"]
+
+[HTMLStyleElement]
+members = ["sheet"]
+
+[HTMLLinkElement]
+members = ["sheet", "href", "rel", "as"]
 
 # Form-associated custom elements. The ARIA properties are default semantics (on elements they
 # reflect attributes, generated).
@@ -771,6 +884,9 @@ members = ["constructor", "terminate"]
 
 [ErrorEvent]
 members = ["constructor", "message", "filename", "lineno", "colno", "error"]
+
+[PromiseRejectionEvent]
+members = ["constructor", "promise", "reason"]
 
 # CSS Font Loading: the bundled fonts are always loaded, so `ready` is settled and `check` holds.
 [FontFaceSet]

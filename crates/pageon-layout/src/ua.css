@@ -131,3 +131,8 @@ slot {
   background-color: Canvas;
   z-index: 2147483647;
 }
+
+/* With scripting on, `<noscript>` is not rendered; `pageon-scripting` is the mirror's marker. */
+noscript[pageon-scripting] {
+  display: none !important;
+}

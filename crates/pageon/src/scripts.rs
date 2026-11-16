@@ -65,7 +65,10 @@ impl Run<'_> {
             let dom = self.dom.borrow();
             dom.traverse(dom.root())
                 .filter_map(|e| match e {
-                    pageon_dom::Edge::Enter(id) if !self.sheets_seen.contains(&id) => {
+                    // Links a script inserted are loaded by the engine.
+                    pageon_dom::Edge::Enter(id)
+                        if !self.sheets_seen.contains(&id) && dom.cssom_text(id).is_none() =>
+                    {
                         let n = dom.get(id)?;
                         let rel = n.attr("rel").unwrap_or_default().to_ascii_lowercase();
                         (n.is_html("link")
