@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-16
+
 ### Added
 
 - Editing: selection and live ranges, `contenteditable` editing through `beforeinput`, text
@@ -15,9 +17,9 @@ All notable changes to this project are documented here. The format follows
   copied.
 - Passkeys: sites' WebAuthn sign-in and registration answered from a store the broker holds
   (`--passkeys FILE`); keys never reach the page process.
-- `--profile chrome` in the release binaries, on the machine's own platform (`--platform` picks
-  another); `--signature-tag` for agent programs that verify their own tag; a site asking for a
-  signature (`Accept-Signature`) is reported as `signature required`.
+- `--profile chrome` in the release binaries; `--platform` picks the platform it reports;
+  `--signature-tag` for agent programs that verify their own tag; a site asking for a signature
+  (`Accept-Signature`) is reported as `signature required`.
 - Writes carry `read-from:<site>` labels for guards and approvers; `--cross-site-writes refuse`
   refuses a write to a site after the agent read another site's content, unless approved.
 - IndexedDB, kept per origin for the session across reloads and tabs.
@@ -43,6 +45,9 @@ All notable changes to this project are documented here. The format follows
 - `goto download:N` (over MCP, `browser_open` with `download:N`) opens a download as a page.
 - `pageon fetch --prefer-markdown` asks sites for their Markdown rendition, labelled
   `source:server-markdown`; `Content-Usage` preferences (header or robots.txt) are shown.
+- Web Animations and `scheduler.postTask`/`yield` on the virtual clock; `navigator.permissions`
+  and `Notification.permission` (never granted), `userActivation`, `sendBeacon`,
+  `hardwareConcurrency`, the PDF viewer lists, `screen.orientation`, `screenX`/`screenY`.
 
 ### Changed
 
@@ -52,10 +57,12 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- Pages see UTC caged and in-process; the sandbox showed a wrong zone, in-process pages the
+  host's.
 - `pageon mcp --budget` applies in the sandbox (caged tabs kept the default 4,000).
 - `DOMException` is an `Error` (`instanceof Error`, `String(e)` gives its name and message).
 
-## [0.2.0]
+## [0.2.0] - 2026-11-15
 
 ### Added
 
@@ -78,7 +85,7 @@ All notable changes to this project are documented here. The format follows
   warnings.
 - Release binaries are built with LTO and without symbols: smaller downloads.
 
-## [0.1.0]
+## [0.1.0] - 2026-11-15
 
 The first release.
 
@@ -99,6 +106,7 @@ The first release.
   `2026-07-28` and earlier), CDP for Puppeteer and Playwright, WebDriver BiDi, a Python package
   with a BrowserGym backend, and the Rust crates.
 
-[Unreleased]: https://github.com/hupe1980/pageon/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/hupe1980/pageon/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/hupe1980/pageon/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/hupe1980/pageon/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/hupe1980/pageon/releases/tag/v0.1.0
