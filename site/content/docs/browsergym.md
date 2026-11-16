@@ -12,7 +12,7 @@ nav = "BrowserGym"
 BrowserGym's formats, and actions go through pageon.
 
 ```sh
-pip install "…/bindings/python[browsergym]"
+pip install "pageon[browsergym]"
 ```
 
 ```python

@@ -12,7 +12,7 @@ The `pageon` crate is the engine as a library:
 
 ```toml
 [dependencies]
-pageon = { git = "https://github.com/hupe1980/pageon" }
+pageon = "0.3"
 ```
 
 ## Sessions and tabs

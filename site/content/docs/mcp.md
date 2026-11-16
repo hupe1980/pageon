@@ -60,14 +60,11 @@ progress. Clients on older revisions use stdio. `--save-state` needs stdio.
 pageon mcp --otlp http://localhost:4318
 ```
 
-Every tool call becomes a span on your collector (Langfuse, Phoenix, Tempo, Honeycomb, …), as
-the OpenTelemetry MCP conventions describe a server span (in development; pageon follows them
-at the 1.45 line): `tools/call browser_click`, kind SERVER, with `gen_ai.tool.name`,
-`gen_ai.operation.name` (`execute_tool`), `mcp.method.name`, `mcp.protocol.version`,
-`jsonrpc.request.id`, `error.type` (`tool_error` when the tool reports one) and
-`pageon.url.origin`. A client that sends `traceparent` in `params._meta` gets pageon's span
-under its own. Spans carry no arguments, results or page text, and are sent in the background:
-a collector that is down costs a tool call nothing.
+Every tool call becomes a SERVER span on your collector (Langfuse, Phoenix, Tempo, …):
+`tools/call browser_click`, with the OpenTelemetry MCP attributes (`gen_ai.tool.name`,
+`mcp.method.name`, `error.type`, …; conventions at the 1.45 line) and `pageon.url.origin`, under
+the client's `params._meta.traceparent`. Spans carry no arguments, results or page text; a
+collector that is down costs a call nothing.
 
 ## Tools
 
@@ -93,14 +90,8 @@ ok click e12 · 1 request(s) · settled idle after 40 ms
 step 4
 ```
 
-When the page is still working on an action (nothing changed yet, and a timer the action set
-is due), the outcome says so instead of `ok`, with the wait that lets it finish:
-
-```text
-unknown click e4 · nothing changed yet; the page set a timer due in 3000 ms (browser_wait 3000)
-```
-
-`browser_observe {"detail": "compact"}` leaves text runs out of this and later views (see
+An action whose page is still working is `unknown` instead of `ok`, with the wait that lets it
+finish ([outcomes](@/docs/actions.md#outcomes)). `browser_observe {"detail": "compact"}` leaves text runs out of this and later views (see
 [detail levels](@/docs/views.md#detail-levels)); `pageon mcp --detail compact` starts that way.
 
 ## Several tabs

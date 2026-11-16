@@ -74,11 +74,11 @@ const UNSUPPORTED: &[(&str, &str)] = &[
     ),
     (
         "Page.addScriptToEvaluateOnNewDocument",
-        "scripts that run before the page's own scripts are not supported yet; call page.evaluate() after page.goto()",
+        "scripts that run before the page's own scripts are not supported; call page.evaluate() after page.goto()",
     ),
     (
         "Network.setExtraHTTPHeaders",
-        "extra request headers are not supported yet",
+        "extra request headers are not supported",
     ),
 ];
 

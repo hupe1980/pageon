@@ -18,8 +18,8 @@ sessions replay, rewind and fork. It also speaks CDP, so Playwright code can run
 
 Most do. Tested: server-rendered sites and forms, script-heavy pages (MiniWoB++'s jQuery and
 d3), apps bundled by Vite, esbuild or webpack, web components (Lit runs as is), WebSockets and
-server-sent events, drag and drop. Pages that need workers or canvas readback do not work
-fully; the [web platform](@/docs/platform.md) page has the full list, and `pageon fetch URL
+server-sent events, drag and drop. Pages that need shared or service workers, or canvas readback,
+do not work fully; the [web platform](@/docs/platform.md) page has the full list, and `pageon fetch URL
 --dump errors` shows what a page tried and failed to use.
 
 ## Does pageon get past bot detection?
@@ -43,7 +43,7 @@ A recorded session replays to the same page at every step, in the sandbox or in-
 
 ## Which platforms are supported?
 
-Linux (x86_64, aarch64) and macOS. Not Windows.
+Linux (x86_64, aarch64) and macOS (arm64). Not Windows.
 
 ## How do I contribute?
 

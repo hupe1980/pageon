@@ -44,7 +44,14 @@ Screenshot options: `--screenshot FILE` (`.png`, `.jpg`), `--full-page`, `--mark
 (set-of-marks, legend on stdout), `--crop REF` (one element, with provenance), `--scale`,
 `--mask`. See [screenshots](@/docs/screenshots.md).
 
-## Options shared by every command
+| Command | Its own options |
+| --- | --- |
+| `fetch` | `--dump`, `--act`, `--viewport WxH`, `--prefer-markdown`, `--approve`, screenshot options |
+| `replay` | `--to N`, `--live`, `--approve`, `--trace FILE` |
+| `mcp` | `--http [PORT]`, `--allow-origin`, `--otlp URL`, `--detail full\|compact`, `--allow-javascript-exec` |
+| `cdp` | `--port`, `--allow-origin`, `--discovery` |
+
+## Options shared by fetch, replay, mcp, cdp and workflow run
 
 | Option | |
 | --- | --- |

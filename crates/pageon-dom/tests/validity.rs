@@ -97,7 +97,7 @@ fn types_patterns_and_lengths() {
     assert_eq!(m, "Please enter an email address.");
     assert!(
         !m.contains("not-an-email"),
-        "messages never quote the value (SR-002)"
+        "messages never quote the value"
     );
     assert!(check("<input id=x type=email>", Some("a@b.test")).0.valid());
     assert!(

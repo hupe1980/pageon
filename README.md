@@ -51,7 +51,8 @@ output is made for a model, and whose safety does not depend on the model behavi
 - ⏪ **Replay, rewind, look ahead.** Sessions replay byte for byte on a virtual clock; agents go
   back to any step without re-sending anything, and try actions on a fork first.
 - 🌐 **Real web apps.** Modules and bundlers, web components, forms, scrolling, several tabs,
-  file uploads, drag and drop, WebSockets and server-sent events.
+  file uploads, drag and drop, WebSockets and server-sent events; PDFs, Markdown and plain text
+  read as pages.
 
 ## 🚀 Quick start
 
@@ -162,8 +163,8 @@ including the ones pageon loses.
 
 ## 🚧 Status
 
-pageon 0.2 is early: the API may still change between minor versions. The [threat model](crates/pageon/THREAT_MODEL.md) lists what it defends against and
-every known gap; read it before pointing an agent at anything that matters. Report
+pageon is early: the API may still change between minor versions. The
+[threat model](crates/pageon/THREAT_MODEL.md) lists what it defends against and every known gap; read it before pointing an agent at anything that matters. Report
 vulnerabilities privately ([SECURITY.md](SECURITY.md)).
 
 What pages can and cannot use is listed under

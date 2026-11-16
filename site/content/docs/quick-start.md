@@ -9,15 +9,12 @@ group = "Start"
 
 ## Install
 
-pageon is pre-release and builds from source with Rust 1.99 or newer:
-
 ```sh
-git clone https://github.com/hupe1980/pageon
-cargo install --path pageon/crates/pageon
+brew install hupe1980/tap/pageon   # or: cargo install pageon (Rust 1.99+)
 pageon --version
 ```
 
-pageon runs on Linux (x86_64, aarch64) and macOS. Pages run in a sandbox by default: Landlock,
+pageon runs on Linux (x86_64, aarch64) and macOS (arm64). Pages run in a sandbox by default: Landlock,
 seccomp and namespaces on Linux, Seatbelt on macOS. No root and no helper binaries.
 
 ## See a page as an agent does

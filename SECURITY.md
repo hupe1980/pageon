@@ -21,7 +21,7 @@ Sandbox escapes that come from procage itself belong to
 
 ## Supported versions
 
-pageon is pre-release. Only the latest version gets fixes.
+pageon is early. Only the latest version gets fixes.
 
 ## What to expect
 

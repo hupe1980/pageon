@@ -1,9 +1,8 @@
 # pageon for Python
 
 ```sh
-git clone https://github.com/hupe1980/pageon
-cargo install --path pageon/crates/pageon      # the browser (or set PAGEON_BIN)
-pip install ./pageon/bindings/python          # needs Rust
+brew install hupe1980/tap/pageon   # the browser (or cargo install pageon; or set PAGEON_BIN)
+pip install pageon
 ```
 
 Drive the browser. Each `Browser` runs `pageon mcp` as a child process, and the page's code runs
@@ -26,12 +25,13 @@ with Browser() as browser:
 `Browser` takes the CLI's options as arguments: `sandbox`, `private_network`, `allow_files`
 (off: agents cannot open `file:` pages), `origins`, `read_origins`, `secrets` (`"name@origin"`;
 values from `PAGEON_SECRET_<NAME>`), `files` (staged uploads), `state`, `save_state`, `replay`,
-`record`, `budget`, `guard` and `binary`. An invalid option raises `PageonError` with pageon's message.
+`record`, `budget`, `guard`, `binary`, and the identity and policy options `profile`,
+`platform`, `identity`, `signature_tag`, `passkeys`, `cross_site_writes` and `robots`. An invalid option raises `PageonError` with pageon's message.
 
 | `Tab` | |
 | --- | --- |
-| `observe()`, `view(kind)` | The agent view (full or what changed); `markdown`, `text`, `errors`, `requests` |
-| `click`, `type`, `upload`, `press`, `select`, `hover`, `drag`, `scroll`, `wait`, `back`, `forward` | Actions; each returns an `Outcome`, or raises `ActionError` with `kind` and `guidance` |
+| `observe(detail=…)`, `view(kind)`, `find(query)` | The agent view (full, compact or what changed); `markdown`, `text`, `errors`, `requests`; a search of the whole page |
+| `click`, `type`, `upload`, `press`, `select`, `paste`, `hover`, `drag`, `scroll`, `wait`, `back`, `forward` | Actions; each returns an `Outcome`, or raises `ActionError` with `kind` and `guidance` |
 | `screenshot(marks=…)`, `crop(ref)` | Pixels, with set-of-marks or provenance |
 | `reset(step)` | Go back to a step exactly, sending nothing again |
 | `lookahead(actions)` | Try actions on a fork; the page and the network are untouched |
@@ -40,7 +40,7 @@ values from `PAGEON_SECRET_<NAME>`), `files` (staged uploads), `state`, `save_st
 | `takeover(reason)` | A live view for a person (CAPTCHAs, second factors) |
 | `close()` | Close the tab (`browser.new_tab(url)` opens another) |
 
-BrowserGym and AgentLab run on pageon unchanged (`pip install "…[browsergym]"`):
+BrowserGym and AgentLab run on pageon unchanged (`pip install "pageon[browsergym]"`):
 
 ```python
 import gymnasium as gym, pageon.browsergym

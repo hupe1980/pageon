@@ -964,7 +964,7 @@ pub enum ActionError {
     },
     /// The navigation the action started failed.
     Navigation(LoadError),
-    /// Not supported yet.
+    /// Not supported.
     Unsupported(String),
     /// A `secret://` handle that is unknown, or not for the target's origin.
     Secret(String),
@@ -1051,7 +1051,7 @@ impl fmt::Display for ActionError {
                 )
             }
             Self::Navigation(e) => write!(f, "navigation failed: {e}"),
-            Self::Unsupported(w) => write!(f, "{w} is not supported yet"),
+            Self::Unsupported(w) => write!(f, "{w} is not supported"),
             Self::Secret(m) => write!(f, "secret refused: {m}"),
             Self::File(m) => write!(f, "upload refused: {m}"),
             Self::Engine(m) => write!(f, "the content process failed: {m}"),

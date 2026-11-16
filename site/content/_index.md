@@ -20,7 +20,7 @@ safety = [
   "**Origin sets** decide where requests may go; writes can wait for a person or a guard program.",
   "**Secrets** are typed as `secret://name`, never shown in views, screenshots or recordings, and refused at egress for any origin they are not bound to.",
   "All page text is **quoted**; hidden text, input traps and third-party frames are **marked**.",
-  "pageon is **honest about itself**: `navigator.webdriver` is true, robots.txt is honoured, and it never solves CAPTCHAs.",
+  "By default pageon is **honest about itself**: `navigator.webdriver` is true, robots.txt is honoured, and it never solves CAPTCHAs.",
 ]
 
 [[extra.features]]
@@ -62,7 +62,7 @@ link = "@/docs/workflows.md"
 [[extra.features]]
 icon = "🌐"
 title = "Real web apps"
-text = "Modules and bundlers, web components, forms that validate as in Chrome, several tabs, file uploads, drag and drop, WebSockets and server-sent events."
+text = "Modules and bundlers, web components, forms that validate as in Chrome, several tabs, file uploads, drag and drop, WebSockets and server-sent events; PDFs and Markdown read as pages."
 link = "@/docs/platform.md"
 
 [[extra.features]]
@@ -96,7 +96,7 @@ code = '''
 ```python
 from pageon import Browser
 
-with Browser(origins=["https://shop.example"]) as browser:
+with Browser(origins=["https://shop.example"], secrets=["shop@https://shop.example"]) as browser:
     tab = browser.open("https://shop.example/login")
     print(tab.observe())
     out = tab.type("e4", "secret://shop", submit=True)

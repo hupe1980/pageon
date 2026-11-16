@@ -192,7 +192,7 @@ built-ins cannot change what a client computes.
 
 ## Known limits
 
-pageon is pre-release, and its [threat model](https://docs.rs/pageon/latest/pageon/threat_model/)
+pageon is early, and its [threat model](https://docs.rs/pageon/latest/pageon/threat_model/)
 lists every known threat class with its status, including the open ones. The most important:
 
 - **Defaults are permissive.** Without `--origin`, an approver or a guard, every request is

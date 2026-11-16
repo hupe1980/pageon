@@ -11,8 +11,7 @@ The Python package runs `pageon mcp` as a child process and gives it a small, ty
 run in the sandbox.
 
 ```sh
-# the browser (see the quick start), then the package; building it needs Rust
-pip install "git+https://github.com/hupe1980/pageon#subdirectory=bindings/python"
+pip install pageon   # the package; the browser is the `pageon` binary (see the quick start)
 ```
 
 Set `PAGEON_BIN` if the `pageon` binary is not on your `PATH`.
@@ -52,6 +51,7 @@ with Browser(origins=["https://shop.example"], secrets=["shop@https://shop.examp
 | `sandbox`, `private_network`, `binary` | Process and network settings |
 | `allow_files` | Let the agent open `file:` pages (off by default) |
 | `allow_javascript_exec` | Let the vendor toolsets run `javascript_exec` (off by default; see [Claude & OpenAI tools](@/docs/toolsets.md)) |
+| `profile`, `platform`, `identity`, `signature_tag`, `passkeys`, `cross_site_writes`, `robots` | [Identity](@/docs/identity.md) and policy options |
 
 An invalid argument (an origin without its scheme, say) raises `PageonError` with pageon's
 message.
@@ -66,7 +66,8 @@ send, `run(response_content)` returns the results to send back. See
 
 | Method | Returns |
 | --- | --- |
-| `observe(full=False)` | The agent view (what changed since the last one, unless `full`) |
+| `observe(full=False, detail=None)` | The agent view (what changed since the last one, unless `full`); `detail="compact"` leaves text runs out |
+| `find(query, limit=20)` | Search the whole page ([finding elements](@/docs/views.md#finding-elements)) |
 | `view(kind)` | `"markdown"`, `"text"`, `"requests"` or `"errors"` |
 | `click`, `type`, `upload(ref, *names)`, `press`, `select`, `paste(text, ref=None)`, `hover`, `drag(ref, to)`, `wait`, `back`, `forward` | An `Outcome`, or raises `ActionError` |
 | `scroll(direction="down", pixels=None, ref=None)` | Scroll the page or the container `ref` (`scroll(None, ref="e12")` brings e12 into view) |
