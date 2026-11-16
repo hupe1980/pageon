@@ -1,6 +1,6 @@
 +++
 title = "Command line"
-description = "The pageon CLI: fetch and act on pages, take screenshots, record and replay, serve MCP, CDP and WebDriver BiDi, and run workflows."
+description = "The pageon CLI: browse in named sessions from the shell, fetch and act on pages, take screenshots, record and replay, serve MCP, CDP and WebDriver BiDi, and run workflows."
 weight = 10
 [extra]
 group = "Interfaces"
@@ -11,12 +11,50 @@ One binary does everything. `pageon <command> --help` prints every option with e
 
 | Command | What it does |
 | --- | --- |
+| `pageon open URL`, `click`, `type`, `view`, … | Browse in a named session that stays open between commands |
 | `pageon fetch URL` | Load a page, optionally act on it, and print a view or take a screenshot |
 | `pageon mcp` | Serve a browser to an agent over MCP (stdio; `--http` for Streamable HTTP) |
 | `pageon cdp` (alias `pageon bidi`) | Serve Puppeteer, Playwright and WebDriver BiDi clients on one port |
 | `pageon replay FILE` | Re-run a recorded session and check every step reaches the same page |
 | `pageon workflow compile/run` | Turn a recorded session into a workflow; run it without a model |
 | `pageon identity new/directory` | Create and publish a Web Bot Auth identity |
+
+## Sessions
+
+For coding agents and scripts that work from a shell. `open` starts a session in the background
+on first use; each later command acts on it and prints what happened and what changed.
+
+```sh
+pageon open https://shop.example --origin https://shop.example
+pageon type e1 ada
+pageon click e2          # ok click e2 · navigated to … then the diff of the view
+pageon find "report"     # elements anywhere on the page
+pageon view markdown     # the main content
+pageon screenshot page.png --marks
+pageon close
+```
+
+| Command | Does |
+| --- | --- |
+| `open URL` | Load a page; starts the session with the [shared options](#options-shared-by-fetch-open-replay-mcp-cdp-and-workflow-run) given here, plus `--idle` (default 30 minutes, `0` never) and `--detail` |
+| `click`, `type REF TEXT [--submit]`, `press`, `select`, `paste`, `hover`, `drag`, `scroll`, `wait`, `back`, `forward`, `upload` | [Actions](@/docs/actions.md) on refs |
+| `observe [--full]` · `view [ax\|markdown\|text\|requests\|errors]` · `find WORDS` | Read the page |
+| `screenshot FILE [--marks] [--ref REF]` | Pixels to a file; notes on stdout |
+| `tabs`, `reset [STEP]`, `lookahead ACTION…`, `call NAME JSON`, `takeover REASON` | Tabs, [reset and lookahead](@/docs/lookahead.md), [page tools](@/docs/webmcp.md), a person's help |
+| `sessions` · `close [--all]` | List sessions with their tabs; end one or all |
+| `skill [--install [DIR]]` | Print the agent skill, or write `DIR/pageon/SKILL.md` (default `.claude/skills`) |
+
+`-s NAME` (or `PAGEON_SESSION`) picks the session; each is a separate browser with its own
+cookies and storage. Each command is the [MCP tool](@/docs/mcp.md) of the same name, with the same
+reply. `--save-state` and `--record` are written when the session closes, by `close` or after
+`--idle`.
+
+For a local dev server, keep the session on it:
+`pageon open http://localhost:3000 --private-network allow --origin http://localhost:3000`.
+
+Sessions live in `$PAGEON_SESSIONS`, else `$XDG_RUNTIME_DIR/pageon`, else `~/.pageon/sessions`:
+a directory only you can open (pageon refuses one others can), holding each session's socket,
+options and log. Secret values reach the session through its environment, never a file. Unix only.
 
 ## fetch
 
@@ -51,7 +89,7 @@ Screenshot options: `--screenshot FILE` (`.png`, `.jpg`), `--full-page`, `--mark
 | `mcp` | `--http [PORT]`, `--allow-origin`, `--otlp URL`, `--detail full\|compact`, `--allow-javascript-exec` |
 | `cdp` | `--port`, `--allow-origin`, `--discovery` |
 
-## Options shared by fetch, replay, mcp, cdp and workflow run
+## Options shared by fetch, open, replay, mcp, cdp and workflow run
 
 | Option | |
 | --- | --- |
@@ -81,11 +119,11 @@ Screenshot options: `--screenshot FILE` (`.png`, `.jpg`), `--full-page`, `--mark
 | Code | Meaning |
 | --- | --- |
 | 0 | Done |
-| 2 | Usage or environment error (bad option, unreadable file, busy port) |
+| 2 | Usage or environment error (bad option, unreadable file, busy port, no such session) |
 | 3 | The load, an action or the sandbox failed; the message says what to do |
 | 4 | The server answered with an error status (its page is printed) |
 | 5 | `replay`: a step diverged from the recording |
 | 6 | The site refused the agent (blocked, challenge, rate limited) |
 | 7 | `workflow run`: the site drifted from the workflow |
 
-Logs and errors go to stderr; stdout carries only the view, the legend or the protocol.
+Logs and errors go to stderr; stdout carries only the view, the reply, the legend or the protocol.

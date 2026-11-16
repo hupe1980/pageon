@@ -1,5 +1,8 @@
 //! The `pageon` command line.
 
+#[cfg(unix)]
+mod cli;
+
 use std::io::Write as _;
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -15,6 +18,16 @@ use pageon::{
 #[derive(Parser)]
 #[command(name = "pageon", version, about, propagate_version = true)]
 struct Cli {
+    /// The named session of open, click, view and the other session commands.
+    #[arg(
+        short,
+        long = "session",
+        global = true,
+        value_name = "NAME",
+        env = "PAGEON_SESSION",
+        default_value = "default"
+    )]
+    session_name: String,
     #[command(subcommand)]
     command: Command,
 }
@@ -23,6 +36,9 @@ struct Cli {
 #[allow(clippy::large_enum_variant)]
 #[derive(Subcommand)]
 enum Command {
+    #[cfg(unix)]
+    #[command(flatten)]
+    Session(cli::SessionCommand),
     /// Load a page and print it.
     ///
     /// Examples:
@@ -1331,64 +1347,67 @@ fn pages_in_utc() {
 
 fn main() -> ExitCode {
     pages_in_utc();
-    let (target, dump, viewport, acts, approve, prefer_markdown, paint, session) =
-        match Cli::parse().command {
-            Command::Content { probe } => return content(probe),
-            Command::Identity { command } => return identity(command),
-            Command::Workflow { command } => return workflow(command),
-            Command::Mcp {
+    let cli = Cli::parse();
+    let (target, dump, viewport, acts, approve, prefer_markdown, paint, session) = match cli.command
+    {
+        #[cfg(unix)]
+        Command::Session(c) => return cli::run(&cli.session_name, c),
+        Command::Content { probe } => return content(probe),
+        Command::Identity { command } => return identity(command),
+        Command::Workflow { command } => return workflow(command),
+        Command::Mcp {
+            http,
+            allow_origin,
+            allow_javascript_exec,
+            otlp,
+            detail,
+            session,
+        } => {
+            let detail = pageon_agent::Detail::parse(&detail).unwrap_or_default();
+            return mcp(
                 http,
                 allow_origin,
                 allow_javascript_exec,
                 otlp,
                 detail,
-                session,
-            } => {
-                let detail = pageon_agent::Detail::parse(&detail).unwrap_or_default();
-                return mcp(
-                    http,
-                    allow_origin,
-                    allow_javascript_exec,
-                    otlp,
-                    detail,
-                    &session,
-                );
-            }
-            Command::Replay {
-                file,
-                to,
-                live,
-                approve,
-                dump,
-                trace,
-                session,
-            } => return replay(&file, to, live, approve, dump, trace.as_deref(), &session),
-            Command::Cdp {
-                port,
-                allow_origin,
-                discovery,
-                session,
-            } => return cdp(port, allow_origin, discovery, &session),
-            Command::Fetch {
-                target,
-                dump,
-                viewport,
-                acts,
-                approve,
-                prefer_markdown,
-                paint,
-                session,
-            } => (
-                target,
-                dump,
-                viewport,
-                acts,
-                approve,
-                prefer_markdown,
-                paint,
-                session,
-            ),
-        };
+                &session,
+            );
+        }
+        Command::Replay {
+            file,
+            to,
+            live,
+            approve,
+            dump,
+            trace,
+            session,
+        } => return replay(&file, to, live, approve, dump, trace.as_deref(), &session),
+        Command::Cdp {
+            port,
+            allow_origin,
+            discovery,
+            session,
+        } => return cdp(port, allow_origin, discovery, &session),
+        Command::Fetch {
+            target,
+            dump,
+            viewport,
+            acts,
+            approve,
+            prefer_markdown,
+            paint,
+            session,
+        } => (
+            target,
+            dump,
+            viewport,
+            acts,
+            approve,
+            prefer_markdown,
+            paint,
+            session,
+        ),
+    };
     let mut actions = Vec::new();
     for a in &acts {
         match a.parse::<Action>() {

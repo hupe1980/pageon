@@ -72,6 +72,7 @@ pageon fetch https://example.com --screenshot som.png --marks    # every element
 
 | Your agent speaks | Start here |
 | --- | --- |
+| A shell (Claude Code, Codex, Copilot, scripts) | [Sessions](@/docs/cli.md#sessions): `pageon open URL`, `pageon click e5`; `pageon skill --install` teaches the agent |
 | MCP (Claude Code, Claude Desktop, Cursor, …) | [MCP server](@/docs/mcp.md): `claude mcp add pageon -- pageon mcp` |
 | Python | [Python](@/docs/python.md): `pageon.Browser` |
 | Puppeteer or Playwright | [Puppeteer & Playwright](@/docs/cdp.md): `pageon cdp` |

@@ -8,11 +8,15 @@
 //! The server is synchronous, like the engine: a request is read, served, answered.
 
 mod http;
+#[cfg(unix)]
+mod socket;
 pub(crate) mod toolset;
 
 use std::io::{BufRead, Write};
 
 pub use http::HttpOptions;
+#[cfg(unix)]
+pub use socket::SocketOptions;
 
 use pageon_env::Env;
 use serde_json::{Value, json};
@@ -537,6 +541,10 @@ pub struct McpOptions {
     pub state: Option<StorageState>,
     /// Serve Streamable HTTP instead of stdio (until the process ends).
     pub http: Option<HttpOptions>,
+    /// Serve a Unix socket instead of stdio (until `pageon/close` or the idle time): the
+    /// command line's named sessions.
+    #[cfg(unix)]
+    pub socket: Option<SocketOptions>,
     /// The vendor toolsets may run `javascript_exec` (an isolated world over the page).
     pub allow_javascript_exec: bool,
     /// Files are staged for uploads (`--file`), so the toolsets offer `file_upload`.
@@ -556,6 +564,8 @@ impl Default for McpOptions {
             budget: Budget::o200k(4000),
             state: None,
             http: None,
+            #[cfg(unix)]
+            socket: None,
             allow_javascript_exec: false,
             staged_files: false,
             otlp: None,
@@ -607,16 +617,13 @@ pub fn serve<E: Env>(
         let mut b = Caged {
             sandbox,
             tabs: Tabs::new(),
-            options: options.load,
+            options: options.load.clone(),
             budget: options.budget,
             state: options.state.clone(),
             offer,
             detail: options.detail,
         };
-        match &options.http {
-            Some(h) => http::serve(&mut b, h, otlp)?,
-            None => run(&mut b, input, output, otlp),
-        }
+        transport(&mut b, &options, input, output, otlp)?;
         b.tabs.clear();
         b.state()
     } else {
@@ -627,18 +634,36 @@ pub fn serve<E: Env>(
         let mut b = Local {
             session: &session,
             tabs: Tabs::new(),
-            options: options.load,
+            options: options.load.clone(),
             budget: options.budget,
             state: options.state.clone(),
             offer,
             detail: options.detail,
         };
-        match &options.http {
-            Some(h) => http::serve(&mut b, h, otlp)?,
-            None => run(&mut b, input, output, otlp),
-        }
+        transport(&mut b, &options, input, output, otlp)?;
         b.tabs.clear();
         b.state()
+    }
+}
+
+/// Serves `b` on the transport the options name (stdio when none).
+fn transport(
+    b: &mut dyn Backend,
+    options: &McpOptions,
+    input: impl BufRead,
+    output: impl Write,
+    otlp: Option<crate::otlp::Exporter>,
+) -> Result<(), String> {
+    #[cfg(unix)]
+    if let Some(s) = &options.socket {
+        return socket::serve(b, s, otlp);
+    }
+    match &options.http {
+        Some(h) => http::serve(b, h, otlp),
+        None => {
+            run(b, input, output, otlp);
+            Ok(())
+        }
     }
 }
 

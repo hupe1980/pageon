@@ -72,6 +72,17 @@ pageon fetch https://example.com --screenshot page.png --marks  # pixels, labell
 
 ## 🔌 Connect your agent
 
+**🐚 The shell**, for coding agents (Claude Code, Codex, Copilot) and scripts: a named session
+stays open between commands.
+
+```sh
+pageon skill --install                         # teaches the agent: .claude/skills/pageon/SKILL.md
+pageon open http://localhost:3000 --private-network allow --origin http://localhost:3000
+pageon click e5                                # what happened, then what changed
+pageon find "sign in"
+pageon close
+```
+
 **MCP** for Claude Code, Claude Desktop, Cursor or any MCP host (stdio, or Streamable HTTP with
 `--http`; MCP `2026-07-28` and the earlier revisions):
 

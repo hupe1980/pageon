@@ -13,6 +13,10 @@ All notable changes to this project are documented here. The format follows
   `respondWith`; autosubmitting calls are labelled consequential.
 - Chrome's `WebMCP` DevTools domain: Puppeteer's `page.webmcp` lists and runs page tools.
 - `SubmitEvent` with `submitter`.
+- Sessions from the shell: `pageon open URL` starts a named session (`-s NAME`) that stays
+  open between commands; `click`, `type`, `press`, `select`, `view`, `find`, `screenshot`,
+  `tabs`, `reset`, `lookahead`, `call` and the rest act on it with MCP's replies; `sessions`,
+  `close [--all]`, `--idle`. `pageon skill --install` writes an agent skill.
 
 ## [0.3.0] - 2026-11-16
 
