@@ -566,11 +566,12 @@ fn join(
 }
 
 /// Fires the window `load` each document held back for its frames, deepest first, once they
-/// have loaded (or failed), with `readyState` complete.
-pub(crate) fn finish_loads(doc: &mut Document) {
+/// have loaded (or failed), with `readyState` complete; `true` if any fired.
+pub(crate) fn finish_loads(doc: &mut Document) -> bool {
+    let mut fired = false;
     for f in &mut doc.frames {
         if let Some(d) = f.document.as_deref_mut() {
-            finish_loads(d);
+            fired |= finish_loads(d);
         }
     }
     if let Some(live) = &doc.live
@@ -579,7 +580,9 @@ pub(crate) fn finish_loads(doc: &mut Document) {
         let mut e = live.engine.borrow_mut();
         e.set_ready_state(live.realm, "complete");
         e.fire(live.realm, pageon_js::Target::Window, "load", false);
+        fired = true;
     }
+    fired
 }
 
 fn fire_loads(doc: &mut Document) {
