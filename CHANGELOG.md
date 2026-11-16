@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Page loads settled their timers twice (0.4.0), doubling the settle time of timer-heavy pages.
+
 ## [0.4.0] - 2026-11-16
 
 ### Added
