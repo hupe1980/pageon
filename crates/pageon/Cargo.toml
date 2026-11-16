@@ -38,6 +38,8 @@ p256 = { version = "0.14", default-features = false, features = ["ecdsa", "pkcs8
 sha2 = "0.11"
 libc = "0.2"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
+pdf-extract = "0.12"
+pulldown-cmark = { version = "0.13", default-features = false, features = ["html"] }
 
 [features]
 # The opt-in browser-compatible profile at the network layer: Chrome's TLS and

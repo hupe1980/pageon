@@ -3,7 +3,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use pageon_dom::{NodeData, ParseOptions, encoding};
+use pageon_dom::{ParseOptions, encoding};
 use pageon_env::Env;
 use pageon_net::{Client, Dest, FetchRequest, Net};
 use url::Url;
@@ -32,6 +32,10 @@ pub struct LoadOptions {
     /// file); the agent-facing servers turn it off unless started with `--allow-files`, so a
     /// hijacked agent cannot open the disk. Web pages never load `file:` URLs either way.
     pub allow_files: bool,
+    /// Ask for Markdown first (`Accept: text/markdown`, as sites offering Markdown for agents
+    /// answer): for read-only crawls only. A Markdown answer is labelled `server-markdown`.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub prefer_markdown: bool,
     /// Client code run in every new document before its own scripts (CDP
     /// `Page.addScriptToEvaluateOnNewDocument`, BiDi `script.addPreloadScript`), in order.
     #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -70,6 +74,7 @@ impl Default for LoadOptions {
             dialogs: DialogPolicy::Dismiss,
             robots: true,
             allow_files: true,
+            prefer_markdown: false,
             init_scripts: Vec::new(),
         }
     }
@@ -122,6 +127,8 @@ pub(crate) struct Start<'a> {
     pub(crate) inherit: Option<(&'a str, &'a str)>,
     /// The frame's `sandbox` attribute (on top of its parent's sandbox).
     pub(crate) sandbox: Option<&'a str>,
+    /// A download of the tab, opened as a page from its bytes (no request).
+    pub(crate) preloaded: Option<&'a crate::Download>,
 }
 
 /// A navigation's result: a page, or a file to download.
@@ -167,6 +174,7 @@ pub(crate) fn open(
         let next = Start {
             initiator: Some((&client, &nav)),
             page: Some((&page, 0)),
+            preloaded: None,
             ..start
         };
         loaded = fetch(&nav.url, env, net, options.clone(), next)?;
@@ -329,7 +337,18 @@ pub(crate) fn fetch(
     };
     req.max_redirects = options.max_redirects;
     // `about:blank` is an empty document, made without a request.
-    let response = if req.url.as_str() == "about:blank" {
+    let response = if let Some(d) = start.preloaded {
+        pageon_net::Fetched {
+            kind: pageon_net::Kind::Basic,
+            status: 200,
+            status_text: "OK".into(),
+            headers: vec![("content-type".into(), d.content_type.clone())],
+            body: d.bytes.clone(),
+            url: req.url.clone(),
+            redirected: false,
+            chain: vec![req.url.to_string()],
+        }
+    } else if req.url.as_str() == "about:blank" {
         pageon_net::Fetched {
             kind: pageon_net::Kind::Basic,
             status: 200,
@@ -363,14 +382,36 @@ pub(crate) fn fetch(
         .unwrap_or_default()
         .trim()
         .to_ascii_lowercase();
-    let html = matches!(essence.as_str(), "text/html" | "application/xhtml+xml" | "");
+    let kind = crate::documents::Kind::of(&essence, url.path());
+    let html = kind == Some(crate::documents::Kind::Html);
     let disposition = response.header("content-disposition");
     let attachment = disposition.is_some_and(|d| {
         d.trim_start()
             .to_ascii_lowercase()
             .starts_with("attachment")
     });
-    if attachment || (!html && essence != "text/plain") {
+    // Markdown without a charset is UTF-8 (as `llms.txt` and READMEs are written).
+    let charset = encoding::charset_param(&content_type)
+        .or((kind == Some(crate::documents::Kind::Markdown)).then_some("utf-8"));
+    // A document read as a page: its HTML, what it was read from and its page count.
+    let converted = match kind {
+        Some(k) if !attachment && !html => convert(k, &response.body, charset).map(|(h, pages)| {
+            let server = k == crate::documents::Kind::Markdown
+                && essence == "text/markdown"
+                && net.borrow().prefer_markdown;
+            (
+                h,
+                if server {
+                    Some("server-markdown")
+                } else {
+                    k.source()
+                },
+                pages,
+            )
+        }),
+        _ => None,
+    };
+    if attachment || (!html && converted.is_none()) {
         if start.parent.is_none() && url.scheme() != "file" {
             return Ok(Loaded::Download(crate::Download {
                 handle: String::new(),
@@ -382,10 +423,14 @@ pub(crate) fn fetch(
         }
         return Err(LoadError::UnsupportedContentType(essence));
     }
-    let charset = encoding::charset_param(&content_type);
     let (text, enc) = encoding::decode(&response.body, charset);
     let mut js = crate::JsState::default();
     let mut live = None;
+    let usage = response
+        .header("content-usage")
+        .map(|u| u.chars().take(200).collect())
+        .or_else(|| net.borrow().content_usage(&url));
+    let (source, pages) = converted.as_ref().map_or((None, 0), |c| (c.1, c.2));
     let (dom, stylesheets, failed) = if html && options.scripts {
         let ran = crate::scripts::run(&text, &client, env, net, started, options, start)?;
         js = crate::JsState {
@@ -405,10 +450,9 @@ pub(crate) fn fetch(
         live = ran.live.map(Rc::new);
         (ran.dom, ran.stylesheets, ran.stylesheets_failed)
     } else {
-        let dom = if html {
-            pageon_dom::parse_document(&text, ParseOptions::default())
-        } else {
-            plain_text(&text)
+        let dom = match &converted {
+            Some((h, _, _)) => pageon_dom::parse_document(h, ParseOptions::default()),
+            None => pageon_dom::parse_document(&text, ParseOptions::default()),
         };
         let (sheets, failed) = fetch_stylesheets(&dom, &client, env, net, started);
         (dom, sheets, failed)
@@ -443,6 +487,7 @@ pub(crate) fn fetch(
             pending_timers: js.pending_timers,
             virtual_ms: js.virtual_ms,
             pending_requests: js.pending_requests,
+            pages,
             ..Summary::default()
         },
         stylesheets,
@@ -457,6 +502,8 @@ pub(crate) fn fetch(
         images: None,
         page: None,
         context: start.page.map_or(0, |(_, c)| c),
+        source,
+        usage,
     })))
 }
 
@@ -504,16 +551,18 @@ pub(crate) fn fetch_stylesheets(
     (sheets, failed)
 }
 
-/// A plain-text document: the text in one `<pre>`, as browsers show it.
-fn plain_text(text: &str) -> pageon_dom::Dom {
-    let mut dom = pageon_dom::parse_document("<!DOCTYPE html><pre></pre>", ParseOptions::default());
-    let pre = dom.traverse(dom.root()).find_map(|e| match e {
-        pageon_dom::Edge::Enter(id) if dom.get(id).is_some_and(|n| n.is_html("pre")) => Some(id),
-        _ => None,
-    });
-    if let Some(pre) = pre {
-        let t = dom.create(NodeData::Text(text.to_string()));
-        let _ = dom.append(pre, t);
+/// A non-HTML document as HTML, with its page count (PDFs): `None` when it cannot be read.
+fn convert(
+    kind: crate::documents::Kind,
+    body: &[u8],
+    charset: Option<&str>,
+) -> Option<(String, usize)> {
+    use crate::documents::{self, Kind};
+    let decoded = || encoding::decode(body, charset).0;
+    match kind {
+        Kind::Html => None,
+        Kind::Pdf => documents::pdf(body).ok().map(|p| (p.html, p.pages)),
+        Kind::Markdown => Some((documents::markdown(&decoded()), 0)),
+        Kind::Text => Some((documents::text(&decoded()), 0)),
     }
-    dom
 }

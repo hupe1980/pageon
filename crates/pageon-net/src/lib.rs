@@ -509,6 +509,9 @@ pub struct Net {
     pub allow_private: bool,
     /// Whether top-level documents honour robots.txt (`LoadOptions::robots`).
     pub robots: bool,
+    /// Top-level documents ask for Markdown first (`Accept: text/markdown`): read-only crawls
+    /// only (`LoadOptions::prefer_markdown`).
+    pub prefer_markdown: bool,
     /// The agent action being performed, copied into every request it causes.
     pub cause: Option<pageon_env::Cause>,
     /// Engine labels for the requests of the current action (`tool:NAME`, `consequential`
@@ -522,6 +525,16 @@ pub struct Net {
 }
 
 impl Net {
+    /// The `Content-Usage` preferences robots.txt states for `url`, when it was read.
+    pub fn content_usage(&self, url: &Url) -> Option<String> {
+        let robots = self.robots_txt.get(&url.origin().ascii_serialization())?;
+        let path = match url.query() {
+            Some(q) => format!("{}?{q}", url.path()),
+            None => url.path().to_string(),
+        };
+        robots.usage(&path).map(str::to_string)
+    }
+
     /// Performs `req` through `env` at `now` (ms since the Unix epoch), and logs it.
     pub fn fetch(
         &mut self,

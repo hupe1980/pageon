@@ -335,8 +335,12 @@ fn read_file(path: &str, limits: Limits) -> Result<Response, NetError> {
     let lower = path.to_ascii_lowercase();
     let ct = if lower.ends_with(".html") || lower.ends_with(".htm") || lower.ends_with(".xhtml") {
         "text/html"
-    } else if lower.ends_with(".txt") || lower.ends_with(".md") {
+    } else if lower.ends_with(".md") || lower.ends_with(".markdown") {
+        "text/markdown"
+    } else if lower.ends_with(".txt") {
         "text/plain"
+    } else if lower.ends_with(".pdf") {
+        "application/pdf"
     } else {
         "application/octet-stream"
     };

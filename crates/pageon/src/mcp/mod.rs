@@ -1175,8 +1175,8 @@ fn tools() -> Vec<Value> {
         tool(
             "browser_open",
             "Open a page",
-            "Load a URL in the tab (replacing the current page) and return its view.",
-            json!({"url": {"type": "string", "description": "An http(s) URL"}}),
+            "Load a URL in the tab (replacing the current page) and return its view. PDFs, Markdown and plain text open as pages; download:N opens a download of this tab.",
+            json!({"url": {"type": "string", "description": "An http(s) URL, or download:N"}}),
             &["url"],
             json!({"readOnlyHint": false, "destructiveHint": false, "idempotentHint": true, "openWorldHint": true}),
         ),
@@ -1793,7 +1793,7 @@ fn call_tool(
             .ok_or_else(|| (-32602, format!("{name}: missing string argument {k:?}")))
     };
     let action = match name {
-        "browser_open" => {
+        "browser_open" if !s("url")?.starts_with("download:") => {
             let url = s("url")?;
             return Ok(match b.open(&url) {
                 Ok(o) => {
@@ -2212,6 +2212,8 @@ fn call_tool(
                 })?;
             vec![Action::Wait(ms)]
         }
+        // A download of this tab, opened as a page from its bytes.
+        "browser_open" => vec![Action::Goto(s("url")?)],
         "browser_back" => vec![Action::Back],
         "browser_forward" => vec![Action::Forward],
         other => return Err((-32602, format!("unknown tool {other:?}"))),

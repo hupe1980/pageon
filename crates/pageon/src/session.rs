@@ -81,6 +81,7 @@ impl<E: Env> Session<E> {
             let mut net = self.net.borrow_mut();
             net.allow_private = options.allow_private_network;
             net.robots = options.robots;
+            net.prefer_markdown = options.prefer_markdown;
             net.take_log();
         }
         let result = crate::load::open(input, &self.env, &self.net, options, Default::default());

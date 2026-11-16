@@ -212,6 +212,12 @@ pub(crate) fn build(doc: &Document, viewport: Viewport) -> (Capture, bool) {
     if layout_failed {
         extras.insert("layout".to_string(), "unavailable".to_string());
     }
+    if let Some(src) = doc.source {
+        extras.insert("source".to_string(), src.to_string());
+    }
+    if let Some(u) = &doc.usage {
+        extras.insert("usage".to_string(), u.clone());
+    }
     let capture = Capture {
         schema: SCHEMA,
         url: doc.final_url().to_string(),

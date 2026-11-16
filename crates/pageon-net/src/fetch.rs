@@ -600,7 +600,9 @@ fn main(
             headers.push(("upgrade-insecure-requests".into(), "1".into()));
         }
         if !has(&page_headers, "accept") {
-            let value = if chrome && matches!(req.dest, Dest::Document | Dest::Frame) {
+            let value = if run.net.prefer_markdown && req.dest == Dest::Document {
+                "text/markdown, text/html;q=0.9, */*;q=0.8"
+            } else if chrome && matches!(req.dest, Dest::Document | Dest::Frame) {
                 pageon_env::chrome::ACCEPT_DOCUMENT
             } else {
                 accept(req.dest)

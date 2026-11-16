@@ -42,6 +42,7 @@ pub mod cdp;
 mod config;
 #[doc(hidden)]
 pub mod content;
+mod documents;
 mod error;
 mod files;
 mod frames;
@@ -126,6 +127,10 @@ pub struct Document {
     pub(crate) page: Option<Rc<frames::Page>>,
     /// The document's context in its page's frame tree (0: the top-level document).
     pub(crate) context: u32,
+    /// What a non-HTML document was read from (`pdf`, `markdown`, `text`, `server-markdown`).
+    pub(crate) source: Option<&'static str>,
+    /// The site's AI usage preferences (`Content-Usage`, from the response or robots.txt).
+    pub(crate) usage: Option<String>,
 }
 
 /// A document whose scripts keep running (in a tab): its engine, realm and live DOM.
@@ -221,6 +226,8 @@ pub struct Summary {
     pub blocked: usize,
     /// Script requests (`fetch`, XHR) still unanswered when the page settled.
     pub pending_requests: usize,
+    /// Pages of a PDF.
+    pub pages: usize,
 }
 
 /// What a node is.
@@ -386,6 +393,8 @@ pub(crate) fn parse_without_frames(html: &str, base_url: &str) -> Document {
         images: None,
         page: None,
         context: 0,
+        source: None,
+        usage: None,
     }
 }
 
@@ -403,6 +412,18 @@ impl Document {
     /// MIME type essence, e.g. `text/html`.
     pub fn content_type(&self) -> &str {
         &self.content_type
+    }
+
+    /// What a non-HTML document was read from: `pdf`, `markdown`, `text` or
+    /// `server-markdown` (a Markdown answer to `LoadOptions::prefer_markdown`).
+    pub fn source(&self) -> Option<&str> {
+        self.source
+    }
+
+    /// The site's AI usage preferences (`Content-Usage`), as given: the response's header,
+    /// else the robots.txt rule for the page when robots.txt was read.
+    pub fn content_usage(&self) -> Option<&str> {
+        self.usage.as_deref()
     }
 
     /// The encoding the bytes were decoded with.
@@ -513,6 +534,9 @@ impl Document {
         let s = self.summary;
         let enc = self.encoding;
         let extras = [
+            self.source.map(|src| format!(" · read as {src}")),
+            (s.pages > 0).then(|| format!(" · {} page(s)", s.pages)),
+            self.usage.as_ref().map(|u| format!(" · usage {u}")),
             (s.redirects > 0).then(|| format!(" · {} redirect(s)", s.redirects)),
             (s.stylesheets + s.stylesheets_failed > 0)
                 .then(|| format!(" · {} stylesheet(s)", s.stylesheets)),

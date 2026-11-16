@@ -66,7 +66,7 @@ impl LoadError {
             Self::Timeout(_) => "retry, or allow more time with --timeout <seconds>".into(),
             Self::TooLarge(n) => format!("allow more with --max-bytes (currently {n})"),
             Self::UnsupportedContentType(_) => {
-                "pageon loads HTML and plain text; open other files with a dedicated tool".into()
+                "pageon reads HTML, PDF, Markdown and plain text; open other files with a dedicated tool".into()
             }
             Self::TooManyRedirects(_) | Self::RedirectLoop(_) => {
                 "open the last URL of the chain directly, or report the loop to the site".into()

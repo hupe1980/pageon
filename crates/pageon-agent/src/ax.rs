@@ -232,6 +232,15 @@ pub fn header(capture: &Capture, version: u64, budget: Budget, fallback: bool) -
     {
         h.push_str(" layout:unavailable");
     }
+    // A document read as a page (a PDF, Markdown, text), and the site's AI usage preferences.
+    if let Some(s) = capture.extras.get("source") {
+        h.push_str(" source:");
+        h.push_str(s);
+    }
+    if let Some(u) = capture.extras.get("usage") {
+        h.push_str(" usage:");
+        h.push_str(&quote(&clip(u, MAX_NAME)));
+    }
     h
 }
 

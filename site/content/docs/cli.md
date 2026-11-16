@@ -26,6 +26,8 @@ pageon fetch https://example.com --dump ax --budget 2000 # the agent view, 2,000
 pageon fetch https://example.com --act "click e3" --act "type e5 hello" --dump ax
 pageon fetch https://example.com --screenshot page.png --full-page
 pageon fetch ./page.html                                 # local files work too
+pageon fetch https://example.com/paper.pdf --dump ax      # PDFs, Markdown and text read as pages
+pageon fetch https://blog.example/post --prefer-markdown  # the site's Markdown, for crawls
 ```
 
 | `--dump` | Prints |

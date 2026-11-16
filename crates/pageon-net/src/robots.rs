@@ -12,13 +12,16 @@ pub enum Robots {
     Rules(Vec<Rule>),
 }
 
-/// One `allow` or `disallow` line.
+/// One `allow`, `disallow` or `content-usage` line.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Rule {
     /// Allow (true) or disallow.
     pub allow: bool,
     /// The path pattern, percent-encoding normalized.
     pub pattern: String,
+    /// A `Content-Usage` line's preferences (IETF aipref), as written; `None` for
+    /// allow and disallow lines.
+    pub usage: Option<String>,
 }
 
 /// The parse limit (RFC 9309 2.5: at least 500 KiB).
@@ -73,6 +76,24 @@ impl Robots {
                         g.1.push(Rule {
                             allow: key == "allow",
                             pattern: normalize(value),
+                            usage: None,
+                        });
+                    }
+                }
+                // `Content-Usage: [path] prefs` (the aipref attachment draft).
+                "content-usage" => {
+                    in_agents = false;
+                    let (pattern, prefs) = match value.split_once(char::is_whitespace) {
+                        Some((p, rest)) if p.starts_with('/') => (normalize(p), rest.trim()),
+                        _ => ("/".to_string(), value),
+                    };
+                    if let Some(g) = groups.last_mut()
+                        && !prefs.is_empty()
+                    {
+                        g.1.push(Rule {
+                            allow: true,
+                            pattern,
+                            usage: Some(prefs.chars().take(200).collect()),
                         });
                     }
                 }
@@ -111,9 +132,22 @@ impl Robots {
         let path = normalize(path);
         let best = rules
             .iter()
-            .filter(|r| matches(r.pattern.as_bytes(), path.as_bytes()))
+            .filter(|r| r.usage.is_none() && matches(r.pattern.as_bytes(), path.as_bytes()))
             .max_by_key(|r| (r.pattern.len(), r.allow))?;
         (!best.allow).then(|| format!("rule \"Disallow: {}\"", best.pattern))
+    }
+
+    /// The `Content-Usage` preferences for `path`: the longest matching rule's.
+    pub fn usage(&self, path: &str) -> Option<&str> {
+        let Self::Rules(rules) = self else {
+            return None;
+        };
+        let path = normalize(path);
+        rules
+            .iter()
+            .filter(|r| r.usage.is_some() && matches(r.pattern.as_bytes(), path.as_bytes()))
+            .max_by_key(|r| r.pattern.len())
+            .and_then(|r| r.usage.as_deref())
     }
 }
 
@@ -181,6 +215,21 @@ fn matches(pattern: &[u8], path: &[u8]) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn content_usage_rules_are_read_by_path() {
+        let r = Robots::parse(
+            b"User-Agent: *\nContent-Usage: train-ai=n\nContent-Usage: /blog/ train-ai=y, search=y\nDisallow: /admin\n",
+            "pageon",
+        );
+        assert_eq!(r.usage("/"), Some("train-ai=n"));
+        assert_eq!(r.usage("/blog/post"), Some("train-ai=y, search=y"));
+        assert!(r.disallowed("/blog/post").is_none());
+        assert!(r.disallowed("/admin/x").is_some());
+        let only = Robots::parse(b"User-Agent: *\nContent-Usage: train-ai=n\n", "pageon");
+        assert!(only.disallowed("/x").is_none());
+        assert_eq!(only.usage("/x"), Some("train-ai=n"));
+    }
 
     fn r(body: &str) -> Robots {
         Robots::parse(body.as_bytes(), "pageon")

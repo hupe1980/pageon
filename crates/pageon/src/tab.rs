@@ -1334,6 +1334,7 @@ impl<'s, E: Env> Tab<'s, E> {
             let mut n = net.borrow_mut();
             n.allow_private = options.allow_private_network;
             n.robots = options.robots;
+            n.prefer_markdown = options.prefer_markdown;
             n.take_log();
         }
         let start = Start {
@@ -1753,6 +1754,7 @@ impl<'s, E: Env> Tab<'s, E> {
             let mut n = net.borrow_mut();
             n.allow_private = self.options.allow_private_network;
             n.robots = self.options.robots;
+            n.prefer_markdown = self.options.prefer_markdown;
             n.take_log();
             // What every request this action causes carries to the broker's guard:
             // the action, and its target as the agent last saw it.
@@ -1994,6 +1996,7 @@ impl<'s, E: Env> Tab<'s, E> {
             let mut n = net.borrow_mut();
             n.allow_private = self.options.allow_private_network;
             n.robots = self.options.robots;
+            n.prefer_markdown = self.options.prefer_markdown;
             n.take_log();
         }
         let mut out = Outcome {
@@ -2022,6 +2025,41 @@ impl<'s, E: Env> Tab<'s, E> {
 
     fn run(&mut self, action: &Action, out: &mut Outcome) -> Result<(), ActionError> {
         match action {
+            Action::Goto(handle) if handle.starts_with("download:") => {
+                let d = self
+                    .downloads
+                    .iter()
+                    .find(|d| d.handle == *handle)
+                    .cloned()
+                    .ok_or_else(|| {
+                        let have: Vec<&str> =
+                            self.downloads.iter().map(|d| d.handle.as_str()).collect();
+                        ActionError::Unsupported(if have.is_empty() {
+                            format!("no {handle}: this tab has no downloads")
+                        } else {
+                            format!("no {handle}: this tab has {}", have.join(", "))
+                        })
+                    })?;
+                let nav = NavRequest {
+                    url: d.url.clone(),
+                    method: "GET".into(),
+                    body: Vec::new(),
+                    content_type: None,
+                    replace: false,
+                };
+                let before = self.downloads.len();
+                self.navigate_with(None, &nav, History::Push, out, Some(&d))?;
+                if self.downloads.len() > before {
+                    // Not a type pageon reads: it stays a download (dropped again here).
+                    self.downloads.truncate(before);
+                    out.downloads.clear();
+                    return Err(ActionError::Unsupported(format!(
+                        "{handle} ({}) cannot be read as a page; pageon reads HTML, PDF, Markdown and plain text",
+                        d.content_type
+                    )));
+                }
+                Ok(())
+            }
             Action::Goto(url) => {
                 let nav = NavRequest {
                     url: url.clone(),
@@ -3156,6 +3194,18 @@ impl<'s, E: Env> Tab<'s, E> {
         mode: History,
         out: &mut Outcome,
     ) -> Result<(), ActionError> {
+        self.navigate_with(initiator, nav, mode, out, None)
+    }
+
+    /// [`navigate`](Self::navigate), from a download's bytes when `preloaded` is set.
+    fn navigate_with(
+        &mut self,
+        initiator: Option<&pageon_net::Client>,
+        nav: &NavRequest,
+        mode: History,
+        out: &mut Outcome,
+        preloaded: Option<&Download>,
+    ) -> Result<(), ActionError> {
         // A traversal restores the entry's state for the new document's scripts.
         let restored = (mode == History::Keep)
             .then(|| self.history[self.index].state.clone())
@@ -3166,6 +3216,7 @@ impl<'s, E: Env> Tab<'s, E> {
             parent: None,
             delegate_tools: false,
             history: restored.as_ref(),
+            preloaded,
             ..Default::default()
         };
         let loaded = crate::load::open(

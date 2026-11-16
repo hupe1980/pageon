@@ -61,6 +61,10 @@ enum Command {
         /// Ask on the terminal before every write (POST, PUT, …) to an --origin.
         #[arg(long)]
         approve: bool,
+        /// Ask for the site's Markdown rendition first (`Accept: text/markdown`), for crawls;
+        /// a Markdown answer is labelled `source:server-markdown`.
+        #[arg(long)]
+        prefer_markdown: bool,
         #[command(flatten)]
         paint: PaintArgs,
         #[command(flatten)]
@@ -1316,53 +1320,64 @@ fn cdp(port: u16, allow_origins: Vec<String>, discovery: bool, s: &SessionArgs) 
 }
 
 fn main() -> ExitCode {
-    let (target, dump, viewport, acts, approve, paint, session) = match Cli::parse().command {
-        Command::Content { probe } => return content(probe),
-        Command::Identity { command } => return identity(command),
-        Command::Workflow { command } => return workflow(command),
-        Command::Mcp {
-            http,
-            allow_origin,
-            allow_javascript_exec,
-            otlp,
-            detail,
-            session,
-        } => {
-            let detail = pageon_agent::Detail::parse(&detail).unwrap_or_default();
-            return mcp(
+    let (target, dump, viewport, acts, approve, prefer_markdown, paint, session) =
+        match Cli::parse().command {
+            Command::Content { probe } => return content(probe),
+            Command::Identity { command } => return identity(command),
+            Command::Workflow { command } => return workflow(command),
+            Command::Mcp {
                 http,
                 allow_origin,
                 allow_javascript_exec,
                 otlp,
                 detail,
-                &session,
-            );
-        }
-        Command::Replay {
-            file,
-            to,
-            live,
-            approve,
-            dump,
-            trace,
-            session,
-        } => return replay(&file, to, live, approve, dump, trace.as_deref(), &session),
-        Command::Cdp {
-            port,
-            allow_origin,
-            discovery,
-            session,
-        } => return cdp(port, allow_origin, discovery, &session),
-        Command::Fetch {
-            target,
-            dump,
-            viewport,
-            acts,
-            approve,
-            paint,
-            session,
-        } => (target, dump, viewport, acts, approve, paint, session),
-    };
+                session,
+            } => {
+                let detail = pageon_agent::Detail::parse(&detail).unwrap_or_default();
+                return mcp(
+                    http,
+                    allow_origin,
+                    allow_javascript_exec,
+                    otlp,
+                    detail,
+                    &session,
+                );
+            }
+            Command::Replay {
+                file,
+                to,
+                live,
+                approve,
+                dump,
+                trace,
+                session,
+            } => return replay(&file, to, live, approve, dump, trace.as_deref(), &session),
+            Command::Cdp {
+                port,
+                allow_origin,
+                discovery,
+                session,
+            } => return cdp(port, allow_origin, discovery, &session),
+            Command::Fetch {
+                target,
+                dump,
+                viewport,
+                acts,
+                approve,
+                prefer_markdown,
+                paint,
+                session,
+            } => (
+                target,
+                dump,
+                viewport,
+                acts,
+                approve,
+                prefer_markdown,
+                paint,
+                session,
+            ),
+        };
     let mut actions = Vec::new();
     for a in &acts {
         match a.parse::<Action>() {
@@ -1373,10 +1388,11 @@ fn main() -> ExitCode {
             }
         }
     }
-    let prepared = match prepare(&session) {
+    let mut prepared = match prepare(&session) {
         Ok(p) => p,
         Err(code) => return code,
     };
+    prepared.options.prefer_markdown = prefer_markdown;
     let result = with_env(&prepared.config, approve, false, |env| {
         fetch(
             env,

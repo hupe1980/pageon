@@ -38,6 +38,11 @@ All notable changes to this project are documented here. The format follows
   `Episode(detail=)` in Python) leaves text runs out of the view.
 - Credential URL parameters (`token`, `code`, `sig`, session ids, …) are `[redacted]` in views,
   outcomes, errors and saved recordings; recordings still replay exactly.
+- PDFs, Markdown (including `llms.txt`) and plain text open as pages: headings, paragraphs and
+  links with refs; hidden PDF text is marked; no scripts or source markup.
+- `goto download:N` (over MCP, `browser_open` with `download:N`) opens a download as a page.
+- `pageon fetch --prefer-markdown` asks sites for their Markdown rendition, labelled
+  `source:server-markdown`; `Content-Usage` preferences (header or robots.txt) are shown.
 
 ### Changed
 
