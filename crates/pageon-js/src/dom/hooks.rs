@@ -73,6 +73,9 @@ pub fn template(
             inst.set_indexed_property_handler(
                 v8::IndexedPropertyHandlerConfiguration::new().getter(indexed_get),
             );
+            if iface == Iface::HTMLOptionsCollection {
+                select_methods(scope, proto);
+            }
             if matches!(
                 iface,
                 Iface::HTMLCollection | Iface::HTMLFormControlsCollection
@@ -171,6 +174,7 @@ pub fn template(
                 1,
             );
         }
+        Iface::HTMLSelectElement => select_methods(scope, proto),
         Iface::DataTransferItemList => {
             inst.set_indexed_property_handler(
                 v8::IndexedPropertyHandlerConfiguration::new().getter(indexed_get),
@@ -288,6 +292,25 @@ fn notification_permission(
             crate::dom::notification::permission(cx).to_string(),
         ))
     });
+}
+
+/// `add(element, before)` and `remove(index)` of a select and its options (on a select,
+/// `remove()` is also `ChildNode.remove`).
+fn select_methods(scope: &mut v8::PinScope<'_, '_, ()>, proto: v8::Local<v8::ObjectTemplate>) {
+    cv::method(
+        scope,
+        proto.into(),
+        "add",
+        crate::dom::html::select_options::add_any,
+        1,
+    );
+    cv::method(
+        scope,
+        proto.into(),
+        "remove",
+        crate::dom::html::select_options::remove_any,
+        0,
+    );
 }
 
 fn indexed_get<'s>(

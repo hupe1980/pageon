@@ -66,6 +66,10 @@ fn related(o: Option<Obj>) -> Option<Target> {
 pub mod event_target {
     use super::*;
 
+    pub fn constructor(cx: &mut Cx<'_, '_, '_>) -> R<Obj> {
+        Ok(cx.alloc(Iface::EventTarget, Slot::Target))
+    }
+
     fn target(this: Obj) -> R<Target> {
         Ok(match this {
             Obj::Window => Target::Window,

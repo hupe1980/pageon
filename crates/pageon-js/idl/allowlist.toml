@@ -12,7 +12,7 @@
 # compile error.
 
 [EventTarget]
-members = ["addEventListener", "removeEventListener", "dispatchEvent"]
+members = ["constructor", "addEventListener", "removeEventListener", "dispatchEvent"]
 
 [Event]
 members = [
@@ -98,7 +98,7 @@ members = [
   "hasFocus", "implementation", "cookie", "createTreeWalker", "createNodeIterator", "elementFromPoint", "elementsFromPoint",
   "scrollingElement", "hidden", "visibilityState", "createRange", "getSelection",
   "caretPositionFromPoint", "execCommand", "queryCommandEnabled", "queryCommandIndeterm",
-  "queryCommandState", "queryCommandSupported", "queryCommandValue",
+  "queryCommandState", "queryCommandSupported", "queryCommandValue", "fonts",
 ]
 
 [DOMImplementation]
@@ -366,10 +366,10 @@ members = ["cssText", "length", "item", "getPropertyValue", "getPropertyPriority
 members = ["cssFloat"]
 
 [DOMRectReadOnly]
-members = ["x", "y", "width", "height", "top", "right", "bottom", "left"]
+members = ["constructor", "x", "y", "width", "height", "top", "right", "bottom", "left"]
 
 [DOMRect]
-members = []
+members = ["constructor", "x", "y", "width", "height"]
 
 [DOMRectList]
 members = ["length", "item"]
@@ -771,3 +771,7 @@ members = ["constructor", "terminate"]
 
 [ErrorEvent]
 members = ["constructor", "message", "filename", "lineno", "colno", "error"]
+
+# CSS Font Loading: the bundled fonts are always loaded, so `ready` is settled and `check` holds.
+[FontFaceSet]
+members = ["load", "check", "ready", "status"]

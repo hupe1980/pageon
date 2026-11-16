@@ -288,6 +288,10 @@ pub enum Slot {
     TextMetrics(pageon_layout::CanvasTextMetrics),
     /// An event.
     Event(Box<EventData>),
+    /// A plain `EventTarget` (`new EventTarget()`, or a class that extends it).
+    Target,
+    /// `document.fonts`.
+    Fonts,
     /// `classList` and other `DOMTokenList`s: element and attribute.
     TokenList(NodeId, &'static str),
     /// An element's `ValidityState`.

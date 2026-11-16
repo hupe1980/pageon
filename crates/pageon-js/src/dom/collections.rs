@@ -519,6 +519,13 @@ fn rect(cx: &Cx<'_, '_, '_>, this: Obj) -> R<[f64; 4]> {
 pub mod dom_rect_read_only {
     use super::*;
 
+    pub fn constructor(cx: &mut Cx<'_, '_, '_>, x: f64, y: f64, w: f64, h: f64) -> R<Obj> {
+        Ok(cx.alloc(
+            crate::generated::Iface::DOMRectReadOnly,
+            Slot::Rect([x, y, w, h]),
+        ))
+    }
+
     pub fn get_x(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<f64> {
         Ok(rect(cx, this)?[0])
     }
@@ -553,6 +560,43 @@ pub mod dom_rect_read_only {
     pub fn get_right(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<f64> {
         let r = rect(cx, this)?;
         Ok(r[0].max(r[0] + r[2]))
+    }
+}
+
+/// `DOMRect`: a rectangle a script made, with settable sides.
+pub mod dom_rect {
+    pub use super::dom_rect_read_only::{get_height, get_width, get_x, get_y};
+    use super::*;
+
+    pub fn constructor(cx: &mut Cx<'_, '_, '_>, x: f64, y: f64, w: f64, h: f64) -> R<Obj> {
+        Ok(cx.alloc(crate::generated::Iface::DOMRect, Slot::Rect([x, y, w, h])))
+    }
+
+    fn set(cx: &mut Cx<'_, '_, '_>, this: Obj, i: usize, v: f64) -> R<()> {
+        let id = this.slab()?;
+        match cx.realm.st.borrow_mut().slot_mut(id) {
+            Some(Slot::Rect(r)) => {
+                r[i] = v;
+                Ok(())
+            }
+            _ => Err(Error::Type("Illegal invocation".into())),
+        }
+    }
+
+    pub fn set_x(cx: &mut Cx<'_, '_, '_>, this: Obj, v: f64) -> R<()> {
+        set(cx, this, 0, v)
+    }
+
+    pub fn set_y(cx: &mut Cx<'_, '_, '_>, this: Obj, v: f64) -> R<()> {
+        set(cx, this, 1, v)
+    }
+
+    pub fn set_width(cx: &mut Cx<'_, '_, '_>, this: Obj, v: f64) -> R<()> {
+        set(cx, this, 2, v)
+    }
+
+    pub fn set_height(cx: &mut Cx<'_, '_, '_>, this: Obj, v: f64) -> R<()> {
+        set(cx, this, 3, v)
     }
 }
 

@@ -63,6 +63,11 @@ Add `--expect` to an action: `pageon click e9 --expect 'request POST /orders 2xx
 Each comes back ✓ or ✗ with evidence; a ✗ exits 8. Prefer `request` checks for anything
 that changes data. Also: `url /done`, `see button "Pay"`, `no "Error"`, `download *.pdf`.
 
+## Building a site?
+
+`pageon audit http://localhost:3000 --private-network allow` scores how agents meet the page and
+lists fixes with refs (`pageon fetch URL --dump ax` shows them). Fix the top ones, run it again.
+
 ## Exit codes
 
 0 done; 8 an expectation failed; 3 the page or the action failed (the message says why and what to do); 2 usage, or no

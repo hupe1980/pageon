@@ -175,7 +175,8 @@ pub(crate) fn measure_any(
                 mark_time(cx, &n).map(Some)
             }
         };
-        let (start, end, detail) = if a1.is_object() && !a1.is_null() {
+        // The options: an object with any of its members (an empty one counts as none).
+        let options = if a1.is_object() && !a1.is_null() {
             let o = v8::Local::<v8::Object>::try_from(a1).map_err(|_| Error::Terminated)?;
             let mut fields = Vec::new();
             for k in ["start", "end", "duration", "detail"] {
@@ -185,9 +186,27 @@ pub(crate) fn measure_any(
                     .unwrap_or_else(|| v8::undefined(cx.scope).into());
                 fields.push(v);
             }
+            fields.iter().any(|v| !v.is_undefined()).then_some(fields)
+        } else {
+            None
+        };
+        let (start, end, detail) = if let Some(fields) = options {
             let (s, e, d, det) = (fields[0], fields[1], fields[2], fields[3]);
+            const FAILED: &str = "Failed to execute 'measure' on 'Performance': ";
             if !end_mark.is_undefined() {
-                return Err(Error::Type("Failed to execute 'measure' on 'Performance': If a PerformanceMeasureOptions object was passed, it must not have an endMark.".into()));
+                return Err(Error::Type(format!(
+                    "{FAILED}If a non-empty PerformanceMeasureOptions object was passed, |end_mark| must not be passed."
+                )));
+            }
+            if s.is_undefined() && e.is_undefined() {
+                return Err(Error::Type(format!(
+                    "{FAILED}If a non-empty PerformanceMeasureOptions object was passed, at least one of its 'start' or 'end' properties must be present."
+                )));
+            }
+            if !s.is_undefined() && !e.is_undefined() && !d.is_undefined() {
+                return Err(Error::Type(format!(
+                    "{FAILED}If a non-empty PerformanceMeasureOptions object was passed, it must not have all of its 'start', 'duration', and 'end' properties defined"
+                )));
             }
             let start = point(cx, s)?;
             let end = point(cx, e)?;
@@ -208,6 +227,11 @@ pub(crate) fn measure_any(
             };
             (start, end, detail)
         } else {
+            let a1 = if a1.is_object() && !a1.is_null() {
+                v8::undefined(cx.scope).into()
+            } else {
+                a1
+            };
             let start = point(cx, a1)?.unwrap_or(0.0);
             let end = point(cx, end_mark)?.unwrap_or_else(|| now(cx));
             (start, end, None)

@@ -92,10 +92,41 @@ ok('text styles', ctx.textAlign === 'center' && ctx.textBaseline === 'middle', c
 ctx.textAlign = 'bogus';
 ok('invalid align kept', ctx.textAlign === 'center', ctx.textAlign);
 ctx.fillStyle = '#000'; ctx.fillText('Hello', 100, 25);
+// select.add and remove, and measure's options.
+const sel = document.createElement('select');
+sel.add(new Option('a')); sel.add(new Option('c'));
+sel.add(new Option('z'), 0); sel.options.add(new Option('b'), sel.options[2]);
+ok('select.add', [...sel.options].map(o => o.text).join('') === 'zabc', [...sel.options].map(o => o.text).join(''));
+sel.remove(0); sel.options.remove(2);
+ok('select.remove', [...sel.options].map(o => o.text).join('') === 'ab' && sel.length === 2, sel.length);
+let addThrew = '';
+try { sel.add(document.createElement('div')); } catch (e) { addThrew = e.name; }
+ok('select.add type', addThrew === 'TypeError', addThrew);
+performance.mark('m3');
+performance.measure('empty options', {}, 'm3');
+let measureThrew = '';
+try { performance.measure('detail only', { detail: 1 }); } catch (e) { measureThrew = e.name; }
+ok('measure options', measureThrew === 'TypeError' && performance.getEntriesByName('empty options').length === 1, measureThrew);
+// Constructors, subclasses and tags.
+class Bus extends EventTarget { ping() { this.dispatchEvent(new CustomEvent('ping', { detail: 7 })); } }
+const bus = new Bus(); let pinged = 0;
+bus.addEventListener('ping', (e) => { pinged = e.detail; });
+bus.ping();
+ok('class extends EventTarget', pinged === 7 && bus instanceof EventTarget, pinged);
+const rect = new DOMRect(1, 2, 3, 4); rect.x = 10;
+ok('new DOMRect', rect.x === 10 && rect.right === 13 && rect instanceof DOMRectReadOnly, rect.right);
+ok('toStringTag', Object.prototype.toString.call(new Event('x')) === '[object Event]' && Object.prototype.toString.call(document.body) === '[object HTMLBodyElement]', Object.prototype.toString.call(new Event('x')));
+// document.fonts: the bundled fonts are always loaded.
+ok('document.fonts', document.fonts === document.fonts && document.fonts.status === 'loaded' && document.fonts.check('16px Inter') && document.fonts.ready instanceof Promise, document.fonts && document.fonts.status);
+let fontThrew = '';
+try { document.fonts.check('nonsense'); } catch (e) { fontThrew = e.name; }
+ok('fonts.check syntax', fontThrew === 'SyntaxError', fontThrew);
 // document.write.
 const wp = document.getElementById('w');
 ok('document.write', wp && wp.previousElementSibling.tagName === 'SCRIPT', wp);
-document.getElementById('out').textContent = JSON.stringify(results);
+// The count and the failures only: the view clips long text.
+const failures = Object.fromEntries(Object.entries(results).filter(([, v]) => v !== true));
+document.getElementById('out').textContent = JSON.stringify({ count: Object.keys(results).length, ...failures });
 </script>"##;
 
 fn results(view: &str) -> serde_json::Map<String, serde_json::Value> {
@@ -114,12 +145,12 @@ fn results(view: &str) -> serde_json::Map<String, serde_json::Value> {
 
 fn failed(r: &serde_json::Map<String, serde_json::Value>) -> Vec<String> {
     r.iter()
-        .filter(|(_, v)| **v != serde_json::Value::Bool(true))
+        .filter(|(k, _)| *k != "count")
         .map(|(k, v)| format!("{k}: {v}"))
         .collect()
 }
 
-const EXPECTED: usize = 42;
+const EXPECTED: usize = 51;
 
 fn log() -> pageon_env::Log {
     site(vec![html("https://p.test/", CHECKS)])
@@ -134,7 +165,7 @@ fn the_checks_pass_in_process() {
         .unwrap_or_else(|e| panic!("{e}"));
     let r = results(&tab.observe_full());
     assert!(failed(&r).is_empty(), "{:#?}", failed(&r));
-    assert_eq!(r.len(), EXPECTED, "{r:#?}");
+    assert_eq!(r["count"], EXPECTED, "{r:#?}");
 }
 
 #[test]
@@ -152,7 +183,7 @@ fn the_checks_pass_caged() {
         .unwrap_or_else(|e| panic!("{e}"));
     let r = results(&sb.observe_tab(t, true).unwrap_or_else(|e| panic!("{e}")));
     assert!(failed(&r).is_empty(), "{:#?}", failed(&r));
-    assert_eq!(r.len(), EXPECTED, "{r:#?}");
+    assert_eq!(r["count"], EXPECTED, "{r:#?}");
 }
 
 const MENU: &str = r#"<!doctype html><h1>App</h1><button>Save</button><button popovertarget=menu>Account</button>

@@ -40,9 +40,18 @@ All notable changes to this project are documented here. The format follows
   canvas text (`font`, `measureText`, `fillText`, `strokeText`) with the bundled fonts;
   `document.write` while parsing; `dir`, `draggable`, `spellcheck`, `translate`, `outerText`,
   `a.text`, `valueAsNumber`, `textarea.rows`, `table.rows`, `img.loading`.
+- `pageon audit URL`: how ready a page is for agents. It scores names, actions, page tools,
+  the view's token cost, access (refusals, content without scripts, robots.txt, llms.txt,
+  Markdown on request) and health, with the fixes that gain the most first; `--json`,
+  `--fail-under N` (exit 9).
+- Platform: `select.add` and `remove`, `new EventTarget()` and classes that extend it (every
+  constructible interface keeps a subclass's prototype), `new DOMRect()`, `Symbol.toStringTag`
+  on every interface (`[object Event]`), and `document.fonts` (`ready`, `status`, `check`,
+  `load`).
 
 ### Fixed
 
+- `performance.measure(name, {}, endMark)` no longer throws; options follow Chrome's rules.
 - Canvases appear in screenshots (they were painted blank and noted as not painted).
 - Workflow URL checks keep the port, so two local apps on different ports are told apart.
 - Buttons size to their content, so a page's padding and font apply (they were 21 px tall).

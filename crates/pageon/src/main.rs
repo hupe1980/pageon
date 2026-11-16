@@ -91,6 +91,29 @@ enum Command {
         #[command(flatten)]
         session: SessionArgs,
     },
+    /// How ready a page is for agents: names, actions, page tools, what the agent's view costs,
+    /// access and health, scored with what to fix first.
+    ///
+    /// Examples:
+    ///   pageon audit https://example.com
+    ///   pageon audit https://example.com --json > audit.json
+    ///   pageon audit http://localhost:3000 --private-network allow --fail-under 80   (CI)
+    ///
+    /// Also reads the site's /robots.txt and /llms.txt and asks for the page as Markdown,
+    /// under the same options.
+    #[command(verbatim_doc_comment)]
+    Audit {
+        /// URL (http, https, file) or path to a local file.
+        target: String,
+        /// Print the report as JSON.
+        #[arg(long)]
+        json: bool,
+        /// Exit 9 when the score is under this (0 to 100).
+        #[arg(long, value_name = "SCORE", value_parser = clap::value_parser!(u8).range(0..=100))]
+        fail_under: Option<u8>,
+        #[command(flatten)]
+        session: SessionArgs,
+    },
     /// Re-run a recorded session and check that every step reaches the same page.
     ///
     /// Examples:
@@ -1010,6 +1033,109 @@ fn fetch(env: &dyn Env, f: Fetch<'_>) -> Result<Printed, ExitCode> {
     Ok((text, status, refusal))
 }
 
+/// `pageon audit`: loads the page and the site's files, prints the report, exits 9 under
+/// `--fail-under`.
+fn audit(target: &str, json: bool, fail_under: Option<u8>, session: &SessionArgs) -> ExitCode {
+    let prepared = match prepare(session) {
+        Ok(p) => p,
+        Err(code) => return code,
+    };
+    let facts = with_env(&prepared.config, false, false, |env| {
+        audit_facts(env, target, session, &prepared)
+    });
+    let (page, site) = match facts {
+        Ok(f) => f,
+        Err(code) => return code,
+    };
+    let report = pageon::audit::Report::new(&page, &site);
+    if json {
+        match serde_json::to_string_pretty(&report) {
+            Ok(text) => println!("{text}"),
+            Err(e) => {
+                eprintln!("error: cannot write the report: {e}");
+                return ExitCode::from(3);
+            }
+        }
+    } else {
+        let color = std::io::IsTerminal::is_terminal(&std::io::stdout())
+            && std::env::var_os("NO_COLOR").is_none();
+        print!("{}", report.render(pageon::audit::Style { color }));
+    }
+    match fail_under {
+        Some(min) if report.score < min => {
+            eprintln!("audit: {} is under --fail-under {min}", report.score);
+            ExitCode::from(9)
+        }
+        _ => ExitCode::SUCCESS,
+    }
+}
+
+/// The audit's page facts (caged by default) and site facts: robots.txt, llms.txt and a
+/// Markdown request, loaded without scripts under the same options.
+fn audit_facts(
+    env: &dyn Env,
+    target: &str,
+    session: &SessionArgs,
+    prepared: &Prepared,
+) -> Result<(pageon::audit::PageFacts, pageon::audit::SiteFacts), ExitCode> {
+    let options = prepared.options.clone();
+    let plain = LoadOptions {
+        scripts: false,
+        ..options.clone()
+    };
+    let markdown = LoadOptions {
+        prefer_markdown: true,
+        ..plain.clone()
+    };
+    if !session.no_sandbox {
+        let mut sb = Sandbox::new(env, SandboxOptions::default()).map_err(broken)?;
+        if let Some(s) = &prepared.state {
+            sb.set_storage_state(s).map_err(broken)?;
+        }
+        let page = sb
+            .open(target, options)
+            .map_err(|e| fail(&e))?
+            .audit()
+            .map_err(broken)?;
+        let site = site_facts(&page.url, &plain, &markdown, &mut |url, o| {
+            sb.open(url, o.clone()).ok()?.audit().ok()
+        });
+        return Ok((page, site));
+    }
+    let s = Session::new(env);
+    if let Some(state) = &prepared.state {
+        s.set_storage_state(state);
+    }
+    let page = s.open(target, options).map_err(|e| fail(&e))?.audit();
+    let site = site_facts(&page.url, &plain, &markdown, &mut |url, o| {
+        Some(s.open(url, o.clone()).ok()?.audit())
+    });
+    Ok((page, site))
+}
+
+fn site_facts(
+    url: &str,
+    plain: &LoadOptions,
+    markdown: &LoadOptions,
+    open: &mut dyn FnMut(&str, &LoadOptions) -> Option<pageon::audit::PageFacts>,
+) -> pageon::audit::SiteFacts {
+    let Ok(u) = url::Url::parse(url) else {
+        return pageon::audit::SiteFacts::default();
+    };
+    if !matches!(u.scheme(), "http" | "https") {
+        return pageon::audit::SiteFacts::default();
+    }
+    let origin = u.origin().ascii_serialization();
+    let path = match u.query() {
+        Some(q) => format!("{}?{q}", u.path()),
+        None => u.path().to_string(),
+    };
+    let robots = open(&format!("{origin}/robots.txt"), plain);
+    let llms = open(&format!("{origin}/llms.txt"), plain);
+    let md = open(url, markdown);
+    pageon::audit::SiteFacts::from_loads(&path, robots.as_ref(), llms.as_ref(), md.as_ref())
+}
+
 fn screenshot_options(p: &PaintArgs, format: pageon::Format) -> pageon::ScreenshotOptions {
     pageon::ScreenshotOptions {
         area: if p.full_page {
@@ -1628,6 +1754,12 @@ fn main() -> ExitCode {
                 discovery,
                 session,
             } => return cdp(port, allow_origin, discovery, &session),
+            Command::Audit {
+                target,
+                json,
+                fail_under,
+                session,
+            } => return audit(&target, json, fail_under, &session),
             Command::Fetch {
                 target,
                 dump,

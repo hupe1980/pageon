@@ -1177,3 +1177,103 @@ pub mod html_anchor_element {
         crate::dom::node::replace_with_text(cx, this.node()?, &v)
     }
 }
+
+/// `add(element, before)` and `remove(index)` of `<select>` and its `options` collection
+/// (`remove()` without an index is `ChildNode.remove`).
+pub(crate) mod select_options {
+    use super::*;
+
+    /// The `<select>` of `this`: the element, or the select an `options` collection lists.
+    fn select(cx: &mut Cx<'_, '_, '_>, args: &v8::FunctionCallbackArguments) -> R<NodeId> {
+        if let Ok(o) = cx.this(args, Iface::HTMLSelectElement) {
+            return o.node();
+        }
+        let o = cx.this(args, Iface::HTMLOptionsCollection)?;
+        match crate::dom::collections::slot(cx, o)? {
+            Slot::Collection(Coll::Options(id)) => Ok(id),
+            _ => Err(Error::Type("Illegal invocation".into())),
+        }
+    }
+
+    fn options(cx: &Cx<'_, '_, '_>, id: NodeId) -> Vec<NodeId> {
+        collect(&cx.dom(), &Coll::Options(id))
+    }
+
+    pub(crate) fn add_any(
+        scope: &mut v8::PinScope,
+        args: v8::FunctionCallbackArguments,
+        mut rv: v8::ReturnValue,
+    ) {
+        crate::cv::call(scope, &args, &mut rv, |cx, args| {
+            let sel = select(cx, args)?;
+            let element = crate::cv::unwrap_any(cx, args.get(0))
+                .and_then(|(o, _)| o.node().ok())
+                .filter(|&n| {
+                    matches!(
+                        cx.dom().get(n).and_then(|e| e.local_name()),
+                        Some("option" | "optgroup")
+                    )
+                })
+                .ok_or_else(|| {
+                    Error::Type("Failed to execute 'add': The provided value is not of type '(HTMLOptGroupElement or HTMLOptionElement)'.".into())
+                })?;
+            if cx.dom().is_inclusive_ancestor(element, sel) {
+                return Err(Error::dom(
+                    "HierarchyRequestError",
+                    "The new child element contains the parent.",
+                ));
+            }
+            let b = args.get(1);
+            // `before`: an element (the option or anything under the select), an index, or
+            // nothing (the end).
+            let reference = if b.is_null_or_undefined() {
+                None
+            } else if b.is_object() {
+                let n = crate::cv::unwrap_any(cx, b)
+                    .and_then(|(o, _)| o.node().ok())
+                    .ok_or_else(|| Error::Type("Failed to execute 'add': the 'before' argument is not an element or index.".into()))?;
+                if !cx.dom().is_inclusive_ancestor(sel, n) || n == sel {
+                    return Err(Error::dom(
+                        "NotFoundError",
+                        "The node before which the new node is to be inserted is not a child of this node.",
+                    ));
+                }
+                Some(n)
+            } else {
+                let i = b.int32_value(cx.scope).unwrap_or(-1);
+                usize::try_from(i)
+                    .ok()
+                    .and_then(|i| options(cx, sel).get(i).copied())
+            };
+            let parent = match reference {
+                Some(r) => cx.dom().parent(r).unwrap_or(sel),
+                None => sel,
+            };
+            crate::dom::insert(cx, parent, element, reference)?;
+            cx.ret(())
+        });
+    }
+
+    pub(crate) fn remove_any(
+        scope: &mut v8::PinScope,
+        args: v8::FunctionCallbackArguments,
+        mut rv: v8::ReturnValue,
+    ) {
+        crate::cv::call(scope, &args, &mut rv, |cx, args| {
+            let sel = select(cx, args)?;
+            let is_select = cx.this(args, Iface::HTMLSelectElement).is_ok();
+            if args.length() == 0 && is_select {
+                crate::dom::detach(cx, sel)?;
+                return cx.ret(());
+            }
+            let i = args.get(0).int32_value(cx.scope).unwrap_or(-1);
+            if let Some(o) = usize::try_from(i)
+                .ok()
+                .and_then(|i| options(cx, sel).get(i).copied())
+            {
+                crate::dom::detach(cx, o)?;
+            }
+            cx.ret(())
+        });
+    }
+}

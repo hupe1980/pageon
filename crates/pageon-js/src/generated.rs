@@ -72,6 +72,8 @@ pub enum Iface {
     FileList,
     /// `FileReader`.
     FileReader,
+    /// `FontFaceSet`.
+    FontFaceSet,
     /// `FormData`.
     FormData,
     /// `HTMLCollection`.
@@ -438,7 +440,7 @@ pub enum Iface {
 
 impl Iface {
     /// All interfaces.
-    pub const ALL: &'static [Iface] = &[Iface::AbortController, Iface::AbstractRange, Iface::AuthenticatorResponse, Iface::Blob, Iface::CSS, Iface::CSSStyleDeclaration, Iface::CSSStyleProperties, Iface::CanvasRenderingContext2D, Iface::CaretPosition, Iface::Credential, Iface::CredentialsContainer, Iface::Crypto, Iface::CryptoKey, Iface::CustomElementRegistry, Iface::CustomStateSet, Iface::DOMException, Iface::DOMImplementation, Iface::DOMParser, Iface::DOMRectList, Iface::DOMRectReadOnly, Iface::DOMStringMap, Iface::DOMTokenList, Iface::DataTransfer, Iface::DataTransferItem, Iface::DataTransferItemList, Iface::ElementInternals, Iface::Event, Iface::EventTarget, Iface::File, Iface::FileList, Iface::FileReader, Iface::FormData, Iface::HTMLCollection, Iface::HTMLFormControlsCollection, Iface::HTMLOptionsCollection, Iface::Headers, Iface::History, Iface::IdleDeadline, Iface::IntersectionObserver, Iface::IntersectionObserverEntry, Iface::Location, Iface::MediaQueryList, Iface::MediaQueryListEvent, Iface::MessageChannel, Iface::MessageEvent, Iface::MessagePort, Iface::MimeType, Iface::MimeTypeArray, Iface::ModelContext, Iface::MutationObserver, Iface::MutationRecord, Iface::NamedNodeMap, Iface::Navigator, Iface::NavigatorUAData, Iface::Node, Iface::NodeFilter, Iface::NodeIterator, Iface::NodeList, Iface::Notification, Iface::Performance, Iface::PerformanceEntry, Iface::PerformanceMark, Iface::PerformanceMeasure, Iface::PerformanceObserver, Iface::PerformanceObserverEntryList, Iface::PermissionStatus, Iface::Permissions, Iface::Plugin, Iface::PluginArray, Iface::PopStateEvent, Iface::ProgressEvent, Iface::PublicKeyCredential, Iface::RadioNodeList, Iface::Range, Iface::Request, Iface::ResizeObserver, Iface::ResizeObserverEntry, Iface::ResizeObserverSize, Iface::Response, Iface::Screen, Iface::ScreenOrientation, Iface::Selection, Iface::StaticRange, Iface::Storage, Iface::StyleSheet, Iface::SubmitEvent, Iface::SubtleCrypto, Iface::TextDecoder, Iface::TextEncoder, Iface::TextMetrics, Iface::ToggleEvent, Iface::ToolActivatedEvent, Iface::ToolCancelEvent, Iface::TreeWalker, Iface::UIEvent, Iface::URL, Iface::URLSearchParams, Iface::UserActivation, Iface::ValidityState, Iface::VisualViewport, Iface::WebSocket, Iface::Window, Iface::Worker, Iface::WorkerGlobalScope, Iface::WorkerLocation, Iface::WorkerNavigator, Iface::XMLHttpRequestEventTarget, Iface::XMLSerializer, Iface::console, Iface::AbortSignal, Iface::Attr, Iface::AuthenticatorAssertionResponse, Iface::AuthenticatorAttestationResponse, Iface::CSSStyleSheet, Iface::CharacterData, Iface::Clipboard, Iface::ClipboardEvent, Iface::CloseEvent, Iface::Comment, Iface::CustomEvent, Iface::DOMRect, Iface::DedicatedWorkerGlobalScope, Iface::Document, Iface::DocumentFragment, Iface::DocumentType, Iface::Element, Iface::ErrorEvent, Iface::EventSource, Iface::FocusEvent, Iface::HTMLElement, Iface::HTMLEmbedElement, Iface::HTMLFieldSetElement, Iface::HTMLFontElement, Iface::HTMLFormElement, Iface::HTMLFrameElement, Iface::HTMLFrameSetElement, Iface::HTMLHRElement, Iface::HTMLHeadElement, Iface::HTMLHeadingElement, Iface::HTMLHtmlElement, Iface::HTMLIFrameElement, Iface::HTMLImageElement, Iface::HTMLInputElement, Iface::HTMLLIElement, Iface::HTMLLabelElement, Iface::HTMLLegendElement, Iface::HTMLLinkElement, Iface::HTMLMapElement, Iface::HTMLMarqueeElement, Iface::HTMLMediaElement, Iface::HTMLMenuElement, Iface::HTMLMetaElement, Iface::HTMLMeterElement, Iface::HTMLModElement, Iface::HTMLOListElement, Iface::HTMLObjectElement, Iface::HTMLOptGroupElement, Iface::HTMLOptionElement, Iface::HTMLOutputElement, Iface::HTMLParagraphElement, Iface::HTMLParamElement, Iface::HTMLPictureElement, Iface::HTMLPreElement, Iface::HTMLProgressElement, Iface::HTMLQuoteElement, Iface::HTMLScriptElement, Iface::HTMLSelectElement, Iface::HTMLSelectedContentElement, Iface::HTMLSlotElement, Iface::HTMLSourceElement, Iface::HTMLSpanElement, Iface::HTMLStyleElement, Iface::HTMLTableCaptionElement, Iface::HTMLTableCellElement, Iface::HTMLTableColElement, Iface::HTMLTableElement, Iface::HTMLTableRowElement, Iface::HTMLTableSectionElement, Iface::HTMLTemplateElement, Iface::HTMLTextAreaElement, Iface::HTMLTimeElement, Iface::HTMLTitleElement, Iface::HTMLTrackElement, Iface::HTMLUListElement, Iface::HTMLUnknownElement, Iface::HTMLVideoElement, Iface::InputEvent, Iface::KeyboardEvent, Iface::MouseEvent, Iface::PointerEvent, Iface::SVGElement, Iface::SVGGraphicsElement, Iface::ShadowRoot, Iface::Text, Iface::WheelEvent, Iface::XMLHttpRequest, Iface::DragEvent, Iface::HTMLAnchorElement, Iface::HTMLAreaElement, Iface::HTMLAudioElement, Iface::HTMLBRElement, Iface::HTMLBaseElement, Iface::HTMLBodyElement, Iface::HTMLButtonElement, Iface::HTMLCanvasElement, Iface::HTMLDListElement, Iface::HTMLDataElement, Iface::HTMLDataListElement, Iface::HTMLDetailsElement, Iface::HTMLDialogElement, Iface::HTMLDirectoryElement, Iface::HTMLDivElement];
+    pub const ALL: &'static [Iface] = &[Iface::AbortController, Iface::AbstractRange, Iface::AuthenticatorResponse, Iface::Blob, Iface::CSS, Iface::CSSStyleDeclaration, Iface::CSSStyleProperties, Iface::CanvasRenderingContext2D, Iface::CaretPosition, Iface::Credential, Iface::CredentialsContainer, Iface::Crypto, Iface::CryptoKey, Iface::CustomElementRegistry, Iface::CustomStateSet, Iface::DOMException, Iface::DOMImplementation, Iface::DOMParser, Iface::DOMRectList, Iface::DOMRectReadOnly, Iface::DOMStringMap, Iface::DOMTokenList, Iface::DataTransfer, Iface::DataTransferItem, Iface::DataTransferItemList, Iface::ElementInternals, Iface::Event, Iface::EventTarget, Iface::File, Iface::FileList, Iface::FileReader, Iface::FontFaceSet, Iface::FormData, Iface::HTMLCollection, Iface::HTMLFormControlsCollection, Iface::HTMLOptionsCollection, Iface::Headers, Iface::History, Iface::IdleDeadline, Iface::IntersectionObserver, Iface::IntersectionObserverEntry, Iface::Location, Iface::MediaQueryList, Iface::MediaQueryListEvent, Iface::MessageChannel, Iface::MessageEvent, Iface::MessagePort, Iface::MimeType, Iface::MimeTypeArray, Iface::ModelContext, Iface::MutationObserver, Iface::MutationRecord, Iface::NamedNodeMap, Iface::Navigator, Iface::NavigatorUAData, Iface::Node, Iface::NodeFilter, Iface::NodeIterator, Iface::NodeList, Iface::Notification, Iface::Performance, Iface::PerformanceEntry, Iface::PerformanceMark, Iface::PerformanceMeasure, Iface::PerformanceObserver, Iface::PerformanceObserverEntryList, Iface::PermissionStatus, Iface::Permissions, Iface::Plugin, Iface::PluginArray, Iface::PopStateEvent, Iface::ProgressEvent, Iface::PublicKeyCredential, Iface::RadioNodeList, Iface::Range, Iface::Request, Iface::ResizeObserver, Iface::ResizeObserverEntry, Iface::ResizeObserverSize, Iface::Response, Iface::Screen, Iface::ScreenOrientation, Iface::Selection, Iface::StaticRange, Iface::Storage, Iface::StyleSheet, Iface::SubmitEvent, Iface::SubtleCrypto, Iface::TextDecoder, Iface::TextEncoder, Iface::TextMetrics, Iface::ToggleEvent, Iface::ToolActivatedEvent, Iface::ToolCancelEvent, Iface::TreeWalker, Iface::UIEvent, Iface::URL, Iface::URLSearchParams, Iface::UserActivation, Iface::ValidityState, Iface::VisualViewport, Iface::WebSocket, Iface::Window, Iface::Worker, Iface::WorkerGlobalScope, Iface::WorkerLocation, Iface::WorkerNavigator, Iface::XMLHttpRequestEventTarget, Iface::XMLSerializer, Iface::console, Iface::AbortSignal, Iface::Attr, Iface::AuthenticatorAssertionResponse, Iface::AuthenticatorAttestationResponse, Iface::CSSStyleSheet, Iface::CharacterData, Iface::Clipboard, Iface::ClipboardEvent, Iface::CloseEvent, Iface::Comment, Iface::CustomEvent, Iface::DOMRect, Iface::DedicatedWorkerGlobalScope, Iface::Document, Iface::DocumentFragment, Iface::DocumentType, Iface::Element, Iface::ErrorEvent, Iface::EventSource, Iface::FocusEvent, Iface::HTMLElement, Iface::HTMLEmbedElement, Iface::HTMLFieldSetElement, Iface::HTMLFontElement, Iface::HTMLFormElement, Iface::HTMLFrameElement, Iface::HTMLFrameSetElement, Iface::HTMLHRElement, Iface::HTMLHeadElement, Iface::HTMLHeadingElement, Iface::HTMLHtmlElement, Iface::HTMLIFrameElement, Iface::HTMLImageElement, Iface::HTMLInputElement, Iface::HTMLLIElement, Iface::HTMLLabelElement, Iface::HTMLLegendElement, Iface::HTMLLinkElement, Iface::HTMLMapElement, Iface::HTMLMarqueeElement, Iface::HTMLMediaElement, Iface::HTMLMenuElement, Iface::HTMLMetaElement, Iface::HTMLMeterElement, Iface::HTMLModElement, Iface::HTMLOListElement, Iface::HTMLObjectElement, Iface::HTMLOptGroupElement, Iface::HTMLOptionElement, Iface::HTMLOutputElement, Iface::HTMLParagraphElement, Iface::HTMLParamElement, Iface::HTMLPictureElement, Iface::HTMLPreElement, Iface::HTMLProgressElement, Iface::HTMLQuoteElement, Iface::HTMLScriptElement, Iface::HTMLSelectElement, Iface::HTMLSelectedContentElement, Iface::HTMLSlotElement, Iface::HTMLSourceElement, Iface::HTMLSpanElement, Iface::HTMLStyleElement, Iface::HTMLTableCaptionElement, Iface::HTMLTableCellElement, Iface::HTMLTableColElement, Iface::HTMLTableElement, Iface::HTMLTableRowElement, Iface::HTMLTableSectionElement, Iface::HTMLTemplateElement, Iface::HTMLTextAreaElement, Iface::HTMLTimeElement, Iface::HTMLTitleElement, Iface::HTMLTrackElement, Iface::HTMLUListElement, Iface::HTMLUnknownElement, Iface::HTMLVideoElement, Iface::InputEvent, Iface::KeyboardEvent, Iface::MouseEvent, Iface::PointerEvent, Iface::SVGElement, Iface::SVGGraphicsElement, Iface::ShadowRoot, Iface::Text, Iface::WheelEvent, Iface::XMLHttpRequest, Iface::DragEvent, Iface::HTMLAnchorElement, Iface::HTMLAreaElement, Iface::HTMLAudioElement, Iface::HTMLBRElement, Iface::HTMLBaseElement, Iface::HTMLBodyElement, Iface::HTMLButtonElement, Iface::HTMLCanvasElement, Iface::HTMLDListElement, Iface::HTMLDataElement, Iface::HTMLDataListElement, Iface::HTMLDetailsElement, Iface::HTMLDialogElement, Iface::HTMLDirectoryElement, Iface::HTMLDivElement];
 
     /// The interface name.
     pub fn name(self) -> &'static str {
@@ -474,6 +476,7 @@ impl Iface {
             Iface::File => "File",
             Iface::FileList => "FileList",
             Iface::FileReader => "FileReader",
+            Iface::FontFaceSet => "FontFaceSet",
             Iface::FormData => "FormData",
             Iface::HTMLCollection => "HTMLCollection",
             Iface::HTMLFormControlsCollection => "HTMLFormControlsCollection",
@@ -692,6 +695,7 @@ impl Iface {
             Iface::File => Some(Iface::Blob),
             Iface::FileList => None,
             Iface::FileReader => Some(Iface::EventTarget),
+            Iface::FontFaceSet => Some(Iface::EventTarget),
             Iface::FormData => None,
             Iface::HTMLCollection => None,
             Iface::HTMLFormControlsCollection => Some(Iface::HTMLCollection),
@@ -921,7 +925,7 @@ fn ctor__AbortController(scope: &mut v8::PinScope, args: v8::FunctionCallbackArg
     cv::call(scope, &args, &mut rv, |cx, args| {
         if args.new_target().is_undefined() { return Err(cv::Error::Type("Failed to construct 'AbortController': Please use the 'new' operator.".into())); }
         let r: Obj = crate::dom::abort_controller::constructor(cx, )?;
-        cx.ret(r)
+        cx.constructed(args, r)
     });
 }
 
@@ -1043,7 +1047,7 @@ fn ctor__Blob(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut
         let a0: Option<Vec<Value>> = { let v = args.get(0); if v.is_undefined() { None } else { Some(cv::seq(cx, v, |cx, v| Ok(cv::value(cx, v)))?) } };
         let a1: BlobPropertyBag = { let v = args.get(1); if v.is_undefined() { BlobPropertyBag::default() } else { dict_blob_property_bag(cx, v)? } };
         let r: Obj = crate::dom::blob::constructor(cx, a0, a1)?;
-        cx.ret(r)
+        cx.constructed(args, r)
     });
 }
 
@@ -1951,7 +1955,7 @@ fn ctor__DOMException(scope: &mut v8::PinScope, args: v8::FunctionCallbackArgume
         let a0: String = { let v = args.get(0); if v.is_undefined() { "".to_string() } else { cv::string(cx, v)? } };
         let a1: String = { let v = args.get(1); if v.is_undefined() { "Error".to_string() } else { cv::string(cx, v)? } };
         let r: Obj = crate::dom::dom_exception::constructor(cx, a0, a1)?;
-        cx.ret(r)
+        cx.constructed(args, r)
     });
 }
 
@@ -1992,7 +1996,7 @@ fn ctor__DOMParser(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments
     cv::call(scope, &args, &mut rv, |cx, args| {
         if args.new_target().is_undefined() { return Err(cv::Error::Type("Failed to construct 'DOMParser': Please use the 'new' operator.".into())); }
         let r: Obj = crate::dom::dom_parser::constructor(cx, )?;
-        cx.ret(r)
+        cx.constructed(args, r)
     });
 }
 
@@ -2085,6 +2089,19 @@ fn get__DOMRectReadOnly__left(scope: &mut v8::PinScope, args: v8::FunctionCallba
         let this = cx.this(args, Iface::DOMRectReadOnly)?;
         let r: f64 = crate::dom::dom_rect_read_only::get_left(cx, this)?;
         cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn ctor__DOMRectReadOnly(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        if args.new_target().is_undefined() { return Err(cv::Error::Type("Failed to construct 'DOMRectReadOnly': Please use the 'new' operator.".into())); }
+        let a0: f64 = { let v = args.get(0); if v.is_undefined() { 0.0 } else { cv::float(cx, v, false)? } };
+        let a1: f64 = { let v = args.get(1); if v.is_undefined() { 0.0 } else { cv::float(cx, v, false)? } };
+        let a2: f64 = { let v = args.get(2); if v.is_undefined() { 0.0 } else { cv::float(cx, v, false)? } };
+        let a3: f64 = { let v = args.get(3); if v.is_undefined() { 0.0 } else { cv::float(cx, v, false)? } };
+        let r: Obj = crate::dom::dom_rect_read_only::constructor(cx, a0, a1, a2, a3)?;
+        cx.constructed(args, r)
     });
 }
 
@@ -2307,7 +2324,7 @@ fn ctor__DataTransfer(scope: &mut v8::PinScope, args: v8::FunctionCallbackArgume
     cv::call(scope, &args, &mut rv, |cx, args| {
         if args.new_target().is_undefined() { return Err(cv::Error::Type("Failed to construct 'DataTransfer': Please use the 'new' operator.".into())); }
         let r: Obj = crate::dom::data_transfer::constructor(cx, )?;
-        cx.ret(r)
+        cx.constructed(args, r)
     });
 }
 
@@ -3559,7 +3576,7 @@ fn ctor__Event(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mu
         let a0: String = { let v = args.get(0); cv::string(cx, v)? };
         let a1: EventInit = { let v = args.get(1); if v.is_undefined() { EventInit::default() } else { dict_event_init(cx, v)? } };
         let r: Obj = crate::dom::event::constructor(cx, a0, a1)?;
-        cx.ret(r)
+        cx.constructed(args, r)
     });
 }
 
@@ -3603,6 +3620,15 @@ fn op__EventTarget__dispatchEvent(scope: &mut v8::PinScope, args: v8::FunctionCa
 }
 
 #[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn ctor__EventTarget(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        if args.new_target().is_undefined() { return Err(cv::Error::Type("Failed to construct 'EventTarget': Please use the 'new' operator.".into())); }
+        let r: Obj = crate::dom::event_target::constructor(cx, )?;
+        cx.constructed(args, r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
 fn get__File__name(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::File)?;
@@ -3630,7 +3656,7 @@ fn ctor__File(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut
         let a1: String = { let v = args.get(1); cv::string(cx, v)? };
         let a2: FilePropertyBag = { let v = args.get(2); if v.is_undefined() { FilePropertyBag::default() } else { dict_file_property_bag(cx, v)? } };
         let r: Obj = crate::dom::file::constructor(cx, a0, a1, a2)?;
-        cx.ret(r)
+        cx.constructed(args, r)
     });
 }
 
@@ -3843,6 +3869,105 @@ fn ctor__FileReader(scope: &mut v8::PinScope, args: v8::FunctionCallbackArgument
     cv::call(scope, &args, &mut rv, |cx, args| {
         if args.new_target().is_undefined() { return Err(cv::Error::Type("Failed to construct 'FileReader': Please use the 'new' operator.".into())); }
         let r: Obj = crate::dom::file_reader::constructor(cx, )?;
+        cx.constructed(args, r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__FontFaceSet__onloading(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::FontFaceSet)?;
+        let r = cv::handler_get(cx, this, "loading")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__FontFaceSet__onloading(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::FontFaceSet)?;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "loading", v)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__FontFaceSet__onloadingdone(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::FontFaceSet)?;
+        let r = cv::handler_get(cx, this, "loadingdone")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__FontFaceSet__onloadingdone(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::FontFaceSet)?;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "loadingdone", v)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__FontFaceSet__onloadingerror(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::FontFaceSet)?;
+        let r = cv::handler_get(cx, this, "loadingerror")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__FontFaceSet__onloadingerror(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::FontFaceSet)?;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "loadingerror", v)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__FontFaceSet__load(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::FontFaceSet)?;
+        if args.length() <= 0 { return Err(cv::Error::args("FontFaceSet.load", 0)); }
+        let a0: String = { let v = args.get(0); cv::string(cx, v)? };
+        let a1: String = { let v = args.get(1); if v.is_undefined() { " ".to_string() } else { cv::string(cx, v)? } };
+        let r: Value = crate::dom::font_face_set::load(cx, this, a0, a1)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__FontFaceSet__check(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::FontFaceSet)?;
+        if args.length() <= 0 { return Err(cv::Error::args("FontFaceSet.check", 0)); }
+        let a0: String = { let v = args.get(0); cv::string(cx, v)? };
+        let a1: String = { let v = args.get(1); if v.is_undefined() { " ".to_string() } else { cv::string(cx, v)? } };
+        let r: bool = crate::dom::font_face_set::check(cx, this, a0, a1)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__FontFaceSet__ready(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::FontFaceSet)?;
+        let r: Value = crate::dom::font_face_set::get_ready(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__FontFaceSet__status(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::FontFaceSet)?;
+        let r: String = crate::dom::font_face_set::get_status(cx, this)?;
         cx.ret(r)
     });
 }
@@ -3982,7 +4107,7 @@ fn ctor__FormData(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments,
         let a0: Option<Obj> = { let v = args.get(0); if v.is_undefined() { None } else { Some(cv::obj(cx, v, Iface::HTMLFormElement)?) } };
         let a1: Option<Obj> = { let v = args.get(1); if v.is_undefined() { None } else { if v.is_null_or_undefined() { None } else { Some(cv::obj(cx, v, Iface::HTMLElement)?) } } };
         let r: Obj = crate::dom::form_data::constructor(cx, a0, a1)?;
-        cx.ret(r)
+        cx.constructed(args, r)
     });
 }
 
@@ -4131,7 +4256,7 @@ fn ctor__Headers(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, 
         if args.new_target().is_undefined() { return Err(cv::Error::Type("Failed to construct 'Headers': Please use the 'new' operator.".into())); }
         let a0: Option<Value> = { let v = args.get(0); if v.is_undefined() { None } else { Some(cv::value(cx, v)) } };
         let r: Obj = crate::dom::headers::constructor(cx, a0)?;
-        cx.ret(r)
+        cx.constructed(args, r)
     });
 }
 
@@ -4322,7 +4447,7 @@ fn ctor__IntersectionObserver(scope: &mut v8::PinScope, args: v8::FunctionCallba
         let a0: Value = { let v = args.get(0); cv::value(cx, v) };
         let a1: IntersectionObserverInit = { let v = args.get(1); if v.is_undefined() { IntersectionObserverInit::default() } else { dict_intersection_observer_init(cx, v)? } };
         let r: Obj = crate::dom::intersection_observer::constructor(cx, a0, a1)?;
-        cx.ret(r)
+        cx.constructed(args, r)
     });
 }
 
@@ -4674,7 +4799,7 @@ fn ctor__MediaQueryListEvent(scope: &mut v8::PinScope, args: v8::FunctionCallbac
         let a0: String = { let v = args.get(0); cv::string(cx, v)? };
         let a1: MediaQueryListEventInit = { let v = args.get(1); if v.is_undefined() { MediaQueryListEventInit::default() } else { dict_media_query_list_event_init(cx, v)? } };
         let r: Obj = crate::dom::media_query_list_event::constructor(cx, a0, a1)?;
-        cx.ret(r)
+        cx.constructed(args, r)
     });
 }
 
@@ -4701,7 +4826,7 @@ fn ctor__MessageChannel(scope: &mut v8::PinScope, args: v8::FunctionCallbackArgu
     cv::call(scope, &args, &mut rv, |cx, args| {
         if args.new_target().is_undefined() { return Err(cv::Error::Type("Failed to construct 'MessageChannel': Please use the 'new' operator.".into())); }
         let r: Obj = crate::dom::message_channel::constructor(cx, )?;
-        cx.ret(r)
+        cx.constructed(args, r)
     });
 }
 
@@ -4749,7 +4874,7 @@ fn ctor__MessageEvent(scope: &mut v8::PinScope, args: v8::FunctionCallbackArgume
         let a0: String = { let v = args.get(0); cv::string(cx, v)? };
         let a1: MessageEventInit = { let v = args.get(1); if v.is_undefined() { MessageEventInit::default() } else { dict_message_event_init(cx, v)? } };
         let r: Obj = crate::dom::message_event::constructor(cx, a0, a1)?;
-        cx.ret(r)
+        cx.constructed(args, r)
     });
 }
 
@@ -4984,7 +5109,7 @@ fn ctor__MutationObserver(scope: &mut v8::PinScope, args: v8::FunctionCallbackAr
         if args.length() <= 0 { return Err(cv::Error::args("MutationObserver constructor", 0)); }
         let a0: Value = { let v = args.get(0); cv::value(cx, v) };
         let r: Obj = crate::dom::mutation_observer::constructor(cx, a0)?;
-        cx.ret(r)
+        cx.constructed(args, r)
     });
 }
 
@@ -5975,7 +6100,7 @@ fn ctor__PerformanceMark(scope: &mut v8::PinScope, args: v8::FunctionCallbackArg
         let a0: String = { let v = args.get(0); cv::string(cx, v)? };
         let a1: PerformanceMarkOptions = { let v = args.get(1); if v.is_undefined() { PerformanceMarkOptions::default() } else { dict_performance_mark_options(cx, v)? } };
         let r: Obj = crate::dom::performance_mark::constructor(cx, a0, a1)?;
-        cx.ret(r)
+        cx.constructed(args, r)
     });
 }
 
@@ -6023,7 +6148,7 @@ fn ctor__PerformanceObserver(scope: &mut v8::PinScope, args: v8::FunctionCallbac
         if args.length() <= 0 { return Err(cv::Error::args("PerformanceObserver constructor", 0)); }
         let a0: Value = { let v = args.get(0); cv::value(cx, v) };
         let r: Obj = crate::dom::performance_observer::constructor(cx, a0)?;
-        cx.ret(r)
+        cx.constructed(args, r)
     });
 }
 
@@ -6231,7 +6356,7 @@ fn ctor__PopStateEvent(scope: &mut v8::PinScope, args: v8::FunctionCallbackArgum
         let a0: String = { let v = args.get(0); cv::string(cx, v)? };
         let a1: PopStateEventInit = { let v = args.get(1); if v.is_undefined() { PopStateEventInit::default() } else { dict_pop_state_event_init(cx, v)? } };
         let r: Obj = crate::dom::pop_state_event::constructor(cx, a0, a1)?;
-        cx.ret(r)
+        cx.constructed(args, r)
     });
 }
 
@@ -6270,7 +6395,7 @@ fn ctor__ProgressEvent(scope: &mut v8::PinScope, args: v8::FunctionCallbackArgum
         let a0: String = { let v = args.get(0); cv::string(cx, v)? };
         let a1: ProgressEventInit = { let v = args.get(1); if v.is_undefined() { ProgressEventInit::default() } else { dict_progress_event_init(cx, v)? } };
         let r: Obj = crate::dom::progress_event::constructor(cx, a0, a1)?;
-        cx.ret(r)
+        cx.constructed(args, r)
     });
 }
 
@@ -6597,7 +6722,7 @@ fn ctor__Range(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mu
     cv::call(scope, &args, &mut rv, |cx, args| {
         if args.new_target().is_undefined() { return Err(cv::Error::Type("Failed to construct 'Range': Please use the 'new' operator.".into())); }
         let r: Obj = crate::dom::range::constructor(cx, )?;
-        cx.ret(r)
+        cx.constructed(args, r)
     });
 }
 
@@ -6753,7 +6878,7 @@ fn ctor__Request(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, 
         let a0: Value = { let v = args.get(0); cv::value(cx, v) };
         let a1: RequestInit = { let v = args.get(1); if v.is_undefined() { RequestInit::default() } else { dict_request_init(cx, v)? } };
         let r: Obj = crate::dom::request::constructor(cx, a0, a1)?;
-        cx.ret(r)
+        cx.constructed(args, r)
     });
 }
 
@@ -6796,7 +6921,7 @@ fn ctor__ResizeObserver(scope: &mut v8::PinScope, args: v8::FunctionCallbackArgu
         if args.length() <= 0 { return Err(cv::Error::args("ResizeObserver constructor", 0)); }
         let a0: Value = { let v = args.get(0); cv::value(cx, v) };
         let r: Obj = crate::dom::resize_observer::constructor(cx, a0)?;
-        cx.ret(r)
+        cx.constructed(args, r)
     });
 }
 
@@ -7026,7 +7151,7 @@ fn ctor__Response(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments,
         let a0: Option<Value> = { let v = args.get(0); if v.is_undefined() { None } else { if v.is_null_or_undefined() { None } else { Some(cv::value(cx, v)) } } };
         let a1: ResponseInit = { let v = args.get(1); if v.is_undefined() { ResponseInit::default() } else { dict_response_init(cx, v)? } };
         let r: Obj = crate::dom::response::constructor(cx, a0, a1)?;
-        cx.ret(r)
+        cx.constructed(args, r)
     });
 }
 
@@ -7404,7 +7529,7 @@ fn ctor__StaticRange(scope: &mut v8::PinScope, args: v8::FunctionCallbackArgumen
         if args.length() <= 0 { return Err(cv::Error::args("StaticRange constructor", 0)); }
         let a0: StaticRangeInit = { let v = args.get(0); dict_static_range_init(cx, v)? };
         let r: Obj = crate::dom::static_range::constructor(cx, a0)?;
-        cx.ret(r)
+        cx.constructed(args, r)
     });
 }
 
@@ -7509,7 +7634,7 @@ fn ctor__SubmitEvent(scope: &mut v8::PinScope, args: v8::FunctionCallbackArgumen
         let a0: String = { let v = args.get(0); cv::string(cx, v)? };
         let a1: SubmitEventInit = { let v = args.get(1); if v.is_undefined() { SubmitEventInit::default() } else { dict_submit_event_init(cx, v)? } };
         let r: Obj = crate::dom::submit_event::constructor(cx, a0, a1)?;
-        cx.ret(r)
+        cx.constructed(args, r)
     });
 }
 
@@ -7680,7 +7805,7 @@ fn ctor__TextDecoder(scope: &mut v8::PinScope, args: v8::FunctionCallbackArgumen
         let a0: String = { let v = args.get(0); if v.is_undefined() { "utf-8".to_string() } else { cv::string(cx, v)? } };
         let a1: TextDecoderOptions = { let v = args.get(1); if v.is_undefined() { TextDecoderOptions::default() } else { dict_text_decoder_options(cx, v)? } };
         let r: Obj = crate::dom::text_decoder::constructor(cx, a0, a1)?;
-        cx.ret(r)
+        cx.constructed(args, r)
     });
 }
 
@@ -7721,7 +7846,7 @@ fn ctor__TextEncoder(scope: &mut v8::PinScope, args: v8::FunctionCallbackArgumen
     cv::call(scope, &args, &mut rv, |cx, args| {
         if args.new_target().is_undefined() { return Err(cv::Error::Type("Failed to construct 'TextEncoder': Please use the 'new' operator.".into())); }
         let r: Obj = crate::dom::text_encoder::constructor(cx, )?;
-        cx.ret(r)
+        cx.constructed(args, r)
     });
 }
 
@@ -7850,7 +7975,7 @@ fn ctor__ToggleEvent(scope: &mut v8::PinScope, args: v8::FunctionCallbackArgumen
         let a0: String = { let v = args.get(0); cv::string(cx, v)? };
         let a1: ToggleEventInit = { let v = args.get(1); if v.is_undefined() { ToggleEventInit::default() } else { dict_toggle_event_init(cx, v)? } };
         let r: Obj = crate::dom::toggle_event::constructor(cx, a0, a1)?;
-        cx.ret(r)
+        cx.constructed(args, r)
     });
 }
 
@@ -7871,7 +7996,7 @@ fn ctor__ToolActivatedEvent(scope: &mut v8::PinScope, args: v8::FunctionCallback
         let a0: String = { let v = args.get(0); cv::string(cx, v)? };
         let a1: ToolActivatedEventInit = { let v = args.get(1); if v.is_undefined() { ToolActivatedEventInit::default() } else { dict_tool_activated_event_init(cx, v)? } };
         let r: Obj = crate::dom::tool_activated_event::constructor(cx, a0, a1)?;
-        cx.ret(r)
+        cx.constructed(args, r)
     });
 }
 
@@ -7892,7 +8017,7 @@ fn ctor__ToolCancelEvent(scope: &mut v8::PinScope, args: v8::FunctionCallbackArg
         let a0: String = { let v = args.get(0); cv::string(cx, v)? };
         let a1: ToolCancelEventInit = { let v = args.get(1); if v.is_undefined() { ToolCancelEventInit::default() } else { dict_tool_cancel_event_init(cx, v)? } };
         let r: Obj = crate::dom::tool_cancel_event::constructor(cx, a0, a1)?;
-        cx.ret(r)
+        cx.constructed(args, r)
     });
 }
 
@@ -8041,7 +8166,7 @@ fn ctor__UIEvent(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, 
         let a0: String = { let v = args.get(0); cv::string(cx, v)? };
         let a1: UIEventInit = { let v = args.get(1); if v.is_undefined() { UIEventInit::default() } else { dict_ui_event_init(cx, v)? } };
         let r: Obj = crate::dom::ui_event::constructor(cx, a0, a1)?;
-        cx.ret(r)
+        cx.constructed(args, r)
     });
 }
 
@@ -8322,7 +8447,7 @@ fn ctor__URL(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut 
         let a0: String = { let v = args.get(0); cv::string(cx, v)? };
         let a1: Option<String> = { let v = args.get(1); if v.is_undefined() { None } else { Some(cv::string(cx, v)?) } };
         let r: Obj = crate::dom::url::constructor(cx, a0, a1)?;
-        cx.ret(r)
+        cx.constructed(args, r)
     });
 }
 
@@ -8471,7 +8596,7 @@ fn ctor__URLSearchParams(scope: &mut v8::PinScope, args: v8::FunctionCallbackArg
         if args.new_target().is_undefined() { return Err(cv::Error::Type("Failed to construct 'URLSearchParams': Please use the 'new' operator.".into())); }
         let a0: Value = { let v = args.get(0); if v.is_undefined() { cv::string_value(cx, "") } else { cv::value(cx, v) } };
         let r: Obj = crate::dom::url_search_params::constructor(cx, a0)?;
-        cx.ret(r)
+        cx.constructed(args, r)
     });
 }
 
@@ -8883,7 +9008,7 @@ fn ctor__WebSocket(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments
         let a0: String = { let v = args.get(0); cv::string(cx, v)? };
         let a1: Value = { let v = args.get(1); if v.is_undefined() { cv::empty_array(cx) } else { cv::value(cx, v) } };
         let r: Obj = crate::dom::web_socket::constructor(cx, a0, a1)?;
-        cx.ret(r)
+        cx.constructed(args, r)
     });
 }
 
@@ -11641,7 +11766,7 @@ fn ctor__Worker(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, m
         let a0: String = { let v = args.get(0); cv::string_nte(cx, v)? };
         let a1: WorkerOptions = { let v = args.get(1); if v.is_undefined() { WorkerOptions::default() } else { dict_worker_options(cx, v)? } };
         let r: Obj = crate::dom::worker::constructor(cx, a0, a1)?;
-        cx.ret(r)
+        cx.constructed(args, r)
     });
 }
 
@@ -12305,7 +12430,7 @@ fn ctor__XMLSerializer(scope: &mut v8::PinScope, args: v8::FunctionCallbackArgum
     cv::call(scope, &args, &mut rv, |cx, args| {
         if args.new_target().is_undefined() { return Err(cv::Error::Type("Failed to construct 'XMLSerializer': Please use the 'new' operator.".into())); }
         let r: Obj = crate::dom::xml_serializer::constructor(cx, )?;
-        cx.ret(r)
+        cx.constructed(args, r)
     });
 }
 
@@ -12742,7 +12867,7 @@ fn ctor__CSSStyleSheet(scope: &mut v8::PinScope, args: v8::FunctionCallbackArgum
         if args.new_target().is_undefined() { return Err(cv::Error::Type("Failed to construct 'CSSStyleSheet': Please use the 'new' operator.".into())); }
         let a0: CSSStyleSheetInit = { let v = args.get(0); if v.is_undefined() { CSSStyleSheetInit::default() } else { dict_css_style_sheet_init(cx, v)? } };
         let r: Obj = crate::dom::css_style_sheet::constructor(cx, a0)?;
-        cx.ret(r)
+        cx.constructed(args, r)
     });
 }
 
@@ -12937,7 +13062,7 @@ fn ctor__ClipboardEvent(scope: &mut v8::PinScope, args: v8::FunctionCallbackArgu
         let a0: String = { let v = args.get(0); cv::string(cx, v)? };
         let a1: ClipboardEventInit = { let v = args.get(1); if v.is_undefined() { ClipboardEventInit::default() } else { dict_clipboard_event_init(cx, v)? } };
         let r: Obj = crate::dom::clipboard_event::constructor(cx, a0, a1)?;
-        cx.ret(r)
+        cx.constructed(args, r)
     });
 }
 
@@ -12976,7 +13101,7 @@ fn ctor__CloseEvent(scope: &mut v8::PinScope, args: v8::FunctionCallbackArgument
         let a0: String = { let v = args.get(0); cv::string(cx, v)? };
         let a1: CloseEventInit = { let v = args.get(1); if v.is_undefined() { CloseEventInit::default() } else { dict_close_event_init(cx, v)? } };
         let r: Obj = crate::dom::close_event::constructor(cx, a0, a1)?;
-        cx.ret(r)
+        cx.constructed(args, r)
     });
 }
 
@@ -12986,7 +13111,7 @@ fn ctor__Comment(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, 
         if args.new_target().is_undefined() { return Err(cv::Error::Type("Failed to construct 'Comment': Please use the 'new' operator.".into())); }
         let a0: String = { let v = args.get(0); if v.is_undefined() { "".to_string() } else { cv::string(cx, v)? } };
         let r: Obj = crate::dom::comment::constructor(cx, a0)?;
-        cx.ret(r)
+        cx.constructed(args, r)
     });
 }
 
@@ -13021,7 +13146,100 @@ fn ctor__CustomEvent(scope: &mut v8::PinScope, args: v8::FunctionCallbackArgumen
         let a0: String = { let v = args.get(0); cv::string(cx, v)? };
         let a1: CustomEventInit = { let v = args.get(1); if v.is_undefined() { CustomEventInit::default() } else { dict_custom_event_init(cx, v)? } };
         let r: Obj = crate::dom::custom_event::constructor(cx, a0, a1)?;
+        cx.constructed(args, r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__DOMRect__x(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::DOMRect)?;
+        let r: f64 = crate::dom::dom_rect::get_x(cx, this)?;
         cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__DOMRect__x(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::DOMRect)?;
+        let v = args.get(0);
+        let a0: f64 = cv::float(cx, v, false)?;
+        crate::dom::dom_rect::set_x(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__DOMRect__y(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::DOMRect)?;
+        let r: f64 = crate::dom::dom_rect::get_y(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__DOMRect__y(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::DOMRect)?;
+        let v = args.get(0);
+        let a0: f64 = cv::float(cx, v, false)?;
+        crate::dom::dom_rect::set_y(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__DOMRect__width(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::DOMRect)?;
+        let r: f64 = crate::dom::dom_rect::get_width(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__DOMRect__width(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::DOMRect)?;
+        let v = args.get(0);
+        let a0: f64 = cv::float(cx, v, false)?;
+        crate::dom::dom_rect::set_width(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__DOMRect__height(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::DOMRect)?;
+        let r: f64 = crate::dom::dom_rect::get_height(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__DOMRect__height(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::DOMRect)?;
+        let v = args.get(0);
+        let a0: f64 = cv::float(cx, v, false)?;
+        crate::dom::dom_rect::set_height(cx, this, a0)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn ctor__DOMRect(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        if args.new_target().is_undefined() { return Err(cv::Error::Type("Failed to construct 'DOMRect': Please use the 'new' operator.".into())); }
+        let a0: f64 = { let v = args.get(0); if v.is_undefined() { 0.0 } else { cv::float(cx, v, false)? } };
+        let a1: f64 = { let v = args.get(1); if v.is_undefined() { 0.0 } else { cv::float(cx, v, false)? } };
+        let a2: f64 = { let v = args.get(2); if v.is_undefined() { 0.0 } else { cv::float(cx, v, false)? } };
+        let a3: f64 = { let v = args.get(3); if v.is_undefined() { 0.0 } else { cv::float(cx, v, false)? } };
+        let r: Obj = crate::dom::dom_rect::constructor(cx, a0, a1, a2, a3)?;
+        cx.constructed(args, r)
     });
 }
 
@@ -13768,6 +13986,15 @@ fn get__Document__modelContext(scope: &mut v8::PinScope, args: v8::FunctionCallb
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::Document)?;
         let r: Obj = crate::dom::document::get_model_context(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Document__fonts(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Document)?;
+        let r: Obj = crate::dom::font_face_source::get_fonts(cx, this)?;
         cx.ret(r)
     });
 }
@@ -15701,7 +15928,7 @@ fn ctor__DocumentFragment(scope: &mut v8::PinScope, args: v8::FunctionCallbackAr
     cv::call(scope, &args, &mut rv, |cx, args| {
         if args.new_target().is_undefined() { return Err(cv::Error::Type("Failed to construct 'DocumentFragment': Please use the 'new' operator.".into())); }
         let r: Obj = crate::dom::document_fragment::constructor(cx, )?;
-        cx.ret(r)
+        cx.constructed(args, r)
     });
 }
 
@@ -17406,7 +17633,7 @@ fn ctor__ErrorEvent(scope: &mut v8::PinScope, args: v8::FunctionCallbackArgument
         let a0: String = { let v = args.get(0); cv::string(cx, v)? };
         let a1: ErrorEventInit = { let v = args.get(1); if v.is_undefined() { ErrorEventInit::default() } else { dict_error_event_init(cx, v)? } };
         let r: Obj = crate::dom::error_event::constructor(cx, a0, a1)?;
-        cx.ret(r)
+        cx.constructed(args, r)
     });
 }
 
@@ -17511,7 +17738,7 @@ fn ctor__EventSource(scope: &mut v8::PinScope, args: v8::FunctionCallbackArgumen
         let a0: String = { let v = args.get(0); cv::string(cx, v)? };
         let a1: EventSourceInit = { let v = args.get(1); if v.is_undefined() { EventSourceInit::default() } else { dict_event_source_init(cx, v)? } };
         let r: Obj = crate::dom::event_source::constructor(cx, a0, a1)?;
-        cx.ret(r)
+        cx.constructed(args, r)
     });
 }
 
@@ -17532,7 +17759,7 @@ fn ctor__FocusEvent(scope: &mut v8::PinScope, args: v8::FunctionCallbackArgument
         let a0: String = { let v = args.get(0); cv::string(cx, v)? };
         let a1: FocusEventInit = { let v = args.get(1); if v.is_undefined() { FocusEventInit::default() } else { dict_focus_event_init(cx, v)? } };
         let r: Obj = crate::dom::focus_event::constructor(cx, a0, a1)?;
-        cx.ret(r)
+        cx.constructed(args, r)
     });
 }
 
@@ -25729,7 +25956,7 @@ fn ctor__InputEvent(scope: &mut v8::PinScope, args: v8::FunctionCallbackArgument
         let a0: String = { let v = args.get(0); cv::string(cx, v)? };
         let a1: InputEventInit = { let v = args.get(1); if v.is_undefined() { InputEventInit::default() } else { dict_input_event_init(cx, v)? } };
         let r: Obj = crate::dom::input_event::constructor(cx, a0, a1)?;
-        cx.ret(r)
+        cx.constructed(args, r)
     });
 }
 
@@ -25851,7 +26078,7 @@ fn ctor__KeyboardEvent(scope: &mut v8::PinScope, args: v8::FunctionCallbackArgum
         let a0: String = { let v = args.get(0); cv::string(cx, v)? };
         let a1: KeyboardEventInit = { let v = args.get(1); if v.is_undefined() { KeyboardEventInit::default() } else { dict_keyboard_event_init(cx, v)? } };
         let r: Obj = crate::dom::keyboard_event::constructor(cx, a0, a1)?;
-        cx.ret(r)
+        cx.constructed(args, r)
     });
 }
 
@@ -26016,7 +26243,7 @@ fn ctor__MouseEvent(scope: &mut v8::PinScope, args: v8::FunctionCallbackArgument
         let a0: String = { let v = args.get(0); cv::string(cx, v)? };
         let a1: MouseEventInit = { let v = args.get(1); if v.is_undefined() { MouseEventInit::default() } else { dict_mouse_event_init(cx, v)? } };
         let r: Obj = crate::dom::mouse_event::constructor(cx, a0, a1)?;
-        cx.ret(r)
+        cx.constructed(args, r)
     });
 }
 
@@ -26055,7 +26282,7 @@ fn ctor__PointerEvent(scope: &mut v8::PinScope, args: v8::FunctionCallbackArgume
         let a0: String = { let v = args.get(0); cv::string(cx, v)? };
         let a1: PointerEventInit = { let v = args.get(1); if v.is_undefined() { PointerEventInit::default() } else { dict_pointer_event_init(cx, v)? } };
         let r: Obj = crate::dom::pointer_event::constructor(cx, a0, a1)?;
-        cx.ret(r)
+        cx.constructed(args, r)
     });
 }
 
@@ -28000,7 +28227,7 @@ fn ctor__Text(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut
         if args.new_target().is_undefined() { return Err(cv::Error::Type("Failed to construct 'Text': Please use the 'new' operator.".into())); }
         let a0: String = { let v = args.get(0); if v.is_undefined() { "".to_string() } else { cv::string(cx, v)? } };
         let r: Obj = crate::dom::text::constructor(cx, a0)?;
-        cx.ret(r)
+        cx.constructed(args, r)
     });
 }
 
@@ -28048,7 +28275,7 @@ fn ctor__WheelEvent(scope: &mut v8::PinScope, args: v8::FunctionCallbackArgument
         let a0: String = { let v = args.get(0); cv::string(cx, v)? };
         let a1: WheelEventInit = { let v = args.get(1); if v.is_undefined() { WheelEventInit::default() } else { dict_wheel_event_init(cx, v)? } };
         let r: Obj = crate::dom::wheel_event::constructor(cx, a0, a1)?;
-        cx.ret(r)
+        cx.constructed(args, r)
     });
 }
 
@@ -28269,7 +28496,7 @@ fn ctor__XMLHttpRequest(scope: &mut v8::PinScope, args: v8::FunctionCallbackArgu
     cv::call(scope, &args, &mut rv, |cx, args| {
         if args.new_target().is_undefined() { return Err(cv::Error::Type("Failed to construct 'XMLHttpRequest': Please use the 'new' operator.".into())); }
         let r: Obj = crate::dom::xml_http_request::constructor(cx, )?;
-        cx.ret(r)
+        cx.constructed(args, r)
     });
 }
 
@@ -28290,7 +28517,7 @@ fn ctor__DragEvent(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments
         let a0: String = { let v = args.get(0); cv::string(cx, v)? };
         let a1: DragEventInit = { let v = args.get(1); if v.is_undefined() { DragEventInit::default() } else { dict_drag_event_init(cx, v)? } };
         let r: Obj = crate::dom::drag_event::constructor(cx, a0, a1)?;
-        cx.ret(r)
+        cx.constructed(args, r)
     });
 }
 
@@ -32851,7 +33078,7 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         out.push(v8::Global::new(scope, f));
     }
     { // DOMRectReadOnly
-        let f = cv::interface(scope, "DOMRectReadOnly", cv::illegal_constructor);
+        let f = cv::interface(scope, "DOMRectReadOnly", ctor__DOMRectReadOnly);
         let inst = f.instance_template(scope);
         inst.set_internal_field_count(cv::FIELDS);
         let proto = f.prototype_template(scope);
@@ -33025,7 +33252,7 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         out.push(v8::Global::new(scope, f));
     }
     { // EventTarget
-        let f = cv::interface(scope, "EventTarget", cv::illegal_constructor);
+        let f = cv::interface(scope, "EventTarget", ctor__EventTarget);
         let inst = f.instance_template(scope);
         inst.set_internal_field_count(cv::FIELDS);
         let proto = f.prototype_template(scope);
@@ -33079,6 +33306,22 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::accessor(scope, proto, "onerror", get__FileReader__onerror, Some(set__FileReader__onerror.map_fn_to()));
         cv::accessor(scope, proto, "onloadend", get__FileReader__onloadend, Some(set__FileReader__onloadend.map_fn_to()));
         crate::dom::hooks::template(scope, Iface::FileReader, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // FontFaceSet
+        let f = cv::interface(scope, "FontFaceSet", cv::illegal_constructor);
+        f.inherit(v8::Local::new(scope, &out[Iface::EventTarget as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "onloading", get__FontFaceSet__onloading, Some(set__FontFaceSet__onloading.map_fn_to()));
+        cv::accessor(scope, proto, "onloadingdone", get__FontFaceSet__onloadingdone, Some(set__FontFaceSet__onloadingdone.map_fn_to()));
+        cv::accessor(scope, proto, "onloadingerror", get__FontFaceSet__onloadingerror, Some(set__FontFaceSet__onloadingerror.map_fn_to()));
+        cv::method(scope, proto.into(), "load", op__FontFaceSet__load, 1);
+        cv::method(scope, proto.into(), "check", op__FontFaceSet__check, 1);
+        cv::accessor(scope, proto, "ready", get__FontFaceSet__ready, None);
+        cv::accessor(scope, proto, "status", get__FontFaceSet__status, None);
+        crate::dom::hooks::template(scope, Iface::FontFaceSet, f);
         out.push(v8::Global::new(scope, f));
     }
     { // FormData
@@ -34597,11 +34840,15 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         out.push(v8::Global::new(scope, f));
     }
     { // DOMRect
-        let f = cv::interface(scope, "DOMRect", cv::illegal_constructor);
+        let f = cv::interface(scope, "DOMRect", ctor__DOMRect);
         f.inherit(v8::Local::new(scope, &out[Iface::DOMRectReadOnly as usize]));
         let inst = f.instance_template(scope);
         inst.set_internal_field_count(cv::FIELDS);
         let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "x", get__DOMRect__x, Some(set__DOMRect__x.map_fn_to()));
+        cv::accessor(scope, proto, "y", get__DOMRect__y, Some(set__DOMRect__y.map_fn_to()));
+        cv::accessor(scope, proto, "width", get__DOMRect__width, Some(set__DOMRect__width.map_fn_to()));
+        cv::accessor(scope, proto, "height", get__DOMRect__height, Some(set__DOMRect__height.map_fn_to()));
         crate::dom::hooks::template(scope, Iface::DOMRect, f);
         out.push(v8::Global::new(scope, f));
     }
@@ -34684,6 +34931,7 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::accessor(scope, proto, "onvisibilitychange", get__Document__onvisibilitychange, Some(set__Document__onvisibilitychange.map_fn_to()));
         cv::method(scope, proto.into(), "getSelection", op__Document__getSelection, 0);
         cv::accessor(scope, proto, "modelContext", get__Document__modelContext, None);
+        cv::accessor(scope, proto, "fonts", get__Document__fonts, None);
         cv::method(scope, proto.into(), "getElementById", op__Document__getElementById, 1);
         cv::accessor(scope, proto, "adoptedStyleSheets", get__Document__adoptedStyleSheets, Some(set__Document__adoptedStyleSheets.map_fn_to()));
         cv::accessor(scope, proto, "activeElement", get__Document__activeElement, None);
@@ -36532,6 +36780,7 @@ pub fn expose(scope: &mut v8::PinScope<'_, '_>, global: v8::Local<'_, v8::Object
     cv::expose(scope, global, &t[Iface::File as usize], "File");
     cv::expose(scope, global, &t[Iface::FileList as usize], "FileList");
     cv::expose(scope, global, &t[Iface::FileReader as usize], "FileReader");
+    cv::expose(scope, global, &t[Iface::FontFaceSet as usize], "FontFaceSet");
     cv::expose(scope, global, &t[Iface::FormData as usize], "FormData");
     cv::expose(scope, global, &t[Iface::HTMLCollection as usize], "HTMLCollection");
     cv::expose(scope, global, &t[Iface::HTMLFormControlsCollection as usize], "HTMLFormControlsCollection");
@@ -36725,6 +36974,7 @@ pub fn expose_worker(scope: &mut v8::PinScope<'_, '_>, global: v8::Local<'_, v8:
     cv::expose(scope, global, &t[Iface::File as usize], "File");
     cv::expose(scope, global, &t[Iface::FileList as usize], "FileList");
     cv::expose(scope, global, &t[Iface::FileReader as usize], "FileReader");
+    cv::expose(scope, global, &t[Iface::FontFaceSet as usize], "FontFaceSet");
     cv::expose(scope, global, &t[Iface::FormData as usize], "FormData");
     cv::expose(scope, global, &t[Iface::Headers as usize], "Headers");
     cv::expose(scope, global, &t[Iface::MessageChannel as usize], "MessageChannel");

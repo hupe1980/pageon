@@ -907,7 +907,7 @@ impl Gen<'_> {
                         let ctx = format!("{i} constructor");
                         let (code, names) = self.args_code(args, &ctx);
                         let body = format!(
-                            "        if args.new_target().is_undefined() {{ return Err(cv::Error::Type(\"Failed to construct '{i}': Please use the 'new' operator.\".into())); }}\n{code}        let r: Obj = crate::dom::{}::constructor(cx, {})?;\n        cx.ret(r)\n",
+                            "        if args.new_target().is_undefined() {{ return Err(cv::Error::Type(\"Failed to construct '{i}': Please use the 'new' operator.\".into())); }}\n{code}        let r: Obj = crate::dom::{}::constructor(cx, {})?;\n        cx.constructed(args, r)\n",
                             snake(&c.owner),
                             names.join(", ")
                         );

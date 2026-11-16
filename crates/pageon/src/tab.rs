@@ -1566,6 +1566,12 @@ impl<'s, E: Env> Tab<'s, E> {
         self.redact(self.doc.view(kind, viewport, budget))
     }
 
+    /// What the page shows an agent, for the agent-readiness audit
+    /// ([`crate::audit::Report`]), with secrets redacted.
+    pub fn audit(&mut self) -> crate::audit::PageFacts {
+        crate::audit::facts(self)
+    }
+
     /// The HTTP status of the page.
     pub fn status(&self) -> u16 {
         self.doc.status()

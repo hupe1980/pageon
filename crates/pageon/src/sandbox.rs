@@ -623,6 +623,11 @@ impl<E: Env> Sandbox<E> {
         })
     }
 
+    /// The audit facts of tab `id` (see [`crate::Tab::audit`]).
+    pub fn audit_tab(&mut self, id: u32) -> Result<crate::audit::PageFacts, SandboxError> {
+        self.call(Op::Audit { tab: id })
+    }
+
     /// A read of tab `id` with the agent's refs (see [`crate::Tab::read`]).
     pub fn read_tab(&mut self, id: u32, read: crate::Read) -> Result<String, ActionError> {
         let r: Result<Result<String, ActionError>, SandboxError> =
@@ -766,6 +771,11 @@ impl<E: Env> RemoteTab<'_, E> {
     /// Performs an action (see [`crate::Tab::act`]).
     pub fn act(&mut self, action: Action) -> Result<Outcome, ActionError> {
         self.sandbox.act_tab(self.id, action)
+    }
+
+    /// What the page shows an agent, for the audit (see [`crate::Tab::audit`]).
+    pub fn audit(&mut self) -> Result<crate::audit::PageFacts, SandboxError> {
+        self.sandbox.audit_tab(self.id)
     }
 
     /// A read with the agent's refs (see [`crate::Tab::read`]).
@@ -953,6 +963,7 @@ impl Serving {
             Op::Observe { tab: t, .. }
             | Op::View { tab: t, .. }
             | Op::Read { tab: t, .. }
+            | Op::Audit { tab: t }
             | Op::Status { tab: t }
             | Op::Screenshot { tab: t, .. }
             | Op::Crop { tab: t, .. }

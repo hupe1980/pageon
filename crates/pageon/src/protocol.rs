@@ -56,6 +56,10 @@ pub(crate) enum Op {
     Status {
         tab: u32,
     },
+    /// The facts of the agent-readiness audit.
+    Audit {
+        tab: u32,
+    },
     /// Paint the tab.
     Screenshot {
         tab: u32,

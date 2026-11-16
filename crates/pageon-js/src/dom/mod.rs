@@ -14,6 +14,7 @@ mod documents;
 pub(crate) mod editing;
 mod elements;
 mod events;
+mod fonts;
 mod globals;
 mod html;
 pub(crate) mod input;
@@ -49,7 +50,7 @@ pub use canvas::{
     canvas_text, canvas_text_drawing_styles, canvas_transform, html_canvas_element, text_metrics,
 };
 pub use collections::{
-    attr, css_style_declaration, css_style_properties, dom_rect_list, dom_rect_read_only,
+    attr, css_style_declaration, css_style_properties, dom_rect, dom_rect_list, dom_rect_read_only,
     dom_token_list, html_collection, named_node_map, node_list, radio_node_list,
 };
 pub use custom_elements::custom_element_registry;
@@ -64,6 +65,7 @@ pub use events::{
     custom_event, drag_event, event, event_target, focus_event, keyboard_event, mouse_event,
     pointer_event, submit_event, toggle_event, ui_event, wheel_event,
 };
+pub use fonts::{font_face_set, font_face_source};
 pub use globals::{
     animation_frame_provider, console, dom_exception, location, navigator_automation_information,
     navigator_cookies, navigator_id, navigator_language, navigator_on_line, navigator_ua,

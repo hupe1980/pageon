@@ -249,6 +249,22 @@ impl<'s> Cx<'_, 's, '_> {
         Ok(v.into_out())
     }
 
+    /// Returns what a constructor made, with the prototype of `new.target` when a class
+    /// extends the interface (`class Bus extends EventTarget`).
+    pub fn constructed(&mut self, args: &v8::FunctionCallbackArguments, obj: Obj) -> R<Out> {
+        if let Ok(nt) = v8::Local::<v8::Object>::try_from(args.new_target()) {
+            let o = self.wrap(obj);
+            let key = self.str("prototype");
+            if let Some(proto) = nt.get(self.scope, key.into()).filter(|p| p.is_object())
+                && o.get_prototype(self.scope)
+                    .is_none_or(|current| !current.strict_equals(proto))
+            {
+                let _ = o.set_prototype(self.scope, proto);
+            }
+        }
+        self.ret(obj)
+    }
+
     /// Returns an already converted value.
     pub fn ret_value(&mut self, v: Out) -> R<Out> {
         Ok(v)
@@ -660,6 +676,13 @@ pub fn interface<'s>(
     let f = v8::FunctionTemplate::new(scope, ctor);
     let n = v8::String::new(scope, name).unwrap_or_else(|| v8::String::empty(scope));
     f.set_class_name(n);
+    // `Object.prototype.toString` names the interface (`[object Event]`), as WebIDL says.
+    let tag = v8::Symbol::get_to_string_tag(scope);
+    f.prototype_template(scope).set_with_attr(
+        tag.into(),
+        n.into(),
+        v8::PropertyAttribute::READ_ONLY | v8::PropertyAttribute::DONT_ENUM,
+    );
     f
 }
 

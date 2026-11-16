@@ -54,6 +54,9 @@ output is made for a model, and whose safety does not depend on the model behavi
   saved sign-in, without the model ever seeing the password.
 - ⏪ **Replay, rewind, look ahead.** Sessions replay byte for byte on a virtual clock; agents go
   back to any step without re-sending anything, and try actions on a fork first.
+- 🩺 **An audit for site owners.** `pageon audit URL` scores what agents meet on a page
+  (unnamed controls, covered clicks, page tools, the view's token cost, refusals) and lists the
+  fixes worth the most points; `--fail-under` keeps it in CI ([audit](https://hupe1980.github.io/pageon/docs/audit/)).
 - 🌐 **Real web apps.** Modules and bundlers, web components, forms, scrolling, several tabs,
   file uploads, drag and drop, WebSockets and server-sent events; PDFs, Markdown and plain text
   read as pages.
@@ -72,6 +75,7 @@ Then:
 pageon fetch https://example.com --dump ax                      # what an agent sees
 pageon fetch https://example.com --act "click e1" --dump ax     # act, then look again
 pageon fetch https://example.com --screenshot page.png --marks  # pixels, labelled with refs
+pageon audit https://example.com                                # how ready is it for agents?
 ```
 
 ## 🔌 Connect your agent

@@ -13,6 +13,7 @@ One binary does everything. `pageon <command> --help` prints every option with e
 | --- | --- |
 | `pageon open URL`, `click`, `type`, `view`, … | Browse in a named session that stays open between commands |
 | `pageon fetch URL` | Load a page, optionally act on it, and print a view or take a screenshot |
+| `pageon audit URL` | Score how ready a page is for agents, with what to fix first ([audit](@/docs/audit.md)) |
 | `pageon mcp` | Serve a browser to an agent over MCP (stdio; `--http` for Streamable HTTP) |
 | `pageon cdp` (alias `pageon bidi`) | Serve Puppeteer, Playwright and WebDriver BiDi clients on one port |
 | `pageon replay FILE` | Re-run a recorded session and check every step reaches the same page |
@@ -128,5 +129,6 @@ Screenshot options: `--screenshot FILE` (`.png`, `.jpg`), `--full-page`, `--mark
 | 6 | The site refused the agent (blocked, challenge, rate limited) |
 | 7 | `workflow run`: the site drifted from the workflow |
 | 8 | An [expectation](@/docs/actions.md#expectations) (`--expect`) did not hold |
+| 9 | `audit`: the score is under `--fail-under` |
 
 Logs and errors go to stderr; stdout carries only the view, the reply, the legend or the protocol.

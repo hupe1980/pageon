@@ -35,6 +35,7 @@
 //! assert_eq!(doc.dump(pageon::Dump::Text), "Hello world");
 //! ```
 
+pub mod audit;
 pub mod bidi;
 mod boxes;
 mod capture;
