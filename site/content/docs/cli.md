@@ -63,6 +63,7 @@ options and log. Secret values reach the session through its environment, never 
 pageon fetch https://example.com                         # readable text
 pageon fetch https://example.com --dump ax --budget 2000 # the agent view, 2,000 tokens
 pageon fetch https://example.com --act "click e3" --act "type e5 hello" --dump ax
+pageon fetch https://shop.example --act "click e9" --expect 'see "Thanks"'   # exit 8 if not
 pageon fetch https://example.com --screenshot page.png --full-page
 pageon fetch ./page.html                                 # local files work too
 pageon fetch https://example.com/paper.pdf --dump ax      # PDFs, Markdown and text read as pages
@@ -85,7 +86,7 @@ Screenshot options: `--screenshot FILE` (`.png`, `.jpg`), `--full-page`, `--mark
 
 | Command | Its own options |
 | --- | --- |
-| `fetch` | `--dump`, `--act`, `--viewport WxH`, `--prefer-markdown`, `--approve`, screenshot options |
+| `fetch` | `--dump`, `--act`, `--expect`, `--viewport WxH`, `--prefer-markdown`, `--approve`, screenshot options |
 | `replay` | `--to N`, `--live`, `--approve`, `--trace FILE` |
 | `mcp` | `--http [PORT]`, `--allow-origin`, `--otlp URL`, `--detail full\|compact`, `--allow-javascript-exec`, `--ui`, `--approve`, `--sign-in FILE` |
 | `cdp` | `--port`, `--allow-origin`, `--discovery` |
@@ -126,5 +127,6 @@ Screenshot options: `--screenshot FILE` (`.png`, `.jpg`), `--full-page`, `--mark
 | 5 | `replay`: a step diverged from the recording |
 | 6 | The site refused the agent (blocked, challenge, rate limited) |
 | 7 | `workflow run`: the site drifted from the workflow |
+| 8 | An [expectation](@/docs/actions.md#expectations) (`--expect`) did not hold |
 
 Logs and errors go to stderr; stdout carries only the view, the reply, the legend or the protocol.

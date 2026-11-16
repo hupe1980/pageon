@@ -186,6 +186,13 @@ function select(i, follow) {
   m.replaceChildren();
   if (!s.ok) m.append(el("span", "bad", "Failed"), " · ");
   m.append(detailLine({ ...s, ok: true }) + (s.url ? ` · ${hostPath(s.url)}` : ""));
+  const lines = (s.text || "").split("\n");
+  const passed = lines.filter((l) => l.startsWith("✓ ")).length;
+  const failed = lines.filter((l) => l.startsWith("✗ ")).length;
+  if (passed + failed) {
+    m.append(" · ");
+    m.append(el("span", failed ? "bad" : "good", failed ? `${failed} of ${passed + failed} checks failed` : `${passed} check${passed === 1 ? "" : "s"} passed`));
+  }
   paint();
 }
 

@@ -20,13 +20,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ._native import Capture, PageonError, __version__, _Episode, ax, count_tokens, cut_head_tail
-from .browser import ActionError, Browser, Lookahead, Outcome, Screenshot, Tab
+from .browser import ActionError, Browser, ExpectationError, Lookahead, Outcome, Screenshot, Tab
 
 __all__ = [
     "ActionError",
     "Browser",
     "Capture",
     "Episode",
+    "ExpectationError",
     "Lookahead",
     "Outcome",
     "PageonError",

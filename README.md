@@ -42,9 +42,10 @@ output is made for a model, and whose safety does not depend on the model behavi
   the page, and is relocated (and reported) when the page re-renders it.
 - 🧾 **Quoted, marked, budgeted.** Page text is quoted, so a page cannot forge a view line.
   Hidden text, input traps and third-party frames are marked; every view fits a token budget.
-- ⚡ **Actions that say what happened.** `click e12` checks the element against real layout,
-  lets the page settle, and returns navigations, dialogs, downloads, requests and errors, or
-  what to do instead.
+- ⚡ **Actions that say what happened, and check it.** `click e12` checks the element against
+  real layout, lets the page settle, and returns navigations, dialogs, downloads, requests and
+  errors, or what to do instead. Expectations (`request POST /orders 2xx`, `see "Thanks"`) are
+  answered with evidence, so a run proves what it did.
 - 🛡️ **Safe by construction.** Pages run in a sandboxed process with no files, network or
   programs. Origin sets, a secrets vault (`secret://shop` is typed, never shown) and an optional
   guard program decide what leaves.

@@ -69,10 +69,41 @@ pub enum Locator {
     },
 }
 
-/// One step: pageon's action, with a locator where the ref was.
+/// One step: what to do, and what to check after it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WStep {
+    /// The action.
+    #[serde(flatten)]
+    pub action: Do,
+    /// Expectations checked after the step on every run (`see "Thanks"`,
+    /// `request POST /orders 2xx`; see [`crate::verify`]).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub check: Vec<String>,
+}
+
+impl std::ops::Deref for WStep {
+    type Target = Do;
+    fn deref(&self) -> &Do {
+        &self.action
+    }
+}
+
+impl std::ops::DerefMut for WStep {
+    fn deref_mut(&mut self) -> &mut Do {
+        &mut self.action
+    }
+}
+
+impl fmt::Display for WStep {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.action.fmt(f)
+    }
+}
+
+/// A step's action: pageon's action, with a locator where the ref was.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "do", rename_all = "lowercase")]
-pub enum WStep {
+pub enum Do {
     /// Click.
     Click {
         /// The element.
@@ -155,7 +186,7 @@ pub enum WStep {
     },
 }
 
-impl WStep {
+impl Do {
     fn target(&self) -> Option<&Locator> {
         match self {
             Self::Click { target, .. }
@@ -204,7 +235,7 @@ impl fmt::Display for Locator {
     }
 }
 
-impl fmt::Display for WStep {
+impl fmt::Display for Do {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let q = pageon_agent::quote::quote;
         match self {
@@ -294,7 +325,8 @@ pub(crate) fn target_in<'a>(
 }
 
 /// The URL of a view's header (`@page v2 "Title" https://… …`).
-fn view_url(view: &str) -> Option<String> {
+/// The URL in an agent view's header line.
+pub fn view_url(view: &str) -> Option<String> {
     let header = view.lines().find(|l| l.starts_with("@page"))?;
     let rest = header.splitn(3, ' ').nth(2)?;
     let after_title = match rest.strip_prefix('"') {
@@ -311,12 +343,8 @@ fn view_url(view: &str) -> Option<String> {
 /// A URL as an expectation compares it: scheme, host and path.
 fn place(url: &str) -> String {
     match url::Url::parse(url) {
-        Ok(u) => format!(
-            "{}://{}{}",
-            u.scheme(),
-            u.host_str().unwrap_or_default(),
-            u.path()
-        ),
+        // Scheme, host, port (when not the default) and path.
+        Ok(u) => u[..url::Position::AfterPath].to_string(),
         Err(_) => url.to_string(),
     }
 }
@@ -368,11 +396,11 @@ pub fn compile(steps: &[Step]) -> Result<Workflow, String> {
             },
         };
         let mut w = match action {
-            Action::Click(r) => WStep::Click {
+            Action::Click(r) => Do::Click {
                 target: locator(&r),
                 expect: None,
             },
-            Action::Hover(r) => WStep::Hover {
+            Action::Hover(r) => Do::Hover {
                 target: locator(&r),
             },
             Action::Type(r, text) => {
@@ -392,26 +420,26 @@ pub fn compile(steps: &[Step]) -> Result<Workflow, String> {
                     });
                     format!("{{{{{name}}}}}")
                 };
-                WStep::Type {
+                Do::Type {
                     target: locator(&r),
                     text,
                     expect: None,
                 }
             }
-            Action::Select(r, options) => WStep::Select {
+            Action::Select(r, options) => Do::Select {
                 target: locator(&r),
                 options,
             },
-            Action::Press(key) => WStep::Press { key, expect: None },
-            Action::Wait(ms) => WStep::Wait { ms },
-            Action::Goto(url) => WStep::Goto { url },
-            Action::Back => WStep::Back,
-            Action::Forward => WStep::Forward,
+            Action::Press(key) => Do::Press { key, expect: None },
+            Action::Wait(ms) => Do::Wait { ms },
+            Action::Goto(url) => Do::Goto { url },
+            Action::Back => Do::Back,
+            Action::Forward => Do::Forward,
             Action::Scroll {
                 target,
                 by,
                 point: None,
-            } => WStep::Scroll {
+            } => Do::Scroll {
                 target: target.as_deref().map(locator),
                 by,
             },
@@ -419,7 +447,7 @@ pub fn compile(steps: &[Step]) -> Result<Workflow, String> {
                 name,
                 origin,
                 input,
-            } => WStep::Tool {
+            } => Do::Tool {
                 name,
                 origin,
                 input,
@@ -432,7 +460,7 @@ pub fn compile(steps: &[Step]) -> Result<Workflow, String> {
                         step.action
                     ));
                 }
-                WStep::Upload {
+                Do::Upload {
                     target: locator(&r),
                     files,
                 }
@@ -470,7 +498,10 @@ pub fn compile(steps: &[Step]) -> Result<Workflow, String> {
             w.set_expect(now.clone().unwrap_or_default());
         }
         at = now;
-        wf.steps.push(w);
+        wf.steps.push(WStep {
+            action: w,
+            check: step.checks.clone(),
+        });
     }
     Ok(wf)
 }
@@ -656,6 +687,31 @@ fn substitute(text: &str, params: &HashMap<String, String>) -> String {
     out
 }
 
+/// The facts a workflow step's checks read: the agent view after the step.
+struct ViewFacts<'a> {
+    view: &'a str,
+}
+
+impl crate::verify::Facts for ViewFacts<'_> {
+    fn url(&mut self) -> Option<String> {
+        view_url(self.view)
+    }
+
+    fn text(&mut self) -> Result<String, String> {
+        Ok(self.view.to_string())
+    }
+
+    fn elements(&mut self, name: &str) -> Result<Vec<String>, String> {
+        let want = name.to_lowercase();
+        Ok(self
+            .view
+            .lines()
+            .filter(|l| element(l).is_some_and(|(_, _, n)| n.to_lowercase().contains(&want)))
+            .map(str::to_string)
+            .collect())
+    }
+}
+
 /// Runs a workflow through `driver` (in-process, caged or MCP): opens `start`, then each step
 /// on the element its locator finds, loading with `options`. `progress` hears one line per
 /// step (`✓ 2 type …`).
@@ -748,23 +804,23 @@ pub fn run(
             },
         };
         let r = reference.clone().unwrap_or_default();
-        let action = match step {
-            WStep::Click { .. } => Action::Click(r),
-            WStep::Hover { .. } => Action::Hover(r),
-            WStep::Type { text, .. } => Action::Type(r, substitute(text, &values)),
-            WStep::Upload { files, .. } => Action::Upload(r, files.clone()),
-            WStep::Select { options, .. } => Action::Select(r, options.clone()),
-            WStep::Press { key, .. } => Action::Press(key.clone()),
-            WStep::Wait { ms } => Action::Wait(*ms),
-            WStep::Goto { url } => Action::Goto(substitute(url, &values)),
-            WStep::Back => Action::Back,
-            WStep::Forward => Action::Forward,
-            WStep::Scroll { by, .. } => Action::Scroll {
+        let action = match &step.action {
+            Do::Click { .. } => Action::Click(r),
+            Do::Hover { .. } => Action::Hover(r),
+            Do::Type { text, .. } => Action::Type(r, substitute(text, &values)),
+            Do::Upload { files, .. } => Action::Upload(r, files.clone()),
+            Do::Select { options, .. } => Action::Select(r, options.clone()),
+            Do::Press { key, .. } => Action::Press(key.clone()),
+            Do::Wait { ms } => Action::Wait(*ms),
+            Do::Goto { url } => Action::Goto(substitute(url, &values)),
+            Do::Back => Action::Back,
+            Do::Forward => Action::Forward,
+            Do::Scroll { by, .. } => Action::Scroll {
                 point: None,
                 target: reference.clone(),
                 by: *by,
             },
-            WStep::Tool {
+            Do::Tool {
                 name,
                 origin,
                 input,
@@ -775,16 +831,31 @@ pub fn run(
                 input: input.clone(),
             },
         };
-        if let Err(e) = driver.act(action) {
-            let reason = match &e {
-                ActionError::Navigation(_) => e.to_string(),
-                _ => format!("{e} ({})", e.guidance()),
-            };
-            progress(&format!("✗ {n} {step}: {reason}"));
-            let view = driver.view(Dump::Ax).unwrap_or_default();
-            return Ok(stop(&report.drifts, reason, Vec::new(), &view));
-        }
+        let outcome = match driver.act(action) {
+            Ok(o) => o,
+            Err(e) => {
+                let reason = match &e {
+                    ActionError::Navigation(_) => e.to_string(),
+                    _ => format!("{e} ({})", e.guidance()),
+                };
+                progress(&format!("✗ {n} {step}: {reason}"));
+                let view = driver.view(Dump::Ax).unwrap_or_default();
+                return Ok(stop(&report.drifts, reason, Vec::new(), &view));
+            }
+        };
         view = driver.view(Dump::Ax)?;
+        let expects = match crate::verify::parse_all(&step.check) {
+            Ok(e) => e,
+            Err(e) => return Err(format!("step {n}: {e}")),
+        };
+        for (e, w) in expects.iter().zip(&step.check) {
+            let c = crate::verify::check(e, w, Some(&outcome), &mut ViewFacts { view: &view });
+            if !c.ok {
+                let reason = format!("check failed: {c}");
+                progress(&format!("✗ {n} {step}: {reason}"));
+                return Ok(stop(&report.drifts, reason, Vec::new(), &view));
+            }
+        }
         if let Some(want) = step.expect() {
             let now = view_url(&view).map(|u| place(&u)).unwrap_or_default();
             if now != want {

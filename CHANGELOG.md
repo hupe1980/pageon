@@ -27,9 +27,14 @@ All notable changes to this project are documented here. The format follows
   sign-in workflow and opens the page again; writes are never resent, and three renewals in a
   row that do not hold stop it.
 - Python: `Browser(ui=True, approve=True)` and `browser.viewer_url`.
+- Expectations: `url`, `see`, `no`, `request`, `download`, checked after an action with
+  evidence: `expect` on MCP's acting tools, `--expect` on CLI actions and `pageon fetch` (exit
+  8), `expect=` in Python (`ExpectationError`); saved into workflows as `check` and verified on
+  every run.
 
 ### Fixed
 
+- Workflow URL checks keep the port, so two local apps on different ports are told apart.
 - Buttons size to their content, so a page's padding and font apply (they were 21 px tall).
 
 ## [0.3.0] - 2026-11-16

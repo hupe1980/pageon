@@ -7,7 +7,7 @@ use std::collections::HashMap;
 
 use common::*;
 use pageon::replay::{Caged, InProcess};
-use pageon::workflow::{self, Locator, Status, WStep, Workflow};
+use pageon::workflow::{self, Do, Locator, Status, Workflow};
 use pageon::{LoadOptions, Recording, Replay, Sandbox, SandboxOptions, Secret, Secrets, Session};
 
 const LOGIN: &str = r#"<title>Log in</title><form method=post action=/session>
@@ -151,8 +151,8 @@ fn a_session_compiles_to_named_steps_with_parameters() {
     let expects: Vec<Option<String>> = wf
         .steps
         .iter()
-        .map(|s| match s {
-            WStep::Click { expect, .. } | WStep::Type { expect, .. } => expect.clone(),
+        .map(|s| match &s.action {
+            Do::Click { expect, .. } | Do::Type { expect, .. } => expect.clone(),
             _ => None,
         })
         .collect();
@@ -172,8 +172,8 @@ fn a_session_compiles_to_named_steps_with_parameters() {
         "{json}"
     );
     assert!(matches!(
-        &wf.steps[0],
-        WStep::Type {
+        &wf.steps[0].action,
+        Do::Type {
             target: Locator::Element(_),
             ..
         }

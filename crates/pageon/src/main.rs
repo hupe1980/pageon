@@ -77,6 +77,11 @@ enum Command {
         /// Ask on the terminal before every write (POST, PUT, …) to an --origin.
         #[arg(long)]
         approve: bool,
+        /// After the last --act: an expectation to check (repeatable; exit 8 when one
+        /// fails): `url /done`, `see "Thanks"`, `see button "Pay"`, `no "Error"`,
+        /// `request POST /orders 2xx`, `download *.pdf`.
+        #[arg(long = "expect", value_name = "CHECK")]
+        expect: Vec<String>,
         /// Ask for the site's Markdown rendition first (`Accept: text/markdown`), for crawls;
         /// a Markdown answer is labelled `source:server-markdown`.
         #[arg(long)]
@@ -783,16 +788,102 @@ fn terminal_safe(s: &str) -> std::borrow::Cow<'_, str> {
         .into()
 }
 
-fn acted(r: Result<pageon::Outcome, pageon::ActionError>) -> Result<(), ExitCode> {
+fn acted(r: Result<pageon::Outcome, pageon::ActionError>) -> Result<pageon::Outcome, ExitCode> {
     match r {
         Ok(o) => {
             eprintln!("{o}");
-            Ok(())
+            Ok(o)
         }
         Err(e) => {
             eprintln!("error: {e}\n  {}", e.guidance());
             Err(ExitCode::from(3))
         }
+    }
+}
+
+/// Checks `fetch`'s expectations, one line each on stderr; exit 8 when one fails.
+fn expected(
+    written: &[String],
+    outcome: Option<&pageon::Outcome>,
+    facts: &mut dyn pageon::verify::Facts,
+) -> Result<(), ExitCode> {
+    let expects = pageon::verify::parse_all(written).map_err(|e| {
+        eprintln!("error: {e}");
+        ExitCode::from(2)
+    })?;
+    let mut failed = false;
+    for (e, w) in expects.iter().zip(written) {
+        let c = pageon::verify::check(e, w, outcome, facts);
+        failed |= !c.ok;
+        eprintln!("{}", terminal_safe(&c.to_string()));
+    }
+    if failed {
+        Err(ExitCode::from(8))
+    } else {
+        Ok(())
+    }
+}
+
+/// Page facts of a caged tab.
+struct RemoteFacts<'a, 's, E: Env>(&'a mut pageon::RemoteTab<'s, E>);
+
+impl<E: Env> pageon::verify::Facts for RemoteFacts<'_, '_, E> {
+    fn url(&mut self) -> Option<String> {
+        self.0
+            .observe_full()
+            .ok()
+            .and_then(|v| pageon::workflow::view_url(&v))
+    }
+
+    fn text(&mut self) -> Result<String, String> {
+        self.0
+            .read(pageon::Read::Page {
+                filter: pageon_agent::Filter::All,
+                depth: u32::MAX,
+                root: None,
+                budget: Budget::o200k(200_000),
+            })
+            .map_err(|e| e.to_string())
+    }
+
+    fn elements(&mut self, name: &str) -> Result<Vec<String>, String> {
+        self.0
+            .read(pageon::Read::Find {
+                query: name.to_string(),
+                limit: 50,
+            })
+            .map(|t| t.lines().map(str::to_string).collect())
+            .map_err(|e| e.to_string())
+    }
+}
+
+/// Page facts of an in-process tab.
+struct LocalFacts<'a, 'b, E: Env>(&'a mut pageon::Tab<'b, E>);
+
+impl<E: Env> pageon::verify::Facts for LocalFacts<'_, '_, E> {
+    fn url(&mut self) -> Option<String> {
+        Some(self.0.url().to_string())
+    }
+
+    fn text(&mut self) -> Result<String, String> {
+        self.0
+            .read(&pageon::Read::Page {
+                filter: pageon_agent::Filter::All,
+                depth: u32::MAX,
+                root: None,
+                budget: Budget::o200k(200_000),
+            })
+            .map_err(|e| e.to_string())
+    }
+
+    fn elements(&mut self, name: &str) -> Result<Vec<String>, String> {
+        self.0
+            .read(&pageon::Read::Find {
+                query: name.to_string(),
+                limit: 50,
+            })
+            .map(|t| t.lines().map(str::to_string).collect())
+            .map_err(|e| e.to_string())
     }
 }
 
@@ -810,6 +901,7 @@ struct Fetch<'a> {
     paint: &'a PaintArgs,
     viewport: pageon::Viewport,
     actions: Vec<Action>,
+    expect: Vec<String>,
     budget: Budget,
     session: &'a SessionArgs,
     prepared: &'a Prepared,
@@ -851,9 +943,11 @@ fn fetch(env: &dyn Env, f: Fetch<'_>) -> Result<Printed, ExitCode> {
             if !f.actions.is_empty() {
                 tab.observe().map_err(broken)?;
             }
+            let mut last = None;
             for a in f.actions {
-                acted(tab.act(a))?;
+                last = Some(acted(tab.act(a))?);
             }
+            expected(&f.expect, last.as_ref(), &mut RemoteFacts(&mut tab))?;
             let (line, code, refusal) = tab.status().map_err(broken)?;
             eprintln!("{}", terminal_safe(&line));
             let mut text = match dump {
@@ -887,9 +981,11 @@ fn fetch(env: &dyn Env, f: Fetch<'_>) -> Result<Printed, ExitCode> {
     if !f.actions.is_empty() {
         tab.observe();
     }
+    let mut last = None;
     for a in f.actions {
-        acted(tab.act(a))?;
+        last = Some(acted(tab.act(a))?);
     }
+    expected(&f.expect, last.as_ref(), &mut LocalFacts(&mut tab))?;
     eprintln!("{}", terminal_safe(&tab.status_line()));
     let mut text = match dump {
         None => String::new(),
@@ -1413,68 +1509,70 @@ fn pages_in_utc() {
 fn main() -> ExitCode {
     pages_in_utc();
     let cli = Cli::parse();
-    let (target, dump, viewport, acts, approve, prefer_markdown, paint, session) = match cli.command
-    {
-        #[cfg(unix)]
-        Command::Session(c) => return cli::run(&cli.session_name, c),
-        Command::Content { probe } => return content(probe),
-        Command::Identity { command } => return identity(command),
-        Command::Workflow { command } => return workflow(command),
-        Command::Mcp {
-            http,
-            allow_origin,
-            allow_javascript_exec,
-            otlp,
-            detail,
-            watch,
-            session,
-        } => {
-            let detail = pageon_agent::Detail::parse(&detail).unwrap_or_default();
-            return mcp(
+    let (target, dump, viewport, acts, approve, expect, prefer_markdown, paint, session) =
+        match cli.command {
+            #[cfg(unix)]
+            Command::Session(c) => return cli::run(&cli.session_name, c),
+            Command::Content { probe } => return content(probe),
+            Command::Identity { command } => return identity(command),
+            Command::Workflow { command } => return workflow(command),
+            Command::Mcp {
                 http,
                 allow_origin,
                 allow_javascript_exec,
                 otlp,
                 detail,
-                &watch,
-                &session,
-            );
-        }
-        Command::Replay {
-            file,
-            to,
-            live,
-            approve,
-            dump,
-            trace,
-            session,
-        } => return replay(&file, to, live, approve, dump, trace.as_deref(), &session),
-        Command::Cdp {
-            port,
-            allow_origin,
-            discovery,
-            session,
-        } => return cdp(port, allow_origin, discovery, &session),
-        Command::Fetch {
-            target,
-            dump,
-            viewport,
-            acts,
-            approve,
-            prefer_markdown,
-            paint,
-            session,
-        } => (
-            target,
-            dump,
-            viewport,
-            acts,
-            approve,
-            prefer_markdown,
-            paint,
-            session,
-        ),
-    };
+                watch,
+                session,
+            } => {
+                let detail = pageon_agent::Detail::parse(&detail).unwrap_or_default();
+                return mcp(
+                    http,
+                    allow_origin,
+                    allow_javascript_exec,
+                    otlp,
+                    detail,
+                    &watch,
+                    &session,
+                );
+            }
+            Command::Replay {
+                file,
+                to,
+                live,
+                approve,
+                dump,
+                trace,
+                session,
+            } => return replay(&file, to, live, approve, dump, trace.as_deref(), &session),
+            Command::Cdp {
+                port,
+                allow_origin,
+                discovery,
+                session,
+            } => return cdp(port, allow_origin, discovery, &session),
+            Command::Fetch {
+                target,
+                dump,
+                viewport,
+                acts,
+                approve,
+                expect,
+                prefer_markdown,
+                paint,
+                session,
+            } => (
+                target,
+                dump,
+                viewport,
+                acts,
+                approve,
+                expect,
+                prefer_markdown,
+                paint,
+                session,
+            ),
+        };
     let mut actions = Vec::new();
     for a in &acts {
         match a.parse::<Action>() {
@@ -1499,6 +1597,7 @@ fn main() -> ExitCode {
                 paint: &paint,
                 viewport,
                 actions,
+                expect,
                 budget: Budget::o200k(session.budget),
                 session: &session,
                 prepared: &prepared,

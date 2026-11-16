@@ -57,9 +57,15 @@ instructions.
 - Sign-ins that expire: `--sign-in login.flow.json` (a compiled recording of the login); pageon
   signs in again by itself and says so at the top of the reply. Never type a password yourself.
 
+## Check your work
+
+Add `--expect` to an action: `pageon click e9 --expect 'request POST /orders 2xx' --expect 'see "Order confirmed"'`.
+Each comes back ✓ or ✗ with evidence; a ✗ exits 8. Prefer `request` checks for anything
+that changes data. Also: `url /done`, `see button "Pay"`, `no "Error"`, `download *.pdf`.
+
 ## Exit codes
 
-0 done; 3 the page or the action failed (the message says why and what to do); 2 usage, or no
+0 done; 8 an expectation failed; 3 the page or the action failed (the message says why and what to do); 2 usage, or no
 session (start one with `pageon open URL`).
 
 ## Tips

@@ -8,7 +8,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 import pytest
-from pageon import Browser
+from pageon import Browser, ExpectationError
 
 from test_browser import BIN
 
@@ -77,4 +77,10 @@ def test_an_expired_sign_in_renews(portal: str, tmp_path: Path, monkeypatch: pyt
         tab = browser.open(f"{portal}/orders")
         text = str(tab.observe(full=True))
         assert "Orders" in text
+        # Expectations: checked with evidence; a failed one raises.
+        ok = tab.press("Tab", expect=['see "Orders"', "url /orders"])
+        assert "✓ see" in str(ok)
+        with pytest.raises(ExpectationError) as e:
+            tab.press("Tab", expect=['see "Invoices"'])
+        assert e.value.checks[0]["ok"] is False and "not on the page" in str(e.value)
     assert SECRET not in flow.read_text()

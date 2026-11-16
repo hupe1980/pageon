@@ -1453,6 +1453,7 @@ impl<'s, E: Env> Tab<'s, E> {
             hash,
             view,
             target,
+            checks: Vec::new(),
         });
     }
 

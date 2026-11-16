@@ -107,6 +107,33 @@ single-page app they stay in the page (the app gets `popstate`), elsewhere they 
 with its saved state. Entries a page added without a click or key from you are skipped, as in
 Chrome, so a page cannot trap the agent with `history.pushState`.
 
+## Expectations
+
+An action can say what it should do. pageon checks each expectation after the action, against
+what the engine knows, and answers with evidence:
+
+```text
+✓ request POST /orders 2xx: POST https://shop.example/orders → 201
+✓ url /done: at https://shop.example/done
+✗ see "Order confirmed": not on the page (it says "Payment declined")
+```
+
+| Expectation | Holds when |
+| --- | --- |
+| `url /orders` | The page is there: a path, or a URL; `*` matches anything; query and fragment ignored |
+| `see "Order confirmed"` | The page shows the text (case and spacing ignored; hidden text does not count) |
+| `see button "Pay"` | An element with that role and name is on the page, beyond the view's budget too |
+| `no "Error"`, `no button "Pay"` | The opposite |
+| `request POST /orders 2xx` | The action sent it, and it answered so (status optional: `201`, `2xx`) |
+| `download *.pdf` | The action downloaded a file whose name matches |
+
+Requests and downloads come from the engine's own log of the action, which a page cannot
+write: check a payment by its request, not by the words on the page. Over MCP, acting tools
+take `expect: [...]`, the answers lead the reply, and a failed one makes it an error; the CLI
+takes `--expect` (exit 8 when one fails), on session commands and `pageon fetch --act`; Python
+takes `expect=[...]` and raises `ExpectationError`. Expectations given while acting are kept in
+the workflow a session saves, and every run checks them ([workflows](@/docs/workflows.md)).
+
 ## Errors
 
 When an action cannot be done, the error has a kind and guidance the model can follow:

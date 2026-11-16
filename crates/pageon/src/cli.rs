@@ -34,6 +34,15 @@ pub struct OpenArgs {
     session: SessionArgs,
 }
 
+/// What the action should do, checked after it (exit 8 when one fails).
+#[derive(Args, Default)]
+pub struct Checks {
+    /// An expectation (repeatable): `url /orders`, `see "Thanks"`, `see button "Pay"`,
+    /// `no "Error"`, `request POST /orders 2xx`, `download *.pdf`.
+    #[arg(long = "expect", value_name = "CHECK")]
+    expect: Vec<String>,
+}
+
 #[derive(Clone, Copy, ValueEnum)]
 pub enum Direction {
     Down,
@@ -83,6 +92,8 @@ pub enum SessionCommand {
         url: String,
         #[command(flatten)]
         open: OpenArgs,
+        #[command(flatten)]
+        checks: Checks,
     },
     /// The session process (started by `pageon open`).
     #[command(hide = true)]
@@ -97,6 +108,8 @@ pub enum SessionCommand {
         /// A ref from the view, e.g. e5.
         #[arg(value_name = "REF")]
         r#ref: String,
+        #[command(flatten)]
+        checks: Checks,
     },
     /// Replace an element's text (`secret://NAME` types a session secret).
     Type {
@@ -108,11 +121,15 @@ pub enum SessionCommand {
         /// Press Enter afterwards.
         #[arg(long)]
         submit: bool,
+        #[command(flatten)]
+        checks: Checks,
     },
     /// Press a key on the focused element: Enter, Tab, Escape, ArrowDown, or one character.
     Press {
         /// Enter, Tab, Escape, Backspace, ArrowDown, or one character.
         key: String,
+        #[command(flatten)]
+        checks: Checks,
     },
     /// Select options of a <select> by value or label (or that text in another element).
     Select {
@@ -122,6 +139,8 @@ pub enum SessionCommand {
         /// Option values or labels.
         #[arg(required = true)]
         values: Vec<String>,
+        #[command(flatten)]
+        checks: Checks,
     },
     /// Paste text into an element, or the focused one.
     Paste {
@@ -130,12 +149,16 @@ pub enum SessionCommand {
         /// The element (default: the focused one).
         #[arg(long, value_name = "REF")]
         r#ref: Option<String>,
+        #[command(flatten)]
+        checks: Checks,
     },
     /// Move the pointer onto an element.
     Hover {
         /// A ref from the view, e.g. e5.
         #[arg(value_name = "REF")]
         r#ref: String,
+        #[command(flatten)]
+        checks: Checks,
     },
     /// Drag an element onto another.
     Drag {
@@ -145,6 +168,8 @@ pub enum SessionCommand {
         /// The ref to drop onto.
         #[arg(value_name = "TO")]
         to: String,
+        #[command(flatten)]
+        checks: Checks,
     },
     /// Scroll the page (or --ref's container) by a page or --pixels; with only --ref, bring
     /// it into view.
@@ -157,16 +182,26 @@ pub enum SessionCommand {
         /// The container to scroll, or the element to bring into view.
         #[arg(long, value_name = "REF")]
         r#ref: Option<String>,
+        #[command(flatten)]
+        checks: Checks,
     },
     /// Let time pass on the page (milliseconds).
     Wait {
         /// Milliseconds (at most 60000).
         ms: u64,
+        #[command(flatten)]
+        checks: Checks,
     },
     /// Go back in the tab's history.
-    Back,
+    Back {
+        #[command(flatten)]
+        checks: Checks,
+    },
     /// Go forward in the tab's history.
-    Forward,
+    Forward {
+        #[command(flatten)]
+        checks: Checks,
+    },
     /// Put staged files (`--file NAME@ORIGIN=PATH` at open) into a file input.
     Upload {
         /// A ref from the view, e.g. e5.
@@ -175,6 +210,8 @@ pub enum SessionCommand {
         /// Staged file names.
         #[arg(required = true, value_name = "NAME")]
         files: Vec<String>,
+        #[command(flatten)]
+        checks: Checks,
     },
     /// What changed since the last view (--full: the whole view).
     Observe {
@@ -244,6 +281,8 @@ pub enum SessionCommand {
         /// The tool's origin, when two frames declare the same name.
         #[arg(long)]
         origin: Option<String>,
+        #[command(flatten)]
+        checks: Checks,
     },
     /// Ask a person to take over (a CAPTCHA, a second factor): prints a link, waits for Done.
     Takeover {
@@ -273,6 +312,29 @@ pub enum SessionCommand {
         #[arg(long, value_name = "DIR", num_args = 0..=1, default_missing_value = ".claude/skills")]
         install: Option<PathBuf>,
     },
+}
+
+impl SessionCommand {
+    /// The command's `--expect` values.
+    fn expectations(&self) -> Vec<String> {
+        match self {
+            Self::Open { checks, .. }
+            | Self::Click { checks, .. }
+            | Self::Type { checks, .. }
+            | Self::Press { checks, .. }
+            | Self::Select { checks, .. }
+            | Self::Paste { checks, .. }
+            | Self::Hover { checks, .. }
+            | Self::Drag { checks, .. }
+            | Self::Scroll { checks, .. }
+            | Self::Wait { checks, .. }
+            | Self::Back { checks }
+            | Self::Forward { checks }
+            | Self::Upload { checks, .. }
+            | Self::Call { checks, .. } => checks.expect.clone(),
+            _ => Vec::new(),
+        }
+    }
 }
 
 fn parse_idle(s: &str) -> Result<Duration, String> {
@@ -371,34 +433,37 @@ fn tool_call(
     c: SessionCommand,
 ) -> Result<Option<(&'static str, Value, Option<PathBuf>)>, ExitCode> {
     let mut image = None;
+    let expect = c.expectations();
     let (tool, args) = match c {
         SessionCommand::Open { url, .. } => ("browser_open", json!({"url": url})),
-        SessionCommand::Click { r#ref } => ("browser_click", json!({"ref": r#ref})),
+        SessionCommand::Click { r#ref, .. } => ("browser_click", json!({"ref": r#ref})),
         SessionCommand::Type {
             r#ref,
             text,
             submit,
+            ..
         } => (
             "browser_type",
             json!({"ref": r#ref, "text": text, "submit": submit}),
         ),
-        SessionCommand::Press { key } => ("browser_press", json!({"key": key})),
-        SessionCommand::Select { r#ref, values } => {
+        SessionCommand::Press { key, .. } => ("browser_press", json!({"key": key})),
+        SessionCommand::Select { r#ref, values, .. } => {
             ("browser_select", json!({"ref": r#ref, "values": values}))
         }
-        SessionCommand::Paste { text, r#ref } => {
+        SessionCommand::Paste { text, r#ref, .. } => {
             let mut a = json!({"text": text});
             if let Some(r) = r#ref {
                 a["ref"] = json!(r);
             }
             ("browser_paste", a)
         }
-        SessionCommand::Hover { r#ref } => ("browser_hover", json!({"ref": r#ref})),
-        SessionCommand::Drag { r#ref, to } => ("browser_drag", json!({"ref": r#ref, "to": to})),
+        SessionCommand::Hover { r#ref, .. } => ("browser_hover", json!({"ref": r#ref})),
+        SessionCommand::Drag { r#ref, to, .. } => ("browser_drag", json!({"ref": r#ref, "to": to})),
         SessionCommand::Scroll {
             direction,
             pixels,
             r#ref,
+            ..
         } => {
             let mut a = json!({});
             if let Some(d) = direction {
@@ -417,27 +482,27 @@ fn tool_call(
             }
             ("browser_scroll", a)
         }
-        SessionCommand::Wait { ms } => ("browser_wait", json!({"ms": ms})),
-        SessionCommand::Back => ("browser_back", json!({})),
-        SessionCommand::Forward => ("browser_forward", json!({})),
-        SessionCommand::Upload { r#ref, files } => {
+        SessionCommand::Wait { ms, .. } => ("browser_wait", json!({"ms": ms})),
+        SessionCommand::Back { .. } => ("browser_back", json!({})),
+        SessionCommand::Forward { .. } => ("browser_forward", json!({})),
+        SessionCommand::Upload { r#ref, files, .. } => {
             ("browser_upload", json!({"ref": r#ref, "files": files}))
         }
-        SessionCommand::Observe { full, detail } => {
+        SessionCommand::Observe { full, detail, .. } => {
             let mut a = json!({"full": full});
             if let Some(d) = detail {
                 a["detail"] = json!(d);
             }
             ("browser_observe", a)
         }
-        SessionCommand::View { kind } => match kind {
+        SessionCommand::View { kind, .. } => match kind {
             ViewKind::Ax => ("browser_observe", json!({"full": true})),
             ViewKind::Markdown => ("browser_view", json!({"kind": "markdown"})),
             ViewKind::Text => ("browser_view", json!({"kind": "text"})),
             ViewKind::Requests => ("browser_view", json!({"kind": "requests"})),
             ViewKind::Errors => ("browser_view", json!({"kind": "errors"})),
         },
-        SessionCommand::Find { query, limit } => {
+        SessionCommand::Find { query, limit, .. } => {
             let mut a = json!({"query": query.join(" ")});
             if let Some(l) = limit {
                 a["limit"] = json!(l);
@@ -450,6 +515,7 @@ fn tool_call(
             mask,
             full_page,
             r#ref,
+            ..
         } => {
             let ext = file
                 .extension()
@@ -471,7 +537,7 @@ fn tool_call(
             image = Some(file);
             ("browser_screenshot", a)
         }
-        SessionCommand::Tabs { action, target } => {
+        SessionCommand::Tabs { action, target, .. } => {
             let a = match (action, target) {
                 (TabAction::List, _) => json!({"action": "list"}),
                 (TabAction::New, Some(url)) => json!({"action": "new", "url": url}),
@@ -496,18 +562,21 @@ fn tool_call(
             };
             ("browser_tabs", a)
         }
-        SessionCommand::Reset { step } => {
+        SessionCommand::Reset { step, .. } => {
             let mut a = json!({});
             if let Some(s) = step {
                 a["step"] = json!(s);
             }
             ("browser_reset", a)
         }
-        SessionCommand::Lookahead { actions } => ("browser_lookahead", json!({"actions": actions})),
+        SessionCommand::Lookahead { actions, .. } => {
+            ("browser_lookahead", json!({"actions": actions}))
+        }
         SessionCommand::Call {
             name,
             arguments,
             origin,
+            ..
         } => {
             let mut a = json!({"name": name});
             if let Some(text) = arguments {
@@ -526,7 +595,9 @@ fn tool_call(
             }
             ("browser_call_tool", a)
         }
-        SessionCommand::Takeover { reason, timeout } => {
+        SessionCommand::Takeover {
+            reason, timeout, ..
+        } => {
             let mut a = json!({"reason": reason});
             if let Some(t) = timeout {
                 a["timeout_s"] = json!(t);
@@ -539,6 +610,10 @@ fn tool_call(
         | SessionCommand::Ui
         | SessionCommand::Skill { .. } => return Ok(None),
     };
+    let mut args = args;
+    if !expect.is_empty() {
+        args["expect"] = json!(expect);
+    }
     Ok(Some((tool, args, image)))
 }
 
@@ -578,6 +653,13 @@ fn print_reply(reply: &Value, image: Option<&Path>) -> ExitCode {
             }
             _ => {}
         }
+    }
+    let unmet = result["structuredContent"]["expectations"]
+        .as_array()
+        .is_some_and(|c| c.iter().any(|c| c["ok"] == false));
+    if unmet {
+        eprintln!("{}", terminal_safe(&text).trim_end());
+        return ExitCode::from(8);
     }
     if failed {
         // The CLI's own shape: the error, then what to do, indented.

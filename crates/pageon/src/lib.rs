@@ -65,6 +65,7 @@ mod tab;
 pub mod takeover;
 pub mod threat_model;
 pub mod trace;
+pub mod verify;
 pub mod viewer;
 pub mod workflow;
 

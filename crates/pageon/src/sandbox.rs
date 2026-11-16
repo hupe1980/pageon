@@ -768,6 +768,11 @@ impl<E: Env> RemoteTab<'_, E> {
         self.sandbox.act_tab(self.id, action)
     }
 
+    /// A read with the agent's refs (see [`crate::Tab::read`]).
+    pub fn read(&mut self, read: crate::Read) -> Result<String, ActionError> {
+        self.sandbox.read_tab(self.id, read)
+    }
+
     /// A person's input (see [`crate::Tab::act_as_person`]).
     pub fn act_as_person(&mut self, action: Action) -> Result<Outcome, ActionError> {
         self.sandbox.act_tab_as_person(self.id, action)

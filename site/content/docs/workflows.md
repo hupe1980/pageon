@@ -39,6 +39,20 @@ pageon workflow run report.flow.json --param user=bob --secret shop@https://shop
 - **Navigating steps say where they should land.**
 - A run takes about 1 ms per step, through the same sandbox, policy and vault as any session.
 
+## Checks
+
+Each step can carry `check`: [expectations](@/docs/actions.md#expectations) a run verifies
+after the step, so a replay proves what each step did, not only where it led:
+
+```json
+{"do": "click", "target": {"role": "button", "name": "Place order"},
+ "check": ["request POST /orders 2xx", "see \"Order confirmed\""]}
+```
+
+Expectations an agent gave while acting (`expect`) are saved into the workflow. A check that
+fails stops the run at that step as `drifted`, with the evidence: `check failed: ✗ request POST
+/orders 2xx: POST https://shop.example/orders → 500`.
+
 ## When the site changes
 
 | Change | What the run does |

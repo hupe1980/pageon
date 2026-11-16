@@ -21,7 +21,7 @@ import subprocess
 import sys
 import threading
 from collections import deque
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -39,6 +39,15 @@ def _file_flags(files: Mapping[str, tuple[str | os.PathLike[str], Iterable[str]]
     for name, (path, origins) in (files or {}).items():
         out += ["--file", f"{name}@{','.join(origins)}={os.fspath(path)}"]
     return out
+
+
+class ExpectationError(PageonError):
+    """An action ran, but what it was expected to do did not happen. ``str(err)`` lists each
+    expectation with its evidence; ``checks`` holds them (``expect``, ``ok``, ``evidence``)."""
+
+    def __init__(self, text: str, checks: list[dict[str, Any]]) -> None:
+        super().__init__(text)
+        self.checks = checks
 
 
 class ActionError(PageonError):
@@ -378,7 +387,11 @@ class Browser:
         result = self._request("tools/call", params, on_progress)
         self._track(result)
         if result.get("isError"):
-            e = result.get("structuredContent", {}).get("error", {})
+            sc = result.get("structuredContent", {})
+            checks = sc.get("expectations") or []
+            if any(not c.get("ok") for c in checks):
+                raise ExpectationError(_text(result), checks)
+            e = sc.get("error", {})
             raise ActionError(e.get("kind", "engine"), e.get("message", _text(result)), e.get("guidance", ""))
         return result
 
@@ -543,41 +556,47 @@ class Tab:
         """Elements matching the query's words anywhere on the page, equal ones told apart."""
         return _text(self._call("browser_find", {"query": query, "limit": limit}))
 
-    def click(self, ref: str) -> Outcome:
-        return self._act("browser_click", {"ref": ref})
+    def click(self, ref: str, expect: Sequence[str] = ()) -> Outcome:
+        return self._act("browser_click", {"ref": ref}, expect)
 
-    def type(self, ref: str, text: str, submit: bool = False) -> Outcome:
+    def type(self, ref: str, text: str, submit: bool = False, expect: Sequence[str] = ()) -> Outcome:
         """Replace the field's value; ``secret://name`` types a secret the agent never sees."""
-        return self._act("browser_type", {"ref": ref, "text": text, "submit": submit})
+        return self._act("browser_type", {"ref": ref, "text": text, "submit": submit}, expect)
 
-    def upload(self, ref: str, *names: str) -> Outcome:
+    def upload(self, ref: str, *names: str, expect: Sequence[str] = ()) -> Outcome:
         """Put files the operator staged (``files={"cv": ("./cv.pdf", ["https://jobs.example"])}``)
         into a file input, or into the file chooser ``ref`` opens; ``download:N`` uploads a download
         back to its own site. Never a path."""
-        return self._act("browser_upload", {"ref": ref, "files": list(names)})
+        return self._act("browser_upload", {"ref": ref, "files": list(names)}, expect)
 
-    def press(self, key: str) -> Outcome:
-        return self._act("browser_press", {"key": key})
+    def press(self, key: str, expect: Sequence[str] = ()) -> Outcome:
+        return self._act("browser_press", {"key": key}, expect)
 
-    def select(self, ref: str, *values: str) -> Outcome:
+    def select(self, ref: str, *values: str, expect: Sequence[str] = ()) -> Outcome:
         """Choose options of a ``<select>``; on any other element, select that text in it."""
-        return self._act("browser_select", {"ref": ref, "values": list(values)})
+        return self._act("browser_select", {"ref": ref, "values": list(values)}, expect)
 
-    def paste(self, text: str, ref: str | None = None) -> Outcome:
+    def paste(self, text: str, ref: str | None = None, expect: Sequence[str] = ()) -> Outcome:
         """Paste ``text`` into ``ref`` (at the end of its content) or the focused element; the
         page gets a ``paste`` event, as from Ctrl+V."""
         args = {"text": text} if ref is None else {"ref": ref, "text": text}
-        return self._act("browser_paste", args)
+        return self._act("browser_paste", args, expect)
 
-    def hover(self, ref: str) -> Outcome:
-        return self._act("browser_hover", {"ref": ref})
+    def hover(self, ref: str, expect: Sequence[str] = ()) -> Outcome:
+        return self._act("browser_hover", {"ref": ref}, expect)
 
-    def drag(self, ref: str, to: str) -> Outcome:
+    def drag(self, ref: str, to: str, expect: Sequence[str] = ()) -> Outcome:
         """Drag ``ref`` onto ``to`` (centre to centre), as a person does; the outcome says whether
         the page ran drag and drop and whether the drop was accepted."""
-        return self._act("browser_drag", {"ref": ref, "to": to})
+        return self._act("browser_drag", {"ref": ref, "to": to}, expect)
 
-    def scroll(self, direction: str | None = "down", pixels: float | None = None, ref: str | None = None) -> Outcome:
+    def scroll(
+        self,
+        direction: str | None = "down",
+        pixels: float | None = None,
+        ref: str | None = None,
+        expect: Sequence[str] = (),
+    ) -> Outcome:
         """Scroll as a person does: ``direction`` (down, up, left, right) by a page or ``pixels``,
         of the page or the container ``ref``; ``scroll(None, ref="e12")`` brings e12 into view.
         Actions already scroll their target into view."""
@@ -588,16 +607,16 @@ class Tab:
             args["pixels"] = pixels
         if ref is not None:
             args["ref"] = ref
-        return self._act("browser_scroll", args)
+        return self._act("browser_scroll", args, expect)
 
-    def wait(self, ms: int) -> Outcome:
-        return self._act("browser_wait", {"ms": ms})
+    def wait(self, ms: int, expect: Sequence[str] = ()) -> Outcome:
+        return self._act("browser_wait", {"ms": ms}, expect)
 
-    def back(self) -> Outcome:
-        return self._act("browser_back", {})
+    def back(self, expect: Sequence[str] = ()) -> Outcome:
+        return self._act("browser_back", {}, expect)
 
-    def forward(self) -> Outcome:
-        return self._act("browser_forward", {})
+    def forward(self, expect: Sequence[str] = ()) -> Outcome:
+        return self._act("browser_forward", {}, expect)
 
     def reset(self, step: int | None = None) -> str:
         """Goes back to an earlier step (default: undo the last one), exactly and without sending
@@ -683,7 +702,9 @@ class Tab:
         """One element's pixels, with ``provenance`` (where they come from)."""
         return _screenshot(self._call("browser_screenshot", {"ref": ref, "format": format}))
 
-    def _act(self, tool: str, args: dict[str, Any]) -> Outcome:
+    def _act(self, tool: str, args: dict[str, Any], expect: Sequence[str] = ()) -> Outcome:
+        if expect:
+            args = {**args, "expect": list(expect)}
         return _outcome(self._call(tool, args))
 
 

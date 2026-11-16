@@ -41,6 +41,10 @@ pub struct Step {
     /// locates it by. Absent for actions without a target, and in older recordings.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub target: Option<Target>,
+    /// Expectations checked after the step (`see "Thanks"`): a workflow checks them on every
+    /// run.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub checks: Vec<String>,
 }
 
 /// An element as the agent's view names it: role, accessible name, and its index among the
@@ -194,6 +198,10 @@ pub trait Recorder {
     /// unrecorded and steps are ignored (a lookahead branch must leave no trace).
     fn pause(&self, paused: bool) {
         let _ = paused;
+    }
+    /// Adds expectations checked after the last step to it (ignored while resuming).
+    fn checks(&self, checks: Vec<String>) {
+        let _ = checks;
     }
     /// Whether the recording stopped at a size limit (later steps are not in it).
     fn truncated(&self) -> bool {
