@@ -22,6 +22,7 @@ pub(crate) mod net;
 mod nodes;
 pub(crate) mod observers;
 pub(crate) mod platform;
+mod platform_apis;
 pub(crate) mod ranges;
 pub mod realtime;
 pub(crate) mod scroll;
@@ -81,6 +82,10 @@ pub use platform::{
     crypto, html_image_element, idle_deadline, media_query_list, media_query_list_event,
     resize_observer, resize_observer_entry, resize_observer_size, text_decoder,
     text_decoder_common, text_encoder, text_encoder_common,
+};
+pub use platform_apis::{
+    mime_type, mime_type_array, navigator_concurrent_hardware, navigator_plugins, notification,
+    permission_status, permissions, plugin, plugin_array, screen_orientation, user_activation,
 };
 pub use session::{history, pop_state_event};
 pub use shadow::{html_slot_element, shadow_root, slottable};

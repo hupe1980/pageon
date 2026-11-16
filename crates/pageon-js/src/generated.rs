@@ -102,6 +102,10 @@ pub enum Iface {
     MessageEvent,
     /// `MessagePort`.
     MessagePort,
+    /// `MimeType`.
+    MimeType,
+    /// `MimeTypeArray`.
+    MimeTypeArray,
     /// `ModelContext`.
     ModelContext,
     /// `MutationObserver`.
@@ -122,6 +126,8 @@ pub enum Iface {
     NodeIterator,
     /// `NodeList`.
     NodeList,
+    /// `Notification`.
+    Notification,
     /// `Performance`.
     Performance,
     /// `PerformanceEntry`.
@@ -134,6 +140,14 @@ pub enum Iface {
     PerformanceObserver,
     /// `PerformanceObserverEntryList`.
     PerformanceObserverEntryList,
+    /// `PermissionStatus`.
+    PermissionStatus,
+    /// `Permissions`.
+    Permissions,
+    /// `Plugin`.
+    Plugin,
+    /// `PluginArray`.
+    PluginArray,
     /// `PopStateEvent`.
     PopStateEvent,
     /// `ProgressEvent`.
@@ -154,6 +168,8 @@ pub enum Iface {
     Response,
     /// `Screen`.
     Screen,
+    /// `ScreenOrientation`.
+    ScreenOrientation,
     /// `Selection`.
     Selection,
     /// `StaticRange`.
@@ -176,6 +192,8 @@ pub enum Iface {
     URL,
     /// `URLSearchParams`.
     URLSearchParams,
+    /// `UserActivation`.
+    UserActivation,
     /// `ValidityState`.
     ValidityState,
     /// `VisualViewport`.
@@ -408,7 +426,7 @@ pub enum Iface {
 
 impl Iface {
     /// All interfaces.
-    pub const ALL: &'static [Iface] = &[Iface::AbortController, Iface::AbstractRange, Iface::AuthenticatorResponse, Iface::Blob, Iface::CSS, Iface::CSSStyleDeclaration, Iface::CSSStyleProperties, Iface::CanvasRenderingContext2D, Iface::CaretPosition, Iface::Credential, Iface::CredentialsContainer, Iface::Crypto, Iface::CryptoKey, Iface::CustomElementRegistry, Iface::CustomStateSet, Iface::DOMException, Iface::DOMImplementation, Iface::DOMParser, Iface::DOMRectList, Iface::DOMRectReadOnly, Iface::DOMStringMap, Iface::DOMTokenList, Iface::DataTransfer, Iface::DataTransferItem, Iface::DataTransferItemList, Iface::ElementInternals, Iface::Event, Iface::EventTarget, Iface::File, Iface::FileList, Iface::FileReader, Iface::FormData, Iface::HTMLCollection, Iface::HTMLFormControlsCollection, Iface::HTMLOptionsCollection, Iface::Headers, Iface::History, Iface::IdleDeadline, Iface::IntersectionObserver, Iface::IntersectionObserverEntry, Iface::Location, Iface::MediaQueryList, Iface::MediaQueryListEvent, Iface::MessageChannel, Iface::MessageEvent, Iface::MessagePort, Iface::ModelContext, Iface::MutationObserver, Iface::MutationRecord, Iface::NamedNodeMap, Iface::Navigator, Iface::NavigatorUAData, Iface::Node, Iface::NodeFilter, Iface::NodeIterator, Iface::NodeList, Iface::Performance, Iface::PerformanceEntry, Iface::PerformanceMark, Iface::PerformanceMeasure, Iface::PerformanceObserver, Iface::PerformanceObserverEntryList, Iface::PopStateEvent, Iface::ProgressEvent, Iface::PublicKeyCredential, Iface::Range, Iface::Request, Iface::ResizeObserver, Iface::ResizeObserverEntry, Iface::ResizeObserverSize, Iface::Response, Iface::Screen, Iface::Selection, Iface::StaticRange, Iface::Storage, Iface::StyleSheet, Iface::SubtleCrypto, Iface::TextDecoder, Iface::TextEncoder, Iface::TreeWalker, Iface::UIEvent, Iface::URL, Iface::URLSearchParams, Iface::ValidityState, Iface::VisualViewport, Iface::WebSocket, Iface::Window, Iface::Worker, Iface::WorkerGlobalScope, Iface::WorkerLocation, Iface::WorkerNavigator, Iface::XMLHttpRequestEventTarget, Iface::XMLSerializer, Iface::console, Iface::AbortSignal, Iface::Attr, Iface::AuthenticatorAssertionResponse, Iface::AuthenticatorAttestationResponse, Iface::CSSStyleSheet, Iface::CharacterData, Iface::Clipboard, Iface::ClipboardEvent, Iface::CloseEvent, Iface::Comment, Iface::CustomEvent, Iface::DOMRect, Iface::DedicatedWorkerGlobalScope, Iface::Document, Iface::DocumentFragment, Iface::DocumentType, Iface::Element, Iface::ErrorEvent, Iface::EventSource, Iface::FocusEvent, Iface::HTMLElement, Iface::HTMLEmbedElement, Iface::HTMLFieldSetElement, Iface::HTMLFontElement, Iface::HTMLFormElement, Iface::HTMLFrameElement, Iface::HTMLFrameSetElement, Iface::HTMLHRElement, Iface::HTMLHeadElement, Iface::HTMLHeadingElement, Iface::HTMLHtmlElement, Iface::HTMLIFrameElement, Iface::HTMLImageElement, Iface::HTMLInputElement, Iface::HTMLLIElement, Iface::HTMLLabelElement, Iface::HTMLLegendElement, Iface::HTMLLinkElement, Iface::HTMLMapElement, Iface::HTMLMarqueeElement, Iface::HTMLMediaElement, Iface::HTMLMenuElement, Iface::HTMLMetaElement, Iface::HTMLMeterElement, Iface::HTMLModElement, Iface::HTMLOListElement, Iface::HTMLObjectElement, Iface::HTMLOptGroupElement, Iface::HTMLOptionElement, Iface::HTMLOutputElement, Iface::HTMLParagraphElement, Iface::HTMLParamElement, Iface::HTMLPictureElement, Iface::HTMLPreElement, Iface::HTMLProgressElement, Iface::HTMLQuoteElement, Iface::HTMLScriptElement, Iface::HTMLSelectElement, Iface::HTMLSelectedContentElement, Iface::HTMLSlotElement, Iface::HTMLSourceElement, Iface::HTMLSpanElement, Iface::HTMLStyleElement, Iface::HTMLTableCaptionElement, Iface::HTMLTableCellElement, Iface::HTMLTableColElement, Iface::HTMLTableElement, Iface::HTMLTableRowElement, Iface::HTMLTableSectionElement, Iface::HTMLTemplateElement, Iface::HTMLTextAreaElement, Iface::HTMLTimeElement, Iface::HTMLTitleElement, Iface::HTMLTrackElement, Iface::HTMLUListElement, Iface::HTMLUnknownElement, Iface::HTMLVideoElement, Iface::InputEvent, Iface::KeyboardEvent, Iface::MouseEvent, Iface::PointerEvent, Iface::SVGElement, Iface::SVGGraphicsElement, Iface::ShadowRoot, Iface::Text, Iface::WheelEvent, Iface::XMLHttpRequest, Iface::DragEvent, Iface::HTMLAnchorElement, Iface::HTMLAreaElement, Iface::HTMLAudioElement, Iface::HTMLBRElement, Iface::HTMLBaseElement, Iface::HTMLBodyElement, Iface::HTMLButtonElement, Iface::HTMLCanvasElement, Iface::HTMLDListElement, Iface::HTMLDataElement, Iface::HTMLDataListElement, Iface::HTMLDetailsElement, Iface::HTMLDialogElement, Iface::HTMLDirectoryElement, Iface::HTMLDivElement];
+    pub const ALL: &'static [Iface] = &[Iface::AbortController, Iface::AbstractRange, Iface::AuthenticatorResponse, Iface::Blob, Iface::CSS, Iface::CSSStyleDeclaration, Iface::CSSStyleProperties, Iface::CanvasRenderingContext2D, Iface::CaretPosition, Iface::Credential, Iface::CredentialsContainer, Iface::Crypto, Iface::CryptoKey, Iface::CustomElementRegistry, Iface::CustomStateSet, Iface::DOMException, Iface::DOMImplementation, Iface::DOMParser, Iface::DOMRectList, Iface::DOMRectReadOnly, Iface::DOMStringMap, Iface::DOMTokenList, Iface::DataTransfer, Iface::DataTransferItem, Iface::DataTransferItemList, Iface::ElementInternals, Iface::Event, Iface::EventTarget, Iface::File, Iface::FileList, Iface::FileReader, Iface::FormData, Iface::HTMLCollection, Iface::HTMLFormControlsCollection, Iface::HTMLOptionsCollection, Iface::Headers, Iface::History, Iface::IdleDeadline, Iface::IntersectionObserver, Iface::IntersectionObserverEntry, Iface::Location, Iface::MediaQueryList, Iface::MediaQueryListEvent, Iface::MessageChannel, Iface::MessageEvent, Iface::MessagePort, Iface::MimeType, Iface::MimeTypeArray, Iface::ModelContext, Iface::MutationObserver, Iface::MutationRecord, Iface::NamedNodeMap, Iface::Navigator, Iface::NavigatorUAData, Iface::Node, Iface::NodeFilter, Iface::NodeIterator, Iface::NodeList, Iface::Notification, Iface::Performance, Iface::PerformanceEntry, Iface::PerformanceMark, Iface::PerformanceMeasure, Iface::PerformanceObserver, Iface::PerformanceObserverEntryList, Iface::PermissionStatus, Iface::Permissions, Iface::Plugin, Iface::PluginArray, Iface::PopStateEvent, Iface::ProgressEvent, Iface::PublicKeyCredential, Iface::Range, Iface::Request, Iface::ResizeObserver, Iface::ResizeObserverEntry, Iface::ResizeObserverSize, Iface::Response, Iface::Screen, Iface::ScreenOrientation, Iface::Selection, Iface::StaticRange, Iface::Storage, Iface::StyleSheet, Iface::SubtleCrypto, Iface::TextDecoder, Iface::TextEncoder, Iface::TreeWalker, Iface::UIEvent, Iface::URL, Iface::URLSearchParams, Iface::UserActivation, Iface::ValidityState, Iface::VisualViewport, Iface::WebSocket, Iface::Window, Iface::Worker, Iface::WorkerGlobalScope, Iface::WorkerLocation, Iface::WorkerNavigator, Iface::XMLHttpRequestEventTarget, Iface::XMLSerializer, Iface::console, Iface::AbortSignal, Iface::Attr, Iface::AuthenticatorAssertionResponse, Iface::AuthenticatorAttestationResponse, Iface::CSSStyleSheet, Iface::CharacterData, Iface::Clipboard, Iface::ClipboardEvent, Iface::CloseEvent, Iface::Comment, Iface::CustomEvent, Iface::DOMRect, Iface::DedicatedWorkerGlobalScope, Iface::Document, Iface::DocumentFragment, Iface::DocumentType, Iface::Element, Iface::ErrorEvent, Iface::EventSource, Iface::FocusEvent, Iface::HTMLElement, Iface::HTMLEmbedElement, Iface::HTMLFieldSetElement, Iface::HTMLFontElement, Iface::HTMLFormElement, Iface::HTMLFrameElement, Iface::HTMLFrameSetElement, Iface::HTMLHRElement, Iface::HTMLHeadElement, Iface::HTMLHeadingElement, Iface::HTMLHtmlElement, Iface::HTMLIFrameElement, Iface::HTMLImageElement, Iface::HTMLInputElement, Iface::HTMLLIElement, Iface::HTMLLabelElement, Iface::HTMLLegendElement, Iface::HTMLLinkElement, Iface::HTMLMapElement, Iface::HTMLMarqueeElement, Iface::HTMLMediaElement, Iface::HTMLMenuElement, Iface::HTMLMetaElement, Iface::HTMLMeterElement, Iface::HTMLModElement, Iface::HTMLOListElement, Iface::HTMLObjectElement, Iface::HTMLOptGroupElement, Iface::HTMLOptionElement, Iface::HTMLOutputElement, Iface::HTMLParagraphElement, Iface::HTMLParamElement, Iface::HTMLPictureElement, Iface::HTMLPreElement, Iface::HTMLProgressElement, Iface::HTMLQuoteElement, Iface::HTMLScriptElement, Iface::HTMLSelectElement, Iface::HTMLSelectedContentElement, Iface::HTMLSlotElement, Iface::HTMLSourceElement, Iface::HTMLSpanElement, Iface::HTMLStyleElement, Iface::HTMLTableCaptionElement, Iface::HTMLTableCellElement, Iface::HTMLTableColElement, Iface::HTMLTableElement, Iface::HTMLTableRowElement, Iface::HTMLTableSectionElement, Iface::HTMLTemplateElement, Iface::HTMLTextAreaElement, Iface::HTMLTimeElement, Iface::HTMLTitleElement, Iface::HTMLTrackElement, Iface::HTMLUListElement, Iface::HTMLUnknownElement, Iface::HTMLVideoElement, Iface::InputEvent, Iface::KeyboardEvent, Iface::MouseEvent, Iface::PointerEvent, Iface::SVGElement, Iface::SVGGraphicsElement, Iface::ShadowRoot, Iface::Text, Iface::WheelEvent, Iface::XMLHttpRequest, Iface::DragEvent, Iface::HTMLAnchorElement, Iface::HTMLAreaElement, Iface::HTMLAudioElement, Iface::HTMLBRElement, Iface::HTMLBaseElement, Iface::HTMLBodyElement, Iface::HTMLButtonElement, Iface::HTMLCanvasElement, Iface::HTMLDListElement, Iface::HTMLDataElement, Iface::HTMLDataListElement, Iface::HTMLDetailsElement, Iface::HTMLDialogElement, Iface::HTMLDirectoryElement, Iface::HTMLDivElement];
 
     /// The interface name.
     pub fn name(self) -> &'static str {
@@ -459,6 +477,8 @@ impl Iface {
             Iface::MessageChannel => "MessageChannel",
             Iface::MessageEvent => "MessageEvent",
             Iface::MessagePort => "MessagePort",
+            Iface::MimeType => "MimeType",
+            Iface::MimeTypeArray => "MimeTypeArray",
             Iface::ModelContext => "ModelContext",
             Iface::MutationObserver => "MutationObserver",
             Iface::MutationRecord => "MutationRecord",
@@ -469,12 +489,17 @@ impl Iface {
             Iface::NodeFilter => "NodeFilter",
             Iface::NodeIterator => "NodeIterator",
             Iface::NodeList => "NodeList",
+            Iface::Notification => "Notification",
             Iface::Performance => "Performance",
             Iface::PerformanceEntry => "PerformanceEntry",
             Iface::PerformanceMark => "PerformanceMark",
             Iface::PerformanceMeasure => "PerformanceMeasure",
             Iface::PerformanceObserver => "PerformanceObserver",
             Iface::PerformanceObserverEntryList => "PerformanceObserverEntryList",
+            Iface::PermissionStatus => "PermissionStatus",
+            Iface::Permissions => "Permissions",
+            Iface::Plugin => "Plugin",
+            Iface::PluginArray => "PluginArray",
             Iface::PopStateEvent => "PopStateEvent",
             Iface::ProgressEvent => "ProgressEvent",
             Iface::PublicKeyCredential => "PublicKeyCredential",
@@ -485,6 +510,7 @@ impl Iface {
             Iface::ResizeObserverSize => "ResizeObserverSize",
             Iface::Response => "Response",
             Iface::Screen => "Screen",
+            Iface::ScreenOrientation => "ScreenOrientation",
             Iface::Selection => "Selection",
             Iface::StaticRange => "StaticRange",
             Iface::Storage => "Storage",
@@ -496,6 +522,7 @@ impl Iface {
             Iface::UIEvent => "UIEvent",
             Iface::URL => "URL",
             Iface::URLSearchParams => "URLSearchParams",
+            Iface::UserActivation => "UserActivation",
             Iface::ValidityState => "ValidityState",
             Iface::VisualViewport => "VisualViewport",
             Iface::WebSocket => "WebSocket",
@@ -662,6 +689,8 @@ impl Iface {
             Iface::MessageChannel => None,
             Iface::MessageEvent => Some(Iface::Event),
             Iface::MessagePort => Some(Iface::EventTarget),
+            Iface::MimeType => None,
+            Iface::MimeTypeArray => None,
             Iface::ModelContext => Some(Iface::EventTarget),
             Iface::MutationObserver => None,
             Iface::MutationRecord => None,
@@ -672,12 +701,17 @@ impl Iface {
             Iface::NodeFilter => None,
             Iface::NodeIterator => None,
             Iface::NodeList => None,
+            Iface::Notification => Some(Iface::EventTarget),
             Iface::Performance => Some(Iface::EventTarget),
             Iface::PerformanceEntry => None,
             Iface::PerformanceMark => Some(Iface::PerformanceEntry),
             Iface::PerformanceMeasure => Some(Iface::PerformanceEntry),
             Iface::PerformanceObserver => None,
             Iface::PerformanceObserverEntryList => None,
+            Iface::PermissionStatus => Some(Iface::EventTarget),
+            Iface::Permissions => None,
+            Iface::Plugin => None,
+            Iface::PluginArray => None,
             Iface::PopStateEvent => Some(Iface::Event),
             Iface::ProgressEvent => Some(Iface::Event),
             Iface::PublicKeyCredential => Some(Iface::Credential),
@@ -688,6 +722,7 @@ impl Iface {
             Iface::ResizeObserverSize => None,
             Iface::Response => None,
             Iface::Screen => None,
+            Iface::ScreenOrientation => Some(Iface::EventTarget),
             Iface::Selection => None,
             Iface::StaticRange => Some(Iface::AbstractRange),
             Iface::Storage => None,
@@ -699,6 +734,7 @@ impl Iface {
             Iface::UIEvent => Some(Iface::Event),
             Iface::URL => None,
             Iface::URLSearchParams => None,
+            Iface::UserActivation => None,
             Iface::ValidityState => None,
             Iface::VisualViewport => Some(Iface::EventTarget),
             Iface::WebSocket => Some(Iface::EventTarget),
@@ -4649,6 +4685,73 @@ fn set__MessagePort__onmessageerror(scope: &mut v8::PinScope, args: v8::Function
 }
 
 #[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__MimeType__type(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::MimeType)?;
+        let r: String = crate::dom::mime_type::get_type_(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__MimeType__description(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::MimeType)?;
+        let r: String = crate::dom::mime_type::get_description(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__MimeType__suffixes(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::MimeType)?;
+        let r: String = crate::dom::mime_type::get_suffixes(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__MimeType__enabledPlugin(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::MimeType)?;
+        let r: Obj = crate::dom::mime_type::get_enabled_plugin(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__MimeTypeArray__length(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::MimeTypeArray)?;
+        let r: u32 = crate::dom::mime_type_array::get_length(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__MimeTypeArray__item(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::MimeTypeArray)?;
+        if args.length() <= 0 { return Err(cv::Error::args("MimeTypeArray.item", 0)); }
+        let a0: u32 = { let v = args.get(0); cv::int::<u32>(cx, v)? };
+        let r: Option<Obj> = crate::dom::mime_type_array::item(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__MimeTypeArray__namedItem(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::MimeTypeArray)?;
+        if args.length() <= 0 { return Err(cv::Error::args("MimeTypeArray.namedItem", 0)); }
+        let a0: String = { let v = args.get(0); cv::string(cx, v)? };
+        let r: Option<Obj> = crate::dom::mime_type_array::named_item(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
 fn op__ModelContext__registerTool(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::ModelContext)?;
@@ -4902,6 +5005,24 @@ fn get__Navigator__credentials(scope: &mut v8::PinScope, args: v8::FunctionCallb
 }
 
 #[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Navigator__userActivation(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Navigator)?;
+        let r: Obj = crate::dom::navigator::get_user_activation(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Navigator__permissions(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Navigator)?;
+        let r: Obj = crate::dom::navigator::get_permissions(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
 fn get__Navigator__appCodeName(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::Navigator)?;
@@ -5014,6 +5135,51 @@ fn get__Navigator__cookieEnabled(scope: &mut v8::PinScope, args: v8::FunctionCal
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::Navigator)?;
         let r: bool = crate::dom::navigator_cookies::get_cookie_enabled(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Navigator__plugins(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Navigator)?;
+        let r: Obj = crate::dom::navigator_plugins::get_plugins(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Navigator__mimeTypes(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Navigator)?;
+        let r: Obj = crate::dom::navigator_plugins::get_mime_types(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Navigator__javaEnabled(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Navigator)?;
+        let r: bool = crate::dom::navigator_plugins::java_enabled(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Navigator__pdfViewerEnabled(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Navigator)?;
+        let r: bool = crate::dom::navigator_plugins::get_pdf_viewer_enabled(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Navigator__hardwareConcurrency(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Navigator)?;
+        let r: u64 = crate::dom::navigator_concurrent_hardware::get_hardware_concurrency(cx, this)?;
         cx.ret(r)
     });
 }
@@ -5454,6 +5620,91 @@ fn get__NodeList__length(scope: &mut v8::PinScope, args: v8::FunctionCallbackArg
 }
 
 #[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Notification__static_requestPermission(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let a0: Option<Value> = { let v = args.get(0); if v.is_undefined() { None } else { Some(cv::value(cx, v)) } };
+        let r: Value = crate::dom::notification::request_permission(cx, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Notification__onclick(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Notification)?;
+        let r = cv::handler_get(cx, this, "click")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Notification__onclick(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Notification)?;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "click", v)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Notification__onshow(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Notification)?;
+        let r = cv::handler_get(cx, this, "show")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Notification__onshow(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Notification)?;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "show", v)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Notification__onerror(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Notification)?;
+        let r = cv::handler_get(cx, this, "error")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Notification__onerror(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Notification)?;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "error", v)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Notification__onclose(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Notification)?;
+        let r = cv::handler_get(cx, this, "close")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__Notification__onclose(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Notification)?;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "close", v)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
 fn op__Performance__now(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::Performance)?;
@@ -5677,6 +5928,152 @@ fn op__PerformanceObserverEntryList__getEntriesByName(scope: &mut v8::PinScope, 
         let a0: String = { let v = args.get(0); cv::string(cx, v)? };
         let a1: Option<String> = { let v = args.get(1); if v.is_undefined() { None } else { Some(cv::string(cx, v)?) } };
         let r: Vec<Obj> = crate::dom::performance_observer_entry_list::get_entries_by_name(cx, this, a0, a1)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__PermissionStatus__state(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::PermissionStatus)?;
+        let r: String = crate::dom::permission_status::get_state(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__PermissionStatus__name(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::PermissionStatus)?;
+        let r: String = crate::dom::permission_status::get_name(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__PermissionStatus__onchange(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::PermissionStatus)?;
+        let r = cv::handler_get(cx, this, "change")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__PermissionStatus__onchange(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::PermissionStatus)?;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "change", v)?;
+        cx.ret(())
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Permissions__query(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Permissions)?;
+        if args.length() <= 0 { return Err(cv::Error::args("Permissions.query", 0)); }
+        let a0: Value = { let v = args.get(0); cv::value(cx, v) };
+        let r: Value = crate::dom::permissions::query(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Plugin__name(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Plugin)?;
+        let r: String = crate::dom::plugin::get_name(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Plugin__description(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Plugin)?;
+        let r: String = crate::dom::plugin::get_description(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Plugin__filename(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Plugin)?;
+        let r: String = crate::dom::plugin::get_filename(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Plugin__length(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Plugin)?;
+        let r: u32 = crate::dom::plugin::get_length(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Plugin__item(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Plugin)?;
+        if args.length() <= 0 { return Err(cv::Error::args("Plugin.item", 0)); }
+        let a0: u32 = { let v = args.get(0); cv::int::<u32>(cx, v)? };
+        let r: Option<Obj> = crate::dom::plugin::item(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__Plugin__namedItem(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Plugin)?;
+        if args.length() <= 0 { return Err(cv::Error::args("Plugin.namedItem", 0)); }
+        let a0: String = { let v = args.get(0); cv::string(cx, v)? };
+        let r: Option<Obj> = crate::dom::plugin::named_item(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__PluginArray__refresh(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::PluginArray)?;
+        let r: () = crate::dom::plugin_array::refresh(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__PluginArray__length(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::PluginArray)?;
+        let r: u32 = crate::dom::plugin_array::get_length(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__PluginArray__item(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::PluginArray)?;
+        if args.length() <= 0 { return Err(cv::Error::args("PluginArray.item", 0)); }
+        let a0: u32 = { let v = args.get(0); cv::int::<u32>(cx, v)? };
+        let r: Option<Obj> = crate::dom::plugin_array::item(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__PluginArray__namedItem(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::PluginArray)?;
+        if args.length() <= 0 { return Err(cv::Error::args("PluginArray.namedItem", 0)); }
+        let a0: String = { let v = args.get(0); cv::string(cx, v)? };
+        let r: Option<Obj> = crate::dom::plugin_array::named_item(cx, this, a0)?;
         cx.ret(r)
     });
 }
@@ -6537,6 +6934,72 @@ fn get__Screen__pixelDepth(scope: &mut v8::PinScope, args: v8::FunctionCallbackA
         let this = cx.this(args, Iface::Screen)?;
         let r: u32 = crate::dom::screen::get_pixel_depth(cx, this)?;
         cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Screen__orientation(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::Screen)?;
+        let r: Obj = crate::dom::screen::get_orientation(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__ScreenOrientation__lock(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ScreenOrientation)?;
+        if args.length() <= 0 { return Err(cv::Error::args("ScreenOrientation.lock", 0)); }
+        let a0: String = { let v = args.get(0); cv::string(cx, v)? };
+        let r: Value = crate::dom::screen_orientation::lock(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__ScreenOrientation__unlock(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ScreenOrientation)?;
+        let r: () = crate::dom::screen_orientation::unlock(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ScreenOrientation__type(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ScreenOrientation)?;
+        let r: String = crate::dom::screen_orientation::get_type_(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ScreenOrientation__angle(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ScreenOrientation)?;
+        let r: u16 = crate::dom::screen_orientation::get_angle(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ScreenOrientation__onchange(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ScreenOrientation)?;
+        let r = cv::handler_get(cx, this, "change")?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn set__ScreenOrientation__onchange(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ScreenOrientation)?;
+        let v = cv::opt_value(cx, args.get(0));
+        cv::handler_set(cx, this, "change", v)?;
+        cx.ret(())
     });
 }
 
@@ -7654,6 +8117,24 @@ fn ctor__URLSearchParams(scope: &mut v8::PinScope, args: v8::FunctionCallbackArg
 }
 
 #[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__UserActivation__hasBeenActive(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::UserActivation)?;
+        let r: bool = crate::dom::user_activation::get_has_been_active(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__UserActivation__isActive(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::UserActivation)?;
+        let r: bool = crate::dom::user_activation::get_is_active(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
 fn get__ValidityState__valueMissing(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::ValidityState)?;
@@ -8391,6 +8872,42 @@ fn op__Window__scrollBy(scope: &mut v8::PinScope, args: v8::FunctionCallbackArgu
         }
         let a0: ScrollToOptions = { let v = args.get(0); if v.is_undefined() { ScrollToOptions::default() } else { dict_scroll_to_options(cx, v)? } };
         let r: Value = crate::dom::window::scroll_by(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Window__screenX(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = Obj::Window;
+        let r: i32 = crate::dom::window::get_screen_x(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Window__screenLeft(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = Obj::Window;
+        let r: i32 = crate::dom::window::get_screen_left(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Window__screenY(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = Obj::Window;
+        let r: i32 = crate::dom::window::get_screen_y(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__Window__screenTop(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = Obj::Window;
+        let r: i32 = crate::dom::window::get_screen_top(cx, this)?;
         cx.ret(r)
     });
 }
@@ -11258,6 +11775,15 @@ fn get__WorkerNavigator__onLine(scope: &mut v8::PinScope, args: v8::FunctionCall
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::WorkerNavigator)?;
         let r: bool = crate::dom::navigator_on_line::get_on_line(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__WorkerNavigator__hardwareConcurrency(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::WorkerNavigator)?;
+        let r: u64 = crate::dom::navigator_concurrent_hardware::get_hardware_concurrency(cx, this)?;
         cx.ret(r)
     });
 }
@@ -31789,6 +32315,29 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         crate::dom::hooks::template(scope, Iface::MessagePort, f);
         out.push(v8::Global::new(scope, f));
     }
+    { // MimeType
+        let f = cv::interface(scope, "MimeType", cv::illegal_constructor);
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "type", get__MimeType__type, None);
+        cv::accessor(scope, proto, "description", get__MimeType__description, None);
+        cv::accessor(scope, proto, "suffixes", get__MimeType__suffixes, None);
+        cv::accessor(scope, proto, "enabledPlugin", get__MimeType__enabledPlugin, None);
+        crate::dom::hooks::template(scope, Iface::MimeType, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // MimeTypeArray
+        let f = cv::interface(scope, "MimeTypeArray", cv::illegal_constructor);
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "length", get__MimeTypeArray__length, None);
+        cv::method(scope, proto.into(), "item", op__MimeTypeArray__item, 1);
+        cv::method(scope, proto.into(), "namedItem", op__MimeTypeArray__namedItem, 1);
+        crate::dom::hooks::template(scope, Iface::MimeTypeArray, f);
+        out.push(v8::Global::new(scope, f));
+    }
     { // ModelContext
         let f = cv::interface(scope, "ModelContext", cv::illegal_constructor);
         f.inherit(v8::Local::new(scope, &out[Iface::EventTarget as usize]));
@@ -31849,6 +32398,8 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         let proto = f.prototype_template(scope);
         cv::accessor(scope, proto, "clipboard", get__Navigator__clipboard, None);
         cv::accessor(scope, proto, "credentials", get__Navigator__credentials, None);
+        cv::accessor(scope, proto, "userActivation", get__Navigator__userActivation, None);
+        cv::accessor(scope, proto, "permissions", get__Navigator__permissions, None);
         cv::accessor(scope, proto, "appCodeName", get__Navigator__appCodeName, None);
         cv::accessor(scope, proto, "appName", get__Navigator__appName, None);
         cv::accessor(scope, proto, "appVersion", get__Navigator__appVersion, None);
@@ -31862,6 +32413,11 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::accessor(scope, proto, "languages", get__Navigator__languages, None);
         cv::accessor(scope, proto, "onLine", get__Navigator__onLine, None);
         cv::accessor(scope, proto, "cookieEnabled", get__Navigator__cookieEnabled, None);
+        cv::accessor(scope, proto, "plugins", get__Navigator__plugins, None);
+        cv::accessor(scope, proto, "mimeTypes", get__Navigator__mimeTypes, None);
+        cv::method(scope, proto.into(), "javaEnabled", op__Navigator__javaEnabled, 0);
+        cv::accessor(scope, proto, "pdfViewerEnabled", get__Navigator__pdfViewerEnabled, None);
+        cv::accessor(scope, proto, "hardwareConcurrency", get__Navigator__hardwareConcurrency, None);
         cv::accessor(scope, proto, "userAgentData", get__Navigator__userAgentData, None);
         cv::accessor(scope, proto, "webdriver", get__Navigator__webdriver, None);
         crate::dom::hooks::template(scope, Iface::Navigator, f);
@@ -31981,6 +32537,20 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         crate::dom::hooks::template(scope, Iface::NodeList, f);
         out.push(v8::Global::new(scope, f));
     }
+    { // Notification
+        let f = cv::interface(scope, "Notification", cv::illegal_constructor);
+        f.inherit(v8::Local::new(scope, &out[Iface::EventTarget as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::method(scope, f.into(), "requestPermission", op__Notification__static_requestPermission, 0);
+        cv::accessor(scope, proto, "onclick", get__Notification__onclick, Some(set__Notification__onclick.map_fn_to()));
+        cv::accessor(scope, proto, "onshow", get__Notification__onshow, Some(set__Notification__onshow.map_fn_to()));
+        cv::accessor(scope, proto, "onerror", get__Notification__onerror, Some(set__Notification__onerror.map_fn_to()));
+        cv::accessor(scope, proto, "onclose", get__Notification__onclose, Some(set__Notification__onclose.map_fn_to()));
+        crate::dom::hooks::template(scope, Iface::Notification, f);
+        out.push(v8::Global::new(scope, f));
+    }
     { // Performance
         let f = cv::interface(scope, "Performance", cv::illegal_constructor);
         f.inherit(v8::Local::new(scope, &out[Iface::EventTarget as usize]));
@@ -32051,6 +32621,53 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::method(scope, proto.into(), "getEntriesByType", op__PerformanceObserverEntryList__getEntriesByType, 1);
         cv::method(scope, proto.into(), "getEntriesByName", op__PerformanceObserverEntryList__getEntriesByName, 1);
         crate::dom::hooks::template(scope, Iface::PerformanceObserverEntryList, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // PermissionStatus
+        let f = cv::interface(scope, "PermissionStatus", cv::illegal_constructor);
+        f.inherit(v8::Local::new(scope, &out[Iface::EventTarget as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "state", get__PermissionStatus__state, None);
+        cv::accessor(scope, proto, "name", get__PermissionStatus__name, None);
+        cv::accessor(scope, proto, "onchange", get__PermissionStatus__onchange, Some(set__PermissionStatus__onchange.map_fn_to()));
+        crate::dom::hooks::template(scope, Iface::PermissionStatus, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // Permissions
+        let f = cv::interface(scope, "Permissions", cv::illegal_constructor);
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::method(scope, proto.into(), "query", op__Permissions__query, 1);
+        crate::dom::hooks::template(scope, Iface::Permissions, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // Plugin
+        let f = cv::interface(scope, "Plugin", cv::illegal_constructor);
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "name", get__Plugin__name, None);
+        cv::accessor(scope, proto, "description", get__Plugin__description, None);
+        cv::accessor(scope, proto, "filename", get__Plugin__filename, None);
+        cv::accessor(scope, proto, "length", get__Plugin__length, None);
+        cv::method(scope, proto.into(), "item", op__Plugin__item, 1);
+        cv::method(scope, proto.into(), "namedItem", op__Plugin__namedItem, 1);
+        crate::dom::hooks::template(scope, Iface::Plugin, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // PluginArray
+        let f = cv::interface(scope, "PluginArray", cv::illegal_constructor);
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::method(scope, proto.into(), "refresh", op__PluginArray__refresh, 0);
+        cv::accessor(scope, proto, "length", get__PluginArray__length, None);
+        cv::method(scope, proto.into(), "item", op__PluginArray__item, 1);
+        cv::method(scope, proto.into(), "namedItem", op__PluginArray__namedItem, 1);
+        crate::dom::hooks::template(scope, Iface::PluginArray, f);
         out.push(v8::Global::new(scope, f));
     }
     { // PopStateEvent
@@ -32221,7 +32838,22 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::accessor(scope, proto, "height", get__Screen__height, None);
         cv::accessor(scope, proto, "colorDepth", get__Screen__colorDepth, None);
         cv::accessor(scope, proto, "pixelDepth", get__Screen__pixelDepth, None);
+        cv::accessor(scope, proto, "orientation", get__Screen__orientation, None);
         crate::dom::hooks::template(scope, Iface::Screen, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // ScreenOrientation
+        let f = cv::interface(scope, "ScreenOrientation", cv::illegal_constructor);
+        f.inherit(v8::Local::new(scope, &out[Iface::EventTarget as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::method(scope, proto.into(), "lock", op__ScreenOrientation__lock, 1);
+        cv::method(scope, proto.into(), "unlock", op__ScreenOrientation__unlock, 0);
+        cv::accessor(scope, proto, "type", get__ScreenOrientation__type, None);
+        cv::accessor(scope, proto, "angle", get__ScreenOrientation__angle, None);
+        cv::accessor(scope, proto, "onchange", get__ScreenOrientation__onchange, Some(set__ScreenOrientation__onchange.map_fn_to()));
+        crate::dom::hooks::template(scope, Iface::ScreenOrientation, f);
         out.push(v8::Global::new(scope, f));
     }
     { // Selection
@@ -32401,6 +33033,16 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         crate::dom::hooks::template(scope, Iface::URLSearchParams, f);
         out.push(v8::Global::new(scope, f));
     }
+    { // UserActivation
+        let f = cv::interface(scope, "UserActivation", cv::illegal_constructor);
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "hasBeenActive", get__UserActivation__hasBeenActive, None);
+        cv::accessor(scope, proto, "isActive", get__UserActivation__isActive, None);
+        crate::dom::hooks::template(scope, Iface::UserActivation, f);
+        out.push(v8::Global::new(scope, f));
+    }
     { // ValidityState
         let f = cv::interface(scope, "ValidityState", cv::illegal_constructor);
         let inst = f.instance_template(scope);
@@ -32502,6 +33144,10 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::method(scope, inst.into(), "scroll", op__Window__scroll, 0);
         cv::method(scope, inst.into(), "scrollTo", op__Window__scrollTo, 0);
         cv::method(scope, inst.into(), "scrollBy", op__Window__scrollBy, 0);
+        cv::accessor(scope, inst, "screenX", get__Window__screenX, None);
+        cv::accessor(scope, inst, "screenLeft", get__Window__screenLeft, None);
+        cv::accessor(scope, inst, "screenY", get__Window__screenY, None);
+        cv::accessor(scope, inst, "screenTop", get__Window__screenTop, None);
         cv::accessor(scope, inst, "outerWidth", get__Window__outerWidth, None);
         cv::accessor(scope, inst, "outerHeight", get__Window__outerHeight, None);
         cv::accessor(scope, inst, "devicePixelRatio", get__Window__devicePixelRatio, None);
@@ -32718,6 +33364,7 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::accessor(scope, proto, "language", get__WorkerNavigator__language, None);
         cv::accessor(scope, proto, "languages", get__WorkerNavigator__languages, None);
         cv::accessor(scope, proto, "onLine", get__WorkerNavigator__onLine, None);
+        cv::accessor(scope, proto, "hardwareConcurrency", get__WorkerNavigator__hardwareConcurrency, None);
         cv::accessor(scope, proto, "userAgentData", get__WorkerNavigator__userAgentData, None);
         crate::dom::hooks::template(scope, Iface::WorkerNavigator, f);
         out.push(v8::Global::new(scope, f));
@@ -34842,6 +35489,8 @@ pub fn expose(scope: &mut v8::PinScope<'_, '_>, global: v8::Local<'_, v8::Object
     cv::expose(scope, global, &t[Iface::MessageChannel as usize], "MessageChannel");
     cv::expose(scope, global, &t[Iface::MessageEvent as usize], "MessageEvent");
     cv::expose(scope, global, &t[Iface::MessagePort as usize], "MessagePort");
+    cv::expose(scope, global, &t[Iface::MimeType as usize], "MimeType");
+    cv::expose(scope, global, &t[Iface::MimeTypeArray as usize], "MimeTypeArray");
     cv::expose(scope, global, &t[Iface::ModelContext as usize], "ModelContext");
     cv::expose(scope, global, &t[Iface::MutationObserver as usize], "MutationObserver");
     cv::expose(scope, global, &t[Iface::MutationRecord as usize], "MutationRecord");
@@ -34852,12 +35501,17 @@ pub fn expose(scope: &mut v8::PinScope<'_, '_>, global: v8::Local<'_, v8::Object
     cv::expose(scope, global, &t[Iface::NodeFilter as usize], "NodeFilter");
     cv::expose(scope, global, &t[Iface::NodeIterator as usize], "NodeIterator");
     cv::expose(scope, global, &t[Iface::NodeList as usize], "NodeList");
+    cv::expose(scope, global, &t[Iface::Notification as usize], "Notification");
     cv::expose(scope, global, &t[Iface::Performance as usize], "Performance");
     cv::expose(scope, global, &t[Iface::PerformanceEntry as usize], "PerformanceEntry");
     cv::expose(scope, global, &t[Iface::PerformanceMark as usize], "PerformanceMark");
     cv::expose(scope, global, &t[Iface::PerformanceMeasure as usize], "PerformanceMeasure");
     cv::expose(scope, global, &t[Iface::PerformanceObserver as usize], "PerformanceObserver");
     cv::expose(scope, global, &t[Iface::PerformanceObserverEntryList as usize], "PerformanceObserverEntryList");
+    cv::expose(scope, global, &t[Iface::PermissionStatus as usize], "PermissionStatus");
+    cv::expose(scope, global, &t[Iface::Permissions as usize], "Permissions");
+    cv::expose(scope, global, &t[Iface::Plugin as usize], "Plugin");
+    cv::expose(scope, global, &t[Iface::PluginArray as usize], "PluginArray");
     cv::expose(scope, global, &t[Iface::PopStateEvent as usize], "PopStateEvent");
     cv::expose(scope, global, &t[Iface::ProgressEvent as usize], "ProgressEvent");
     cv::expose(scope, global, &t[Iface::PublicKeyCredential as usize], "PublicKeyCredential");
@@ -34868,6 +35522,7 @@ pub fn expose(scope: &mut v8::PinScope<'_, '_>, global: v8::Local<'_, v8::Object
     cv::expose(scope, global, &t[Iface::ResizeObserverSize as usize], "ResizeObserverSize");
     cv::expose(scope, global, &t[Iface::Response as usize], "Response");
     cv::expose(scope, global, &t[Iface::Screen as usize], "Screen");
+    cv::expose(scope, global, &t[Iface::ScreenOrientation as usize], "ScreenOrientation");
     cv::expose(scope, global, &t[Iface::Selection as usize], "Selection");
     cv::expose(scope, global, &t[Iface::StaticRange as usize], "StaticRange");
     cv::expose(scope, global, &t[Iface::Storage as usize], "Storage");
@@ -34879,6 +35534,7 @@ pub fn expose(scope: &mut v8::PinScope<'_, '_>, global: v8::Local<'_, v8::Object
     cv::expose(scope, global, &t[Iface::UIEvent as usize], "UIEvent");
     cv::expose(scope, global, &t[Iface::URL as usize], "URL");
     cv::expose(scope, global, &t[Iface::URLSearchParams as usize], "URLSearchParams");
+    cv::expose(scope, global, &t[Iface::UserActivation as usize], "UserActivation");
     cv::expose(scope, global, &t[Iface::ValidityState as usize], "ValidityState");
     cv::expose(scope, global, &t[Iface::VisualViewport as usize], "VisualViewport");
     cv::expose(scope, global, &t[Iface::WebSocket as usize], "WebSocket");
@@ -35011,12 +35667,15 @@ pub fn expose_worker(scope: &mut v8::PinScope<'_, '_>, global: v8::Local<'_, v8:
     cv::expose(scope, global, &t[Iface::MessageEvent as usize], "MessageEvent");
     cv::expose(scope, global, &t[Iface::MessagePort as usize], "MessagePort");
     cv::expose(scope, global, &t[Iface::NavigatorUAData as usize], "NavigatorUAData");
+    cv::expose(scope, global, &t[Iface::Notification as usize], "Notification");
     cv::expose(scope, global, &t[Iface::Performance as usize], "Performance");
     cv::expose(scope, global, &t[Iface::PerformanceEntry as usize], "PerformanceEntry");
     cv::expose(scope, global, &t[Iface::PerformanceMark as usize], "PerformanceMark");
     cv::expose(scope, global, &t[Iface::PerformanceMeasure as usize], "PerformanceMeasure");
     cv::expose(scope, global, &t[Iface::PerformanceObserver as usize], "PerformanceObserver");
     cv::expose(scope, global, &t[Iface::PerformanceObserverEntryList as usize], "PerformanceObserverEntryList");
+    cv::expose(scope, global, &t[Iface::PermissionStatus as usize], "PermissionStatus");
+    cv::expose(scope, global, &t[Iface::Permissions as usize], "Permissions");
     cv::expose(scope, global, &t[Iface::ProgressEvent as usize], "ProgressEvent");
     cv::expose(scope, global, &t[Iface::Request as usize], "Request");
     cv::expose(scope, global, &t[Iface::Response as usize], "Response");

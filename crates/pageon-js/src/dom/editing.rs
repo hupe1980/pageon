@@ -1751,6 +1751,14 @@ pub mod navigator {
     pub fn get_credentials(cx: &mut Cx<'_, '_, '_>, _this: Obj) -> R<Obj> {
         Ok(crate::dom::credentials::container(cx))
     }
+
+    pub fn get_permissions(cx: &mut Cx<'_, '_, '_>, _this: Obj) -> R<Obj> {
+        Ok(crate::dom::platform_apis::permissions(cx))
+    }
+
+    pub fn get_user_activation(cx: &mut Cx<'_, '_, '_>, _this: Obj) -> R<Obj> {
+        Ok(crate::dom::platform_apis::user_activation(cx))
+    }
 }
 
 /// `Clipboard`: writing needs transient activation; reading is never granted (pages read what

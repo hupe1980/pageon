@@ -45,7 +45,10 @@ pub fn template(
         | Iface::CSSStyleDeclaration
         | Iface::FileList
         | Iface::DataTransferItemList
-        | Iface::NamedNodeMap => {
+        | Iface::NamedNodeMap
+        | Iface::PluginArray
+        | Iface::MimeTypeArray
+        | Iface::Plugin => {
             proto.set_intrinsic_data_property(
                 iterator.into(),
                 v8::Intrinsic::ArrayProtoValues,
@@ -62,10 +65,20 @@ pub fn template(
         | Iface::DOMTokenList
         | Iface::DOMRectList
         | Iface::FileList
-        | Iface::CSSStyleDeclaration => {
+        | Iface::CSSStyleDeclaration
+        | Iface::PluginArray
+        | Iface::MimeTypeArray
+        | Iface::Plugin => {
             inst.set_indexed_property_handler(
                 v8::IndexedPropertyHandlerConfiguration::new().getter(indexed_get),
             );
+        }
+        Iface::Notification => {
+            // `Notification.permission`, a static attribute.
+            let g = v8::FunctionTemplate::new(scope, notification_permission);
+            let n =
+                v8::String::new(scope, "permission").unwrap_or_else(|| v8::String::empty(scope));
+            f.set_accessor_property(n.into(), Some(g), None, v8::PropertyAttribute::NONE);
         }
         Iface::Worker => {
             // `postMessage(message, transfer)` and `postMessage(message, options)`.
@@ -210,6 +223,18 @@ fn with_cx<T>(
     f(&mut cx, obj)
 }
 
+fn notification_permission(
+    scope: &mut v8::PinScope,
+    args: v8::FunctionCallbackArguments,
+    mut rv: v8::ReturnValue,
+) {
+    cv::call(scope, &args, &mut rv, |cx, _| {
+        Ok(Out::Str(
+            crate::dom::notification::permission(cx).to_string(),
+        ))
+    });
+}
+
 fn indexed_get<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     index: u32,
@@ -237,6 +262,18 @@ fn indexed_get<'s>(
                     .flatten()
                     .map(Out::Obj)
             }
+            Iface::PluginArray => crate::dom::plugin_array::item(cx, obj, index)
+                .ok()
+                .flatten()
+                .map(Out::Obj),
+            Iface::MimeTypeArray => crate::dom::mime_type_array::item(cx, obj, index)
+                .ok()
+                .flatten()
+                .map(Out::Obj),
+            Iface::Plugin => crate::dom::plugin::item(cx, obj, index)
+                .ok()
+                .flatten()
+                .map(Out::Obj),
             Iface::NamedNodeMap => crate::dom::named_node_map::item(cx, obj, index)
                 .ok()
                 .flatten()

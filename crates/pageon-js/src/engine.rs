@@ -214,6 +214,25 @@ impl std::fmt::Debug for Engine {
     }
 }
 
+/// Platform APIs written as script on the virtual clock (Web Animations, the scheduler,
+/// `sendBeacon`): a function of the page's original `fetch`, evaluated on first use.
+const PLATFORM: &str = include_str!("platform.js");
+
+/// `host.platform()`: evaluates [`PLATFORM`] in the current context and returns the function.
+fn platform_load(
+    scope: &mut v8::PinScope,
+    _args: v8::FunctionCallbackArguments,
+    mut rv: v8::ReturnValue,
+) {
+    let Some(src) = v8::String::new(scope, PLATFORM) else {
+        return;
+    };
+    v8::tc_scope!(let tc, scope);
+    if let Some(f) = v8::Script::compile(tc, src, None).and_then(|s| s.run(tc)) {
+        rv.set(f);
+    }
+}
+
 const PRELUDE: &str = r#"(() => {
   const host = globalThis.__pageon;
   delete globalThis.__pageon;
@@ -333,6 +352,32 @@ const PRELUDE: &str = r#"(() => {
     for (const name of Object.keys(statics)) {
       Object.defineProperty(PublicKeyCredential, name, { value: statics[name], writable: true, configurable: true });
     }
+  }
+  // Web Animations, the scheduler and sendBeacon: loaded on first use (see platform.js).
+  {
+    const fetch0 = globalThis.fetch;
+    let loaded = false;
+    const load = () => { if (!loaded) { loaded = true; host.platform()(fetch0); } };
+    const lazy = (o, names) => {
+      for (const n of names) {
+        Object.defineProperty(o, n, {
+          configurable: true,
+          enumerable: o !== globalThis,
+          get() { load(); return Reflect.get(o, n, this); },
+          set(v) { load(); Object.defineProperty(o, n, { value: v, writable: true, configurable: true }); },
+        });
+      }
+    };
+    if (globalThis.Element && globalThis.Document && globalThis.performance) {
+      lazy(globalThis, ['Animation', 'AnimationEffect', 'KeyframeEffect', 'AnimationTimeline',
+        'DocumentTimeline', 'AnimationPlaybackEvent']);
+      lazy(Element.prototype, ['animate', 'getAnimations']);
+      lazy(Document.prototype, ['getAnimations', 'timeline']);
+    }
+    if (globalThis.setTimeout && globalThis.AbortController) {
+      lazy(globalThis, ['scheduler', 'Scheduler', 'TaskController', 'TaskSignal', 'TaskPriorityChangeEvent']);
+    }
+    if (globalThis.Navigator && fetch0) lazy(Navigator.prototype, ['sendBeacon']);
   }
   // IndexedDB: loaded on first use (see indexeddb.rs).
   {
@@ -505,6 +550,7 @@ impl Engine {
                 slab: Vec::new(),
                 same: Default::default(),
                 window_same: Default::default(),
+                notifications_denied: false,
                 listeners: Default::default(),
                 handlers: Default::default(),
                 current_script: None,
@@ -739,6 +785,12 @@ impl Engine {
         if let (Some(k), Some(func)) = (
             v8::String::new(scope, "idb"),
             v8::Function::new(scope, crate::indexeddb::load),
+        ) {
+            host.set(scope, k.into(), func.into());
+        }
+        if let (Some(k), Some(func)) = (
+            v8::String::new(scope, "platform"),
+            v8::Function::new(scope, platform_load),
         ) {
             host.set(scope, k.into(), func.into());
         }

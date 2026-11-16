@@ -216,6 +216,23 @@ pub mod window {
         Ok(viewport(cx).1)
     }
 
+    /// The window's position on the screen: the top-left corner.
+    pub fn get_screen_x(_cx: &mut Cx<'_, '_, '_>, _this: Obj) -> R<i32> {
+        Ok(0)
+    }
+
+    pub fn get_screen_y(_cx: &mut Cx<'_, '_, '_>, _this: Obj) -> R<i32> {
+        Ok(0)
+    }
+
+    pub fn get_screen_left(_cx: &mut Cx<'_, '_, '_>, _this: Obj) -> R<i32> {
+        Ok(0)
+    }
+
+    pub fn get_screen_top(_cx: &mut Cx<'_, '_, '_>, _this: Obj) -> R<i32> {
+        Ok(0)
+    }
+
     pub fn get_outer_width(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<i32> {
         get_inner_width(cx, this)
     }
@@ -541,7 +558,7 @@ pub mod animation_frame_provider {
     }
 }
 
-/// `Location` (navigation from script is not supported yet: setters are reported).
+/// `Location` (navigation from script is not supported: setters are reported).
 pub mod location {
     use super::*;
 

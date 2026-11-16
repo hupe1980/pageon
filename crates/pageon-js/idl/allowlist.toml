@@ -210,7 +210,8 @@ members = ["content"]
 members = [
   "window", "self", "document", "name", "location", "navigator", "top", "parent", "frames", "length",
   "frameElement", "focus", "blur", "getComputedStyle", "postMessage",
-  "innerWidth", "innerHeight", "outerWidth", "outerHeight", "scrollX", "scrollY", "pageXOffset",
+  "innerWidth", "innerHeight", "outerWidth", "outerHeight", "screenX", "screenY", "screenLeft",
+  "screenTop", "scrollX", "scrollY", "pageXOffset",
   "pageYOffset", "devicePixelRatio", "alert", "confirm", "prompt", "open", "visualViewport",
   "scroll", "scrollTo", "scrollBy", "customElements", "history", "matchMedia",
   "requestIdleCallback", "cancelIdleCallback", "screen", "getSelection",
@@ -236,7 +237,38 @@ members = [
 ]
 
 [Navigator]
-members = ["clipboard", "credentials"]
+members = ["clipboard", "credentials", "permissions", "userActivation"]
+
+[NavigatorConcurrentHardware]
+members = ["hardwareConcurrency"]
+
+# The PDF viewer lists the HTML standard prescribes when a PDF viewer is supported.
+[NavigatorPlugins]
+members = ["plugins", "mimeTypes", "javaEnabled", "pdfViewerEnabled"]
+
+[PluginArray]
+members = ["refresh", "length", "item", "namedItem"]
+
+[MimeTypeArray]
+members = ["length", "item", "namedItem"]
+
+[Plugin]
+members = ["name", "description", "filename", "length", "item", "namedItem"]
+
+[MimeType]
+members = ["type", "description", "suffixes", "enabledPlugin"]
+
+[Permissions]
+members = ["query"]
+
+[PermissionStatus]
+members = ["state", "name"]
+
+[Notification]
+members = ["permission", "requestPermission"]
+
+[UserActivation]
+members = ["hasBeenActive", "isActive"]
 
 [NavigatorID]
 members = ["appCodeName", "appName", "appVersion", "platform", "product", "productSub", "userAgent", "vendor", "vendorSub"]
@@ -592,7 +624,10 @@ members = ["constructor", "dataTransfer"]
 members = ["constructor", "parseFromString"]
 
 [Screen]
-members = ["availWidth", "availHeight", "width", "height", "colorDepth", "pixelDepth"]
+members = ["availWidth", "availHeight", "width", "height", "colorDepth", "pixelDepth", "orientation"]
+
+[ScreenOrientation]
+members = ["lock", "unlock", "type", "angle"]
 
 [CSS]
 members = ["escape", "supports"]

@@ -156,6 +156,9 @@ impl<E: Env> Sandbox<E> {
             .map_err(|e| SandboxError::Cage(e.to_string()))?;
         let mut cmd = Command::new(&program);
         cmd.arg("content")
+            // Pages see UTC: the same zone caged and in-process, on every machine, and no
+            // hint of where the operator is.
+            .env("TZ", "UTC")
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::inherit());

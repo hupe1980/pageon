@@ -16,6 +16,9 @@ run on a virtual clock, and everything nondeterministic comes through one seam.
 is due now, the clock jumps to the next timer instead of waiting, so a 5-second spinner or a
 debounced search settles in milliseconds of wall time, and always in the same order.
 
+Pages see UTC, caged and in-process, on every machine: replays agree, and pages learn nothing
+about where you are. (A program embedding the Rust library keeps its process's time zone.)
+
 After every action pageon runs the page until it is idle (timers, requests and microtasks done)
 or a time window passes, then reports how it settled (`settled idle after 120 ms`). `wait 500`
 lets 500 ms of page time pass.

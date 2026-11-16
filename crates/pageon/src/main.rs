@@ -115,10 +115,11 @@ enum Command {
     /// Protocol: MCP 2026-07-28 (no handshake) and 2024-11-05 … 2025-11-25 (initialize).
     ///
     /// Tools:
-    ///   read     browser_open, browser_observe, browser_view, browser_screenshot
+    ///   read     browser_open, browser_observe, browser_find, browser_view, browser_screenshot
     ///   tabs     browser_tabs (new, select, close, list; replies name the tab)
-    ///   act      browser_click, browser_type, browser_upload, browser_press, browser_select, browser_hover, browser_drag,
-    ///            browser_scroll, browser_wait, browser_back, browser_forward, browser_call_tool
+    ///   act      browser_click, browser_type, browser_upload, browser_press, browser_select,
+    ///            browser_paste, browser_hover, browser_drag, browser_scroll, browser_wait,
+    ///            browser_back, browser_forward, browser_call_tool
     ///   explore  browser_lookahead (try actions on a fork; the page is unchanged, writes are held),
     ///            browser_reset (back to any step, exactly, sending nothing again)
     ///   reuse    browser_workflow_save, browser_workflow_run
@@ -1319,7 +1320,17 @@ fn cdp(port: u16, allow_origins: Vec<String>, discovery: bool, s: &SessionArgs) 
     }
 }
 
+/// Pages see UTC, in-process as in the content process: one zone on every machine, so replays
+/// agree, and no hint of where the operator is.
+#[allow(unsafe_code)]
+fn pages_in_utc() {
+    // SAFETY: called first in `main`, before any thread exists; nothing reads the environment
+    // concurrently.
+    unsafe { std::env::set_var("TZ", "UTC") };
+}
+
 fn main() -> ExitCode {
+    pages_in_utc();
     let (target, dump, viewport, acts, approve, prefer_markdown, paint, session) =
         match Cli::parse().command {
             Command::Content { probe } => return content(probe),

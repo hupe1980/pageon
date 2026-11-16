@@ -47,8 +47,10 @@ never signs where you did not configure it.
 ## Opt-in: a coherent Chrome
 
 Some sites only work with a mainstream browser. `--profile chrome` is one pinned Chrome version,
-coherent at every layer (the TLS ClientHello, HTTP/2 settings, headers, client hints and
-`navigator.userAgentData`), and tested for that coherence. It runs on the machine's own
+coherent where it is a protocol (the TLS ClientHello, HTTP/2 settings, headers, client hints,
+`navigator.userAgent` and `userAgentData`, and `navigator.webdriver` false). Everything else
+scripts see is pageon's own, the same in both profiles: nothing is invented to look like a
+particular machine. It runs on the machine's own
 platform; `--platform windows|macos|linux` picks another. It is a choice for sessions a person
 stands behind; the default stays honest, and signing works with either profile.
 

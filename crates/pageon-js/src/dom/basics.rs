@@ -43,6 +43,10 @@ pub mod screen {
     pub fn get_pixel_depth(_cx: &mut Cx<'_, '_, '_>, _this: Obj) -> R<u32> {
         Ok(24)
     }
+
+    pub fn get_orientation(cx: &mut Cx<'_, '_, '_>, _this: Obj) -> R<Obj> {
+        Ok(crate::dom::platform_apis::orientation(cx))
+    }
 }
 
 // ----- CSS -----

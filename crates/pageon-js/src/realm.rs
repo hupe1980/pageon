@@ -324,6 +324,15 @@ pub enum Slot {
     CaretPosition(NodeId, u32),
     /// `navigator.clipboard` and `navigator.credentials`.
     Clipboard,
+    /// `navigator.permissions`, `navigator.userActivation`, `screen.orientation`,
+    /// `navigator.plugins` and `navigator.mimeTypes`: stateless singletons.
+    Platform,
+    /// A `PermissionStatus`: the permission's name.
+    Permission(String),
+    /// A `Plugin` (index into the PDF viewer list).
+    Plugin(u8),
+    /// A `MimeType` (0: `application/pdf`, 1: `text/pdf`) of a plugin.
+    MimeType(u8, u8),
     /// A `PublicKeyCredential`.
     Credential(Box<crate::dom::credentials::Cred>),
     /// An authenticator response.
@@ -457,6 +466,8 @@ pub struct State {
     pub same: HashMap<(NodeId, &'static str), u32>,
     /// Window-level `[SameObject]` attributes.
     pub window_same: HashMap<&'static str, u32>,
+    /// The page asked for notifications and was refused (pageon grants no permission).
+    pub notifications_denied: bool,
     /// Listeners per target.
     pub listeners: HashMap<Target, Vec<Listener>>,
     /// Event handler IDL attributes: (world, target, event type) → callback.
