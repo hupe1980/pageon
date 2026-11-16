@@ -71,7 +71,8 @@ the request log, and the page sees an ordinary network error.
 
 ## Approvals
 
-`pageon fetch --approve` asks on the terminal before every write. From Rust, `Policy::approver`
+`pageon fetch --approve` asks on the terminal before every write; `pageon mcp --approve` and
+`pageon open --approve` ask in the [viewer](@/docs/viewer.md). From Rust, `Policy::approver`
 takes a closure. An approver sees structured metadata about the request (method, URL, origin,
 class, labels, the action that caused it), never page text, so a page cannot talk it into
 anything.

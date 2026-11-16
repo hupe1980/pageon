@@ -17,6 +17,14 @@ All notable changes to this project are documented here. The format follows
   open between commands; `click`, `type`, `press`, `select`, `view`, `find`, `screenshot`,
   `tabs`, `reset`, `lookahead`, `call` and the rest act on it with MCP's replies; `sessions`,
   `close [--all]`, `--idle`. `pageon skill --install` writes an agent skill.
+- The viewer: `--ui` on `pageon mcp` and `pageon open` serves a loopback page with every step
+  in words, the page before and after it, and what the model read; `--approve` asks there
+  before writes leave (Allow Once, Allow for This Session, Don't Allow); `Space` pauses the
+  agent; `pageon ui` prints a session's URL.
+
+### Fixed
+
+- Buttons size to their content, so a page's padding and font apply (they were 21 px tall).
 
 ## [0.3.0] - 2026-11-16
 

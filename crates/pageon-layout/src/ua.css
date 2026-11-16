@@ -21,8 +21,9 @@ input[type="search"], input[type="url"], input[type="tel"], input[type="number"]
   padding: 1px 2px;
   border: 2px inset;
 }
+/* Buttons size to their content, as in Chrome (21 px tall with these defaults), so a page's
+   own padding, font or line height applies. */
 button, input[type="submit"], input[type="button"], input[type="reset"] {
-  height: 21px;
   padding: 1px 6px;
   border: 2px outset;
 }

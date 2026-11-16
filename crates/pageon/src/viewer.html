@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="pageon-base" content="{{base}}">
+<meta name="pageon-token" content="{{token}}">
+<meta name="referrer" content="no-referrer">
+<title>pageon</title>
+<link rel="stylesheet" href="{{base}}/app.css">
+<header class="top">
+  <span class="wordmark">pageon</span>
+  <div id="island" class="island">
+    <div class="compact" role="status" aria-live="polite">
+      <span class="dot" aria-hidden="true"></span><span id="state">Connecting</span><span id="count" class="count"></span>
+    </div>
+    <div id="alert" class="expanded" role="alertdialog" aria-modal="true" aria-labelledby="alertTitle" aria-describedby="alertFacts" hidden>
+      <div class="alert-head">
+        <svg class="alert-icon" viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="14"/><path d="M14 20V8.5M8.8 13.4 14 8.2l5.2 5.2" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <div>
+          <h2 id="alertTitle" class="alert-title"></h2>
+          <p id="alertUrl" class="alert-url"></p>
+        </div>
+      </div>
+      <ul id="alertFacts" class="facts"></ul>
+      <p id="alertCause" class="cause"></p>
+      <div class="choices">
+        <button id="once" type="button" aria-keyshortcuts="a">Allow Once</button>
+        <button id="session" type="button" aria-keyshortcuts="g">Allow for This Session</button>
+        <button id="deny" type="button" aria-keyshortcuts="d">Don’t Allow</button>
+      </div>
+      <p id="queue" class="queue"></p>
+    </div>
+  </div>
+  <button id="pause" class="round" type="button" aria-keyshortcuts="Space" aria-label="Pause the agent" title="Pause (Space)">
+    <svg id="iconPause" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><rect x="2" y="1.5" width="2.6" height="9" rx="0.8"/><rect x="7.4" y="1.5" width="2.6" height="9" rx="0.8"/></svg>
+    <svg id="iconPlay" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" hidden><path d="M3 1.8v8.4a.6.6 0 0 0 .9.5l7-4.2a.6.6 0 0 0 0-1L3.9 1.3a.6.6 0 0 0-.9.5z"/></svg>
+  </button>
+</header>
+<div id="scrim" class="scrim" hidden></div>
+<main class="layout">
+  <section class="stage" aria-label="The selected step">
+    <div id="welcome" class="welcome">
+      <h1>Waiting for the agent</h1>
+      <p>Everything it does appears here, with the page as it saw it.</p>
+    </div>
+    <div id="detail" class="detail" hidden>
+      <h1 id="sentence" class="sentence"></h1>
+      <p id="meta" class="meta"></p>
+      <div class="segmented" role="tablist" aria-label="Show">
+        <button id="viewBefore" role="tab" type="button" aria-selected="false">Before</button>
+        <button id="viewAfter" role="tab" type="button" aria-selected="true">After</button>
+        <button id="viewRead" role="tab" type="button" aria-selected="false">What the model read</button>
+      </div>
+      <div class="window">
+        <div class="chrome" aria-hidden="true"><span class="lights"><i></i><i></i><i></i></span><span id="winUrl" class="winurl"></span></div>
+        <div class="viewport">
+          <img id="shot" alt="">
+          <p id="noshot" class="noshot" hidden>No picture of this step. Pictures are taken while this page is open.</p>
+          <pre id="text" class="text" hidden></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+  <nav class="rail" aria-label="Steps">
+    <h2 class="rail-title">Steps</h2>
+    <ol id="steps"></ol>
+    <p class="hint"><kbd>j</kbd><kbd>k</kbd> steps <kbd>v</kbd> view <kbd>Space</kbd> pause</p>
+  </nav>
+</main>
+<script src="{{base}}/app.js"></script>

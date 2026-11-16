@@ -13,7 +13,7 @@ use base64::Engine as _;
 use clap::{Args, Subcommand, ValueEnum};
 use serde_json::{Value, json};
 
-use crate::{SessionArgs, prepare, save_state, terminal_safe};
+use crate::{SessionArgs, Watch, prepare, save_state, terminal_safe};
 
 /// The agent skill `pageon skill` prints.
 const SKILL: &str = include_str!("skill.md");
@@ -28,6 +28,8 @@ pub struct OpenArgs {
     /// How much views show at the start: full, or compact (no text runs).
     #[arg(long, value_name = "LEVEL", default_value = "full", value_parser = ["full", "compact"])]
     detail: String,
+    #[command(flatten)]
+    watch: Watch,
     #[command(flatten)]
     session: SessionArgs,
 }
@@ -258,6 +260,8 @@ pub enum SessionCommand {
     },
     /// List the running sessions and their tabs.
     Sessions,
+    /// Print the session's viewer URL (opened with --ui or --approve).
+    Ui,
     /// Print the agent skill (SKILL.md), or install it with --install [DIR].
     ///
     /// Examples:
@@ -297,6 +301,7 @@ pub fn run(name: &str, command: SessionCommand) -> ExitCode {
     match command {
         SessionCommand::Skill { install } => return skill(install),
         SessionCommand::Sessions => return sessions(),
+        SessionCommand::Ui => return ui(name),
         SessionCommand::Close { all } => return close(name, all),
         SessionCommand::Session { open, .. } => return session(name, &open),
         _ => {}
@@ -531,6 +536,7 @@ fn tool_call(
         SessionCommand::Session { .. }
         | SessionCommand::Close { .. }
         | SessionCommand::Sessions
+        | SessionCommand::Ui
         | SessionCommand::Skill { .. } => return Ok(None),
     };
     Ok(Some((tool, args, image)))
@@ -739,6 +745,9 @@ fn ensure(name: &str, dir: &Path, sock: &Path) -> Result<(), ExitCode> {
     };
     for _ in 0..750 {
         if connect(sock).is_some() {
+            if let Ok(url) = std::fs::read_to_string(dir.join(format!("{name}.ui"))) {
+                eprintln!("viewer: {url}");
+            }
             return Ok(());
         }
         if let Ok(Some(status)) = child.try_wait() {
@@ -797,7 +806,7 @@ fn open_position(argv: &[String]) -> Option<(usize, String)> {
 fn takes_value(flag: &str) -> bool {
     !matches!(
         flag,
-        "--no-js" | "--no-sandbox" | "--allow-files" | "--help"
+        "--no-js" | "--no-sandbox" | "--allow-files" | "--ui" | "--approve" | "--help"
     )
 }
 
@@ -827,6 +836,17 @@ fn session(name: &str, open: &OpenArgs) -> ExitCode {
         Err(code) => return code,
     };
     prepared.options.allow_files = s.allow_files;
+    let viewer = match open.watch.start(&mut prepared.config) {
+        Ok(v) => v,
+        Err(code) => return code,
+    };
+    let ui_file = dir.join(format!("{name}.ui"));
+    if let Some(v) = &viewer
+        && let Err(e) = write_private(&ui_file, v.url().as_bytes())
+    {
+        eprintln!("error: {}: {e}", ui_file.display());
+        return ExitCode::from(3);
+    }
     let options = pageon::mcp::McpOptions {
         sandbox: !s.no_sandbox,
         load: prepared.options,
@@ -837,6 +857,7 @@ fn session(name: &str, open: &OpenArgs) -> ExitCode {
             idle: (!open.idle.is_zero()).then_some(open.idle),
         }),
         detail: pageon_agent::Detail::parse(&open.detail).unwrap_or_default(),
+        viewer,
         ..pageon::mcp::McpOptions::default()
     };
     eprintln!("session {name:?} started (pid {})", std::process::id());
@@ -854,6 +875,7 @@ fn session(name: &str, open: &OpenArgs) -> ExitCode {
             ExitCode::from(3)
         }
     };
+    let _ = std::fs::remove_file(&ui_file);
     // Last: `close` waits for this file to go, so state and recording are on disk by then.
     let _ = std::fs::remove_file(dir.join(format!("{name}.args")));
     code
@@ -976,6 +998,29 @@ fn skill(install: Option<PathBuf>) -> ExitCode {
         Err(e) => {
             eprintln!("error: {}: {e}", path.display());
             ExitCode::from(3)
+        }
+    }
+}
+
+/// Prints the session's viewer URL.
+fn ui(name: &str) -> ExitCode {
+    let dir = match dir() {
+        Ok(d) => d,
+        Err(e) => {
+            eprintln!("error: {e}");
+            return ExitCode::from(2);
+        }
+    };
+    match std::fs::read_to_string(dir.join(format!("{name}.ui"))) {
+        Ok(url) if connect(&dir.join(format!("{name}.sock"))).is_some() => {
+            println!("{url}");
+            ExitCode::SUCCESS
+        }
+        _ => {
+            eprintln!(
+                "error: session {name:?} has no viewer\n  pageon close, then pageon open URL --ui"
+            );
+            ExitCode::from(2)
         }
     }
 }

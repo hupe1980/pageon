@@ -166,6 +166,8 @@ enum Command {
         #[arg(long, value_name = "LEVEL", default_value = "full", value_parser = ["full", "compact"])]
         detail: String,
         #[command(flatten)]
+        watch: Watch,
+        #[command(flatten)]
         session: SessionArgs,
     },
     /// Serve a sandboxed browser over the Chrome DevTools Protocol and WebDriver BiDi, for
@@ -288,6 +290,39 @@ enum IdentityCommand {
         #[arg(long, value_name = "DAYS", default_value_t = 90)]
         days: u64,
     },
+}
+
+/// Supervision: the viewer, and approvals in it.
+#[derive(Args)]
+struct Watch {
+    /// Serve a page that shows each step and pauses the session (its URL on stderr).
+    #[arg(long)]
+    ui: bool,
+    /// Ask in that page before each write the policy holds (writes to an --origin, after
+    /// reading another site with --cross-site-writes refuse, a guard's ask). Implies --ui.
+    #[arg(long)]
+    approve: bool,
+}
+
+impl Watch {
+    /// Starts the viewer when asked and makes it the approver with --approve.
+    fn start(
+        &self,
+        config: &mut pageon::Config,
+    ) -> Result<Option<pageon::viewer::Viewer>, ExitCode> {
+        if !self.ui && !self.approve {
+            return Ok(None);
+        }
+        let viewer = pageon::viewer::Viewer::start().map_err(|e| {
+            eprintln!("error: cannot serve the viewer: {e}");
+            ExitCode::from(2)
+        })?;
+        eprintln!("viewer: {}", viewer.url());
+        if self.approve {
+            *config = config.clone().approver(viewer.approver());
+        }
+        Ok(Some(viewer))
+    }
 }
 
 /// Pixels, after loading and any --act.
@@ -1198,6 +1233,7 @@ fn mcp(
     allow_javascript_exec: bool,
     otlp: Option<String>,
     detail: pageon_agent::Detail,
+    watch: &Watch,
     s: &SessionArgs,
 ) -> ExitCode {
     if http.is_some() && s.save_state.is_some() {
@@ -1217,6 +1253,10 @@ fn mcp(
     };
     // An agent drives this session: local files only when the operator says so.
     prepared.options.allow_files = s.allow_files;
+    let viewer = match watch.start(&mut prepared.config) {
+        Ok(v) => v,
+        Err(code) => return code,
+    };
     let options = pageon::mcp::McpOptions {
         sandbox: !s.no_sandbox,
         load: prepared.options,
@@ -1229,6 +1269,7 @@ fn mcp(
         allow_javascript_exec,
         otlp,
         detail,
+        viewer,
         ..pageon::mcp::McpOptions::default()
     };
     // The same assembly an embedder gets.
@@ -1361,6 +1402,7 @@ fn main() -> ExitCode {
             allow_javascript_exec,
             otlp,
             detail,
+            watch,
             session,
         } => {
             let detail = pageon_agent::Detail::parse(&detail).unwrap_or_default();
@@ -1370,6 +1412,7 @@ fn main() -> ExitCode {
                 allow_javascript_exec,
                 otlp,
                 detail,
+                &watch,
                 &session,
             );
         }

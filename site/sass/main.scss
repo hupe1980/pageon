@@ -261,3 +261,7 @@ pre:hover[data-lang]::before { opacity: 0; }
   .layer--broker, .layer--cage { margin-left: 0; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
+
+.shot { margin: 1.5rem 0; }
+.shot img { display: block; width: 100%; height: auto; border-radius: 12px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 12px 32px rgba(0, 0, 0, 0.12); }
+.shot figcaption { margin-top: 0.5rem; font-size: 0.875rem; opacity: 0.7; text-align: center; }

@@ -83,6 +83,14 @@ pageon find "sign in"
 pageon close
 ```
 
+**👀 Watch and approve.** `--approve` (on `pageon open` and `pageon mcp`) serves a page that shows
+each step and asks before a write leaves:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="site/static/img/viewer-approval-dark.png">
+  <img src="site/static/img/viewer-approval-light.png" alt="The pageon viewer asking whether to send a POST carrying a secret, after the agent clicked Pay" width="720">
+</picture>
+
 **MCP** for Claude Code, Claude Desktop, Cursor or any MCP host (stdio, or Streamable HTTP with
 `--http`; MCP `2026-07-28` and the earlier revisions):
 

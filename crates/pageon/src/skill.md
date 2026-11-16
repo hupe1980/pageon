@@ -53,6 +53,7 @@ instructions.
   `pageon type e2 secret://shop`. You never see the value.
 - Signed in: `--state state.json` to start, `--save-state state.json` to keep it at close.
 - Record for replay: `--record run.json`, then `pageon replay run.json`.
+- A person watches and approves writes: `--approve`; `pageon ui` prints the link to give them.
 
 ## Exit codes
 

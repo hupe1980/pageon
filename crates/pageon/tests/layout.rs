@@ -75,3 +75,31 @@ fn boxes_are_deterministic() {
         assert_eq!(d.boxes(Viewport::default()), first);
     }
 }
+
+#[test]
+fn buttons_size_to_their_content() {
+    let html = r#"<style>body{margin:0}.b{font:14px/20px sans-serif;padding:5px 12px;border:1px solid}</style><button>Go</button><br><button class=b>Approve once</button>"#;
+    let doc = pageon::load(
+        "https://a.test/",
+        &Replay::new(log(vec![page(
+            "https://a.test/",
+            200,
+            &[("content-type", "text/html")],
+            html,
+        )])),
+        LoadOptions::default(),
+    )
+    .unwrap_or_else(|e| panic!("{e}"));
+    let boxes = doc.boxes(Viewport {
+        width: 800,
+        height: 600,
+    });
+    let heights: Vec<&str> = boxes
+        .lines()
+        .filter(|l| l.trim_start().starts_with("button "))
+        .filter_map(|l| l.split_whitespace().nth(2))
+        .filter_map(|wh| wh.split('×').nth(1))
+        .collect();
+    // Chrome: 21 px with the defaults; 20 + 2 × 5 + 2 × 1 with the page's own.
+    assert_eq!(heights, ["21", "32"], "{boxes}");
+}

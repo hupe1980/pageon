@@ -64,6 +64,7 @@ mod tab;
 pub mod takeover;
 pub mod threat_model;
 pub mod trace;
+pub mod viewer;
 pub mod workflow;
 
 pub use config::{Config, ConfigError};

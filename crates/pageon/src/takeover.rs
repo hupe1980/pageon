@@ -142,22 +142,22 @@ struct View {
     done: bool,
 }
 
-struct Request {
-    method: String,
-    path: String,
+pub(crate) struct Request {
+    pub(crate) method: String,
+    pub(crate) path: String,
     headers: Vec<(String, String)>,
-    body: Vec<u8>,
+    pub(crate) body: Vec<u8>,
 }
 
 impl Request {
-    fn header(&self, name: &str) -> Option<&str> {
+    pub(crate) fn header(&self, name: &str) -> Option<&str> {
         self.headers
             .iter()
             .find(|(k, _)| k.eq_ignore_ascii_case(name))
             .map(|(_, v)| v.as_str())
     }
 
-    fn cookie(&self, name: &str) -> Option<&str> {
+    pub(crate) fn cookie(&self, name: &str) -> Option<&str> {
         self.header("cookie")?.split(';').find_map(|c| {
             let (k, v) = c.trim().split_once('=')?;
             (k == name).then_some(v)
@@ -191,7 +191,7 @@ impl std::io::Read for Deadline<'_> {
 }
 
 #[allow(clippy::disallowed_methods)] // a socket deadline is real time
-fn read_request(stream: &TcpStream) -> Result<Request, String> {
+pub(crate) fn read_request(stream: &TcpStream) -> Result<Request, String> {
     stream
         .set_write_timeout(Some(IO_DEADLINE))
         .map_err(|e| e.to_string())?;
@@ -233,7 +233,7 @@ fn read_request(stream: &TcpStream) -> Result<Request, String> {
     })
 }
 
-fn respond(mut s: &TcpStream, status: &str, ctype: &str, extra: &str, body: &[u8]) {
+pub(crate) fn respond(mut s: &TcpStream, status: &str, ctype: &str, extra: &str, body: &[u8]) {
     let head = format!(
         "HTTP/1.1 {status}\r\nContent-Type: {ctype}\r\nContent-Length: {}\r\nCache-Control: no-store\r\nX-Frame-Options: DENY\r\nReferrer-Policy: no-referrer\r\nConnection: close\r\n{extra}\r\n",
         body.len()
@@ -243,7 +243,7 @@ fn respond(mut s: &TcpStream, status: &str, ctype: &str, extra: &str, body: &[u8
     let _ = s.flush();
 }
 
-fn plain(s: &TcpStream, status: &str, msg: &str) {
+pub(crate) fn plain(s: &TcpStream, status: &str, msg: &str) {
     respond(s, status, "text/plain; charset=utf-8", "", msg.as_bytes());
 }
 

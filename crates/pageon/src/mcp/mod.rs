@@ -553,6 +553,8 @@ pub struct McpOptions {
     pub otlp: Option<String>,
     /// How much views show at the start (`browser_observe` changes it).
     pub detail: pageon_agent::Detail,
+    /// The supervision page: every tool call is a step there, and its pause holds calls.
+    pub viewer: Option<crate::viewer::Viewer>,
 }
 
 impl Default for McpOptions {
@@ -570,6 +572,7 @@ impl Default for McpOptions {
             staged_files: false,
             otlp: None,
             detail: pageon_agent::Detail::Full,
+            viewer: None,
         }
     }
 }
@@ -646,6 +649,85 @@ pub fn serve<E: Env>(
     }
 }
 
+/// Wall time for the viewer's step durations.
+#[allow(clippy::disallowed_methods)] // a person reads how long a call took in wall time
+fn viewer_clock() -> std::time::Instant {
+    std::time::Instant::now()
+}
+
+/// Records a tool call as a step of the viewer, with an image of the page while watched.
+fn record(
+    v: &crate::viewer::Viewer,
+    b: &mut dyn Backend,
+    params: &Value,
+    reply: &Result<Value, Value>,
+    began: std::time::Instant,
+) {
+    let tool = params["name"].as_str().unwrap_or_default().to_string();
+    // Strings clipped and redacted as the model's views are.
+    fn clean(v: &Value) -> Value {
+        match v {
+            Value::String(s) => {
+                json!(pageon_env::redact_params(&pageon_agent::quote::clip(s, 200)).into_owned())
+            }
+            Value::Array(a) => Value::Array(a.iter().take(20).map(clean).collect()),
+            Value::Object(m) => Value::Object(
+                m.iter()
+                    .take(20)
+                    .map(|(k, v)| (k.clone(), clean(v)))
+                    .collect(),
+            ),
+            other => other.clone(),
+        }
+    }
+    let input = params.get("arguments").map_or(Value::Null, clean);
+    let (ok, text, step) = match reply {
+        Ok(r) => (
+            !r["isError"].as_bool().unwrap_or(false),
+            r["content"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(|c| c["text"].as_str())
+                .collect::<Vec<_>>()
+                .join("\n"),
+            r["structuredContent"]["step"].as_u64(),
+        ),
+        Err(e) => (
+            false,
+            e["message"].as_str().unwrap_or_default().to_string(),
+            None,
+        ),
+    };
+    let image = (v.watched() && b.has_tab())
+        .then(|| {
+            b.screenshot(&crate::ScreenshotOptions {
+                format: crate::Format::Jpeg { quality: 75 },
+                ..crate::ScreenshotOptions::default()
+            })
+            .ok()
+        })
+        .flatten()
+        .map(|img| img.bytes);
+    let url = b
+        .current_url()
+        .map(|u| pageon_env::redact_params(&u).into_owned());
+    v.record(
+        crate::viewer::Step {
+            n: 0,
+            step,
+            tool,
+            input,
+            ok,
+            text,
+            url,
+            ms: u64::try_from(began.elapsed().as_millis()).unwrap_or(u64::MAX),
+            image: false,
+        },
+        image,
+    );
+}
+
 /// Serves `b` on the transport the options name (stdio when none).
 fn transport(
     b: &mut dyn Backend,
@@ -654,14 +736,15 @@ fn transport(
     output: impl Write,
     otlp: Option<crate::otlp::Exporter>,
 ) -> Result<(), String> {
+    let viewer = options.viewer.clone();
     #[cfg(unix)]
     if let Some(s) = &options.socket {
-        return socket::serve(b, s, otlp);
+        return socket::serve(b, s, otlp, viewer);
     }
     match &options.http {
-        Some(h) => http::serve(b, h, otlp),
+        Some(h) => http::serve(b, h, otlp, viewer),
         None => {
-            run(b, input, output, otlp);
+            run(b, input, output, otlp, viewer);
             Ok(())
         }
     }
@@ -724,8 +807,9 @@ fn run(
     mut input: impl BufRead,
     mut output: impl Write,
     otlp: Option<crate::otlp::Exporter>,
+    viewer: Option<crate::viewer::Viewer>,
 ) {
-    let mut server = Server::new(false, otlp);
+    let mut server = Server::new(false, otlp, viewer);
     let mut line = String::new();
     loop {
         line.clear();
@@ -867,11 +951,18 @@ struct Server {
     otlp: Option<crate::otlp::Exporter>,
     /// The protocol version the legacy handshake agreed on.
     version: &'static str,
+    /// The supervision page, when one is served.
+    viewer: Option<crate::viewer::Viewer>,
 }
 
 impl Server {
-    fn new(modern_only: bool, otlp: Option<crate::otlp::Exporter>) -> Self {
+    fn new(
+        modern_only: bool,
+        otlp: Option<crate::otlp::Exporter>,
+        viewer: Option<crate::viewer::Viewer>,
+    ) -> Self {
         Self {
+            viewer,
             modern_only,
             toolset: toolset::State::default(),
             url_elicitation: false,
@@ -923,6 +1014,19 @@ impl Server {
             .and_then(|m| m.get(META_VERSION))
             .map(|v| v.as_str().unwrap_or_default().to_string());
         let start = crate::otlp::now_ns();
+        let watch = (method == "tools/call")
+            .then(|| self.viewer.clone())
+            .flatten();
+        if let Some(v) = &watch {
+            let token = params.pointer("/_meta/progressToken").cloned();
+            v.wait_if_paused(&mut |note| {
+                if let Some(t) = &token {
+                    notify(json!({"jsonrpc": "2.0", "method": "notifications/progress",
+                        "params": {"progressToken": t, "progress": 0, "message": note}}));
+                }
+            });
+        }
+        let began = viewer_clock();
         let reply = match &version {
             Some(v) => self.modern(b, method, &params, v, notify),
             None if self.modern_only => Err(self.legacy_refused(method, &params)),
@@ -943,6 +1047,9 @@ impl Server {
                 self.modern_only,
                 start,
             ));
+        }
+        if let Some(v) = &watch {
+            record(v, b, &params, &reply, began);
         }
         Some(match reply {
             Ok(result) => json!({"jsonrpc": "2.0", "id": id, "result": result}),

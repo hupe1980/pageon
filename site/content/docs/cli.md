@@ -36,12 +36,13 @@ pageon close
 
 | Command | Does |
 | --- | --- |
-| `open URL` | Load a page; starts the session with the [shared options](#options-shared-by-fetch-open-replay-mcp-cdp-and-workflow-run) given here, plus `--idle` (default 30 minutes, `0` never) and `--detail` |
+| `open URL` | Load a page; starts the session with the [shared options](#options-shared-by-fetch-open-replay-mcp-cdp-and-workflow-run) given here, plus `--idle` (default 30 minutes, `0` never), `--detail`, and `--ui` or `--approve` for the [viewer](@/docs/viewer.md) |
 | `click`, `type REF TEXT [--submit]`, `press`, `select`, `paste`, `hover`, `drag`, `scroll`, `wait`, `back`, `forward`, `upload` | [Actions](@/docs/actions.md) on refs |
 | `observe [--full]` · `view [ax\|markdown\|text\|requests\|errors]` · `find WORDS` | Read the page |
 | `screenshot FILE [--marks] [--ref REF]` | Pixels to a file; notes on stdout |
 | `tabs`, `reset [STEP]`, `lookahead ACTION…`, `call NAME JSON`, `takeover REASON` | Tabs, [reset and lookahead](@/docs/lookahead.md), [page tools](@/docs/webmcp.md), a person's help |
 | `sessions` · `close [--all]` | List sessions with their tabs; end one or all |
+| `ui` | Print the session's [viewer](@/docs/viewer.md) URL (`open --ui` or `--approve`) |
 | `skill [--install [DIR]]` | Print the agent skill, or write `DIR/pageon/SKILL.md` (default `.claude/skills`) |
 
 `-s NAME` (or `PAGEON_SESSION`) picks the session; each is a separate browser with its own
@@ -86,7 +87,7 @@ Screenshot options: `--screenshot FILE` (`.png`, `.jpg`), `--full-page`, `--mark
 | --- | --- |
 | `fetch` | `--dump`, `--act`, `--viewport WxH`, `--prefer-markdown`, `--approve`, screenshot options |
 | `replay` | `--to N`, `--live`, `--approve`, `--trace FILE` |
-| `mcp` | `--http [PORT]`, `--allow-origin`, `--otlp URL`, `--detail full\|compact`, `--allow-javascript-exec` |
+| `mcp` | `--http [PORT]`, `--allow-origin`, `--otlp URL`, `--detail full\|compact`, `--allow-javascript-exec`, `--ui`, `--approve` |
 | `cdp` | `--port`, `--allow-origin`, `--discovery` |
 
 ## Options shared by fetch, open, replay, mcp, cdp and workflow run
