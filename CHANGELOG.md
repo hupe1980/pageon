@@ -31,6 +31,9 @@ All notable changes to this project are documented here. The format follows
   evidence: `expect` on MCP's acting tools, `--expect` on CLI actions and `pageon fetch` (exit
   8), `expect=` in Python (`ExpectationError`); saved into workflows as `check` and verified on
   every run.
+- Cost: every MCP reply carries `cost` (o200k tokens of its text, wall and page time); spans
+  carry `pageon.reply.tokens`; recordings keep it per step and `pageon replay FILE --report`
+  prints totals and p50/p95/p99; the viewer shows tokens per step and in total.
 
 ### Fixed
 

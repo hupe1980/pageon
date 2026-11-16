@@ -87,7 +87,7 @@ Screenshot options: `--screenshot FILE` (`.png`, `.jpg`), `--full-page`, `--mark
 | Command | Its own options |
 | --- | --- |
 | `fetch` | `--dump`, `--act`, `--expect`, `--viewport WxH`, `--prefer-markdown`, `--approve`, screenshot options |
-| `replay` | `--to N`, `--live`, `--approve`, `--trace FILE` |
+| `replay` | `--to N`, `--live`, `--approve`, `--trace FILE`, `--report` (what each step cost) |
 | `mcp` | `--http [PORT]`, `--allow-origin`, `--otlp URL`, `--detail full\|compact`, `--allow-javascript-exec`, `--ui`, `--approve`, `--sign-in FILE` |
 | `cdp` | `--port`, `--allow-origin`, `--discovery` |
 

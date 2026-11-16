@@ -1454,6 +1454,7 @@ impl<'s, E: Env> Tab<'s, E> {
             view,
             target,
             checks: Vec::new(),
+            cost: None,
         });
     }
 

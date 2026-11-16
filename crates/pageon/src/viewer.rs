@@ -55,6 +55,8 @@ pub struct Step {
     pub url: Option<String>,
     /// Wall time the call took.
     pub ms: u64,
+    /// o200k tokens of what the model read.
+    pub tokens: u64,
     /// An image of the page after it exists.
     pub image: bool,
 }
@@ -545,6 +547,7 @@ mod tests {
             text: text.into(),
             url: None,
             ms: 0,
+            tokens: 0,
             image: false,
         }
     }

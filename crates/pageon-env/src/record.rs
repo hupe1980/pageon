@@ -693,6 +693,15 @@ impl<E: Env> Recorder for Recording<E> {
         self.log.borrow().steps.clone()
     }
 
+    fn cost(&self, cost: crate::Cost) {
+        if self.off() || self.resume.borrow().is_some() {
+            return;
+        }
+        if let Some(last) = self.log.borrow_mut().steps.last_mut() {
+            last.cost = Some(cost);
+        }
+    }
+
     fn checks(&self, checks: Vec<String>) {
         if self.off() || self.resume.borrow().is_some() {
             return;

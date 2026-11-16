@@ -46,6 +46,29 @@ Realtime connections replay offline too: messages arrive at their recorded times
 waits until the replayed page has sent its question. A connection still open when a reset or
 replay ends is closed: a live socket cannot be resumed.
 
+## What a run cost
+
+Every reply records what it cost: the tokens of the text the model read (o200k), the call's
+wall time, and the time on the page's clock while it settled. `--report` prints them from the
+recording, without re-running it:
+
+```text
+$ pageon replay run.rec.json --report
+step  tokens  wall ms  page ms  action
+   0     612       84      120  open https://shop.example/
+   1     143       12      300  click e5
+   2      58        9        0  type e3 "secret://shop"
+
+3 steps: 813 tokens, 105 ms wall, 420 ms on the page's clock
+tokens   p50 143  p95 612  p99 612  max 612
+wall ms  p50 12  p95 84  p99 84  max 84
+page ms  p50 120  p95 300  p99 300  max 300
+```
+
+Over MCP each reply carries the same as `structuredContent.cost` (`tokens`, `wall_ms`,
+`virtual_ms`), so a host can stop a task past its budget; OpenTelemetry spans carry
+`pageon.reply.tokens`.
+
 ## Open a run in Playwright's trace viewer
 
 ```sh

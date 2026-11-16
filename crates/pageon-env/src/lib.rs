@@ -61,7 +61,7 @@ pub use profile::{Navigator, Platform, Profile, UaData, brand_header, chrome, ch
 pub use record::{Exchange, Log, Recording};
 pub use redact::{REDACTED, redact_params};
 pub use replay::Replay;
-pub use steps::{Cursor, Divergence, Kind, Recorder, Step, Target, diff_lines, fnv64};
+pub use steps::{Cost, Cursor, Divergence, Kind, Recorder, Step, Target, diff_lines, fnv64};
 
 /// pageon's honest user agent.
 pub fn user_agent() -> String {

@@ -51,7 +51,8 @@ A write nobody decides within 10 minutes is refused.
 Every tool call is a step on the timeline, said in words: *Clicked “Pay 129.00 EUR”*, with
 names taken from the view the model read. The selected step shows in the agent's browser:
 **Before**, **After**, or **What the model read**, word for word (`v` switches). Pictures are
-taken only while the viewer is open, so a session nobody watches pays nothing.
+taken only while the viewer is open, so a session nobody watches pays nothing. Each step shows
+the tokens of what the model read, and the island the session's total.
 
 The island at the top says what the agent is doing: **Working**, **Needs you** (a write
 waits), **Paused** or **Idle**. `Space` pauses: the agent's next call waits until you resume

@@ -109,6 +109,7 @@ function detailLine(s) {
   if (!s.ok) parts.push("Failed");
   if (s.step !== null && s.step !== undefined) parts.push(`Step ${s.step}`);
   parts.push(took(s.ms));
+  if (s.tokens) parts.push(`${s.tokens.toLocaleString("en")} tokens`);
   return parts.join(" · ");
 }
 
@@ -281,7 +282,10 @@ function island() {
   else if (Date.now() - lastStepAt < 4000) { state = "Working"; cls = "working"; }
   $("island").className = `island ${cls}${waiting.size ? " open" : ""}`;
   $("state").textContent = state;
-  $("count").textContent = steps.length ? `${steps.length} step${steps.length === 1 ? "" : "s"}` : "";
+  const tokens = steps.reduce((n, s) => n + (s.tokens || 0), 0);
+  $("count").textContent = steps.length
+    ? `${steps.length} step${steps.length === 1 ? "" : "s"} · ${tokens.toLocaleString("en")} tokens`
+    : "";
 }
 setInterval(island, 1000);
 

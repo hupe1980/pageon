@@ -122,6 +122,10 @@ enum Command {
         /// Also write a Playwright trace of the replay (actions, pages, network, console).
         #[arg(long, value_name = "FILE")]
         trace: Option<PathBuf>,
+        /// Print what each step cost (tokens, wall and page time) with totals and
+        /// p50/p95/p99, from the recording, without re-running it.
+        #[arg(long, conflicts_with_all = ["to", "live", "trace"])]
+        report: bool,
         #[command(flatten)]
         session: SessionArgs,
     },
@@ -1064,6 +1068,73 @@ fn content(probe: bool) -> ExitCode {
     }
 }
 
+/// The step costs of a recording, a total and p50/p95/p99 per step.
+fn replay_report(file: &std::path::Path) -> ExitCode {
+    let log: pageon_env::Log = match std::fs::read_to_string(file)
+        .map_err(|e| e.to_string())
+        .and_then(|t| serde_json::from_str(&t).map_err(|e| e.to_string()))
+    {
+        Ok(l) => l,
+        Err(e) => {
+            eprintln!("error: cannot read the recording {}: {e}", file.display());
+            return ExitCode::from(2);
+        }
+    };
+    let mut out = String::from("step  tokens  wall ms  page ms  action\n");
+    let (mut tokens, mut wall, mut page) = (Vec::new(), Vec::new(), Vec::new());
+    for (i, st) in log.steps.iter().enumerate() {
+        let action = pageon_agent::quote::clip(&st.action, 70);
+        match st.cost {
+            Some(c) => {
+                out.push_str(&format!(
+                    "{i:>4}  {:>6}  {:>7}  {:>7}  {action}\n",
+                    c.tokens, c.wall_ms, c.virtual_ms
+                ));
+                tokens.push(u64::from(c.tokens));
+                wall.push(c.wall_ms);
+                page.push(c.virtual_ms);
+            }
+            None => out.push_str(&format!(
+                "{i:>4}  {:>6}  {:>7}  {:>7}  {action}\n",
+                "-", "-", "-"
+            )),
+        }
+    }
+    let pct = |v: &mut Vec<u64>, p: f64| -> u64 {
+        v.sort_unstable();
+        // Nearest rank.
+        let rank = ((p * v.len() as f64).ceil() as usize).clamp(1, v.len());
+        v[rank - 1]
+    };
+    if tokens.is_empty() {
+        out.push_str("\nno costs in this recording (recorded before pageon kept them)\n");
+    } else {
+        let n = tokens.len();
+        out.push_str(&format!(
+            "\n{} steps: {} tokens, {} ms wall, {} ms on the page's clock\n",
+            n,
+            tokens.iter().sum::<u64>(),
+            wall.iter().sum::<u64>(),
+            page.iter().sum::<u64>()
+        ));
+        for (name, v) in [
+            ("tokens", &mut tokens),
+            ("wall ms", &mut wall),
+            ("page ms", &mut page),
+        ] {
+            out.push_str(&format!(
+                "{name:<8} p50 {}  p95 {}  p99 {}  max {}\n",
+                pct(v, 0.5),
+                pct(v, 0.95),
+                pct(v, 0.99),
+                v.last().copied().unwrap_or(0)
+            ));
+        }
+    }
+    print!("{}", terminal_safe(&out));
+    ExitCode::SUCCESS
+}
+
 fn replay(
     file: &std::path::Path,
     to: Option<usize>,
@@ -1543,8 +1614,14 @@ fn main() -> ExitCode {
                 approve,
                 dump,
                 trace,
+                report,
                 session,
-            } => return replay(&file, to, live, approve, dump, trace.as_deref(), &session),
+            } => {
+                if report {
+                    return replay_report(&file);
+                }
+                return replay(&file, to, live, approve, dump, trace.as_deref(), &session);
+            }
             Command::Cdp {
                 port,
                 allow_origin,

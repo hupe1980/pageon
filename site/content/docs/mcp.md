@@ -116,6 +116,12 @@ one as a tab, so nothing loads that the agent did not choose. `browser_reset` an
   any request that could change something is held, not sent. See
   [lookahead](@/docs/lookahead.md).
 
+## Cost
+
+Every reply carries `structuredContent.cost`: `tokens` (o200k, of the reply text), `wall_ms`
+and `virtual_ms` (the page's clock while it settled). Recordings keep it per step:
+`pageon replay FILE --report` prints totals and p50/p95/p99 ([what a run cost](@/docs/replay.md#what-a-run-cost)).
+
 ## Sign-ins and supervision
 
 `--sign-in login.flow.json` signs the session in again when an action finds it signed out

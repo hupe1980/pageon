@@ -45,6 +45,20 @@ pub struct Step {
     /// run.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub checks: Vec<String>,
+    /// What the call that ended with this step cost (absent in older recordings).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cost: Option<Cost>,
+}
+
+/// What one call cost: the tokens of the reply the model read, and the time it took.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Cost {
+    /// o200k tokens of the reply text.
+    pub tokens: u32,
+    /// Wall time of the call (ms).
+    pub wall_ms: u64,
+    /// Time on the page's clock while it settled (ms).
+    pub virtual_ms: u64,
 }
 
 /// An element as the agent's view names it: role, accessible name, and its index among the
@@ -202,6 +216,10 @@ pub trait Recorder {
     /// Adds expectations checked after the last step to it (ignored while resuming).
     fn checks(&self, checks: Vec<String>) {
         let _ = checks;
+    }
+    /// Sets what the call that ended with the last step cost (ignored while resuming).
+    fn cost(&self, cost: Cost) {
+        let _ = cost;
     }
     /// Whether the recording stopped at a size limit (later steps are not in it).
     fn truncated(&self) -> bool {

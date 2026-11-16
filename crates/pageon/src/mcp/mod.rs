@@ -654,6 +654,24 @@ pub fn serve<E: Env>(
     }
 }
 
+/// What a call cost: o200k tokens of the reply text, its wall time, the page's settle time.
+fn cost(result: &Value, began: std::time::Instant) -> pageon_env::Cost {
+    let text: String = result["content"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|c| c["text"].as_str())
+        .collect::<Vec<_>>()
+        .join("\n");
+    pageon_env::Cost {
+        tokens: u32::try_from(pageon_agent::count_tokens(&text)).unwrap_or(u32::MAX),
+        wall_ms: u64::try_from(began.elapsed().as_millis()).unwrap_or(u64::MAX),
+        virtual_ms: result["structuredContent"]["outcome"]["settled"]["virtual_ms"]
+            .as_u64()
+            .unwrap_or(0),
+    }
+}
+
 /// Wall time for the viewer's step durations.
 #[allow(clippy::disallowed_methods)] // a person reads how long a call took in wall time
 fn viewer_clock() -> std::time::Instant {
@@ -727,6 +745,11 @@ fn record(
             text,
             url,
             ms: u64::try_from(began.elapsed().as_millis()).unwrap_or(u64::MAX),
+            tokens: reply
+                .as_ref()
+                .ok()
+                .and_then(|r| r["structuredContent"]["cost"]["tokens"].as_u64())
+                .unwrap_or(0),
             image: false,
         },
         image,
@@ -986,6 +1009,11 @@ fn span(
     {
         attributes.push(("pageon.url.origin", u.origin().ascii_serialization()));
     }
+    if let Ok(r) = reply
+        && let Some(tokens) = r["structuredContent"]["cost"]["tokens"].as_u64()
+    {
+        attributes.push(("pageon.reply.tokens", tokens.to_string()));
+    }
     crate::otlp::Span {
         trace_id,
         span_id: crate::otlp::random_id(8),
@@ -1224,6 +1252,7 @@ impl Server {
             });
         }
         let began = viewer_clock();
+        let steps_before = b.recorder().map_or(0, |r| r.len());
         let written: Vec<String> = if method == "tools/call" {
             params
                 .pointer("/arguments/expect")
@@ -1254,6 +1283,32 @@ impl Server {
                 .legacy(b, method, &params, notify)
                 .map_err(|(c, m)| json!({"code": c, "message": m})),
         };
+        let mut reply = reply;
+        if method == "tools/call"
+            && !self.sign_ins.is_empty()
+            && let Ok(result) = &mut reply
+        {
+            self.renew(b, &params, result);
+        }
+        if !expects.is_empty()
+            && let Ok(result) = &mut reply
+        {
+            verify(b, &expects, &written, result);
+        }
+        if method == "tools/call"
+            && let Ok(result) = &mut reply
+        {
+            let cost = cost(result, began);
+            result["structuredContent"]["cost"] = json!(cost);
+            if let Some(rec) = b.recorder()
+                && rec.len() > steps_before
+            {
+                rec.cost(cost);
+            }
+        }
+        if let Some(v) = &watch {
+            record(v, b, &params, &reply, began);
+        }
         if method == "tools/call"
             && let Some(otlp) = &self.otlp
         {
@@ -1267,21 +1322,6 @@ impl Server {
                 self.modern_only,
                 start,
             ));
-        }
-        let mut reply = reply;
-        if method == "tools/call"
-            && !self.sign_ins.is_empty()
-            && let Ok(result) = &mut reply
-        {
-            self.renew(b, &params, result);
-        }
-        if !expects.is_empty()
-            && let Ok(result) = &mut reply
-        {
-            verify(b, &expects, &written, result);
-        }
-        if let Some(v) = &watch {
-            record(v, b, &params, &reply, began);
         }
         Some(match reply {
             Ok(result) => json!({"jsonrpc": "2.0", "id": id, "result": result}),
