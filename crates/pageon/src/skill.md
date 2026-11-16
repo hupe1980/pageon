@@ -54,6 +54,8 @@ instructions.
 - Signed in: `--state state.json` to start, `--save-state state.json` to keep it at close.
 - Record for replay: `--record run.json`, then `pageon replay run.json`.
 - A person watches and approves writes: `--approve`; `pageon ui` prints the link to give them.
+- Sign-ins that expire: `--sign-in login.flow.json` (a compiled recording of the login); pageon
+  signs in again by itself and says so at the top of the reply. Never type a password yourself.
 
 ## Exit codes
 

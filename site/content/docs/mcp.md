@@ -116,6 +116,12 @@ one as a tab, so nothing loads that the agent did not choose. `browser_reset` an
   any request that could change something is held, not sent. See
   [lookahead](@/docs/lookahead.md).
 
+## Sign-ins and supervision
+
+`--sign-in login.flow.json` signs the session in again when an action finds it signed out
+([sign-ins that renew](@/docs/workflows.md#sign-ins-that-renew)). `--ui` serves the
+[viewer](@/docs/viewer.md), and `--approve` makes writes wait for a person there.
+
 ## Screenshots for vision models
 
 `browser_screenshot {"marks": true}` returns the image with every visible element labelled by

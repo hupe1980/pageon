@@ -836,6 +836,10 @@ fn session(name: &str, open: &OpenArgs) -> ExitCode {
         Err(code) => return code,
     };
     prepared.options.allow_files = s.allow_files;
+    let sign_ins = match open.watch.sign_ins() {
+        Ok(s) => s,
+        Err(code) => return code,
+    };
     let viewer = match open.watch.start(&mut prepared.config) {
         Ok(v) => v,
         Err(code) => return code,
@@ -858,6 +862,7 @@ fn session(name: &str, open: &OpenArgs) -> ExitCode {
         }),
         detail: pageon_agent::Detail::parse(&open.detail).unwrap_or_default(),
         viewer,
+        sign_ins,
         ..pageon::mcp::McpOptions::default()
     };
     eprintln!("session {name:?} started (pid {})", std::process::id());

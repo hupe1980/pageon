@@ -32,7 +32,7 @@ pub(super) fn serve(
     b: &mut dyn Backend,
     options: &HttpOptions,
     otlp: Option<crate::otlp::Exporter>,
-    viewer: Option<crate::viewer::Viewer>,
+    extras: super::Extras,
 ) -> Result<(), String> {
     let listener = TcpListener::bind(("127.0.0.1", options.port)).map_err(|e| {
         format!(
@@ -44,7 +44,7 @@ pub(super) fn serve(
     let token = crate::takeover::token()?;
     let path = format!("/mcp/{token}");
     eprintln!("MCP endpoint: http://127.0.0.1:{port}{path}");
-    let mut server = Server::new(true, otlp, viewer);
+    let mut server = Server::new(true, otlp, extras);
     for stream in listener.incoming().flatten() {
         handle(b, &mut server, &stream, &path, &options.allow_origins);
     }

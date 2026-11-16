@@ -54,3 +54,35 @@ then save: the session compiles into the repaired workflow. Over MCP that is
 `browser_workflow_run` then `browser_workflow_save`; in Python `tab.workflow_run(...)` and
 `tab.workflow_save()`. Workflows travel as JSON in tool arguments; the server never reads or
 writes files a model names.
+
+## Sign-ins that renew
+
+Sign-ins expire mid-task. Record the sign-in once and name it with `--sign-in`:
+
+```sh
+PAGEON_SECRET_PORTAL=… pageon fetch https://portal.example/login --secret portal@https://portal.example \
+  --act "type e1 ada" --act "type e2 secret://portal" --act "click e3" --record login.rec.json
+pageon workflow compile login.rec.json -o login.flow.json
+
+pageon mcp --origin https://portal.example --secret portal@https://portal.example --sign-in login.flow.json
+```
+
+The workflow's start page is the site's sign-in page. When an agent's action is redirected from
+another page of that site to the sign-in page, or answered 401, pageon runs the workflow (the
+password from the vault, a TOTP code if the secret is `:totp`) and opens the page again:
+
+```text
+signed out of portal.example (redirected to the sign-in page); signed in again with login.flow.json (3 steps), reopened /orders
+ok open https://portal.example/orders · …
+```
+
+- Only engine facts count (where a page request went, its status), never page text.
+- A write is never sent again: after a POST met 401, the reply says `the POST was not sent
+  again: do it again`.
+- The sign-in runs as the agent's own actions: origins, guard, approver and recording apply.
+- Three renewals of a site in a row that do not hold, and pageon stops (`not signing in
+  again`), so a wrong password cannot lock the account.
+- The reply carries `signed_in` (origin, workflow, why) in its structured content.
+
+`--sign-in` works on `pageon mcp` and `pageon open` (repeatable, one per site); Python:
+`Browser(sign_ins=["login.flow.json"])`.

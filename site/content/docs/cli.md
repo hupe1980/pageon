@@ -36,7 +36,7 @@ pageon close
 
 | Command | Does |
 | --- | --- |
-| `open URL` | Load a page; starts the session with the [shared options](#options-shared-by-fetch-open-replay-mcp-cdp-and-workflow-run) given here, plus `--idle` (default 30 minutes, `0` never), `--detail`, and `--ui` or `--approve` for the [viewer](@/docs/viewer.md) |
+| `open URL` | Load a page; starts the session with the [shared options](#options-shared-by-fetch-open-replay-mcp-cdp-and-workflow-run) given here, plus `--idle` (default 30 minutes, `0` never), `--detail`, `--ui` or `--approve` for the [viewer](@/docs/viewer.md), and `--sign-in FILE` ([sign-ins that renew](@/docs/workflows.md#sign-ins-that-renew)) |
 | `click`, `type REF TEXT [--submit]`, `press`, `select`, `paste`, `hover`, `drag`, `scroll`, `wait`, `back`, `forward`, `upload` | [Actions](@/docs/actions.md) on refs |
 | `observe [--full]` · `view [ax\|markdown\|text\|requests\|errors]` · `find WORDS` | Read the page |
 | `screenshot FILE [--marks] [--ref REF]` | Pixels to a file; notes on stdout |
@@ -87,7 +87,7 @@ Screenshot options: `--screenshot FILE` (`.png`, `.jpg`), `--full-page`, `--mark
 | --- | --- |
 | `fetch` | `--dump`, `--act`, `--viewport WxH`, `--prefer-markdown`, `--approve`, screenshot options |
 | `replay` | `--to N`, `--live`, `--approve`, `--trace FILE` |
-| `mcp` | `--http [PORT]`, `--allow-origin`, `--otlp URL`, `--detail full\|compact`, `--allow-javascript-exec`, `--ui`, `--approve` |
+| `mcp` | `--http [PORT]`, `--allow-origin`, `--otlp URL`, `--detail full\|compact`, `--allow-javascript-exec`, `--ui`, `--approve`, `--sign-in FILE` |
 | `cdp` | `--port`, `--allow-origin`, `--discovery` |
 
 ## Options shared by fetch, open, replay, mcp, cdp and workflow run

@@ -48,6 +48,9 @@ output is made for a model, and whose safety does not depend on the model behavi
 - 🛡️ **Safe by construction.** Pages run in a sandboxed process with no files, network or
   programs. Origin sets, a secrets vault (`secret://shop` is typed, never shown) and an optional
   guard program decide what leaves.
+- 👀 **A person in the loop, when it matters.** A viewer shows each step in words; writes wait
+  there for Allow Once, Allow for This Session or Don't Allow. Expired sign-ins renew from a
+  saved sign-in, without the model ever seeing the password.
 - ⏪ **Replay, rewind, look ahead.** Sessions replay byte for byte on a virtual clock; agents go
   back to any step without re-sending anything, and try actions on a fork first.
 - 🌐 **Real web apps.** Modules and bundlers, web components, forms, scrolling, several tabs,

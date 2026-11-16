@@ -57,6 +57,12 @@ function hostPath(url) {
 }
 
 function sentence(i) {
+  const base = action(i);
+  const first = (steps[i].text || "").split("\n", 1)[0];
+  return /^signed out of .*; signed in again/.test(first) ? `${base}, after signing in again` : base;
+}
+
+function action(i) {
   const s = steps[i];
   const a = s.input || {};
   const t = (r) => named(r, i - 1);

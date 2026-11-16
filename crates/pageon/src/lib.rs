@@ -60,6 +60,7 @@ mod sandbox;
 mod scripts;
 mod secrets;
 mod session;
+pub mod sign_in;
 mod tab;
 pub mod takeover;
 pub mod threat_model;

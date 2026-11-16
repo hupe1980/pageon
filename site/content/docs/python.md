@@ -50,6 +50,8 @@ with Browser(origins=["https://shop.example"], secrets=["shop@https://shop.examp
 | `budget` | Token budget of the views |
 | `sandbox`, `private_network`, `binary` | Process and network settings |
 | `allow_files` | Let the agent open `file:` pages (off by default) |
+| `sign_ins` | [Sign-in workflows](@/docs/workflows.md#sign-ins-that-renew) run when the session is signed out of their site |
+| `ui`, `approve` | Serve the [viewer](@/docs/viewer.md) (`browser.viewer_url`); with `approve`, writes wait for a person there |
 | `allow_javascript_exec` | Let the vendor toolsets run `javascript_exec` (off by default; see [Claude & OpenAI tools](@/docs/toolsets.md)) |
 | `profile`, `platform`, `identity`, `signature_tag`, `passkeys`, `cross_site_writes`, `robots` | [Identity](@/docs/identity.md) and policy options |
 

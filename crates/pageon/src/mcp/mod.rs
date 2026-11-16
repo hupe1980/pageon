@@ -555,6 +555,8 @@ pub struct McpOptions {
     pub detail: pageon_agent::Detail,
     /// The supervision page: every tool call is a step there, and its pause holds calls.
     pub viewer: Option<crate::viewer::Viewer>,
+    /// Sign-in workflows run when an action finds the session signed out of their site.
+    pub sign_ins: Vec<crate::sign_in::SignIn>,
 }
 
 impl Default for McpOptions {
@@ -573,6 +575,7 @@ impl Default for McpOptions {
             otlp: None,
             detail: pageon_agent::Detail::Full,
             viewer: None,
+            sign_ins: Vec::new(),
         }
     }
 }
@@ -736,18 +739,28 @@ fn transport(
     output: impl Write,
     otlp: Option<crate::otlp::Exporter>,
 ) -> Result<(), String> {
-    let viewer = options.viewer.clone();
+    let extras = Extras {
+        viewer: options.viewer.clone(),
+        sign_ins: options.sign_ins.clone(),
+    };
     #[cfg(unix)]
     if let Some(s) = &options.socket {
-        return socket::serve(b, s, otlp, viewer);
+        return socket::serve(b, s, otlp, extras);
     }
     match &options.http {
-        Some(h) => http::serve(b, h, otlp, viewer),
+        Some(h) => http::serve(b, h, otlp, extras),
         None => {
-            run(b, input, output, otlp, viewer);
+            run(b, input, output, otlp, extras);
             Ok(())
         }
     }
+}
+
+/// Puts a line at the top of a reply and the structured `signed_in` beside it.
+fn prepend(result: &mut Value, line: &str, signed_in: Value) {
+    let text = result["content"][0]["text"].as_str().unwrap_or_default();
+    result["content"][0]["text"] = json!(format!("{line}\n{text}"));
+    result["structuredContent"]["signed_in"] = signed_in;
 }
 
 fn send(out: &mut impl Write, msg: &Value) {
@@ -807,9 +820,9 @@ fn run(
     mut input: impl BufRead,
     mut output: impl Write,
     otlp: Option<crate::otlp::Exporter>,
-    viewer: Option<crate::viewer::Viewer>,
+    extras: Extras,
 ) {
-    let mut server = Server::new(false, otlp, viewer);
+    let mut server = Server::new(false, otlp, extras);
     let mut line = String::new();
     loop {
         line.clear();
@@ -953,16 +966,25 @@ struct Server {
     version: &'static str,
     /// The supervision page, when one is served.
     viewer: Option<crate::viewer::Viewer>,
+    /// Sign-in workflows, by site.
+    sign_ins: Vec<crate::sign_in::SignIn>,
+    /// Renewals in a row per origin (reset by an action that stayed signed in).
+    renewals: std::collections::HashMap<String, u32>,
+}
+
+/// What a transport hands the server besides the backend.
+#[derive(Clone, Default)]
+pub(crate) struct Extras {
+    pub(crate) viewer: Option<crate::viewer::Viewer>,
+    pub(crate) sign_ins: Vec<crate::sign_in::SignIn>,
 }
 
 impl Server {
-    fn new(
-        modern_only: bool,
-        otlp: Option<crate::otlp::Exporter>,
-        viewer: Option<crate::viewer::Viewer>,
-    ) -> Self {
+    fn new(modern_only: bool, otlp: Option<crate::otlp::Exporter>, extras: Extras) -> Self {
         Self {
-            viewer,
+            viewer: extras.viewer,
+            sign_ins: extras.sign_ins,
+            renewals: std::collections::HashMap::new(),
             modern_only,
             toolset: toolset::State::default(),
             url_elicitation: false,
@@ -970,6 +992,116 @@ impl Server {
             pending: None,
             otlp,
             version: VERSIONS[0],
+        }
+    }
+
+    /// After an agent's action: when it ran into a sign-out of a configured site, runs that
+    /// site's sign-in workflow on the agent's path, opens again the page a GET asked for, and
+    /// says so at the top of the reply (`signed_in` in the structured content). One renewal
+    /// per action; a site that needs more than [`crate::sign_in::MAX_IN_A_ROW`] in a row is
+    /// left signed out, so a broken sign-in cannot lock the account.
+    fn renew(&mut self, b: &mut dyn Backend, params: &Value, result: &mut Value) {
+        let tool = params["name"].as_str().unwrap_or_default();
+        if matches!(
+            tool,
+            "browser_observe"
+                | "browser_find"
+                | "browser_view"
+                | "browser_screenshot"
+                | "browser_lookahead"
+                | "browser_reset"
+                | "browser_workflow_run"
+                | "browser_workflow_save"
+                | "browser_takeover"
+                | "browser_wait"
+        ) {
+            return;
+        }
+        let outcome = &result["structuredContent"]["outcome"];
+        let Some(out) = crate::sign_in::signed_out(outcome, &self.sign_ins) else {
+            if !result["isError"].as_bool().unwrap_or(false) && !outcome.is_null() {
+                self.renewals.clear();
+            }
+            return;
+        };
+        let s = self.sign_ins[out.sign_in].clone();
+        let host = url::Url::parse(&s.origin)
+            .map(|u| u[url::Position::BeforeHost..url::Position::AfterPort].to_string())
+            .unwrap_or_else(|_| s.origin.clone());
+        let head = format!("signed out of {host} ({})", out.why);
+        let in_a_row = self.renewals.entry(s.origin.clone()).or_default();
+        if *in_a_row >= crate::sign_in::MAX_IN_A_ROW {
+            let note = format!(
+                "{head}; not signing in again: {} sign-ins in a row did not hold (check {} and the account)",
+                crate::sign_in::MAX_IN_A_ROW,
+                s.name
+            );
+            prepend(
+                result,
+                &note,
+                json!({"origin": s.origin, "workflow": s.name, "why": out.why, "stopped": true}),
+            );
+            return;
+        }
+        *in_a_row += 1;
+        let report = crate::workflow::run(
+            &mut Steps(b),
+            &s.workflow,
+            &std::collections::HashMap::new(),
+            LoadOptions::default(),
+            &mut |_| {},
+        );
+        let failed = match &report {
+            Err(e) => Some(e.clone()),
+            Ok(r) if r.status != crate::workflow::Status::Done => Some(r.to_string()),
+            Ok(_) => b
+                .current_url()
+                .and_then(|u| url::Url::parse(&u).ok())
+                .filter(|u| s.is_sign_in_page(u))
+                .map(|_| "it ended on the sign-in page again".to_string()),
+        };
+        if let Some(why) = failed {
+            let note = format!("{head}; signing in again with {} failed: {why}", s.name);
+            let reply = b.observe(true).unwrap_or_default();
+            *result = stepped(
+                b,
+                text_result(
+                    format!("{note}\n\n{reply}"),
+                    json!({"signed_in": {"origin": s.origin, "workflow": s.name, "why": out.why, "failed": why}}),
+                ),
+            );
+            return;
+        }
+        // The workflow's own steps (its start page opening is not one).
+        let ran = s.workflow.steps.len();
+        let done = format!("{head}; signed in again with {} ({ran} steps)", s.name);
+        let signed = json!({"origin": s.origin, "workflow": s.name, "why": out.why, "steps": ran});
+        if out.method == "GET" {
+            let path = url::Url::parse(&out.url)
+                .map(|u| u[url::Position::BeforePath..].to_string())
+                .unwrap_or_else(|_| out.url.clone());
+            let open = json!({"name": "browser_open", "arguments": {"url": out.url}});
+            if let Ok(mut again) = call(b, &open, None, &mut |_| {}) {
+                let mut signed = signed;
+                signed["reopened"] = json!(pageon_env::redact_params(&out.url));
+                prepend(
+                    &mut again,
+                    &format!("{done}, reopened {}", pageon_env::redact_params(&path)),
+                    signed,
+                );
+                *result = again;
+                return;
+            }
+            prepend(result, &done, signed);
+        } else {
+            let mut signed = signed;
+            signed["not_sent"] = json!(out.method);
+            let note = format!("{done}; the {} was not sent again: do it again", out.method);
+            let reply = b.observe(true).unwrap_or_default();
+            *result = stepped(
+                b,
+                text_result(format!("{note}\n\n{reply}"), json!({"signed_in": signed})),
+            );
         }
     }
 
@@ -1047,6 +1179,13 @@ impl Server {
                 self.modern_only,
                 start,
             ));
+        }
+        let mut reply = reply;
+        if method == "tools/call"
+            && !self.sign_ins.is_empty()
+            && let Ok(result) = &mut reply
+        {
+            self.renew(b, &params, result);
         }
         if let Some(v) = &watch {
             record(v, b, &params, &reply, began);

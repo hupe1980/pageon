@@ -164,6 +164,9 @@ class Browser:
         robots: str = "respect",
         guard: str | None = None,
         allow_javascript_exec: bool = False,
+        sign_ins: Iterable[str | os.PathLike[str]] = (),
+        ui: bool = False,
+        approve: bool = False,
         binary: str | os.PathLike[str] | None = None,
     ) -> None:
         args = [_binary(binary), "mcp", "--budget", str(budget), "--profile", profile, "--robots", robots]
@@ -171,6 +174,15 @@ class Browser:
             args.append("--no-sandbox")
         if allow_javascript_exec:
             args.append("--allow-javascript-exec")
+        for f in sign_ins:
+            args += ["--sign-in", os.fspath(Path(f))]
+        if ui:
+            args.append("--ui")
+        if approve:
+            args.append("--approve")
+        self._viewer_url: str | None = None
+        self._viewer_ready = threading.Event()
+        self._wants_viewer = ui or approve
         if guard is not None:
             args += ["--guard", guard]
         if platform is not None:
@@ -273,8 +285,20 @@ class Browser:
     def _drain_stderr(self) -> None:
         assert self._proc.stderr is not None
         for line in self._proc.stderr:
+            if line.startswith("viewer: "):
+                self._viewer_url = line[len("viewer: ") :].strip()
+                self._viewer_ready.set()
             self._stderr.append(line)
             sys.stderr.write(line)
+        self._viewer_ready.set()
+
+    @property
+    def viewer_url(self) -> str | None:
+        """The viewer's URL (with ``ui=True`` or ``approve=True``): open it in a browser to watch
+        the steps and approve writes. ``None`` without a viewer."""
+        if self._wants_viewer:
+            self._viewer_ready.wait(timeout=10)
+        return self._viewer_url
 
     def _exited(self) -> PageonError:
         status = self._proc.wait()

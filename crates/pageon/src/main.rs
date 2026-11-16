@@ -292,9 +292,14 @@ enum IdentityCommand {
     },
 }
 
-/// Supervision: the viewer, and approvals in it.
+/// What an agent's session adds to the page options: supervision and sign-ins.
 #[derive(Args)]
 struct Watch {
+    /// A sign-in workflow (`pageon workflow compile` of a recorded login) whose start page is
+    /// the site's sign-in page: when an action finds the session signed out of that site,
+    /// pageon runs it and opens the page again (repeatable, one per site).
+    #[arg(long = "sign-in", value_name = "FILE")]
+    sign_in: Vec<PathBuf>,
     /// Serve a page that shows each step and pauses the session (its URL on stderr).
     #[arg(long)]
     ui: bool,
@@ -305,6 +310,20 @@ struct Watch {
 }
 
 impl Watch {
+    /// The sign-ins, loaded and checked.
+    fn sign_ins(&self) -> Result<Vec<pageon::sign_in::SignIn>, ExitCode> {
+        let all = self
+            .sign_in
+            .iter()
+            .map(|p| pageon::sign_in::SignIn::load(p))
+            .collect::<Result<Vec<_>, _>>()
+            .and_then(|all| pageon::sign_in::check(&all).map(|()| all));
+        all.map_err(|e| {
+            eprintln!("error: {e}");
+            ExitCode::from(2)
+        })
+    }
+
     /// Starts the viewer when asked and makes it the approver with --approve.
     fn start(
         &self,
@@ -1253,6 +1272,10 @@ fn mcp(
     };
     // An agent drives this session: local files only when the operator says so.
     prepared.options.allow_files = s.allow_files;
+    let sign_ins = match watch.sign_ins() {
+        Ok(s) => s,
+        Err(code) => return code,
+    };
     let viewer = match watch.start(&mut prepared.config) {
         Ok(v) => v,
         Err(code) => return code,
@@ -1270,6 +1293,7 @@ fn mcp(
         otlp,
         detail,
         viewer,
+        sign_ins,
         ..pageon::mcp::McpOptions::default()
     };
     // The same assembly an embedder gets.

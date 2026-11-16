@@ -46,7 +46,7 @@ pub(super) fn serve(
     b: &mut dyn Backend,
     options: &SocketOptions,
     otlp: Option<crate::otlp::Exporter>,
-    viewer: Option<crate::viewer::Viewer>,
+    extras: super::Extras,
 ) -> Result<(), String> {
     let path = &options.path;
     let listener = UnixListener::bind(path)
@@ -60,7 +60,7 @@ pub(super) fn serve(
     if let Some(idle) = options.idle {
         watch(path.clone(), idle, start, last.clone(), done.clone());
     }
-    let mut server = Server::new(true, otlp, viewer);
+    let mut server = Server::new(true, otlp, extras);
     for stream in listener.incoming() {
         let Ok(stream) = stream else { continue };
         let close = connection(b, &mut server, &stream);

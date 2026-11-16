@@ -22,6 +22,12 @@ All notable changes to this project are documented here. The format follows
   before writes leave (Allow Once, Allow for This Session, Don't Allow); `Space` pauses the
   agent; `pageon ui` prints a session's URL.
 
+- Sign-ins that renew: `--sign-in login.flow.json` on `pageon mcp` and `pageon open` (Python
+  `sign_ins`): when an action is redirected to the sign-in page or answered 401, pageon runs the
+  sign-in workflow and opens the page again; writes are never resent, and three renewals in a
+  row that do not hold stop it.
+- Python: `Browser(ui=True, approve=True)` and `browser.viewer_url`.
+
 ### Fixed
 
 - Buttons size to their content, so a page's padding and font apply (they were 21 px tall).
