@@ -2626,6 +2626,7 @@ dependencies = [
  "selectors",
  "serde",
  "serde_json",
+ "skrifa 0.44.0",
  "stylo",
  "stylo_traits",
  "taffy",

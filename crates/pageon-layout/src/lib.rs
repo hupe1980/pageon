@@ -19,6 +19,8 @@
 //! assert!(layout.box_of(p).unwrap().height > 0.0);
 //! ```
 
+mod canvas_text;
+pub use canvas_text::{CanvasFont, CanvasTextMetrics, Segment, canvas_text};
 mod actionability;
 mod caret;
 mod fonts;

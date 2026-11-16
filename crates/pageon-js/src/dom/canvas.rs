@@ -23,6 +23,9 @@ pub struct DrawState {
     alpha: f32,
     composite: (BlendMode, String),
     transform: Transform,
+    font: pageon_layout::CanvasFont,
+    text_align: &'static str,
+    text_baseline: &'static str,
 }
 
 impl Default for DrawState {
@@ -34,6 +37,9 @@ impl Default for DrawState {
             alpha: 1.0,
             composite: (BlendMode::SourceOver, "source-over".into()),
             transform: Transform::identity(),
+            font: pageon_layout::CanvasFont::default(),
+            text_align: "start",
+            text_baseline: "alphabetic",
         }
     }
 }
@@ -48,6 +54,13 @@ pub struct Canvas {
 }
 
 impl Canvas {
+    /// The bitmap: width, height and premultiplied RGBA bytes.
+    pub fn bitmap(&self) -> Option<(u32, u32, &[u8])> {
+        self.pixmap
+            .as_ref()
+            .map(|p| (p.width(), p.height(), p.data()))
+    }
+
     fn new(w: u32, h: u32) -> Self {
         Self {
             pixmap: Pixmap::new(w.max(1), h.max(1)),
@@ -840,3 +853,215 @@ const NAMED: &[(&str, u32)] = &[
     ("yellow", 0xffff00),
     ("yellowgreen", 0x9acd32),
 ];
+
+/// `CanvasTextDrawingStyles`: the font and how text sits on its point.
+pub mod canvas_text_drawing_styles {
+    use super::*;
+
+    pub fn get_font(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<String> {
+        with(cx, this, |c| c.state.font.css())
+    }
+
+    /// An invalid font is ignored, as in browsers.
+    pub fn set_font(cx: &mut Cx<'_, '_, '_>, this: Obj, v: String) -> R<()> {
+        let Some(f) = pageon_layout::CanvasFont::parse(&v) else {
+            return Ok(());
+        };
+        with(cx, this, |c| c.state.font = f)
+    }
+
+    pub fn get_text_align(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<String> {
+        with(cx, this, |c| c.state.text_align.to_string())
+    }
+
+    pub fn set_text_align(cx: &mut Cx<'_, '_, '_>, this: Obj, v: String) -> R<()> {
+        const ALL: &[&str] = &["start", "end", "left", "right", "center"];
+        let Some(a) = ALL.iter().find(|a| **a == v) else {
+            return Ok(());
+        };
+        with(cx, this, |c| c.state.text_align = a)
+    }
+
+    pub fn get_text_baseline(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<String> {
+        with(cx, this, |c| c.state.text_baseline.to_string())
+    }
+
+    pub fn set_text_baseline(cx: &mut Cx<'_, '_, '_>, this: Obj, v: String) -> R<()> {
+        const ALL: &[&str] = &[
+            "top",
+            "hanging",
+            "middle",
+            "alphabetic",
+            "ideographic",
+            "bottom",
+        ];
+        let Some(b) = ALL.iter().find(|b| **b == v) else {
+            return Ok(());
+        };
+        with(cx, this, |c| c.state.text_baseline = b)
+    }
+}
+
+/// `CanvasText`: measuring and drawing text with the bundled fonts.
+pub mod canvas_text {
+    use super::*;
+    use pageon_layout::Segment;
+
+    pub fn measure_text(cx: &mut Cx<'_, '_, '_>, this: Obj, text: String) -> R<Obj> {
+        let font = with(cx, this, |c| c.state.font.clone())?;
+        let (m, _) = pageon_layout::canvas_text(&font, &text, false);
+        Ok(cx.alloc(Iface::TextMetrics, Slot::TextMetrics(m)))
+    }
+
+    /// Where the text's origin goes for its alignment and baseline: x and y shifts.
+    fn anchor(state: &DrawState, m: &pageon_layout::CanvasTextMetrics) -> (f32, f32) {
+        let dx = match state.text_align {
+            "center" => -m.width / 2.0,
+            "end" | "right" => -m.width,
+            _ => 0.0,
+        };
+        let dy = match state.text_baseline {
+            "top" | "hanging" => m.font_ascent,
+            "middle" => (m.font_ascent - m.font_descent) / 2.0,
+            "bottom" | "ideographic" => -m.font_descent,
+            _ => 0.0,
+        };
+        (dx, dy)
+    }
+
+    fn draw(
+        cx: &mut Cx<'_, '_, '_>,
+        this: Obj,
+        text: &str,
+        x: f64,
+        y: f64,
+        max: Option<f64>,
+        fill: bool,
+    ) -> R<()> {
+        if !finite(&[x, y]) || max.is_some_and(|m| !m.is_finite() || m <= 0.0) {
+            return Ok(());
+        }
+        let font = with(cx, this, |c| c.state.font.clone())?;
+        let (m, segments) = pageon_layout::canvas_text(&font, text, true);
+        with(cx, this, |c| {
+            let (dx, dy) = anchor(&c.state, &m);
+            // `maxWidth`: squeeze horizontally to fit.
+            let sx = max.map_or(1.0, |mw| (mw as f32 / m.width).min(1.0));
+            let t = c
+                .state
+                .transform
+                .pre_translate(x as f32, y as f32)
+                .pre_scale(sx, 1.0);
+            let pt = |px: f32, py: f32| {
+                let mut p = [tiny_skia::Point::from_xy(px + dx, py + dy)];
+                t.map_points(&mut p);
+                (p[0].x, p[0].y)
+            };
+            let mut b = PathBuilder::new();
+            for s in &segments {
+                match *s {
+                    Segment::Move(a, bb) => {
+                        let (x, y) = pt(a, bb);
+                        b.move_to(x, y);
+                    }
+                    Segment::Line(a, bb) => {
+                        let (x, y) = pt(a, bb);
+                        b.line_to(x, y);
+                    }
+                    Segment::Quad(a, bb, c2, d) => {
+                        let (x1, y1) = pt(a, bb);
+                        let (x, y) = pt(c2, d);
+                        b.quad_to(x1, y1, x, y);
+                    }
+                    Segment::Cubic(a, bb, c2, d, e, f) => {
+                        let (x1, y1) = pt(a, bb);
+                        let (x2, y2) = pt(c2, d);
+                        let (x, y) = pt(e, f);
+                        b.cubic_to(x1, y1, x2, y2, x, y);
+                    }
+                    Segment::Close => b.close(),
+                }
+            }
+            let (Some(path), Some(pm)) = (b.finish(), c.pixmap.as_mut()) else {
+                return;
+            };
+            if fill {
+                let p = paint(c.state.fill.0, c.state.alpha, c.state.composite.0);
+                pm.fill_path(&path, &p, FillRule::Winding, Transform::identity(), None);
+            } else {
+                let p = paint(c.state.stroke.0, c.state.alpha, c.state.composite.0);
+                let stroke = Stroke {
+                    width: c.state.line_width,
+                    ..Stroke::default()
+                };
+                pm.stroke_path(&path, &p, &stroke, Transform::identity(), None);
+            }
+        })
+    }
+
+    pub fn fill_text(
+        cx: &mut Cx<'_, '_, '_>,
+        this: Obj,
+        text: String,
+        x: f64,
+        y: f64,
+        max: Option<f64>,
+    ) -> R<()> {
+        draw(cx, this, &text, x, y, max, true)
+    }
+
+    pub fn stroke_text(
+        cx: &mut Cx<'_, '_, '_>,
+        this: Obj,
+        text: String,
+        x: f64,
+        y: f64,
+        max: Option<f64>,
+    ) -> R<()> {
+        draw(cx, this, &text, x, y, max, false)
+    }
+}
+
+/// `TextMetrics`.
+pub mod text_metrics {
+    use super::*;
+
+    fn m(cx: &Cx<'_, '_, '_>, this: Obj) -> R<pageon_layout::CanvasTextMetrics> {
+        match crate::dom::collections::slot(cx, this)? {
+            Slot::TextMetrics(m) => Ok(m),
+            _ => Err(crate::cv::Error::Type("Illegal invocation".into())),
+        }
+    }
+
+    pub fn get_width(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<f64> {
+        Ok(f64::from(m(cx, this)?.width))
+    }
+    pub fn get_actual_bounding_box_left(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<f64> {
+        Ok(f64::from(m(cx, this)?.actual_left))
+    }
+    pub fn get_actual_bounding_box_right(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<f64> {
+        Ok(f64::from(m(cx, this)?.actual_right))
+    }
+    pub fn get_font_bounding_box_ascent(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<f64> {
+        Ok(f64::from(m(cx, this)?.font_ascent))
+    }
+    pub fn get_font_bounding_box_descent(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<f64> {
+        Ok(f64::from(m(cx, this)?.font_descent))
+    }
+    pub fn get_actual_bounding_box_ascent(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<f64> {
+        Ok(f64::from(m(cx, this)?.actual_ascent))
+    }
+    pub fn get_actual_bounding_box_descent(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<f64> {
+        Ok(f64::from(m(cx, this)?.actual_descent))
+    }
+    pub fn get_em_height_ascent(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<f64> {
+        Ok(f64::from(m(cx, this)?.font_ascent))
+    }
+    pub fn get_em_height_descent(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<f64> {
+        Ok(f64::from(m(cx, this)?.font_descent))
+    }
+    /// Text is measured from its alphabetic baseline.
+    pub fn get_alphabetic_baseline(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<f64> {
+        m(cx, this).map(|_| 0.0)
+    }
+}

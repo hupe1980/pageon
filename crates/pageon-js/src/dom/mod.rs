@@ -9,6 +9,7 @@ mod collections;
 pub(crate) mod credentials;
 pub(crate) mod custom_elements;
 pub mod dnd;
+pub(crate) mod document_write;
 mod documents;
 pub(crate) mod editing;
 mod elements;
@@ -23,6 +24,7 @@ mod nodes;
 pub(crate) mod observers;
 pub(crate) mod platform;
 mod platform_apis;
+pub(crate) mod popover;
 pub(crate) mod ranges;
 pub mod realtime;
 pub(crate) mod scroll;
@@ -44,11 +46,11 @@ pub use crate::frames::{htmli_frame_element, message_event};
 pub use canvas::{
     canvas_compositing, canvas_draw_path, canvas_fill_stroke_styles, canvas_path,
     canvas_path_drawing_styles, canvas_rect, canvas_rendering_context2_d, canvas_state,
-    canvas_transform, html_canvas_element,
+    canvas_text, canvas_text_drawing_styles, canvas_transform, html_canvas_element, text_metrics,
 };
 pub use collections::{
     attr, css_style_declaration, css_style_properties, dom_rect_list, dom_rect_read_only,
-    dom_token_list, html_collection, named_node_map, node_list,
+    dom_token_list, html_collection, named_node_map, node_list, radio_node_list,
 };
 pub use custom_elements::custom_element_registry;
 pub use documents::{
@@ -60,7 +62,7 @@ pub use elements::{
 };
 pub use events::{
     custom_event, drag_event, event, event_target, focus_event, keyboard_event, mouse_event,
-    pointer_event, submit_event, ui_event, wheel_event,
+    pointer_event, submit_event, toggle_event, ui_event, wheel_event,
 };
 pub use globals::{
     animation_frame_provider, console, dom_exception, location, navigator_automation_information,
@@ -68,9 +70,10 @@ pub use globals::{
     navigator_ua_data, performance, visual_viewport, window, window_or_worker_global_scope,
 };
 pub use html::{
-    html_button_element, html_dialog_element, html_form_element, html_hyperlink_element_utils,
-    html_input_element, html_option_element, html_script_element, html_select_element,
-    html_template_element, html_text_area_element, hyperlink_element_utils,
+    html_anchor_element, html_button_element, html_dialog_element, html_form_element,
+    html_hyperlink_element_utils, html_input_element, html_option_element, html_script_element,
+    html_select_element, html_table_element, html_template_element, html_text_area_element,
+    hyperlink_element_utils,
 };
 pub use intersection::{intersection_observer, intersection_observer_entry};
 pub use nodes::{
@@ -87,6 +90,7 @@ pub use platform_apis::{
     mime_type, mime_type_array, navigator_concurrent_hardware, navigator_plugins, notification,
     permission_status, permissions, plugin, plugin_array, screen_orientation, user_activation,
 };
+pub use popover::popover_target_attributes;
 pub use session::{history, pop_state_event};
 pub use shadow::{html_slot_element, shadow_root, slottable};
 pub use traversal::{node_iterator, tree_walker};
@@ -639,6 +643,44 @@ pub(crate) fn collect(dom: &Dom, c: &Coll) -> Vec<NodeId> {
         Coll::FormElements(form) => pageon_dom::forms::listed(dom, *form)
             .into_iter()
             .filter(|&n| !html(n, "input") || pageon_dom::forms::input_type(dom, n) != "image")
+            .collect(),
+        Coll::Radio(form, name) => collect(dom, &Coll::FormElements(*form))
+            .into_iter()
+            .filter(|&n| {
+                dom.get(n).is_some_and(|x| {
+                    x.attr("id") == Some(name.as_str()) || x.attr("name") == Some(name.as_str())
+                })
+            })
+            .collect(),
+        Coll::TableRows(table) => {
+            let sections = element_children(dom, *table);
+            let rows_of = |p: NodeId| -> Vec<NodeId> {
+                element_children(dom, p)
+                    .into_iter()
+                    .filter(|&r| html(r, "tr"))
+                    .collect()
+            };
+            let part = |tag: &str| -> Vec<NodeId> {
+                sections
+                    .iter()
+                    .filter(|&&s| html(s, tag))
+                    .flat_map(|&s| rows_of(s))
+                    .collect()
+            };
+            let mut rows = part("thead");
+            for &s in &sections {
+                if html(s, "tr") {
+                    rows.push(s);
+                } else if html(s, "tbody") {
+                    rows.extend(rows_of(s));
+                }
+            }
+            rows.extend(part("tfoot"));
+            rows
+        }
+        Coll::TableBodies(table) => element_children(dom, *table)
+            .into_iter()
+            .filter(|&n| html(n, "tbody"))
             .collect(),
         Coll::Doc(which) => descendants(dom.root())
             .into_iter()

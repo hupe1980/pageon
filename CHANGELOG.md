@@ -35,8 +35,15 @@ All notable changes to this project are documented here. The format follows
   carry `pageon.reply.tokens`; recordings keep it per step and `pageon replay FILE --report`
   prints totals and p50/p95/p99; the viewer shows tokens per step and in total.
 
+- Platform: named form access (`form.email`, radio groups as `RadioNodeList`), `form.action`,
+  `method` and `enctype`; the Popover API with `popovertarget` buttons and light dismiss;
+  canvas text (`font`, `measureText`, `fillText`, `strokeText`) with the bundled fonts;
+  `document.write` while parsing; `dir`, `draggable`, `spellcheck`, `translate`, `outerText`,
+  `a.text`, `valueAsNumber`, `textarea.rows`, `table.rows`, `img.loading`.
+
 ### Fixed
 
+- Canvases appear in screenshots (they were painted blank and noted as not painted).
 - Workflow URL checks keep the port, so two local apps on different ports are told apart.
 - Buttons size to their content, so a page's padding and font apply (they were 21 px tall).
 

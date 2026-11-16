@@ -6,7 +6,7 @@ use super::{collect, gone};
 use crate::cv::{Cx, Error, Obj, R};
 use crate::realm::Slot;
 
-fn slot(cx: &Cx<'_, '_, '_>, this: Obj) -> R<Slot> {
+pub(crate) fn slot(cx: &Cx<'_, '_, '_>, this: Obj) -> R<Slot> {
     let id = this.slab()?;
     cx.realm
         .st
@@ -65,6 +65,51 @@ pub mod html_collection {
                 })
             })
             .map(Obj::Node))
+    }
+}
+
+/// `RadioNodeList`: the controls of a form sharing a name.
+pub mod radio_node_list {
+    use super::*;
+
+    fn radios(cx: &Cx<'_, '_, '_>, this: Obj) -> R<Vec<NodeId>> {
+        let dom = cx.dom();
+        Ok(items(cx, this)?
+            .into_iter()
+            .filter(|&n| {
+                dom.get(n).is_some_and(|x| x.is_html("input"))
+                    && pageon_dom::forms::input_type(&dom, n) == "radio"
+            })
+            .collect())
+    }
+
+    /// The checked radio button's value (`on` without a `value`), or empty.
+    pub fn get_value(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<String> {
+        for n in radios(cx, this)? {
+            if crate::dom::html_input_element::get_checked(cx, Obj::Node(n))? {
+                return Ok(cx
+                    .dom()
+                    .get(n)
+                    .and_then(|x| x.attr("value").map(str::to_string))
+                    .unwrap_or_else(|| "on".into()));
+            }
+        }
+        Ok(String::new())
+    }
+
+    /// Checks the first radio button with that value.
+    pub fn set_value(cx: &mut Cx<'_, '_, '_>, this: Obj, v: String) -> R<()> {
+        for n in radios(cx, this)? {
+            let value = cx
+                .dom()
+                .get(n)
+                .and_then(|x| x.attr("value").map(str::to_string))
+                .unwrap_or_else(|| "on".into());
+            if value == v {
+                return crate::dom::html_input_element::set_checked(cx, Obj::Node(n), true);
+            }
+        }
+        Ok(())
     }
 }
 

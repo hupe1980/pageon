@@ -801,6 +801,22 @@ pub mod idle_deadline {
 // ----- Image and Option -----
 
 pub mod html_image_element {
+
+    /// `loading`: `lazy` or `eager`.
+    pub fn get_loading(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<String> {
+        let lazy = cx
+            .dom()
+            .get(this.node()?)
+            .and_then(|n| n.attr("loading"))
+            .is_some_and(|v| v.eq_ignore_ascii_case("lazy"));
+        Ok(if lazy { "lazy" } else { "eager" }.into())
+    }
+
+    pub fn set_loading(cx: &mut Cx<'_, '_, '_>, this: Obj, v: String) -> R<()> {
+        cx.dom_mut()
+            .set_attr(this.node()?, "loading", &v)
+            .map_err(|_| crate::dom::gone())
+    }
     use super::*;
 
     /// `new Image(width, height)`.

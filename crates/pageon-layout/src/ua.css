@@ -108,3 +108,26 @@ dialog[data-pageon-top-layer] {
 slot {
   display: contents;
 }
+/* Popovers (the HTML UA sheet): hidden until open, then centred in the viewport above the
+   page. `pageon-popover-open` is the mirror's marker for `:popover-open`, which Blitz does not
+   match: its own sheet hides every `[popover]:not(:popover-open)` (specificity 0,3,1), so the
+   open rule repeats the marker to win. */
+[popover]:not([pageon-popover-open]) {
+  display: none;
+}
+[popover][pageon-popover-open][pageon-popover-open][pageon-popover-open] {
+  display: block;
+}
+[popover][pageon-popover-open] {
+  position: fixed;
+  inset: 0;
+  width: fit-content;
+  height: fit-content;
+  margin: auto;
+  border: solid;
+  padding: 0.25em;
+  overflow: auto;
+  color: CanvasText;
+  background-color: Canvas;
+  z-index: 2147483647;
+}

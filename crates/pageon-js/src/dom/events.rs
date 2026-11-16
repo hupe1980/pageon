@@ -8,7 +8,8 @@ use pageon_dom::NodeId;
 use crate::cv::{Cx, Error, Obj, OrBool, R, Value};
 use crate::generated::{
     AddEventListenerOptions, CustomEventInit, EventInit, EventListenerOptions, FocusEventInit,
-    Iface, KeyboardEventInit, MouseEventInit, SubmitEventInit, UIEventInit, WheelEventInit,
+    Iface, KeyboardEventInit, MouseEventInit, SubmitEventInit, ToggleEventInit, UIEventInit,
+    WheelEventInit,
 };
 use crate::realm::{EventData, InputData, Listener, Slot, Target};
 
@@ -1055,6 +1056,61 @@ pub mod submit_event {
         };
         let e = cx.alloc(Iface::SubmitEvent, Slot::Event(Box::new(data)));
         super::event_target::dispatch(cx, Target::Node(form), e)
+    }
+}
+
+/// `ToggleEvent`: a popover (or `<details>`) changed state.
+pub mod toggle_event {
+    use super::*;
+
+    pub fn constructor(cx: &mut Cx<'_, '_, '_>, ty: String, init: ToggleEventInit) -> R<Obj> {
+        let mut data = base(
+            cx,
+            ty,
+            &EventInit {
+                bubbles: init.bubbles,
+                cancelable: init.cancelable,
+                composed: init.composed,
+            },
+        );
+        data.toggle = (init.old_state, init.new_state);
+        data.source = init.source.and_then(|o| o.node().ok());
+        Ok(cx.alloc(Iface::ToggleEvent, Slot::Event(Box::new(data))))
+    }
+
+    pub fn get_old_state(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<String> {
+        ev(cx, this, |e| e.toggle.0.clone())
+    }
+
+    pub fn get_new_state(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<String> {
+        ev(cx, this, |e| e.toggle.1.clone())
+    }
+
+    pub fn get_source(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<Option<Obj>> {
+        Ok(ev(cx, this, |e| e.source)?.map(Obj::Node))
+    }
+
+    /// Fires a trusted `beforetoggle` or `toggle` at `el`; false when it was cancelled.
+    pub(crate) fn fire(
+        cx: &mut Cx<'_, '_, '_>,
+        el: NodeId,
+        ty: &str,
+        (old, new): (&str, &str),
+        cancelable: bool,
+        source: Option<NodeId>,
+    ) -> R<bool> {
+        let data = EventData {
+            ty: ty.into(),
+            cancelable,
+            initialized: true,
+            trusted: true,
+            time: now(cx),
+            toggle: (old.into(), new.into()),
+            source,
+            ..EventData::default()
+        };
+        let e = cx.alloc(Iface::ToggleEvent, Slot::Event(Box::new(data)));
+        super::event_target::dispatch(cx, Target::Node(el), e)
     }
 }
 

@@ -554,6 +554,7 @@ impl Engine {
                 listeners: Default::default(),
                 handlers: Default::default(),
                 current_script: None,
+                written: None,
                 ready_state: "loading",
                 mutations: 0,
                 layout: None,
@@ -1016,6 +1017,32 @@ impl Engine {
         sh.tag_errors(usize::MAX);
         sh.error(kind, message, source);
         sh.tag_errors(realm);
+    }
+
+    /// The realm's canvas bitmaps: element, width, height, premultiplied RGBA.
+    pub fn canvas_bitmaps(&self, realm: usize) -> Vec<(NodeId, u32, u32, Vec<u8>)> {
+        let Some(r) = self.realm(realm) else {
+            return Vec::new();
+        };
+        let st = r.st.borrow();
+        st.canvases
+            .iter()
+            .filter_map(|(id, c)| c.bitmap().map(|(w, h, d)| (*id, w, h, d.to_vec())))
+            .collect()
+    }
+
+    /// Starts or ends the parser's time for `document.write`.
+    pub fn set_parsing(&self, realm: usize, parsing: bool) {
+        if let Some(r) = self.realm(realm) {
+            r.st.borrow_mut().written = parsing.then(String::new);
+        }
+    }
+
+    /// What `document.write` wrote since the last call (empty when nothing).
+    pub fn take_written(&self, realm: usize) -> String {
+        self.realm(realm)
+            .and_then(|r| r.st.borrow_mut().written.as_mut().map(std::mem::take))
+            .unwrap_or_default()
     }
 
     /// Sets `document.readyState` and fires `readystatechange` at the document.

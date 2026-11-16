@@ -210,6 +210,10 @@ fn mouse(
     point: (f64, f64),
     related: Option<NodeId>,
 ) -> R<bool> {
+    if ty == "pointerdown" {
+        // A press outside an open auto popover closes it (light dismiss).
+        crate::dom::popover::light_dismiss(cx, el)?;
+    }
     let pointer = ty.starts_with("pointer");
     let bubbles = !ty.ends_with("enter") && !ty.ends_with("leave");
     let cancelable = bubbles && !ty.ends_with("move") || ty == "mousemove" || ty == "pointermove";
@@ -512,6 +516,7 @@ pub(crate) fn activate(cx: &mut Cx<'_, '_, '_>, el: NodeId) -> R<()> {
                         (Some("reset"), Some(form)) => return reset_form(cx, form),
                         _ => {}
                     }
+                    crate::dom::popover::invoke(cx, c)?;
                     return Ok(());
                 }
                 "input" if !pageon_dom::forms::disabled(&cx.dom(), c) => {
@@ -522,6 +527,9 @@ pub(crate) fn activate(cx: &mut Cx<'_, '_, '_>, el: NodeId) -> R<()> {
                         ("reset", Some(form)) => return reset_form(cx, form),
                         // A file input opens the file chooser (filled by an upload).
                         ("file", _) => cx.st().chooser = Some(c),
+                        ("button", _) => {
+                            crate::dom::popover::invoke(cx, c)?;
+                        }
                         _ => {}
                     }
                     return Ok(());
@@ -1357,6 +1365,7 @@ fn press_key(cx: &mut Cx<'_, '_, '_>, key: &str) -> R<()> {
                 let el = editable(cx, t).is_some().then_some(t);
                 crate::dom::editing::move_caret(cx, el, Step { forward, unit }, mods.shift)?;
             }
+            "Escape" if crate::dom::popover::escape(cx)? => {}
             "Escape" => {
                 let top = cx.st().modals.last().copied();
                 if let Some(top) = top

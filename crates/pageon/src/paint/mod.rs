@@ -9,6 +9,7 @@ mod mask;
 use std::fmt;
 use std::rc::Rc;
 
+use pageon_dom::NodeId;
 use pageon_env::Env;
 use pageon_layout::{Images, Layout, LayoutOptions, Pixmap, Rect, Viewport, Visibility};
 use serde::{Deserialize, Serialize};
@@ -384,8 +385,56 @@ impl Document {
         l
     }
 
+    /// Draws the canvases' bitmaps into their boxes, where nothing covers them; returns the
+    /// canvases painted.
+    fn paint_canvases(
+        &self,
+        px: &mut pageon_layout::Pixmap,
+        l: &Layout,
+        area: Rect,
+        scale: f32,
+    ) -> Vec<NodeId> {
+        let Some(live) = &self.live else {
+            return Vec::new();
+        };
+        let bitmaps = live.engine.borrow().canvas_bitmaps(live.realm);
+        let (sx, sy) = l.viewport_scroll();
+        let mut painted = Vec::new();
+        for (id, bw, bh, data) in bitmaps {
+            if l.visibility(id) != Visibility::Visible || bw == 0 || bh == 0 {
+                continue;
+            }
+            let Some(b) = l.box_of(id) else { continue };
+            // Something on top of it (a dialog, a popover): leave it to the page's paint.
+            let (cx, cy) = (b.x + b.width / 2.0 - sx, b.y + b.height / 2.0 - sy);
+            if l.element_at(cx, cy).is_some_and(|top| top != id) {
+                continue;
+            }
+            let x0 = ((b.x - area.x) * scale).round() as i64;
+            let y0 = ((b.y - area.y) * scale).round() as i64;
+            let w = (b.width * scale).round() as i64;
+            let h = (b.height * scale).round() as i64;
+            for y in y0.max(0)..(y0 + h).min(i64::from(px.height)) {
+                let syi = (((y - y0) as f32 + 0.5) / h as f32 * bh as f32) as u32;
+                for x in x0.max(0)..(x0 + w).min(i64::from(px.width)) {
+                    let sxi = (((x - x0) as f32 + 0.5) / w as f32 * bw as f32) as u32;
+                    let s = ((syi.min(bh - 1) * bw + sxi.min(bw - 1)) * 4) as usize;
+                    let d = ((y as u32 * px.width + x as u32) * 4) as usize;
+                    let a = u32::from(data[s + 3]);
+                    for k in 0..3 {
+                        let dst = u32::from(px.data[d + k]);
+                        px.data[d + k] =
+                            (u32::from(data[s + k]) + dst * (255 - a) / 255).min(255) as u8;
+                    }
+                }
+            }
+            painted.push(id);
+        }
+        painted
+    }
+
     /// Elements painted empty because pageon does not implement them.
-    fn not_painted(&self, l: &Layout, notes: &mut Vec<String>) {
+    fn not_painted(&self, l: &Layout, painted: &[NodeId], notes: &mut Vec<String>) {
         let mut counts: Vec<(&str, usize)> = Vec::new();
         for e in self.dom.traverse(self.dom.root()) {
             let pageon_dom::Edge::Enter(id) = e else {
@@ -395,6 +444,7 @@ impl Document {
                 continue;
             };
             let tag = match tag {
+                "canvas" if painted.contains(&id) => continue,
                 "canvas" => "canvas",
                 "video" => "video",
                 "object" => "object",
@@ -528,6 +578,7 @@ impl<E: Env> Tab<'_, E> {
         });
         let scale = fit_budget(area, o.scale, o.budget, legend.as_deref())?;
         let mut px = layout.paint(area, scale).map_err(PaintError::Layout)?;
+        let canvases = self.doc.paint_canvases(&mut px, &layout, area, scale);
         if o.mask {
             let m = mask::find(&self.doc, &layout);
             for b in &m.boxes {
@@ -536,7 +587,7 @@ impl<E: Env> Tab<'_, E> {
             notes.extend(m.note());
         }
         marks::draw(&mut px, &marks, area, scale);
-        self.doc.not_painted(&layout, &mut notes);
+        self.doc.not_painted(&layout, &canvases, &mut notes);
         let missing = layout.missing_glyphs();
         if missing > 0 {
             notes.push(format!(

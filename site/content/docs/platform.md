@@ -19,7 +19,9 @@ and `pageon fetch URL --dump errors` names what a page tried to use.
 | DOM | The DOM standard's tree, events (capture, bubble, handlers), selectors, `innerHTML`, live collections, `MutationObserver`, `IntersectionObserver`, `ResizeObserver`, `TreeWalker`, `NodeIterator`, `DOMParser` and `createHTMLDocument` (HTML, inert: nothing in them runs or loads) |
 | CSS and layout | The cascade (Stylo), block, flex and grid (Taffy), text (Parley, with dictionary line breaking for Chinese, Japanese, Thai, Lao, Khmer and Burmese) and bundled fonts, computed style, geometry (`getBoundingClientRect`), `matchMedia`, `CSS.supports`, `CSS.escape`, scrolling of the page and of containers |
 | Editing | `Selection` and live `Range`s, `contenteditable` with the browser's edits through `beforeinput`/`input` (typing, Enter, Backspace and Delete by character or word, paste, cut), caret keys, text-field selection (`selectionStart`, `setSelectionRange`, `setRangeText`), `caretPositionFromPoint` and range rectangles from layout, `execCommand` for the editing commands (`insertText`, `delete`, `insertParagraph`, …; formatting commands return `false`). Editors such as ProseMirror, Lexical and Quill work |
-| Forms | Every control as form state, constraint validation with Chrome's messages, `:invalid`/`:user-invalid`, form-associated custom elements, `FormData`, multipart submission |
+| Forms | Every control as form state, named access (`form.email`, `form.elements.plan.value` for radio groups, `form[0]`), `action`/`method`/`enctype`, `valueAsNumber`, constraint validation with Chrome's messages, `:invalid`/`:user-invalid`, form-associated custom elements, `FormData`, multipart submission |
+| Popovers | The Popover API (`popover`, `showPopover`/`hidePopover`/`togglePopover`, `beforetoggle` and `toggle`), `popovertarget` buttons, Escape and outside clicks close open popovers, `:popover-open`; views show only open ones |
+| Canvas | 2D drawing and text (`font`, `textAlign`, `textBaseline`, `measureText`, `fillText`, `strokeText`) with the bundled fonts, so metrics are the same everywhere; canvases appear in screenshots |
 | Web components | Shadow DOM (open, closed, declarative), slots, custom elements, `ElementInternals`, adopted stylesheets |
 | Frames and messaging | Same- and cross-origin iframes, `postMessage`, `contentWindow`/`contentDocument` across same-origin frames, `<iframe sandbox>` (`allow-same-origin`, `-scripts`, `-forms`, `-popups`, `-modals`), `MessageChannel` within a document (ports are not transferable) |
 | Networking | `fetch`, `XMLHttpRequest`, `AbortController`, CORS, cookies (`SameSite`, CHIPS), `document.cookie` |
@@ -36,14 +38,16 @@ and `pageon fetch URL --dump errors` names what a page tried to use.
 | Animation and scheduling | Web Animations (`Element.animate`, `getAnimations`, `Animation`, `document.timeline`) and `scheduler.postTask`/`yield` with `TaskController`, on the virtual clock: a 300 ms exit animation finishes without waiting. Animated styles are not interpolated between keyframes; `commitStyles` writes the end state |
 | Permissions | `navigator.permissions.query` and `Notification.permission`: nothing is ever granted (`prompt`, or `denied` after a request), except `clipboard-write` for the focused page as in browsers |
 | Navigator and screen | `userActivation`, `sendBeacon` (a POST under the session's network policy), `hardwareConcurrency` (8), `pdfViewerEnabled` with the PDF viewer plugin list the HTML standard prescribes, `screen.orientation`, `screenX`/`screenY`. Pages see UTC |
-| Other | Timers and `requestAnimationFrame` on the virtual clock, `crypto.getRandomValues`/`randomUUID`, `TextEncoder`/`TextDecoder`, `URL`, user timing (`performance.mark`/`measure`, `PerformanceObserver`), `screen`, `document.visibilityState`, `InputEvent`, `reportError`, Canvas 2D drawing, SVG elements, `<dialog>` with a modal top layer, WebMCP (`document.modelContext` and form tools), `SubmitEvent` with `submitter` |
+| Other | Timers and `requestAnimationFrame` on the virtual clock, `crypto.getRandomValues`/`randomUUID`, `TextEncoder`/`TextDecoder`, `URL`, user timing (`performance.mark`/`measure`, `PerformanceObserver`), `screen`, `document.visibilityState`, `InputEvent`, `reportError`, `document.write` while the page parses, SVG elements, `<dialog>` with a modal top layer, WebMCP (`document.modelContext` and form tools), `SubmitEvent` with `submitter` |
 
 ## Not supported
 
 `BroadcastChannel`, iframes a script inserts after load, `blob:` URLs outside worker scripts,
 shared, service and nested workers, transferring anything but `ArrayBuffer`s, IME composition, undo (`historyUndo`) and formatting commands, `designMode`,
-`ClipboardItem`, `PasswordCredential` and `FederatedCredential`, the Navigation API,
-`document.write`, XML parsing (`DOMParser` takes HTML only), canvas text and readback, WebGL,
+`ClipboardItem`, `PasswordCredential` and `FederatedCredential`, the Navigation API (routers fall
+back to `history`), `document.write` after the page has loaded (it throws), `document.fonts`,
+image sizes before painting (`naturalWidth`, `decode`), media playback, XML parsing (`DOMParser`
+takes HTML only), canvas images, gradients and readback, WebGL,
 Web Audio, showing notifications, WebRTC and WebTransport, HTTP/3.
 For automation clients: WebDriver classic and request interception (use origin sets or a
 recorded session instead).

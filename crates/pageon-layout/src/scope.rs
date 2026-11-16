@@ -32,6 +32,7 @@ pub fn rewrite(css: &str, scope: Scope) -> String {
 /// Pseudo-classes Blitz does not match, and what the mirror marks instead (mirror-only
 /// attributes the page never sees).
 const PSEUDO: &[(&str, &str)] = &[
+    (":popover-open", "[pageon-popover-open]"),
     (":user-invalid", "[pageon-user-invalid]"),
     (":user-valid", "[pageon-user-valid]"),
     (":invalid", "[pageon-invalid]"),

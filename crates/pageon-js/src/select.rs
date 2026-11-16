@@ -257,6 +257,7 @@ impl selectors::Element for El<'_> {
                 self.attr("placeholder").is_some() && self.attr("value").is_none_or(str::is_empty)
             }
             NonTSPseudoClass::Modal => self.cx.modals.contains(&self.id),
+            NonTSPseudoClass::PopoverOpen => self.dom.popover_open(self.id),
             NonTSPseudoClass::Open => {
                 (self.is("details") || self.is("dialog")) && self.attr("open").is_some()
             }

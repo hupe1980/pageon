@@ -399,6 +399,11 @@ pub(crate) fn build(
                                         value: String::new(),
                                     });
                                 }
+                                // Open popovers: shown and positioned by the UA sheet (closed
+                                // ones are `display: none`), and matched by `:popover-open`.
+                                if dom.popover_open(id) {
+                                    attrs.push(attr("pageon-popover-open", String::new()));
+                                }
                                 let el = m.create_element(name.clone(), attrs);
                                 if local == "textarea"
                                     && let Some(v) = state.and_then(|c| c.value.as_ref())

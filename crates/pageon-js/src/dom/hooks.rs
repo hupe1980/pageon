@@ -3,7 +3,7 @@
 
 use crate::cv::{self, Cx, Obj, Out};
 use crate::generated::Iface;
-use crate::realm::Slot;
+use crate::realm::{Coll, Slot};
 
 /// Adds the interceptors of an interface to its template.
 pub fn template(
@@ -68,10 +68,26 @@ pub fn template(
         | Iface::CSSStyleDeclaration
         | Iface::PluginArray
         | Iface::MimeTypeArray
-        | Iface::Plugin => {
+        | Iface::Plugin
+        | Iface::RadioNodeList => {
             inst.set_indexed_property_handler(
                 v8::IndexedPropertyHandlerConfiguration::new().getter(indexed_get),
             );
+            if matches!(
+                iface,
+                Iface::HTMLCollection | Iface::HTMLFormControlsCollection
+            ) {
+                // `collection.name`, `form.elements.email`: only where no real property has
+                // that name.
+                inst.set_named_property_handler(
+                    v8::NamedPropertyHandlerConfiguration::new()
+                        .getter(collection_named)
+                        .flags(
+                            v8::PropertyHandlerFlags::NON_MASKING
+                                | v8::PropertyHandlerFlags::ONLY_INTERCEPT_STRINGS,
+                        ),
+                );
+            }
         }
         Iface::Notification => {
             // `Notification.permission`, a static attribute.
@@ -107,6 +123,33 @@ pub fn template(
                 "postMessage",
                 crate::dom::message_port::post_message_any,
                 1,
+            );
+        }
+        Iface::Document => {
+            // `write(...text)` and `writeln(...text)`: variadic.
+            cv::method(
+                scope,
+                proto.into(),
+                "write",
+                crate::dom::document_write::write,
+                1,
+            );
+            cv::method(
+                scope,
+                proto.into(),
+                "writeln",
+                crate::dom::document_write::writeln,
+                1,
+            );
+        }
+        Iface::HTMLElement => {
+            // `togglePopover(force)` or `togglePopover({force, source})`: one method reads both.
+            cv::method(
+                scope,
+                proto.into(),
+                "togglePopover",
+                crate::dom::popover::toggle_popover_any,
+                0,
             );
         }
         Iface::HTMLInputElement | Iface::HTMLTextAreaElement => {
@@ -158,6 +201,18 @@ pub fn template(
             );
             inst.set_named_property_handler(
                 v8::NamedPropertyHandlerConfiguration::new().getter(attr_get),
+            );
+        }
+        Iface::HTMLFormElement => {
+            // `form.email` and `form[i]`. Forms are `[LegacyOverrideBuiltIns]`: a control named
+            // `submit` or `action` hides the member of that name, as in every browser.
+            inst.set_named_property_handler(
+                v8::NamedPropertyHandlerConfiguration::new()
+                    .getter(collection_named)
+                    .flags(v8::PropertyHandlerFlags::ONLY_INTERCEPT_STRINGS),
+            );
+            inst.set_indexed_property_handler(
+                v8::IndexedPropertyHandlerConfiguration::new().getter(form_indexed),
             );
         }
         Iface::Window => {
@@ -588,6 +643,62 @@ fn attr_get<'s>(
             .flatten()?;
         let w = cx.wrap(attr);
         rv.set(v8::Local::new(&*cx.scope, w).into());
+        Some(())
+    });
+    if r.is_some() {
+        v8::Intercepted::kYes
+    } else {
+        v8::Intercepted::kNo
+    }
+}
+
+/// Named access on collections and forms: `form.email`, `form.elements.size` (a
+/// `RadioNodeList` for a radio group), `document.forms.login`.
+fn collection_named<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    key: v8::Local<'s, v8::Name>,
+    args: v8::PropertyCallbackArguments<'s>,
+    mut rv: v8::ReturnValue<v8::Value>,
+) -> v8::Intercepted {
+    let Some(name) = key_string(scope, key).filter(|n| !n.is_empty()) else {
+        return v8::Intercepted::kNo;
+    };
+    let r = with_cx_any(scope, args.holder(), |cx, obj, iface| {
+        let found = match iface {
+            Iface::HTMLFormElement => {
+                crate::dom::html_form_element::named(cx, obj.node().ok()?, &name)
+            }
+            Iface::HTMLFormControlsCollection => match super::collections::slot(cx, obj).ok()? {
+                Slot::Collection(Coll::FormElements(form)) => {
+                    crate::dom::html_form_element::named(cx, form, &name)
+                }
+                _ => None,
+            },
+            _ => crate::dom::html_collection::named_item(cx, obj, name.clone()).ok()?,
+        }?;
+        let v = cx.js_value(Out::Obj(found));
+        rv.set(v8::Local::new(&*cx.scope, v));
+        Some(())
+    });
+    if r.is_some() {
+        v8::Intercepted::kYes
+    } else {
+        v8::Intercepted::kNo
+    }
+}
+
+/// `form[i]`: the form's i-th listed control.
+fn form_indexed<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    index: u32,
+    args: v8::PropertyCallbackArguments<'s>,
+    mut rv: v8::ReturnValue<v8::Value>,
+) -> v8::Intercepted {
+    let r = with_cx_any(scope, args.holder(), |cx, obj, _| {
+        let form = obj.node().ok()?;
+        let n = *crate::dom::collect(&cx.dom(), &Coll::FormElements(form)).get(index as usize)?;
+        let v = cx.js_value(Out::Obj(Obj::Node(n)));
+        rv.set(v8::Local::new(&*cx.scope, v));
         Some(())
     });
     if r.is_some() {

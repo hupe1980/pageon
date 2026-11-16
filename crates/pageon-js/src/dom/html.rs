@@ -20,6 +20,70 @@ fn form_of(cx: &Cx<'_, '_, '_>, id: NodeId) -> Option<NodeId> {
 /// `HTMLInputElement`.
 pub mod html_input_element {
     use super::*;
+
+    /// Days since 1970-01-01 of a proleptic Gregorian date.
+    fn days(y: i64, m: i64, d: i64) -> i64 {
+        let y = if m <= 2 { y - 1 } else { y };
+        let era = y.div_euclid(400);
+        let yoe = y - era * 400;
+        let doy = (153 * (m + if m > 2 { -3 } else { 9 }) + 2) / 5 + d - 1;
+        let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+        era * 146_097 + doe - 719_468
+    }
+
+    /// `valueAsNumber`: the number of a number or range input, the milliseconds (UTC) of a
+    /// date, time or local date-time input, else NaN.
+    pub fn get_value_as_number(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<f64> {
+        let id = this.node()?;
+        let kind = pageon_dom::forms::input_type(&cx.dom(), id).to_string();
+        let v = get_value(cx, this)?;
+        let v = v.trim();
+        let date = |s: &str| -> Option<f64> {
+            let mut p = s.split('-');
+            let (y, m, d) = (
+                p.next()?.parse().ok()?,
+                p.next()?.parse().ok()?,
+                p.next()?.parse().ok()?,
+            );
+            (p.next().is_none() && (1..=12).contains(&m) && (1..=31).contains(&d))
+                .then(|| days(y, m, d) as f64 * 86_400_000.0)
+        };
+        let time = |s: &str| -> Option<f64> {
+            let mut p = s.split(':');
+            let h: f64 = p.next()?.parse().ok()?;
+            let m: f64 = p.next()?.parse().ok()?;
+            let sec: f64 = p.next().map_or(Some(0.0), |x| x.parse().ok())?;
+            (h < 24.0 && m < 60.0 && sec < 60.0).then_some(((h * 60.0 + m) * 60.0 + sec) * 1000.0)
+        };
+        Ok(match kind.as_str() {
+            "number" | "range" => v.parse::<f64>().ok().filter(|f| f.is_finite()),
+            "date" => date(v),
+            "time" => time(v),
+            "datetime-local" => v
+                .split_once('T')
+                .and_then(|(d, t)| Some(date(d)? + time(t)?)),
+            _ => None,
+        }
+        .unwrap_or(f64::NAN))
+    }
+
+    /// Sets the value from a number (an empty value for NaN).
+    pub fn set_value_as_number(cx: &mut Cx<'_, '_, '_>, this: Obj, v: f64) -> R<()> {
+        let id = this.node()?;
+        let kind = pageon_dom::forms::input_type(&cx.dom(), id).to_string();
+        if !matches!(kind.as_str(), "number" | "range") {
+            return Err(Error::Dom(
+                "InvalidStateError",
+                format!("valueAsNumber cannot be set on a {kind} input here"),
+            ));
+        }
+        let s = if v.is_finite() {
+            format!("{v}")
+        } else {
+            String::new()
+        };
+        set_value(cx, this, s)
+    }
     pub use crate::dom::validation::api::*;
 
     const TYPES: &[&str] = &[
@@ -269,6 +333,38 @@ pub mod html_input_element {
 /// `HTMLTextAreaElement`.
 pub mod html_text_area_element {
     use super::*;
+
+    /// `rows` and `cols`: positive numbers, else their defaults (2 and 20).
+    fn positive(cx: &Cx<'_, '_, '_>, id: NodeId, name: &str, default: u32) -> u32 {
+        cx.dom()
+            .get(id)
+            .and_then(|n| n.attr(name))
+            .and_then(|v| v.trim().parse::<u32>().ok())
+            .filter(|v| *v > 0)
+            .unwrap_or(default)
+    }
+
+    pub fn get_rows(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<u32> {
+        Ok(positive(cx, this.node()?, "rows", 2))
+    }
+
+    pub fn set_rows(cx: &mut Cx<'_, '_, '_>, this: Obj, v: u32) -> R<()> {
+        let v = if v == 0 { 2 } else { v };
+        cx.dom_mut()
+            .set_attr(this.node()?, "rows", &v.to_string())
+            .map_err(|_| gone())
+    }
+
+    pub fn get_cols(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<u32> {
+        Ok(positive(cx, this.node()?, "cols", 20))
+    }
+
+    pub fn set_cols(cx: &mut Cx<'_, '_, '_>, this: Obj, v: u32) -> R<()> {
+        let v = if v == 0 { 20 } else { v };
+        cx.dom_mut()
+            .set_attr(this.node()?, "cols", &v.to_string())
+            .map_err(|_| gone())
+    }
     pub use crate::dom::validation::api::*;
 
     pub fn get_value(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<String> {
@@ -591,6 +687,114 @@ pub mod html_form_element {
 
     pub fn get_length(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<u32> {
         Ok(u32::try_from(collect(&cx.dom(), &Coll::FormElements(this.node()?)).len()).unwrap_or(0))
+    }
+
+    /// `action`: the attribute resolved against the document, or the document's URL.
+    pub fn get_action(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<String> {
+        let id = this.node()?;
+        let raw = cx
+            .dom()
+            .get(id)
+            .and_then(|n| n.attr("action").map(str::to_string))
+            .unwrap_or_default();
+        let base = url::Url::parse(&cx.realm.st.borrow().url).ok();
+        Ok(if raw.is_empty() {
+            base.as_ref().map(|u| u.to_string()).unwrap_or_default()
+        } else {
+            base.and_then(|b| b.join(raw.trim()).ok())
+                .map_or(raw, |u| u.to_string())
+        })
+    }
+
+    pub fn set_action(cx: &mut Cx<'_, '_, '_>, this: Obj, v: String) -> R<()> {
+        cx.dom_mut()
+            .set_attr(this.node()?, "action", &v)
+            .map_err(|_| gone())
+    }
+
+    /// An enumerated attribute's value: one of `known` (case-insensitive), else `default`.
+    fn enumerated(
+        cx: &Cx<'_, '_, '_>,
+        id: NodeId,
+        attr: &str,
+        known: &[&'static str],
+        default: &'static str,
+    ) -> String {
+        let v = cx
+            .dom()
+            .get(id)
+            .and_then(|n| n.attr(attr).map(str::to_ascii_lowercase));
+        known
+            .iter()
+            .find(|k| v.as_deref() == Some(**k))
+            .map_or(default, |k| *k)
+            .to_string()
+    }
+
+    /// `method`: `get`, `post` or `dialog`.
+    pub fn get_method(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<String> {
+        Ok(enumerated(
+            cx,
+            this.node()?,
+            "method",
+            &["get", "post", "dialog"],
+            "get",
+        ))
+    }
+
+    pub fn set_method(cx: &mut Cx<'_, '_, '_>, this: Obj, v: String) -> R<()> {
+        cx.dom_mut()
+            .set_attr(this.node()?, "method", &v)
+            .map_err(|_| gone())
+    }
+
+    const ENCTYPES: &[&str] = &[
+        "application/x-www-form-urlencoded",
+        "multipart/form-data",
+        "text/plain",
+    ];
+
+    /// `enctype`: one of the three form encodings.
+    pub fn get_enctype(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<String> {
+        Ok(enumerated(
+            cx,
+            this.node()?,
+            "enctype",
+            ENCTYPES,
+            ENCTYPES[0],
+        ))
+    }
+
+    pub fn set_enctype(cx: &mut Cx<'_, '_, '_>, this: Obj, v: String) -> R<()> {
+        cx.dom_mut()
+            .set_attr(this.node()?, "enctype", &v)
+            .map_err(|_| gone())
+    }
+
+    /// `encoding`: the same as `enctype`.
+    pub fn get_encoding(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<String> {
+        get_enctype(cx, this)
+    }
+
+    pub fn set_encoding(cx: &mut Cx<'_, '_, '_>, this: Obj, v: String) -> R<()> {
+        set_enctype(cx, this, v)
+    }
+
+    /// `form[name]` and `form.elements[name]`: the control with that id or name, a
+    /// `RadioNodeList` when several share it, `None` when none does.
+    pub(crate) fn named(cx: &mut Cx<'_, '_, '_>, form: NodeId, name: &str) -> Option<Obj> {
+        if name.is_empty() {
+            return None;
+        }
+        let hits = collect(&cx.dom(), &Coll::Radio(form, name.to_string()));
+        match hits.as_slice() {
+            [] => None,
+            [one] => Some(Obj::Node(*one)),
+            _ => Some(cx.alloc(
+                Iface::RadioNodeList,
+                Slot::Collection(Coll::Radio(form, name.to_string())),
+            )),
+        }
     }
 
     /// `submit()`: submits without a `submit` event.
@@ -930,5 +1134,46 @@ pub mod html_template_element {
             }) => Ok(Obj::Node(*t)),
             _ => Err(gone()),
         }
+    }
+}
+
+/// `HTMLTableElement`.
+pub mod html_table_element {
+    use super::*;
+
+    pub fn get_rows(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<Obj> {
+        let id = this.node()?;
+        Ok(super::super::same(
+            cx,
+            id,
+            "rows",
+            Iface::HTMLCollection,
+            Slot::Collection(Coll::TableRows(id)),
+        ))
+    }
+
+    pub fn get_t_bodies(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<Obj> {
+        let id = this.node()?;
+        Ok(super::super::same(
+            cx,
+            id,
+            "tBodies",
+            Iface::HTMLCollection,
+            Slot::Collection(Coll::TableBodies(id)),
+        ))
+    }
+}
+
+/// `HTMLAnchorElement`.
+pub mod html_anchor_element {
+    use super::*;
+
+    /// `text`: the link's text content.
+    pub fn get_text(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<String> {
+        Ok(text_content(&cx.dom(), this.node()?))
+    }
+
+    pub fn set_text(cx: &mut Cx<'_, '_, '_>, this: Obj, v: String) -> R<()> {
+        crate::dom::node::replace_with_text(cx, this.node()?, &v)
     }
 }

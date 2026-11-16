@@ -797,6 +797,148 @@ pub mod html_element {
         crate::dom::event_target::click(cx, this.node()?)
     }
 
+    fn attr_of(cx: &Cx<'_, '_, '_>, id: NodeId, name: &str) -> Option<String> {
+        cx.dom()
+            .get(id)
+            .and_then(|n| n.attr(name).map(str::to_ascii_lowercase))
+    }
+
+    /// `dir`: `ltr`, `rtl`, `auto` or empty.
+    pub fn get_dir(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<String> {
+        Ok(match attr_of(cx, this.node()?, "dir").as_deref() {
+            Some(v @ ("ltr" | "rtl" | "auto")) => v.to_string(),
+            _ => String::new(),
+        })
+    }
+
+    pub fn set_dir(cx: &mut Cx<'_, '_, '_>, this: Obj, v: String) -> R<()> {
+        cx.dom_mut()
+            .set_attr(this.node()?, "dir", &v)
+            .map_err(|_| gone())
+    }
+
+    /// `draggable`: the attribute, else true for images and links.
+    pub fn get_draggable(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<bool> {
+        let id = this.node()?;
+        Ok(match attr_of(cx, id, "draggable").as_deref() {
+            Some("true") => true,
+            Some("false") => false,
+            _ => cx
+                .dom()
+                .get(id)
+                .is_some_and(|n| n.is_html("img") || (n.is_html("a") && n.attr("href").is_some())),
+        })
+    }
+
+    pub fn set_draggable(cx: &mut Cx<'_, '_, '_>, this: Obj, v: bool) -> R<()> {
+        cx.dom_mut()
+            .set_attr(this.node()?, "draggable", if v { "true" } else { "false" })
+            .map_err(|_| gone())
+    }
+
+    /// The nearest `attr` on the element or an ancestor: `Some(true)` for `on`/empty values,
+    /// `Some(false)` for `off`, `None` when none says.
+    fn inherited(
+        cx: &Cx<'_, '_, '_>,
+        id: NodeId,
+        attr: &str,
+        on: &[&str],
+        off: &str,
+    ) -> Option<bool> {
+        let dom = cx.dom();
+        let mut cur = Some(id);
+        while let Some(c) = cur {
+            if let Some(v) = dom.get(c).and_then(|n| n.attr(attr)) {
+                let v = v.to_ascii_lowercase();
+                if on.contains(&v.as_str()) {
+                    return Some(true);
+                }
+                if v == off {
+                    return Some(false);
+                }
+            }
+            cur = dom.parent(c);
+        }
+        None
+    }
+
+    /// `spellcheck`: inherited, true by default (as in Chrome).
+    pub fn get_spellcheck(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<bool> {
+        Ok(inherited(cx, this.node()?, "spellcheck", &["", "true"], "false").unwrap_or(true))
+    }
+
+    pub fn set_spellcheck(cx: &mut Cx<'_, '_, '_>, this: Obj, v: bool) -> R<()> {
+        cx.dom_mut()
+            .set_attr(this.node()?, "spellcheck", if v { "true" } else { "false" })
+            .map_err(|_| gone())
+    }
+
+    /// `translate`: inherited, true by default.
+    pub fn get_translate(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<bool> {
+        Ok(inherited(cx, this.node()?, "translate", &["", "yes"], "no").unwrap_or(true))
+    }
+
+    pub fn set_translate(cx: &mut Cx<'_, '_, '_>, this: Obj, v: bool) -> R<()> {
+        cx.dom_mut()
+            .set_attr(this.node()?, "translate", if v { "yes" } else { "no" })
+            .map_err(|_| gone())
+    }
+
+    /// `popover`: `auto`, `manual`, `hint`, or null without the attribute.
+    pub fn get_popover(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<Option<String>> {
+        Ok(crate::dom::popover::state(cx, this.node()?).map(str::to_string))
+    }
+
+    pub fn set_popover(cx: &mut Cx<'_, '_, '_>, this: Obj, v: Option<String>) -> R<()> {
+        let id = this.node()?;
+        match v {
+            Some(v) => cx.dom_mut().set_attr(id, "popover", &v),
+            None => cx.dom_mut().remove_attr(id, "popover"),
+        }
+        .map_err(|_| gone())
+    }
+
+    pub fn show_popover(
+        cx: &mut Cx<'_, '_, '_>,
+        this: Obj,
+        options: crate::generated::ShowPopoverOptions,
+    ) -> R<()> {
+        let source = options.source.and_then(|o| o.node().ok());
+        crate::dom::popover::show(cx, this.node()?, true, source)
+    }
+
+    pub fn hide_popover(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<()> {
+        let id = this.node()?;
+        if crate::dom::popover::state(cx, id).is_none() {
+            return Err(crate::cv::Error::dom(
+                "NotSupportedError",
+                "The element is not a popover.",
+            ));
+        }
+        crate::dom::popover::hide(cx, id, None)
+    }
+
+    /// `outerText`: reads as `innerText`.
+    pub fn get_outer_text(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<String> {
+        get_inner_text(cx, this)
+    }
+
+    /// Setting `outerText` replaces the element with a text node.
+    pub fn set_outer_text(cx: &mut Cx<'_, '_, '_>, this: Obj, v: String) -> R<()> {
+        let id = this.node()?;
+        let Some(parent) = cx.dom().parent(id) else {
+            return Err(crate::cv::Error::Dom(
+                "NoModificationAllowedError",
+                "the element has no parent".into(),
+            ));
+        };
+        let t = cx.dom_mut().create(pageon_dom::NodeData::Text(v));
+        cx.dom_mut()
+            .insert_before(parent, t, id)
+            .map_err(|_| gone())?;
+        crate::dom::detach(cx, id)
+    }
+
     /// The nearest positioned ancestor, or the body.
     fn offset_parent(cx: &Cx<'_, '_, '_>, id: NodeId) -> Option<NodeId> {
         let layout = cx.realm.layout();

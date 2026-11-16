@@ -404,17 +404,28 @@ pub(crate) fn run(
     };
     let joins = start.page.is_some_and(|(p, _)| p.engine(&origin).is_some()) || !init.is_empty();
     let mut run: Option<Run<'_>> = if joins { Some(begin(&dom)?) } else { None };
+    if let Some(r) = run.as_ref() {
+        r.engine.borrow().set_parsing(r.realm, true);
+    }
     while let Step::Script(node) = parser.step() {
         if run.is_none() {
-            run = Some(begin(&dom)?);
+            let r = begin(&dom)?;
+            r.engine.borrow().set_parsing(r.realm, true);
+            run = Some(r);
         }
         if let Some(r) = run.as_mut() {
             // Custom elements parsed since the last script are constructed now.
             r.engine.borrow_mut().upgrade_custom_elements(r.realm);
             r.script(node);
+            // What the script wrote is parsed next, right after it.
+            let written = r.engine.borrow().take_written(r.realm);
+            parser.write(&written);
         }
     }
     drop(parser.finish());
+    if let Some(r) = run.as_ref() {
+        r.engine.borrow().set_parsing(r.realm, false);
+    }
     if let Some(r) = run.as_mut() {
         r.engine.borrow_mut().upgrade_custom_elements(r.realm);
     }

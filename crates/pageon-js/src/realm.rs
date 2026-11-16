@@ -176,6 +176,10 @@ pub struct EventData {
     pub agent: bool,
     /// `ToolActivatedEvent.toolName`, `ToolCancelEvent.toolName`.
     pub tool: String,
+    /// `ToggleEvent.oldState` and `newState`.
+    pub toggle: (String, String),
+    /// `ToggleEvent.source`: the element that showed or hid the popover.
+    pub source: Option<NodeId>,
     /// The path of the current dispatch (for `composedPath()`).
     pub path: Vec<Target>,
     /// `ProgressEvent`: `lengthComputable`, `loaded`, `total`.
@@ -267,6 +271,12 @@ pub enum Coll {
     Options(NodeId),
     /// `form.elements`.
     FormElements(NodeId),
+    /// `form.elements[name]` when several controls share it (`RadioNodeList`).
+    Radio(NodeId, String),
+    /// `table.rows`: its rows, in its head, bodies and foot.
+    TableRows(NodeId),
+    /// `table.tBodies`.
+    TableBodies(NodeId),
     /// `document.images` / `links` / `forms` / `scripts`.
     Doc(&'static str),
 }
@@ -274,6 +284,8 @@ pub enum Coll {
 /// A non-node object.
 #[derive(Debug, Clone)]
 pub enum Slot {
+    /// A canvas `TextMetrics`.
+    TextMetrics(pageon_layout::CanvasTextMetrics),
     /// An event.
     Event(Box<EventData>),
     /// `classList` and other `DOMTokenList`s: element and attribute.
@@ -480,6 +492,9 @@ pub struct State {
     pub handlers: HashMap<(u32, Target, String), Value>,
     /// The script element being run.
     pub current_script: Option<NodeId>,
+    /// While the parser runs: what `document.write` wrote during the current script, for the
+    /// parser to read next. `None` once parsing has ended (writing then throws).
+    pub written: Option<String>,
     /// `document.readyState`.
     pub ready_state: &'static str,
     /// Mutations so far (invalidates the layout cache).

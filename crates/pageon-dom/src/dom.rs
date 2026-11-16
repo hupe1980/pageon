@@ -285,6 +285,8 @@ pub struct Dom {
     pub(crate) ranges: crate::ranges::Ranges,
     /// Mutable accesses so far (see [`Dom::changes`]).
     changes: u64,
+    /// Open popovers, in the order they were shown.
+    popovers: Vec<NodeId>,
 }
 
 /// A change to the tree, logged for `MutationObserver` while [`Dom::set_observing`] is on.
@@ -372,6 +374,7 @@ impl Dom {
             internals: std::collections::HashMap::new(),
             adopted: std::collections::HashMap::new(),
             ranges: crate::ranges::Ranges::default(),
+            popovers: Vec::new(),
         };
         dom.root = dom.create(NodeData::Document);
         dom
@@ -387,6 +390,31 @@ impl Dom {
     pub fn control_mut(&mut self, id: NodeId) -> &mut ControlState {
         self.changes += 1;
         self.controls.entry(id).or_default()
+    }
+
+    /// The open popovers that are still in the document, in the order they were shown.
+    pub fn open_popovers(&self) -> Vec<NodeId> {
+        let root = self.root;
+        self.popovers
+            .iter()
+            .copied()
+            .filter(|&p| self.get(p).is_some() && self.is_inclusive_ancestor(root, p))
+            .collect()
+    }
+
+    /// Whether `id` is an open popover.
+    pub fn popover_open(&self, id: NodeId) -> bool {
+        self.popovers.contains(&id) && self.is_inclusive_ancestor(self.root, id)
+    }
+
+    /// Opens (at the top) or closes a popover.
+    pub fn set_popover_open(&mut self, id: NodeId, open: bool) {
+        self.changes += 1;
+        self.popovers
+            .retain(|&p| p != id && self.slots.len() > p.index as usize);
+        if open {
+            self.popovers.push(id);
+        }
     }
 
     /// A counter that grows with every change to the tree or a control (every mutable

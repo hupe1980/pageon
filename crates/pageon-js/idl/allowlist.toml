@@ -52,6 +52,12 @@ members = ["constructor", "relatedTarget"]
 [SubmitEvent]
 members = ["constructor", "submitter", "agentInvoked", "respondWith"]
 
+[ToggleEvent]
+members = ["constructor", "oldState", "newState", "source"]
+
+[PopoverTargetAttributes]
+members = ["popoverTargetElement", "popoverTargetAction"]
+
 [DOMException]
 members = ["constructor", "name", "message", "code"]
 
@@ -147,6 +153,8 @@ members = ["constructor"]
 [HTMLElement]
 members = [
   "constructor", "innerText", "click", "hidden", "attachInternals", "offsetParent", "offsetTop", "offsetLeft", "offsetWidth", "offsetHeight",
+  "dir", "draggable", "spellcheck", "translate", "outerText", "popover", "showPopover",
+  "hidePopover",
 ]
 
 [HTMLOrSVGOrMathMLElement]
@@ -157,13 +165,14 @@ members = ["style"]
 
 [HTMLInputElement]
 members = [
-  "files", "value", "checked", "defaultValue", "type", "select", "form", "labels", "willValidate",
+  "valueAsNumber", "files", "value", "checked", "defaultValue", "type", "select", "form", "labels", "willValidate",
   "validity", "validationMessage", "checkValidity", "reportValidity", "setCustomValidity",
   "selectionStart", "selectionEnd", "selectionDirection", "setSelectionRange",
 ]
 
 [HTMLTextAreaElement]
 members = [
+  "rows", "cols",
   "value", "defaultValue", "type", "select", "textLength", "form", "willValidate", "validity",
   "validationMessage", "checkValidity", "reportValidity", "setCustomValidity", "selectionStart",
   "selectionEnd", "selectionDirection", "setSelectionRange",
@@ -193,7 +202,11 @@ members = [
 [HTMLFormElement]
 members = [
   "elements", "length", "submit", "requestSubmit", "reset", "checkValidity", "reportValidity",
+  "action", "method", "enctype", "encoding",
 ]
+
+[RadioNodeList]
+members = ["value"]
 
 [HTMLDialogElement]
 members = ["returnValue", "show", "showModal", "close"]
@@ -364,8 +377,8 @@ members = ["length", "item"]
 [console]
 members = ["log", "info", "warn", "error", "debug", "trace", "dir", "assert", "group", "groupCollapsed", "groupEnd", "table", "count", "time", "timeEnd"]
 
-# Canvas 2D: the drawing subset pages use, rasterized for real (tiny-skia). Text, images,
-# gradients and pixel readback are absent until paint.
+# Canvas 2D: the drawing subset pages use, rasterized for real (tiny-skia), text included
+# (the bundled fonts). Images, gradients and pixel readback are absent.
 [HTMLCanvasElement]
 members = ["width", "height", "getContext"]
 
@@ -374,6 +387,19 @@ members = ["canvas"]
 
 [CanvasState]
 members = ["save", "restore"]
+
+[CanvasText]
+members = ["fillText", "strokeText", "measureText"]
+
+[CanvasTextDrawingStyles]
+members = ["font", "textAlign", "textBaseline"]
+
+[TextMetrics]
+members = [
+  "width", "actualBoundingBoxLeft", "actualBoundingBoxRight", "fontBoundingBoxAscent",
+  "fontBoundingBoxDescent", "actualBoundingBoxAscent", "actualBoundingBoxDescent",
+  "emHeightAscent", "emHeightDescent", "alphabeticBaseline",
+]
 
 [CanvasTransform]
 members = ["scale", "rotate", "translate", "transform", "resetTransform"]
@@ -596,7 +622,13 @@ members = ["inlineSize", "blockSize"]
 members = ["timeRemaining", "didTimeout"]
 
 [HTMLImageElement]
-members = ["Image"]
+members = ["Image", "loading"]
+
+[HTMLTableElement]
+members = ["rows", "tBodies"]
+
+[HTMLAnchorElement]
+members = ["text"]
 
 [HTMLIFrameElement]
 members = ["contentWindow", "contentDocument"]

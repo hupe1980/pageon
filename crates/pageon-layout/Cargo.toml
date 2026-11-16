@@ -16,6 +16,7 @@ pageon-dom.workspace = true
 serde.workspace = true
 blitz-dom = { version = "=0.3.0-beta.4", default-features = false, features = ["floats"] }
 parley = { version = "=0.12.0", default-features = false, features = ["std", "complex-scripts"] }
+skrifa = { version = "0.44", default-features = false, features = ["std"] }
 html5ever = "0.40"
 blitz-traits = "=0.3.0-beta.4"
 style = { package = "stylo", version = "0.22" }

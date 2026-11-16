@@ -77,6 +77,14 @@ impl Parser {
         self.input.push_back(StrTendril::from(text));
     }
 
+    /// Inserts `text` where the parser stands (after the script it paused at), so it is read
+    /// before the rest of the input: what `document.write` does while the page parses.
+    pub fn write(&mut self, text: &str) {
+        if !text.is_empty() {
+            self.input.push_front(StrTendril::from(text));
+        }
+    }
+
     /// Parses until the next script end tag or the end of the input fed so far.
     pub fn step(&mut self) -> Step {
         self.step_inner()
