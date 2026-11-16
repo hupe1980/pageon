@@ -79,6 +79,17 @@ pub(crate) fn unregister(key: u32) {
     let _ = REALMS.try_with(|r| r.borrow_mut().remove(&key));
 }
 
+/// The realm whose script is running (the entered context): the caller when a script calls a
+/// function of another realm, as the sender of `postMessage` is.
+pub fn entered(scope: &v8::PinScope<'_, '_>) -> Option<Rc<Realm>> {
+    let context = scope.get_entered_or_microtask_context();
+    let global = context.global(scope);
+    let key = global
+        .get_private(scope, realm_key(scope))?
+        .uint32_value(scope)?;
+    REALMS.with(|r| r.borrow().get(&key).cloned())
+}
+
 /// The realm of the current context.
 pub fn current(scope: &v8::PinScope<'_, '_>) -> Option<Rc<Realm>> {
     let context = scope.get_current_context();
@@ -534,6 +545,8 @@ pub struct State {
     pub navigator: pageon_env::Navigator,
     /// Whether script changed an `<iframe>` (frames must be (re)loaded).
     pub frames_changed: bool,
+    /// Layouts computed for this document's scripts (geometry reads after changes).
+    pub layouts: u32,
     /// Script elements that must not run (inserted through markup, or already run).
     pub started_scripts: std::collections::HashSet<NodeId>,
     /// `dialog.returnValue`.
@@ -885,17 +898,22 @@ impl Realm {
             .iter()
             .map(|(&id, &(x, y))| (id, x, y))
             .collect();
+        st.layouts = st.layouts.saturating_add(1);
+        // The last layout, when nothing else holds it, is laid out again: its stylesheets stay
+        // parsed (pages that change and measure themselves lay out many times).
+        let prev = st.layout.take().and_then(|(_, l)| Rc::try_unwrap(l).ok());
         let opts = pageon_layout::LayoutOptions {
             modals: &st.modals,
             scroll: &offsets,
             ..pageon_layout::LayoutOptions::default()
         };
-        let l = Rc::new(Layout::with_options(
+        let l = Rc::new(Layout::again(
             &dom,
             st.viewport,
             &st.stylesheets,
             Some(&st.url),
             &opts,
+            prev,
         ));
         // Content can shrink: positions are clamped to what the new layout allows.
         let (x, y) = l.set_viewport_scroll(vx as f32, vy as f32);

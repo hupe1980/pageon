@@ -18,6 +18,9 @@ use crate::{Budget, Dump, Tab, Viewport};
 /// The view budget an agent gets by default (`pageon mcp`, `--budget`).
 pub const DEFAULT_BUDGET: usize = 4000;
 
+/// Layouts a page may force while loading before the audit calls it thrashing.
+const LAYOUTS: u32 = 40;
+
 /// WCAG 2.5.8 (Target Size, Minimum): 24 × 24 CSS px, or that much room around the target.
 const TARGET: f32 = 24.0;
 
@@ -73,6 +76,9 @@ pub struct PageFacts {
     pub sections: Vec<(String, usize)>,
     /// Script errors (quoted, clipped).
     pub errors: Vec<String>,
+    /// Layouts the page's scripts forced while it loaded (geometry read after changes).
+    #[serde(default)]
+    pub layouts: u32,
     /// The text of a non-HTML document (robots.txt, llms.txt), clipped.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub text: Option<String>,
@@ -143,6 +149,11 @@ pub(crate) fn facts<E: Env>(tab: &mut Tab<'_, E>) -> PageFacts {
         markdown_tokens: count_tokens(&tab.view(Dump::Markdown, viewport, all)),
         html_tokens: count_tokens(&tab.view(Dump::Html, viewport, all)),
         sections: sections(&view),
+        layouts: tab
+            .doc
+            .live
+            .as_ref()
+            .map_or(0, |l| l.engine.borrow().layouts(l.realm)),
         errors,
         text,
     }
@@ -966,6 +977,22 @@ fn health(page: &PageFacts, raw: &mut Vec<Raw>) -> (Option<f32>, String) {
     }
     let n = page.errors.len();
     let mut score = (100.0 - 20.0 * n as f32).max(0.0);
+    // Layout thrashing: scripts that read sizes right after changing the page make every
+    // browser lay it out again; past a few dozen, loading slows down for people and agents.
+    if page.layouts > LAYOUTS {
+        let lost = 10.0_f32.min(score);
+        raw.push(Raw {
+            area: "health",
+            gain: lost,
+            problem: format!(
+                "the page laid out {} times while loading: scripts read sizes right after changing it",
+                page.layouts
+            ),
+            fix: "Read layout (offsetWidth, getBoundingClientRect) before writing to the page, batch writes, or use ResizeObserver and requestAnimationFrame.".into(),
+            elements: Vec::new(),
+        });
+        score -= lost;
+    }
     // A page that shows an agent next to nothing although it sent plenty.
     let empty = page.elements.is_empty() && page.view_tokens < 100 && page.html_tokens > 1000;
     if empty {
@@ -1293,6 +1320,31 @@ mod tests {
             r.findings
                 .iter()
                 .any(|f| f.problem.contains("almost nothing"))
+        );
+    }
+
+    #[test]
+    fn layout_thrashing_is_a_finding() {
+        let page = PageFacts {
+            status: 200,
+            view_tokens: 500,
+            layouts: 79,
+            ..PageFacts::default()
+        };
+        let r = Report::new(&page, &SiteFacts::default());
+        assert_eq!(r.area("health"), Some(90));
+        assert!(
+            r.findings
+                .iter()
+                .any(|f| f.problem.contains("laid out 79 times"))
+        );
+        let calm = PageFacts {
+            layouts: 12,
+            ..page
+        };
+        assert_eq!(
+            Report::new(&calm, &SiteFacts::default()).area("health"),
+            Some(100)
         );
     }
 

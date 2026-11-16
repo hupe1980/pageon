@@ -119,6 +119,10 @@ pub struct LayoutOptions<'a> {
 pub struct Layout {
     doc: BaseDocument,
     map: mirror::Map,
+    /// The document's stylesheets, kept for a later layout of the same page.
+    sheets: Option<mirror::Sheets>,
+    /// The base URL the document was laid out with.
+    base: String,
     viewport: Viewport,
     /// The viewport's scroll offset (CSS px). Kept by pageon rather than blitz: blitz's
     /// geometry and hit-testing of fixed boxes under a viewport scroll are wrong, so blitz
@@ -179,11 +183,37 @@ impl Layout {
         base_url: Option<&str>,
         opts: &LayoutOptions<'_>,
     ) -> Self {
+        Self::again(dom, viewport, stylesheets, base_url, opts, None)
+    }
+
+    /// [`Layout::with_options`], reusing `prev` (a layout of the same page) when it can: its
+    /// stylesheets stay parsed and its cascade built, so a page that changes and measures
+    /// itself is laid out again for the cost of its tree, as browsers keep a page's style
+    /// data between layouts.
+    pub fn again(
+        dom: &Dom,
+        viewport: Viewport,
+        stylesheets: &[Stylesheet],
+        base_url: Option<&str>,
+        opts: &LayoutOptions<'_>,
+        prev: Option<Layout>,
+    ) -> Self {
         let base = base_url
             .filter(|u| {
                 u.starts_with("http://") || u.starts_with("https://") || u.starts_with("file://")
             })
             .unwrap_or("about:blank");
+        // Images are applied through the document's network hooks, made with it: a document
+        // laid out with images is not reused.
+        let reuse = prev
+            .filter(|p| {
+                p.error.is_none()
+                    && p.viewport == viewport
+                    && p.base == base
+                    && p.images.is_none()
+                    && opts.images.is_none()
+            })
+            .and_then(|p| p.sheets.map(|s| (p.doc, s)));
         let built = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             // Shadow trees render as the composed (flat) tree, same ids, styles scoped.
             if dom.has_shadow() {
@@ -195,17 +225,20 @@ impl Layout {
                     base,
                     opts,
                     Some(&composed),
+                    reuse,
                 )
             } else {
-                mirror::build(dom, viewport, stylesheets, base, opts, None)
+                mirror::build(dom, viewport, stylesheets, base, opts, None, reuse)
             }
         }));
         match built {
-            Ok((doc, map, images)) => Self {
+            Ok((doc, map, images, sheets)) => Self {
                 fixed: mirror::fixed(&doc, &map),
                 clippers: std::cell::OnceCell::new(),
                 doc,
                 map,
+                sheets: Some(sheets),
+                base: base.to_string(),
                 viewport,
                 scroll: std::cell::Cell::default(),
                 error: None,
@@ -220,6 +253,8 @@ impl Layout {
                 Self {
                     doc: mirror::empty(viewport),
                     map: mirror::Map::default(),
+                    sheets: None,
+                    base: base.to_string(),
                     viewport,
                     scroll: std::cell::Cell::default(),
                     fixed: std::collections::HashSet::new(),

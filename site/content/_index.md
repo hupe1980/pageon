@@ -26,13 +26,7 @@ safety = [
 [[extra.features]]
 icon = "🔍"
 title = "Views made for models"
-text = "A compact outline of what an agent can read and act on, cut to a token budget that names its tokenizer. On real pages it uses a quarter of the tokens of Playwright MCP's snapshot, with at least the same task success."
-link = "@/docs/views.md"
-
-[[extra.features]]
-icon = "🎯"
-title = "Refs that stay put"
-text = "`e12` names the same element across steps. Refs are never written into the page, and when the page replaces an element its ref is relocated and the relocation reported."
+text = "A compact outline of what an agent can read and act on, in a quarter of the tokens of Playwright MCP's snapshot on real pages. Refs like `e12` name the same element across steps and are never written into the page."
 link = "@/docs/views.md"
 
 [[extra.features]]
@@ -68,13 +62,19 @@ link = "@/docs/platform.md"
 [[extra.features]]
 icon = "🙋"
 title = "People in the loop"
-text = "Writes can wait for an approver or a guard program, and an agent can hand the page to a person through a live view for a login or a CAPTCHA."
-link = "@/docs/security.md"
+text = "A viewer shows each step in words and asks before writes leave: Allow Once, Allow for This Session, Don't Allow. An agent can hand the page to a person for a login or a CAPTCHA."
+link = "@/docs/viewer.md"
+
+[[extra.features]]
+icon = "🩺"
+title = "An audit for site owners"
+text = "`pageon audit URL` scores what agents meet on a page: unnamed controls, covered clicks, page tools, the view's token cost, refusals. Fixes worth the most come first; `--fail-under` keeps it in CI."
+link = "@/docs/audit.md"
 
 [[extra.features]]
 icon = "🔌"
 title = "Every protocol"
-text = "MCP `2026-07-28` and earlier over stdio or Streamable HTTP, CDP for Puppeteer and Playwright, WebDriver BiDi, Python and Rust: one engine behind all of them."
+text = "MCP `2026-07-28` and earlier over stdio or Streamable HTTP, sessions from the shell for coding agents, CDP for Puppeteer and Playwright, WebDriver BiDi, Python and Rust: one engine behind all of them."
 link = "@/docs/mcp.md"
 
 [[extra.connect]]

@@ -8,72 +8,47 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
-- WebMCP form tools (the declarative API): `<form toolname tooldescription toolautosubmit>`
-  is listed and called like a registered tool, with `SubmitEvent.agentInvoked` and
-  `respondWith`; autosubmitting calls are labelled consequential.
-- Chrome's `WebMCP` DevTools domain: Puppeteer's `page.webmcp` lists and runs page tools.
-- `SubmitEvent` with `submitter`.
-- Sessions from the shell: `pageon open URL` starts a named session (`-s NAME`) that stays
-  open between commands; `click`, `type`, `press`, `select`, `view`, `find`, `screenshot`,
-  `tabs`, `reset`, `lookahead`, `call` and the rest act on it with MCP's replies; `sessions`,
-  `close [--all]`, `--idle`. `pageon skill --install` writes an agent skill.
-- The viewer: `--ui` on `pageon mcp` and `pageon open` serves a loopback page with every step
-  in words, the page before and after it, and what the model read; `--approve` asks there
-  before writes leave (Allow Once, Allow for This Session, Don't Allow); `Space` pauses the
-  agent; `pageon ui` prints a session's URL.
-
-- Sign-ins that renew: `--sign-in login.flow.json` on `pageon mcp` and `pageon open` (Python
-  `sign_ins`): when an action is redirected to the sign-in page or answered 401, pageon runs the
-  sign-in workflow and opens the page again; writes are never resent, and three renewals in a
-  row that do not hold stop it.
-- Python: `Browser(ui=True, approve=True)` and `browser.viewer_url`.
+- Sessions from the shell: `pageon open URL` keeps a named session (`-s NAME`) open between
+  commands (`click`, `type`, `view`, `find`, `screenshot`, `call`, …); `pageon skill --install`
+  writes an agent skill.
+- The viewer: `--ui` serves a loopback page with every step in words, the page before and
+  after, and what the model read; `--approve` asks there before writes leave; `Space` pauses.
+- Sign-ins that renew: `--sign-in login.flow.json` runs the sign-in workflow when a page asks
+  for it again; writes are never resent.
 - Expectations: `url`, `see`, `no`, `request`, `download`, checked after an action with
-  evidence: `expect` on MCP's acting tools, `--expect` on CLI actions and `pageon fetch` (exit
-  8), `expect=` in Python (`ExpectationError`); saved into workflows as `check` and verified on
-  every run.
-- Cost: every MCP reply carries `cost` (o200k tokens of its text, wall and page time); spans
-  carry `pageon.reply.tokens`; recordings keep it per step and `pageon replay FILE --report`
-  prints totals and p50/p95/p99; the viewer shows tokens per step and in total.
-
-- Platform: named form access (`form.email`, radio groups as `RadioNodeList`), `form.action`,
-  `method` and `enctype`; the Popover API with `popovertarget` buttons and light dismiss;
-  canvas text (`font`, `measureText`, `fillText`, `strokeText`) with the bundled fonts;
-  `document.write` while parsing; `dir`, `draggable`, `spellcheck`, `translate`, `outerText`,
-  `a.text`, `valueAsNumber`, `textarea.rows`, `table.rows`, `img.loading`.
-- `pageon audit URL`: how ready a page is for agents. It scores names, actions, page tools,
-  the view's token cost, access (refusals, content without scripts, robots.txt, llms.txt,
-  Markdown on request) and health, with the fixes that gain the most first; `--json`,
+  evidence (`expect` on MCP, `--expect` on the CLI with exit 8, `expect=` in Python).
+- Cost: every MCP reply carries `cost` (tokens, wall and page time); `pageon replay FILE
+  --report` prints totals and p50/p95/p99.
+- `pageon audit URL`: how ready a page is for agents (names, actions, page tools, view cost,
+  access, health, layout thrashing), with the fixes worth the most first; `--json`,
   `--fail-under N` (exit 9).
-- Platform: `select.add` and `remove`, `new EventTarget()` and classes that extend it (every
-  constructible interface keeps a subclass's prototype), `new DOMRect()`, `Symbol.toStringTag`
-  on every interface (`[object Event]`), and `document.fonts` (`ready`, `status`, `check`,
-  `load`).
+- WebMCP form tools (`<form toolname>`) and Chrome's `WebMCP` DevTools domain.
+- Platform: named form access and `RadioNodeList`, the Popover API, canvas text,
+  `document.write` while parsing, `error` and `unhandledrejection` events (other origins
+  muted), `document.styleSheets` and `insertRule` with the rules in layout (CSS-in-JS),
+  inserted `<link>` loads with events, `document.fonts`, `select.add`, `new EventTarget()`
+  and subclasses, `DOMRect`, `Symbol.toStringTag`, SVG element interfaces.
+- Iframes scripts create: an `about:blank` window at once, then the `src` loads in its place;
+  a sandbox without `allow-same-origin` gives an opaque window. The window's `load` waits for
+  the page's frames.
 
-- Platform, from sites the audit ran on: `error` and `unhandledrejection` events at the window
-  (`onerror` with its five arguments; a handled one is not a page error; other origins'
-  errors muted), `PromiseRejectionEvent`; `document.styleSheets`, `style.sheet`,
-  `insertRule`/`deleteRule` with the inserted rules in layout (CSS-in-JS); inserted `<link>`
-  stylesheets, `preload` and `modulepreload` load and fire `load`/`error`; SVG element
-  interfaces (`SVGAElement`, …); `link.as`. crates.io and BBC News now run without errors.
+### Changed
 
-- `about:blank` iframes a script inserts get their window at once (`contentWindow`,
-  `contentDocument`, `load`), as SDKs that borrow a clean realm expect; sandboxed ones get none.
+- Layouts of the same page reuse their layout document: stylesheets stay parsed and rules no
+  class or id of the page can match are left out. GitHub's home page uses a third of the CPU.
 
 ### Fixed
 
-- Layouts leave out the style rules that cannot match the document (classes and ids no
-  element has), before the style engine parses them: GitHub's home page uses well under half
-  the CPU it did.
-- Inline script errors carry the document's line numbers and URL, as browsers report them.
 - `<noscript>` content no longer shows while scripts run.
-- Event handlers run in the order they were set among listeners (they ran first).
-- Streams work on pages with an AMD loader (`define`) or CommonJS globals.
-- `performance.measure(name, 'navigationStart')` and the other timing names work.
-- A thrown `DOMException` is reported as `Uncaught SyntaxError: …`, not a bare `Uncaught`.
-- `performance.measure(name, {}, endMark)` no longer throws; options follow Chrome's rules.
-- Canvases appear in screenshots (they were painted blank and noted as not painted).
-- Workflow URL checks keep the port, so two local apps on different ports are told apart.
-- Buttons size to their content, so a page's padding and font apply (they were 21 px tall).
+- Event handlers run in the order they were set; `event.source` of messages posted through a
+  frame's window is the page.
+- Inline script errors carry the document's line numbers and URL.
+- Streams work on pages with an AMD loader or CommonJS globals.
+- `performance.measure` accepts empty options and timing names (`navigationStart`).
+- A thrown `DOMException` is reported by its name.
+- Canvases appear in screenshots.
+- Workflow URL checks keep the port.
+- Buttons size to their content.
 
 ## [0.3.0] - 2026-11-16
 

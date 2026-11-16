@@ -44,7 +44,7 @@ mod memo {
 
     /// A fast hash of a sheet's text (a word at a time, as FxHash): the key of every memo,
     /// computed at each layout for each sheet. Not keyed: the text is the page's own.
-    pub(super) fn fast_hash(s: &str) -> u64 {
+    pub(crate) fn fast_hash(s: &str) -> u64 {
         const K: u64 = 0x517c_c1b7_2722_0a95;
         let b = s.as_bytes();
         let mut h: u64 = b.len() as u64;
@@ -89,6 +89,7 @@ pub fn pseudo_memo(css: &str) -> Option<std::rc::Rc<str>> {
 }
 
 /// The classes and ids of the document being laid out, for [`prune_memo`].
+#[derive(Clone)]
 pub struct Tokens {
     classes: std::collections::HashSet<String>,
     ids: std::collections::HashSet<String>,
@@ -96,6 +97,32 @@ pub struct Tokens {
 }
 
 impl Tokens {
+    /// Both sets of classes and ids (the fingerprint changes only when something was added).
+    pub fn union(mut self, other: Self) -> Self {
+        let before = (self.classes.len(), self.ids.len());
+        self.classes.extend(other.classes);
+        self.ids.extend(other.ids);
+        if (self.classes.len(), self.ids.len()) != before {
+            self.fingerprint = Self::fingerprint(&self.classes, &self.ids);
+        }
+        self
+    }
+
+    fn fingerprint(
+        classes: &std::collections::HashSet<String>,
+        ids: &std::collections::HashSet<String>,
+    ) -> u64 {
+        let mut all: Vec<(bool, &String)> = classes
+            .iter()
+            .map(|c| (true, c))
+            .chain(ids.iter().map(|i| (false, i)))
+            .collect();
+        all.sort_unstable();
+        let mut h = std::collections::hash_map::DefaultHasher::new();
+        std::hash::Hash::hash(&all, &mut h);
+        std::hash::Hasher::finish(&h) | 1 << 63
+    }
+
     /// The classes and ids of every element of `dom` (shadow trees included when `dom` is the
     /// composed tree); `None` in quirks mode, where they match without regard to case.
     pub fn of(dom: &pageon_dom::Dom) -> Option<Self> {
@@ -116,17 +143,16 @@ impl Tokens {
                 }
             }
         }
-        let mut all: Vec<&String> = classes.iter().chain(ids.iter()).collect();
-        all.sort_unstable();
-        let mut h = std::collections::hash_map::DefaultHasher::new();
-        std::hash::Hash::hash(&(classes.len(), &all), &mut h);
+        let fingerprint = Self::fingerprint(&classes, &ids);
         Some(Self {
             classes,
             ids,
-            fingerprint: std::hash::Hasher::finish(&h) | 1 << 63,
+            fingerprint,
         })
     }
 }
+
+pub(crate) use memo::fast_hash;
 
 /// [`prune`] for the document's tokens, remembered (`None`: nothing to drop).
 pub fn prune_memo(css: &str, tokens: &Tokens) -> Option<std::rc::Rc<str>> {

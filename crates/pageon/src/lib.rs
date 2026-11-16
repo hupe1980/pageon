@@ -143,6 +143,8 @@ pub(crate) struct LiveDoc {
     pub(crate) engine: Rc<std::cell::RefCell<pageon_js::Engine>>,
     pub(crate) realm: usize,
     pub(crate) dom: Rc<std::cell::RefCell<Dom>>,
+    /// The window's `load` waits for the document's frames (fired once they have loaded).
+    pub(crate) load_pending: std::cell::Cell<bool>,
 }
 
 impl std::fmt::Debug for LiveDoc {

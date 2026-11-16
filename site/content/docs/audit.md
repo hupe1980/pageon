@@ -52,7 +52,7 @@ Refs are those of `pageon fetch URL --dump ax`, so you can see each element in t
 | Tools | 15 | [Page tools](@/docs/webmcp.md) with a description and described parameters. Not scored on pages without tools; forms that could be tools are suggested |
 | Cost | 20 | Tokens (o200k) of the whole agent view: full marks up to the 4,000 an agent sees by default, less beyond; the largest landmarks are named |
 | Access | 10 | Not refused or challenged as an honest agent; content without scripts; robots.txt, llms.txt, Markdown on request |
-| Health | 10 | The HTTP status and the page's own script errors (not pageon's time or memory limits); a page that shows next to nothing |
+| Health | 10 | The HTTP status and the page's own script errors (not pageon's time or memory limits); a page that shows next to nothing; layout thrashing (more than 40 layouts forced while loading) |
 
 The score is the weighted mean of the areas that apply. Findings are ordered by the points
 fixing them would gain.
@@ -88,10 +88,6 @@ high. The findings are still concrete:
 | TodoMVC | 92 | Its only field is named by a placeholder |
 | crates.io search | 88 | Agents that run no scripts see 3 % of the page; 21 controls share 3 names |
 
-An error that appears only in pageon may be a gap in pageon, so the audit counts only errors the
-site's own scripts raise. Running it on these sites found such gaps, now fixed: the first run
-showed script errors on Python's docs, BBC and GitHub, and an empty crates.io. Please
-[report](https://github.com/hupe1980/pageon/issues) any you meet.
-
-The audit judges one page as pageon's agent meets it. Other agents see similar pages, but not
-identical ones.
+The audit judges a page as pageon's agent meets it; other agents see similar pages, not
+identical ones. It counts only errors the site's own scripts raise, but an error that appears
+only in pageon may be a gap in pageon: please [report](https://github.com/hupe1980/pageon/issues) it.

@@ -277,7 +277,7 @@ fn errors_of_other_origins_are_muted() {
 
 /// An `<iframe>` a script inserts gets its `about:blank` window at once, as in browsers: the
 /// clean realm pages borrow globals from, a DOM to write, messages, `load`. A sandboxed one
-/// gets none rather than a same-origin realm.
+/// (no `allow-same-origin`) is an opaque, cross-origin window: no document to reach.
 const FRAMES: &str = r#"<!doctype html><pre id=out>waiting</pre><script>
 const r = [];
 const f = document.createElement('iframe');
@@ -293,11 +293,13 @@ w.postMessage('hi', '*');
 const s = document.createElement('iframe');
 s.setAttribute('sandbox', '');
 document.body.appendChild(s);
-r.push(s.contentWindow === null);
+let reached = 'no';
+try { s.contentWindow.document; reached = 'yes'; } catch (e) { reached = e.name; }
+r.push(s.contentWindow !== null && s.contentDocument === null && reached === 'SecurityError');
 setTimeout(() => { r.push(got.join(), window.frames.length); document.getElementById('out').textContent = r.join('|'); }, 50);
 </script>"#;
 
-const FRAMES_WANT: &str = "true|true|function|about:blank|true|true|inside|true|load|hi|1";
+const FRAMES_WANT: &str = "true|true|function|about:blank|true|true|inside|true|load|hi|2";
 
 #[test]
 fn script_inserted_iframes_get_a_window() {
@@ -350,4 +352,48 @@ fn rules_left_out_come_back_when_classes_change() {
     .unwrap_or_else(|e| panic!("{e}"));
     let view = tab.observe_full();
     assert!(!view.contains("Hidden once"), "{view}");
+}
+
+/// A frame a script creates with a `src` loads after the task through the page loader: it
+/// takes its window's place, `load` fires, messages carry the right `source`; one outside the
+/// page's origins is blocked. The window's `load` waits for frames the page has.
+#[test]
+fn script_created_frames_load_under_the_policy() {
+    let page_html = r#"<!doctype html><pre id=out>waiting</pre><iframe src="/static.html"></iframe><script>
+const r = [];
+const show = () => { document.getElementById('out').textContent = r.join('|'); };
+const push = r.push.bind(r);
+r.push = (x) => { push(x); show(); };
+window.onload = () => r.push('page load sees ' + document.querySelector('iframe').contentDocument.title);
+window.addEventListener('message', (e) => r.push(e.data + ':' + (e.source === f.contentWindow)));
+const f = document.createElement('iframe');
+f.src = '/child.html';
+f.onload = () => { r.push('load ' + f.contentDocument.title); f.contentWindow.postMessage('ping', '*'); };
+document.body.appendChild(f);
+const evil = document.createElement('iframe');
+evil.src = 'https://evil.test/x.html';
+document.body.appendChild(evil);
+</script>"#;
+    let child = r#"<title>Child</title><script>addEventListener('message', (e) => e.source.postMessage('pong', '*'))</script>"#;
+    let env = pageon::Policy::new(Capture::new(site(vec![
+        html("https://p.test/", page_html),
+        html("https://p.test/static.html", "<title>Static</title>"),
+        html("https://p.test/child.html", child),
+        html("https://evil.test/x.html", "<title>Evil</title><p>evil</p>"),
+    ])))
+    .read_write(["https://p.test"]);
+    let s = Session::new(&env);
+    let mut tab = s
+        .open("https://p.test/", LoadOptions::default())
+        .unwrap_or_else(|e| panic!("{e}"));
+    let view = tab.observe_full();
+    for event in ["page load sees Static", "load Child", "pong:true"] {
+        assert!(view.contains(event), "{event}: {view}");
+    }
+    assert!(!view.contains("evil\""), "{view}");
+    let blocked =
+        tab.document().requests().iter().any(|r| {
+            r.url.contains("evil.test") && !matches!(r.outcome, pageon::RequestOutcome::Ok)
+        });
+    assert!(blocked, "{:#?}", tab.document().requests());
 }

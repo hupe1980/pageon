@@ -136,3 +136,8 @@ slot {
 noscript[pageon-scripting] {
   display: none !important;
 }
+
+/* A stylesheet's element in the mirror: its rules are the document's sheets. */
+pageon-sheet {
+  display: none !important;
+}

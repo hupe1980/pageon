@@ -180,9 +180,8 @@ fn child_of_owner(cx: &mut Cx<'_, '_, '_>, owner: NodeId) -> Option<u32> {
 /// Most frames a document's scripts give `about:blank` documents.
 const MAX_BLANK: usize = 16;
 
-/// Whether an `<iframe>` gets an `about:blank` document of this engine: connected, with no
-/// `srcdoc`, no `src` other than `about:blank` and no `sandbox` (a sandboxed frame needs an
-/// opaque origin; it gets no document rather than a same-origin one).
+/// Whether an `<iframe>` gets its `about:blank` window from this engine: connected, with no
+/// `srcdoc` and no `src` other than `about:blank`.
 pub(crate) fn blank(dom: &pageon_dom::Dom, owner: NodeId) -> bool {
     let Some(n) = dom.get(owner) else {
         return false;
@@ -190,7 +189,6 @@ pub(crate) fn blank(dom: &pageon_dom::Dom, owner: NodeId) -> bool {
     n.is_html("iframe")
         && dom.is_connected(owner)
         && n.attr("srcdoc").is_none()
-        && n.attr("sandbox").is_none()
         && n.attr("src").is_none_or(|s| {
             let s = s.trim();
             s.is_empty() || s.eq_ignore_ascii_case("about:blank")
@@ -209,6 +207,29 @@ pub(crate) fn blank_frame(cx: &mut Cx<'_, '_, '_>, owner: NodeId) -> Option<u32>
     let (frames, own) = frame_of(cx);
     if frames.borrow().children(own).len() >= MAX_BLANK {
         return None;
+    }
+    // A sandbox without `allow-same-origin` makes the frame's origin opaque: a window the
+    // parent cannot reach into, with no document of this engine (scripts could not reach it
+    // to run anything there).
+    let opaque = cx
+        .dom()
+        .get(owner)
+        .and_then(|n| n.attr("sandbox"))
+        .is_some_and(|v| {
+            !v.split_ascii_whitespace()
+                .any(|t| t.eq_ignore_ascii_case("allow-same-origin"))
+        })
+        || cx.st().origin == "null";
+    if opaque {
+        let context = frames.borrow_mut().add(FrameEntry {
+            parent: Some(own),
+            owner: Some(owner),
+            origin: "null".into(),
+            engine: 0,
+            realm: None,
+        });
+        cx.st().frames_changed = true;
+        return Some(context);
     }
     let (cfg, ua_data, secure) = {
         let mut st = cx.st();
@@ -828,7 +849,20 @@ pub(crate) fn post(
     transfer: usize,
 ) -> R<()> {
     let (frames, own) = frame_of(cx);
-    let origin = cx.st().origin.clone();
+    // The sender is the realm whose script calls (another realm of this engine when a script
+    // posts through a frame's window), as browsers take the incumbent realm.
+    let caller = crate::realm::entered(cx.scope)
+        .filter(|r| !Rc::ptr_eq(r, &cx.realm) && Rc::ptr_eq(&r.shared, &cx.realm.shared));
+    let (own, origin) = match caller.and_then(|r| {
+        let st = r.st.borrow();
+        st.frame
+            .as_ref()
+            .filter(|(f, _)| Rc::ptr_eq(f, &frames))
+            .map(|(_, c)| (*c, st.origin.clone()))
+    }) {
+        Some(sender) => sender,
+        None => (own, cx.st().origin.clone()),
+    };
     let target = match target_origin {
         "*" => None,
         "/" => Some(origin.clone()),

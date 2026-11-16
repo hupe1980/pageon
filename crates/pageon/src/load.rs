@@ -181,7 +181,16 @@ pub(crate) fn open(
     }
     if let Loaded::Page(doc) = &mut loaded {
         crate::frames::load_all(doc, Some(env), net, options.clone(), Some(&page));
-        crate::frames::connect(doc, &page, env, net, options);
+        crate::frames::connect(doc, &page, env, net, options.clone());
+        // Iframes the page's scripts added while it settled.
+        crate::frames::load_inserted(doc, &page, env, net, &options);
+        // Each window's `load`, now that its frames have loaded; then the page settles.
+        crate::frames::finish_loads(doc);
+        let engines: Vec<_> = page.engines.borrow().values().cloned().collect();
+        for e in engines {
+            e.borrow_mut().settle(options.settle_ms as f64, env);
+        }
+        crate::tab::refresh(doc);
         if start.keep {
             doc.page = Some(Rc::new(page));
         } else {

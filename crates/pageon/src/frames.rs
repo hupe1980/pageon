@@ -180,146 +180,25 @@ pub(crate) fn load_all(
                 }) {
                     continue;
                 }
-                let attr = |k: &str| {
-                    doc.dom()
-                        .get(owner)
-                        .and_then(|n| n.attr(k))
-                        .map(str::to_string)
-                };
-                let fail = |url: String, why: &str| Frame {
+                frames.push(load_one(
+                    doc,
                     owner,
-                    origin: if url.starts_with("about:") {
-                        parent_origin.clone()
-                    } else {
-                        origin_of(&url)
+                    &Parent {
+                        origin: &parent_origin,
+                        base: base.as_ref(),
+                        client: client.as_ref(),
+                        chain: &chain,
+                        context: parent_context,
                     },
-                    url,
-                    state: FrameState::Failed(why.to_string()),
-                    document: None,
-                };
-                let srcdoc = attr("srcdoc");
-                let src = attr("src")
-                    .map(|s| s.trim().to_string())
-                    .filter(|s| !s.is_empty());
-                let resolved = src.as_deref().map(|s| {
-                    base.as_ref()
-                        .and_then(|b| b.join(s).ok())
-                        .map(|u| u.to_string())
-                });
-                let url = match (&srcdoc, &resolved) {
-                    (Some(_), _) => "about:srcdoc".to_string(),
-                    (None, Some(Some(u))) => u.clone(),
-                    (None, Some(None)) => src.clone().unwrap_or_default(),
-                    (None, None) => "about:blank".to_string(),
-                };
-                if depth > MAX_DEPTH {
-                    frames.push(fail(url, "frame nesting limit"));
-                    continue;
-                }
-                if count >= MAX_FRAMES {
-                    frames.push(fail(url, "frame limit"));
-                    continue;
-                }
-                count += 1;
-                let inherits = srcdoc.is_some() || url == "about:blank";
-                let sandbox = attr("sandbox");
-                // A sandbox without `allow-same-origin` (its own or an ancestor's): opaque.
-                let opaque = client
-                    .as_ref()
-                    .is_some_and(|c| c.clone().sandboxed(sandbox.as_deref()).opaque());
-                // The frame's place in the page's tree, while it loads (removed if it fails).
-                let context = page.map(|p| {
-                    p.frames.borrow_mut().add(pageon_js::frames::FrameEntry {
-                        parent: Some(parent_context),
-                        owner: Some(owner),
-                        origin: if opaque {
-                            "null".into()
-                        } else if inherits {
-                            parent_origin.clone()
-                        } else {
-                            origin_of(&url)
-                        },
-                        engine: 0,
-                        realm: None,
-                    })
-                });
-                let start = crate::load::Start {
-                    parent: client.as_ref(),
-                    page: page.zip(context),
-                    sandbox: sandbox.as_deref(),
-                    ..Default::default()
-                };
-                let loaded = if inherits {
-                    let html = srcdoc.clone().unwrap_or_default();
-                    match (env, &client, page) {
-                        (Some(env), Some(parent), Some(_)) if options.scripts => {
-                            crate::load::inline(
-                                &html,
-                                &url,
-                                &parent_origin,
-                                parent,
-                                env,
-                                net,
-                                options.clone(),
-                                start,
-                            )
-                            .map_err(|e| e.to_string())
-                        }
-                        _ => Ok(crate::parse_without_frames(&html, &url)),
-                    }
-                } else if chain.contains(&url) {
-                    Err("recursive frame".to_string())
-                } else if !(url.starts_with("http://")
-                    || url.starts_with("https://")
-                    || url.starts_with("file:"))
-                {
-                    Err(format!("unsupported frame URL {url}"))
-                } else if let (Some(env), Some(client)) = (env, &client) {
-                    let delegate_tools = attr("allow").is_some_and(|a| {
-                        a.split(';')
-                            .any(|d| d.split_whitespace().next() == Some("tools"))
-                    });
-                    let start = crate::load::Start {
-                        parent: Some(client),
-                        delegate_tools,
-                        ..start
-                    };
-                    match crate::load::fetch(&url, env, net, options.clone(), start) {
-                        Ok(crate::load::Loaded::Page(d)) => Ok(*d),
-                        Ok(crate::load::Loaded::Download(_)) => Err("a download".to_string()),
-                        Err(e) => Err(e.to_string()),
-                    }
-                } else {
-                    Err("no environment to load frames".to_string())
-                };
-                if loaded.is_err()
-                    && let Some(p) = page
-                {
-                    p.frames.borrow_mut().entries.pop();
-                }
-                frames.push(match loaded {
-                    Ok(mut child) => {
-                        child.context = context.unwrap_or(0);
-                        Frame {
-                            owner,
-                            origin: if opaque {
-                                "null".into()
-                            } else if inherits {
-                                parent_origin.clone()
-                            } else {
-                                origin_of(child.final_url())
-                            },
-                            url: if inherits {
-                                url
-                            } else {
-                                child.final_url().to_string()
-                            },
-                            state: FrameState::Loaded,
-                            document: Some(Box::new(child)),
-                        }
-                    }
-                    Err(why) => fail(url, &why),
-                });
+                    depth,
+                    &mut count,
+                    Loading {
+                        env,
+                        net,
+                        options: &options,
+                        page,
+                    },
+                ));
             }
             doc.frames = frames;
             let sandboxes: Vec<Option<String>> = doc
@@ -361,6 +240,199 @@ pub(crate) fn load_all(
     }
 }
 
+/// Where a frame is loaded from: its parent's origin, base URL, client, ancestor URLs and
+/// context.
+struct Parent<'a> {
+    origin: &'a String,
+    base: Option<&'a Url>,
+    client: Option<&'a Client>,
+    chain: &'a [String],
+    context: u32,
+}
+
+/// What loading frames needs.
+#[derive(Clone, Copy)]
+struct Loading<'a> {
+    env: Option<&'a dyn Env>,
+    net: &'a Rc<RefCell<Net>>,
+    options: &'a LoadOptions,
+    page: Option<&'a Page>,
+}
+
+/// Loads the frame of one `<iframe>` of `doc` (`src` through the network, `srcdoc` and
+/// `about:blank` inline), within the depth and count limits.
+fn load_one(
+    doc: &Document,
+    owner: NodeId,
+    p: &Parent<'_>,
+    depth: usize,
+    count: &mut usize,
+    loading: Loading<'_>,
+) -> Frame {
+    let (parent_origin, base, client, chain, parent_context) =
+        (p.origin, p.base, p.client, p.chain, p.context);
+    let Loading {
+        env,
+        net,
+        options,
+        page,
+    } = loading;
+    let options = options.clone();
+    let attr = |k: &str| {
+        doc.dom()
+            .get(owner)
+            .and_then(|n| n.attr(k))
+            .map(str::to_string)
+    };
+    let fail = |url: String, why: &str| Frame {
+        owner,
+        origin: if url.starts_with("about:") {
+            parent_origin.clone()
+        } else {
+            origin_of(&url)
+        },
+        url,
+        state: FrameState::Failed(why.to_string()),
+        document: None,
+    };
+    let srcdoc = attr("srcdoc");
+    let src = attr("src")
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty());
+    let resolved = src.as_deref().map(|s| {
+        base.as_ref()
+            .and_then(|b| b.join(s).ok())
+            .map(|u| u.to_string())
+    });
+    let url = match (&srcdoc, &resolved) {
+        (Some(_), _) => "about:srcdoc".to_string(),
+        (None, Some(Some(u))) => u.clone(),
+        (None, Some(None)) => src.clone().unwrap_or_default(),
+        (None, None) => "about:blank".to_string(),
+    };
+    if depth > MAX_DEPTH {
+        return fail(url, "frame nesting limit");
+    }
+    if *count >= MAX_FRAMES {
+        return fail(url, "frame limit");
+    }
+    *count += 1;
+    let inherits = srcdoc.is_some() || url == "about:blank";
+    let sandbox = attr("sandbox");
+    // A sandbox without `allow-same-origin` (its own or an ancestor's): opaque.
+    let opaque = client.is_some_and(|c| c.clone().sandboxed(sandbox.as_deref()).opaque());
+    // The frame's place in the page's tree, while it loads (removed if it fails).
+    // A frame a script already gave a window keeps its place (its `about:blank` document
+    // is replaced by the one loaded now).
+    let mut added = false;
+    let context = page.map(|p| {
+        let entry = pageon_js::frames::FrameEntry {
+            parent: Some(parent_context),
+            owner: Some(owner),
+            origin: if opaque {
+                "null".into()
+            } else if inherits {
+                parent_origin.clone()
+            } else {
+                origin_of(&url)
+            },
+            engine: 0,
+            realm: None,
+        };
+        let mut f = p.frames.borrow_mut();
+        let at = f
+            .entries
+            .iter()
+            .position(|e| e.owner == Some(owner) && e.parent == Some(parent_context));
+        match at {
+            Some(i) => {
+                f.entries[i] = entry;
+                u32::try_from(i).unwrap_or(u32::MAX)
+            }
+            None => {
+                added = true;
+                f.add(entry)
+            }
+        }
+    });
+    let start = crate::load::Start {
+        parent: client,
+        page: page.zip(context),
+        sandbox: sandbox.as_deref(),
+        ..Default::default()
+    };
+    let loaded = if inherits {
+        let html = srcdoc.clone().unwrap_or_default();
+        match (env, &client, page) {
+            (Some(env), Some(parent), Some(_)) if options.scripts => crate::load::inline(
+                &html,
+                &url,
+                parent_origin,
+                parent,
+                env,
+                net,
+                options.clone(),
+                start,
+            )
+            .map_err(|e| e.to_string()),
+            _ => Ok(crate::parse_without_frames(&html, &url)),
+        }
+    } else if chain.contains(&url) {
+        Err("recursive frame".to_string())
+    } else if !(url.starts_with("http://")
+        || url.starts_with("https://")
+        || url.starts_with("file:"))
+    {
+        Err(format!("unsupported frame URL {url}"))
+    } else if let (Some(env), Some(client)) = (env, &client) {
+        let delegate_tools = attr("allow").is_some_and(|a| {
+            a.split(';')
+                .any(|d| d.split_whitespace().next() == Some("tools"))
+        });
+        let start = crate::load::Start {
+            parent: Some(client),
+            delegate_tools,
+            ..start
+        };
+        match crate::load::fetch(&url, env, net, options.clone(), start) {
+            Ok(crate::load::Loaded::Page(d)) => Ok(*d),
+            Ok(crate::load::Loaded::Download(_)) => Err("a download".to_string()),
+            Err(e) => Err(e.to_string()),
+        }
+    } else {
+        Err("no environment to load frames".to_string())
+    };
+    if loaded.is_err()
+        && added
+        && let Some(p) = page
+    {
+        p.frames.borrow_mut().entries.pop();
+    }
+    match loaded {
+        Ok(mut child) => {
+            child.context = context.unwrap_or(0);
+            Frame {
+                owner,
+                origin: if opaque {
+                    "null".into()
+                } else if inherits {
+                    parent_origin.clone()
+                } else {
+                    origin_of(child.final_url())
+                },
+                url: if inherits {
+                    url
+                } else {
+                    child.final_url().to_string()
+                },
+                state: FrameState::Loaded,
+                document: Some(Box::new(child)),
+            }
+        }
+        Err(why) => fail(url, &why),
+    }
+}
+
 /// After a page's frames have loaded: scriptless documents of an origin that runs scripts
 /// join its engine (so its other documents reach them), `load` fires at every loaded
 /// `<iframe>` (deepest first), and the engines settle and deliver their messages.
@@ -382,6 +454,88 @@ pub(crate) fn connect(
     }
     page.pump(env, options.settle_ms as f64);
     crate::tab::refresh(root);
+}
+
+/// Loads the frames of the `<iframe>`s scripts added to the top-level document after it loaded
+/// (with a `src` or `srcdoc`; `about:blank` ones get their window from the engine), as
+/// browsers load them after the script: each joins the page's frame tree (taking the place of
+/// its `about:blank` window), its scripts run, and `load` fires at its `<iframe>`. `true` if
+/// any was loaded.
+pub(crate) fn load_inserted(
+    root: &mut Document,
+    page: &Page,
+    env: &dyn Env,
+    net: &Rc<RefCell<Net>>,
+    options: &LoadOptions,
+) -> bool {
+    // The document as the scripts left it.
+    crate::tab::refresh(root);
+    let have: std::collections::HashSet<NodeId> = root.frames.iter().map(|f| f.owner).collect();
+    let wanted: Vec<NodeId> = iframes(root)
+        .into_iter()
+        .filter(|o| !have.contains(o))
+        .filter(|&o| {
+            root.dom().get(o).is_some_and(|n| {
+                n.attr("srcdoc").is_some()
+                    || n.attr("src").is_some_and(|s| {
+                        let s = s.trim();
+                        !s.is_empty() && !s.eq_ignore_ascii_case("about:blank")
+                    })
+            })
+        })
+        .collect();
+    if wanted.is_empty() {
+        return false;
+    }
+    let origin = origin_of(root.final_url());
+    let base = Url::parse(root.final_url()).ok();
+    let client = base.as_ref().map(Client::top);
+    let chain = vec![root.final_url().to_string()];
+    let mut count = root.frames.len();
+    let mut loaded = Vec::new();
+    for owner in wanted {
+        let frame = load_one(
+            root,
+            owner,
+            &Parent {
+                origin: &origin,
+                base: base.as_ref(),
+                client: client.as_ref(),
+                chain: &chain,
+                context: root.context,
+            },
+            1,
+            &mut count,
+            Loading {
+                env: Some(env),
+                net,
+                options,
+                page: Some(page),
+            },
+        );
+        if frame.state == FrameState::Loaded {
+            loaded.push(owner);
+        }
+        root.frames.push(frame);
+    }
+    join(root, page, env, net, options.clone());
+    if let Some(live) = &root.live {
+        for owner in &loaded {
+            live.engine.borrow_mut().fire(
+                live.realm,
+                pageon_js::Target::Node(*owner),
+                "load",
+                false,
+            );
+        }
+    }
+    let engines: Vec<_> = page.engines.borrow().values().cloned().collect();
+    for e in engines {
+        e.borrow_mut().settle(options.settle_ms as f64, env);
+    }
+    page.pump(env, options.settle_ms as f64);
+    crate::tab::refresh(root);
+    true
 }
 
 fn join(
@@ -408,6 +562,23 @@ fn join(
         if let Some(d) = f.document.as_deref_mut() {
             join(d, page, env, net, options.clone());
         }
+    }
+}
+
+/// Fires the window `load` each document held back for its frames, deepest first, once they
+/// have loaded (or failed), with `readyState` complete.
+pub(crate) fn finish_loads(doc: &mut Document) {
+    for f in &mut doc.frames {
+        if let Some(d) = f.document.as_deref_mut() {
+            finish_loads(d);
+        }
+    }
+    if let Some(live) = &doc.live
+        && live.load_pending.replace(false)
+    {
+        let mut e = live.engine.borrow_mut();
+        e.set_ready_state(live.realm, "complete");
+        e.fire(live.realm, pageon_js::Target::Window, "load", false);
     }
 }
 

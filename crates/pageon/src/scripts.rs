@@ -488,10 +488,20 @@ pub(crate) fn run(
         engine.borrow_mut().run_scripts(env);
     }
     let root = dom.borrow().root();
+    // In a page, a document's `load` waits for its frames, which load after it parsed.
+    let load_pending = start.page.is_some() && {
+        let d = dom.borrow();
+        d.traverse(root).any(|x| match x {
+            pageon_dom::Edge::Enter(id) => d.get(id).is_some_and(|n| n.is_html("iframe")),
+            pageon_dom::Edge::Leave(_) => false,
+        })
+    };
     let mut e = engine.borrow_mut();
     e.fire(realm, Target::Node(root), "DOMContentLoaded", true);
-    e.set_ready_state(realm, "complete");
-    e.fire(realm, Target::Window, "load", false);
+    if !load_pending {
+        e.set_ready_state(realm, "complete");
+        e.fire(realm, Target::Window, "load", false);
+    }
     // A URL with a fragment opens scrolled to its target.
     if let Some(f) = url.fragment() {
         e.scroll_to_fragment(realm, f);
@@ -532,7 +542,12 @@ pub(crate) fn run(
         navigation,
         dialogs,
         popups,
-        live: Some(crate::LiveDoc { engine, realm, dom }),
+        live: Some(crate::LiveDoc {
+            engine,
+            realm,
+            dom,
+            load_pending: std::cell::Cell::new(load_pending),
+        }),
     })
 }
 
@@ -585,5 +600,10 @@ pub(crate) fn start_live(
         st.ready_state = "complete";
         st.mutations += 1;
     }
-    Ok(crate::LiveDoc { engine, realm, dom })
+    Ok(crate::LiveDoc {
+        engine,
+        realm,
+        dom,
+        load_pending: std::cell::Cell::new(false),
+    })
 }

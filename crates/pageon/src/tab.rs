@@ -3307,6 +3307,18 @@ impl<'s, E: Env> Tab<'s, E> {
                 out.errors
                     .extend(e.borrow().errors().into_iter().skip(before));
             }
+            // Iframes the action's scripts added: loaded as browsers load them.
+            let changed = live.engine.borrow_mut().take_frames_changed(live.realm);
+            if frame == 0 && changed {
+                let net = self.session.net().clone();
+                crate::frames::load_inserted(
+                    &mut self.doc,
+                    &page,
+                    self.session.env(),
+                    &net,
+                    &self.options,
+                );
+            }
         }
         self.finish(frame, live, out)
     }

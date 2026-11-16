@@ -293,19 +293,37 @@ pub(crate) fn build(
     base: &str,
     opts: &crate::LayoutOptions<'_>,
     composed: Option<&pageon_dom::Composed>,
-) -> (BaseDocument, Map, Option<ImageUse>) {
+    prev: Option<(BaseDocument, Sheets)>,
+) -> (BaseDocument, Map, Option<ImageUse>, Sheets) {
     let (modals, images, secrets) = (opts.modals, opts.images, opts.redact);
     // Pseudo-classes Blitz does not match (`:invalid`, `:state()`) are rewritten to mirror-only
     // markers, only when a sheet uses them.
     let pseudo = uses_pseudo(dom, stylesheets);
-    // The document's classes and ids: rules that need others are left out.
-    let tokens = crate::scope::Tokens::of(dom);
     let mut shown: Vec<NodeId> = Vec::new();
     // Subtrees replaced by the control's state (a textarea's value) or hidden (text in a
     // closed `<details>`): their nodes are not mirrored.
     let mut skip_inside: Option<NodeId> = None;
     let recorder = images.map(|_| std::sync::Arc::new(Recorder::default()));
-    let mut doc = BaseDocument::new(config(viewport, base, recorder.clone()));
+    // The previous layout's document, when it can be laid out again: its sheets stay parsed
+    // and its cascade built; only its tree is made anew.
+    let reused = prev.is_some();
+    let (mut doc, mut sheets) = match prev {
+        Some(p) => p,
+        None => {
+            let mut d = BaseDocument::new(config(viewport, base, recorder.clone()));
+            let s = Sheets::new(&mut d);
+            (d, s)
+        }
+    };
+    // Every class and id the page has had: rules that need others are left out. The set only
+    // grows, so the sheets' texts (and their parsed form) stay the same from layout to layout.
+    let tokens = crate::scope::Tokens::of(dom).map(|t| sheets.seen(t));
+    // The document's sheets in cascade order (style elements, links, then adopted sheets).
+    let mut ordered: Vec<String> = Vec::new();
+    let linked: std::collections::HashMap<NodeId, &str> = stylesheets
+        .iter()
+        .map(|s| (s.link, s.css.as_str()))
+        .collect();
     // URLs the engine fetches that are not images: linked stylesheets (pageon loads those
     // itself) and frames.
     let mut not_images: Vec<String> = Vec::new();
@@ -315,6 +333,9 @@ pub(crate) fn build(
     map.insert(dom.root(), root);
     {
         let mut m = DocumentMutator::new(&mut doc);
+        if reused {
+            m.remove_and_drop_all_children(root);
+        }
         let mut stack: Vec<BId> = vec![root];
         for edge in dom.traverse(dom.root()) {
             match edge {
@@ -416,34 +437,44 @@ pub(crate) fn build(
                                 if &*name.local == "noscript" && dom.scripting() {
                                     attrs.push(attr("pageon-scripting", String::new()));
                                 }
-                                // A `<link>` stylesheet a script inserted: its CSS, loaded by
-                                // the engine, applies as a `<style>`.
-                                let linked =
-                                    (local == "link").then(|| dom.cssom_text(id)).flatten();
-                                let el = match linked {
-                                    Some(_) => m.create_element(
-                                        html5ever::QualName::new(
-                                            None,
-                                            html5ever::ns!(html),
-                                            html5ever::LocalName::from("style"),
-                                        ),
-                                        Vec::new(),
-                                    ),
+                                // A stylesheet's element: its rules go to the document's sheets
+                                // in cascade order, and the element is a placeholder (Blitz would
+                                // make a sheet of a `<style>` of its own at every layout).
+                                let sheet: Option<std::borrow::Cow<'_, str>> = match local {
+                                    "style" if node.is_html("style") => {
+                                        Some(dom.cssom_text(id).map_or_else(
+                                            || style_text(dom, id).into(),
+                                            std::borrow::Cow::Borrowed,
+                                        ))
+                                    }
+                                    "link" => dom
+                                        .cssom_text(id)
+                                        .or_else(|| linked.get(&id).copied())
+                                        .map(std::borrow::Cow::Borrowed),
+                                    _ => None,
+                                };
+                                let el = match &sheet {
+                                    Some(css) => {
+                                        let scope = composed.map(|c| match c.scope_of.get(&id) {
+                                            Some(&n) => crate::scope::Scope::Shadow(n),
+                                            None => crate::scope::Scope::Document,
+                                        });
+                                        ordered.push(
+                                            sheet_css(css, pseudo, scope, tokens.as_ref())
+                                                .into_owned(),
+                                        );
+                                        skip_inside = Some(id);
+                                        m.create_element(
+                                            html5ever::QualName::new(
+                                                None,
+                                                html5ever::ns!(html),
+                                                html5ever::LocalName::from(SHEET),
+                                            ),
+                                            Vec::new(),
+                                        )
+                                    }
                                     None => m.create_element(name.clone(), attrs),
                                 };
-                                if let Some(css) = linked {
-                                    let scope = composed.map(|c| match c.scope_of.get(&id) {
-                                        Some(&n) => crate::scope::Scope::Shadow(n),
-                                        None => crate::scope::Scope::Document,
-                                    });
-                                    let t = m.create_text_node(&sheet_css(
-                                        css,
-                                        pseudo,
-                                        scope,
-                                        tokens.as_ref(),
-                                    ));
-                                    m.append_children(el, &[t]);
-                                }
                                 if local == "textarea"
                                     && let Some(v) = state.and_then(|c| c.value.as_ref())
                                 {
@@ -451,47 +482,9 @@ pub(crate) fn build(
                                     m.append_children(el, &[t]);
                                     skip_inside = Some(id);
                                 }
-                                // A `<style>` whose rules a script changed (`insertRule`):
-                                // those rules, not its text.
-                                if local == "style"
-                                    && let Some(css) = dom.cssom_text(id)
-                                {
-                                    let scope = composed.map(|c| match c.scope_of.get(&id) {
-                                        Some(&n) => crate::scope::Scope::Shadow(n),
-                                        None => crate::scope::Scope::Document,
-                                    });
-                                    let t = m.create_text_node(&sheet_css(
-                                        css,
-                                        pseudo,
-                                        scope,
-                                        tokens.as_ref(),
-                                    ));
-                                    m.append_children(el, &[t]);
-                                    skip_inside = Some(id);
-                                }
                                 Some(el)
                             }
-                            NodeData::Text(t) => {
-                                // A `<style>`'s rules, scoped to its tree.
-                                let style = dom
-                                    .parent(id)
-                                    .filter(|&p| dom.get(p).is_some_and(|n| n.is_html("style")));
-                                Some(match style {
-                                    Some(p) => {
-                                        let scope = composed.map(|c| match c.scope_of.get(&p) {
-                                            Some(&n) => crate::scope::Scope::Shadow(n),
-                                            None => crate::scope::Scope::Document,
-                                        });
-                                        m.create_text_node(&sheet_css(
-                                            t,
-                                            pseudo,
-                                            scope,
-                                            tokens.as_ref(),
-                                        ))
-                                    }
-                                    _ => m.create_text_node(&redact(t, secrets)),
-                                })
-                            }
+                            NodeData::Text(t) => Some(m.create_text_node(&redact(t, secrets))),
                             NodeData::Comment(t) => Some(m.create_comment_node(t)),
                             _ => None,
                         }
@@ -531,37 +524,12 @@ pub(crate) fn build(
                 }
             }
         }
-        // Adopted stylesheets: after every sheet of the document, scoped to their tree.
-        if dom.has_adopted() {
-            let html = dom
-                .children(dom.root())
-                .find(|&c| dom.get(c).is_some_and(|n| n.is_html("html")))
-                .and_then(|h| map.blitz(h));
-            if let Some(html) = html {
-                for (scope, css) in adopted(dom, composed) {
-                    let el = m.create_element(
-                        html5ever::QualName::new(
-                            None,
-                            html5ever::ns!(html),
-                            html5ever::LocalName::from("style"),
-                        ),
-                        Vec::new(),
-                    );
-                    let t = m.create_text_node(&sheet_css(&css, pseudo, scope, tokens.as_ref()));
-                    m.append_children(el, &[t]);
-                    m.append_children(html, &[el]);
-                }
-            }
-        }
     }
-    for sheet in stylesheets {
-        if let Some(b) = map.blitz(sheet.link) {
-            let scope = composed.map(|_| crate::scope::Scope::Document);
-            let css = sheet_css(&sheet.css, pseudo, scope, tokens.as_ref());
-            let s = doc.make_stylesheet(&css, Origin::Author);
-            doc.add_stylesheet_for_node(s, b);
-        }
+    // Adopted stylesheets: after every sheet of the document, scoped to their tree.
+    for (scope, css) in adopted(dom, composed) {
+        ordered.push(sheet_css(&css, pseudo, scope, tokens.as_ref()).into_owned());
     }
+    sheets.attach(&mut doc, ordered);
     doc.resolve(0.0);
     let used = recorder.zip(images).map(|(rec, images)| {
         let mut used = ImageUse::default();
@@ -598,7 +566,100 @@ pub(crate) fn build(
         used
     });
     scroll(&mut doc, &map, opts.scroll);
-    (doc, map, used)
+    (doc, map, used, sheets)
+}
+
+/// The element a stylesheet's element is mirrored as (`display: none` in the UA sheet).
+const SHEET: &str = "pageon-sheet";
+
+/// The text of a `<style>`.
+fn style_text(dom: &Dom, id: NodeId) -> String {
+    dom.children(id)
+        .filter_map(|c| match dom.get(c).map(|n| &n.data) {
+            Some(NodeData::Text(t)) => Some(t.as_str()),
+            _ => None,
+        })
+        .collect()
+}
+
+/// A layout document's stylesheets: attached, in cascade order, to holder elements made before
+/// anything else (Blitz orders sheets by their element's id), and parsed once per text. A
+/// document laid out again keeps them: sheets that did not change are not parsed again and the
+/// cascade is not rebuilt, as browsers keep a page's style data between layouts.
+pub(crate) struct Sheets {
+    holders: Vec<BId>,
+    /// The classes and ids of every layout so far.
+    tokens: Option<crate::scope::Tokens>,
+    /// The text hash each holder has (0: none).
+    texts: Vec<u64>,
+    parsed: std::collections::HashMap<u64, style::stylesheets::DocumentStyleSheet>,
+}
+
+/// Holders per document: past it, the last holds the rest of the sheets together.
+const HOLDERS: usize = 256;
+
+impl Sheets {
+    fn new(doc: &mut BaseDocument) -> Self {
+        let mut m = DocumentMutator::new(doc);
+        let holders = (0..HOLDERS)
+            .map(|_| {
+                m.create_element(
+                    html5ever::QualName::new(
+                        None,
+                        html5ever::ns!(html),
+                        html5ever::LocalName::from(SHEET),
+                    ),
+                    Vec::new(),
+                )
+            })
+            .collect();
+        drop(m);
+        Self {
+            holders,
+            tokens: None,
+            texts: vec![0; HOLDERS],
+            parsed: std::collections::HashMap::new(),
+        }
+    }
+
+    /// The classes and ids of this layout added to those of the earlier ones.
+    fn seen(&mut self, now: crate::scope::Tokens) -> crate::scope::Tokens {
+        let all = match self.tokens.take() {
+            Some(t) => t.union(now),
+            None => now,
+        };
+        self.tokens = Some(all.clone());
+        all
+    }
+
+    /// Gives each holder its sheet; holders whose text is unchanged are left alone.
+    fn attach(&mut self, doc: &mut BaseDocument, mut ordered: Vec<String>) {
+        if ordered.len() > HOLDERS {
+            let rest = ordered.split_off(HOLDERS - 1).join("\n");
+            ordered.push(rest);
+        }
+        if self.parsed.len() > 4 * HOLDERS {
+            self.parsed.clear();
+        }
+        for i in 0..HOLDERS {
+            let css = ordered.get(i).map_or("", String::as_str);
+            let hash = if css.is_empty() {
+                0
+            } else {
+                crate::scope::fast_hash(css) | 1
+            };
+            if self.texts[i] == hash {
+                continue;
+            }
+            let sheet = self
+                .parsed
+                .entry(hash)
+                .or_insert_with(|| doc.make_stylesheet(css, Origin::Author))
+                .clone();
+            doc.add_stylesheet_for_node(sheet, self.holders[i]);
+            self.texts[i] = hash;
+        }
+    }
 }
 
 /// Applies element scroll offsets, each clamped to its element's range.

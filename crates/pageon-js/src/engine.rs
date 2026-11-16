@@ -1925,6 +1925,12 @@ impl Engine {
         })
     }
 
+    /// How many layouts a document's scripts made the engine compute (reads of geometry or
+    /// style after the page changed).
+    pub fn layouts(&self, realm: usize) -> u32 {
+        self.realm(realm).map_or(0, |r| r.st.borrow().layouts)
+    }
+
     /// Whether script changed an iframe in a realm since the last call (frames must be loaded).
     pub fn take_frames_changed(&mut self, realm: usize) -> bool {
         self.realm(realm)
@@ -2282,6 +2288,7 @@ pub(crate) fn new_realm(
             focused: None,
             navigator: cfg.navigator,
             frames_changed: false,
+            layouts: 0,
             started_scripts: Default::default(),
             dialog_return: Default::default(),
             window_name: String::new(),
