@@ -66,6 +66,8 @@ pub struct Sink {
     pub(crate) dom: Rc<RefCell<Dom>>,
     /// Fragment parsing (`innerHTML`): declarative shadow roots are not attached.
     pub(crate) fragment: bool,
+    /// The tokenizer's current source line.
+    pub(crate) line: std::cell::Cell<u64>,
 }
 
 /// An element's name, borrowed from the arena.
@@ -259,12 +261,22 @@ impl TreeSink for Sink {
         let template_contents = flags
             .template
             .then(|| dom.create(NodeData::DocumentFragment));
-        dom.create(NodeData::Element {
+        let script = !self.fragment && &*name.local == "script";
+        let id = dom.create(NodeData::Element {
             name,
             attrs: attrs(attributes),
             template_contents,
             mathml_annotation_xml_integration_point: flags.mathml_annotation_xml_integration_point,
-        })
+        });
+        if script {
+            let line = u32::try_from(self.line.get()).unwrap_or(u32::MAX);
+            dom.script_lines.insert(id, line);
+        }
+        id
+    }
+
+    fn set_current_line(&self, line_number: u64) {
+        self.line.set(line_number);
     }
 
     fn create_comment(&self, text: StrTendril) -> NodeId {

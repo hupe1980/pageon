@@ -236,7 +236,13 @@ impl Run<'_> {
                 None => {
                     self.inline += 1;
                     self.sync_stylesheets();
-                    let name = format!("<inline #{}>", self.inline);
+                    // Inline scripts are named by their document, as browsers name them.
+                    let name = self
+                        .engine
+                        .borrow()
+                        .realm(self.realm)
+                        .map(|r| r.st.borrow().url.clone())
+                        .unwrap_or_else(|| format!("<inline #{}>", self.inline));
                     self.engine
                         .borrow_mut()
                         .run_script(self.realm, &text, &name, Some(node));

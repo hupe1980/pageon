@@ -286,6 +286,8 @@ pub struct Dom {
     pub(crate) cssom: std::collections::HashMap<NodeId, String>,
     /// The document was parsed with scripting on, so `<noscript>` content is not rendered.
     pub(crate) scripting: bool,
+    /// The source line (1-based) of each parsed `<script>`'s start tag.
+    pub(crate) script_lines: std::collections::HashMap<NodeId, u32>,
     /// Live ranges and the selection (see [`crate::ranges`]).
     pub(crate) ranges: crate::ranges::Ranges,
     /// Mutable accesses so far (see [`Dom::changes`]).
@@ -380,6 +382,7 @@ impl Dom {
             adopted: std::collections::HashMap::new(),
             cssom: std::collections::HashMap::new(),
             scripting: false,
+            script_lines: std::collections::HashMap::new(),
             ranges: crate::ranges::Ranges::default(),
             popovers: Vec::new(),
         };

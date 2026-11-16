@@ -128,6 +128,12 @@ impl Dom {
         self.cssom.get(&style).map(String::as_str)
     }
 
+    /// The source line (1-based) of a parsed `<script>`'s start tag: its text's lines count
+    /// from there, as browsers report them.
+    pub fn script_line(&self, script: NodeId) -> Option<u32> {
+        self.script_lines.get(&script).copied()
+    }
+
     /// Whether the document was parsed with scripting on (`<noscript>` is not rendered).
     pub fn scripting(&self) -> bool {
         self.scripting

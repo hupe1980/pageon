@@ -177,6 +177,130 @@ fn child_of_owner(cx: &mut Cx<'_, '_, '_>, owner: NodeId) -> Option<u32> {
         .find(|&c| f.entries[c as usize].owner == Some(owner))
 }
 
+/// Most frames a document's scripts give `about:blank` documents.
+const MAX_BLANK: usize = 16;
+
+/// Whether an `<iframe>` gets an `about:blank` document of this engine: connected, with no
+/// `srcdoc`, no `src` other than `about:blank` and no `sandbox` (a sandboxed frame needs an
+/// opaque origin; it gets no document rather than a same-origin one).
+pub(crate) fn blank(dom: &pageon_dom::Dom, owner: NodeId) -> bool {
+    let Some(n) = dom.get(owner) else {
+        return false;
+    };
+    n.is_html("iframe")
+        && dom.is_connected(owner)
+        && n.attr("srcdoc").is_none()
+        && n.attr("sandbox").is_none()
+        && n.attr("src").is_none_or(|s| {
+            let s = s.trim();
+            s.is_empty() || s.eq_ignore_ascii_case("about:blank")
+        })
+}
+
+/// The frame of an `<iframe>` a script inserted, made at once as browsers make it: an empty
+/// `about:blank` document of the parent's origin, in this engine (same origin, same engine).
+pub(crate) fn blank_frame(cx: &mut Cx<'_, '_, '_>, owner: NodeId) -> Option<u32> {
+    if cx.world != 0 || cx.realm.worker.is_some() || !blank(&cx.dom(), owner) {
+        return None;
+    }
+    if let Some(c) = child_of_owner(cx, owner) {
+        return Some(c);
+    }
+    let (frames, own) = frame_of(cx);
+    if frames.borrow().children(own).len() >= MAX_BLANK {
+        return None;
+    }
+    let (cfg, ua_data, secure) = {
+        let mut st = cx.st();
+        let mut crypto_key = [0u8; 32];
+        st.crypto.fill(&mut crypto_key);
+        let secure = pageon_net::site::trustworthy(&st.client.url);
+        let ua_data = st.navigator.ua_data.is_some() && secure;
+        (
+            crate::engine::RealmConfig {
+                url: "about:blank".into(),
+                origin: st.origin.clone(),
+                navigator: st.navigator.clone(),
+                viewport: st.viewport,
+                stylesheets: Vec::new(),
+                client: st.client.clone(),
+                net: st.net.clone(),
+                accept_dialogs: st.accept_dialogs,
+                crypto_key,
+            },
+            ua_data,
+            secure,
+        )
+    };
+    let origin = cfg.origin.clone();
+    let dom = pageon_dom::parse_document("", pageon_dom::ParseOptions { scripting: true });
+    let id = cx.realm.shared.borrow().realms.len();
+    let realm = crate::engine::new_realm(
+        id,
+        Rc::new(RefCell::new(dom)),
+        cfg,
+        cx.realm.templates.clone(),
+        cx.realm.shared.clone(),
+        None,
+    );
+    realm.st.borrow_mut().ready_state = "complete";
+    let current = cx.scope.get_current_context();
+    let mut token = Some(v8::Global::new(
+        cx.scope,
+        current.get_security_token(cx.scope),
+    ));
+    let (g, kept, key) = crate::engine::build_context(
+        cx.scope,
+        &cx.realm.templates,
+        &mut token,
+        &realm,
+        0,
+        ua_data,
+        secure,
+    );
+    realm.worlds.borrow_mut().push(crate::realm::World {
+        name: String::new(),
+        context: kept,
+        index: id,
+    });
+    let engine = {
+        let mut sh = cx.realm.shared.borrow_mut();
+        sh.realms.push(Rc::downgrade(&realm));
+        sh.adopted.push((g, realm.clone(), key));
+        sh.engine
+    };
+    let context = frames.borrow_mut().add(FrameEntry {
+        parent: Some(own),
+        owner: Some(owner),
+        origin,
+        engine,
+        realm: Some(id),
+    });
+    realm.st.borrow_mut().frame = Some((frames, context));
+    cx.st().frames_changed = true;
+    Some(context)
+}
+
+/// Gives the `<iframe>`s scripts inserted their `about:blank` documents (if no script asked
+/// for one yet) and fires `load` at them, after the task; `true` if any was handled.
+pub(crate) fn deliver_blank_frames(cx: &mut Cx<'_, '_, '_>) -> bool {
+    let me = cx.realm.id;
+    let mine: Vec<NodeId> = {
+        let mut sh = cx.realm.shared.borrow_mut();
+        let (mine, rest): (Vec<_>, Vec<_>) = sh.blank_frames.drain(..).partition(|(r, _)| *r == me);
+        sh.blank_frames = rest;
+        mine.into_iter().map(|(_, n)| n).collect()
+    };
+    let mut any = false;
+    for owner in mine {
+        if blank_frame(cx, owner).is_some() {
+            any = true;
+            let _ = crate::dom::event_target::fire(cx, Target::Node(owner), "load", false, false);
+        }
+    }
+    any
+}
+
 /// The wrapper of `obj` in another realm of this engine (its main world).
 fn in_realm<'s>(
     cx: &mut Cx<'_, 's, '_>,
@@ -893,12 +1017,14 @@ pub mod htmli_frame_element {
 
     pub fn get_content_window(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<Option<Obj>> {
         let node = this.node()?;
-        Ok(child_of_owner(cx, node).map(|c| Obj::Frame(c, Part::Window)))
+        Ok(child_of_owner(cx, node)
+            .or_else(|| blank_frame(cx, node))
+            .map(|c| Obj::Frame(c, Part::Window)))
     }
 
     pub fn get_content_document(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<Option<Obj>> {
         let node = this.node()?;
-        let Some(child) = child_of_owner(cx, node) else {
+        let Some(child) = child_of_owner(cx, node).or_else(|| blank_frame(cx, node)) else {
             return Ok(None);
         };
         let (frames, _) = frame_of(cx);

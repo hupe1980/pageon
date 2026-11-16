@@ -596,88 +596,14 @@ impl Engine {
         // client hints.
         let secure = pageon_net::site::trustworthy(&cfg.client.url);
         let ua_data = cfg.navigator.ua_data.is_some() && secure;
-        let realm = Rc::new(Realm {
+        let realm = new_realm(
             id,
             dom,
-            st: RefCell::new(State {
-                url: cfg.url,
-                origin: cfg.origin,
-                wrappers: Default::default(),
-                slab: Vec::new(),
-                same: Default::default(),
-                window_same: Default::default(),
-                notifications_denied: false,
-                listeners: Default::default(),
-                handlers: Default::default(),
-                current_script: None,
-                written: None,
-                ready_state: "loading",
-                mutations: 0,
-                layout: None,
-                viewport: cfg.viewport,
-                stylesheets: cfg.stylesheets,
-                modals: Vec::new(),
-                focused: None,
-                navigator: cfg.navigator,
-                frames_changed: false,
-                started_scripts: Default::default(),
-                dialog_return: Default::default(),
-                window_name: String::new(),
-                canvases: Default::default(),
-                tools: Vec::new(),
-                declared: Vec::new(),
-                agent_submit: false,
-                agent_response: None,
-                client: cfg.client,
-                net: cfg.net,
-                navigation: None,
-                dialogs: Vec::new(),
-                popups: Vec::new(),
-                blocked: Vec::new(),
-                sheets: Default::default(),
-                refused: Default::default(),
-                files: Default::default(),
-                chooser: None,
-                dialogs_more: 0,
-                popups_more: 0,
-                requests_made: 0,
-                modules_loaded: 0,
-                hovered: None,
-                pressed: None,
-                mods: Default::default(),
-                timing: Vec::new(),
-                perf_observers: Vec::new(),
-                iterators: Vec::new(),
-                sel_obj: None,
-                control_sel: Vec::new(),
-                vault_values: Vec::new(),
-                button: Default::default(),
-                click_count: 0,
-                drag: None,
-                accept_dialogs: cfg.accept_dialogs,
-                observers: Vec::new(),
-                intersections: Vec::new(),
-                scroll: crate::dom::scroll::ScrollState::default(),
-                custom: crate::dom::custom_elements::Registry::default(),
-                slots: std::collections::HashMap::new(),
-                focus_seq: 0,
-                modules: Vec::new(),
-                import_map: Default::default(),
-                history: Default::default(),
-                media_lists: Vec::new(),
-                media_viewport: None,
-                resize_observers: Vec::new(),
-                crypto: crate::dom::platform::CryptoStream::new(cfg.crypto_key),
-                frame: None,
-                remote: Default::default(),
-                closed: false,
-                imports: Default::default(),
-            }),
-            templates: self.templates.clone(),
-            shared: self.shared.clone(),
-            worlds: RefCell::new(Vec::new()),
+            cfg,
+            self.templates.clone(),
+            self.shared.clone(),
             worker,
-        });
+        );
         let (g, kept) = self.new_context(&realm, 0, ua_data, secure);
         realm.worlds.borrow_mut().push(crate::realm::World {
             name: String::new(),
@@ -687,6 +613,15 @@ impl Engine {
         self.shared.borrow_mut().realms.push(Rc::downgrade(&realm));
         self.realms.push((g, realm));
         id
+    }
+
+    /// Takes in the realms scripts made (frames' `about:blank` documents).
+    fn adopt(&mut self) {
+        let made = std::mem::take(&mut self.shared.borrow_mut().adopted);
+        for (g, realm, key) in made {
+            self.keys.push(key);
+            self.realms.push((g, realm));
+        }
     }
 
     /// This engine's id (distinct for every engine in the process).
@@ -748,133 +683,17 @@ impl Engine {
         let mut locker = self.isolate.lock();
         let hs = std::pin::pin!(v8::HandleScope::new(&mut *locker));
         let hs = &mut hs.init();
-        let worker = realm.worker.is_some();
-        let global_iface = if worker {
-            crate::generated::Iface::DedicatedWorkerGlobalScope
-        } else {
-            crate::generated::Iface::Window
-        };
-        let window = v8::Local::new(hs, &self.templates[global_iface as usize]);
-        let global_template = window.instance_template(hs);
-        let context = v8::Context::new(
+        let (g, kept, key) = build_context(
             hs,
-            v8::ContextOptions {
-                global_template: Some(global_template),
-                ..Default::default()
-            },
+            &self.templates,
+            &mut self.token,
+            realm,
+            world,
+            ua_data,
+            secure,
         );
-        let scope = &mut v8::ContextScope::new(hs, context);
-        // The documents of an engine share an origin, so their main worlds share a security
-        // token and reach each other's windows; isolated worlds keep their own.
-        // A worker shares nothing with the documents: a token of its own.
-        if worker {
-            let t: v8::Local<'_, v8::Value> = v8::Object::new(scope).into();
-            context.set_security_token(t);
-        } else if world == 0 {
-            let token = match &self.token {
-                Some(t) => v8::Local::new(scope, t),
-                None => {
-                    let t: v8::Local<'_, v8::Value> = v8::Object::new(scope).into();
-                    self.token = Some(v8::Global::new(scope, t));
-                    t
-                }
-            };
-            context.set_security_token(token);
-        }
-        let global = context.global(scope);
-        let key = crate::realm::register(scope, global, realm.clone(), world);
         self.keys.push(key);
-        if worker {
-            crate::generated::expose_worker(scope, global, &self.templates);
-            crate::cv::expose(
-                scope,
-                global,
-                &self.templates[crate::generated::Iface::DedicatedWorkerGlobalScope as usize],
-                "DedicatedWorkerGlobalScope",
-            );
-            // No nested workers.
-            if let Some(k) = v8::String::new(scope, "Worker") {
-                let _ = global.delete(scope, k.into());
-            }
-        } else {
-            crate::generated::expose(scope, global, &self.templates);
-            crate::dom::window::install_extras(scope, global);
-        }
-        if !ua_data {
-            hide(scope, global, "Navigator", "userAgentData");
-        }
-        // `document.modelContext` (WebMCP) and `crypto.randomUUID` are [SecureContext].
-        if !secure {
-            hide(scope, global, "Document", "modelContext");
-            hide(scope, global, "Crypto", "randomUUID");
-            hide(scope, global, "Crypto", "subtle");
-            hide(scope, global, "Navigator", "credentials");
-            for name in [
-                "Credential",
-                "CredentialsContainer",
-                "PublicKeyCredential",
-                "AuthenticatorResponse",
-                "AuthenticatorAttestationResponse",
-                "AuthenticatorAssertionResponse",
-            ] {
-                if let Some(k) = v8::String::new(scope, name) {
-                    let _ = global.delete(scope, k.into());
-                }
-            }
-        }
-        // The clock and RNG seam, then the prelude that rebinds Date and Math.random to it.
-        let host = v8::Object::new(scope);
-        if let (Some(k), Some(func)) = (
-            v8::String::new(scope, "now"),
-            v8::Function::new(scope, host_now),
-        ) {
-            host.set(scope, k.into(), func.into());
-        }
-        if let (Some(k), Some(func)) = (
-            v8::String::new(scope, "random"),
-            v8::Function::new(scope, host_random),
-        ) {
-            host.set(scope, k.into(), func.into());
-        }
-        if let (Some(k), Some(func)) = (
-            v8::String::new(scope, "streams"),
-            v8::Function::new(scope, crate::streams::load),
-        ) {
-            host.set(scope, k.into(), func.into());
-        }
-        if let (Some(k), Some(func)) = (
-            v8::String::new(scope, "idb"),
-            v8::Function::new(scope, crate::indexeddb::load),
-        ) {
-            host.set(scope, k.into(), func.into());
-        }
-        if let (Some(k), Some(func)) = (
-            v8::String::new(scope, "platform"),
-            v8::Function::new(scope, platform_load),
-        ) {
-            host.set(scope, k.into(), func.into());
-        }
-        if let (Some(k), Some(func)) = (
-            v8::String::new(scope, "passkey"),
-            v8::Function::new(scope, crate::dom::credentials::host_call),
-        ) {
-            host.set(scope, k.into(), func.into());
-        }
-        if let Some(k) = v8::String::new(scope, "__pageon") {
-            global.set(scope, k.into(), host.into());
-        }
-        {
-            v8::tc_scope!(let tc, scope);
-            if let Some(src) = v8::String::new(tc, PRELUDE) {
-                let ran = v8::Script::compile(tc, src, None).and_then(|s| s.run(tc));
-                debug_assert!(ran.is_some(), "the prelude must run");
-            }
-        }
-        // Two handles, made while the isolate is locked: the engine's and the realm's.
-        (
-            v8::Global::new(scope, context),
-            v8::Global::new(scope, context),
-        )
+        (g, kept)
     }
 
     /// The context index of `realm`'s isolated world `name`, created on first use (`""` is the
@@ -965,6 +784,7 @@ impl Engine {
                 }
             });
             let r = f(self);
+            self.adopt();
             drop(tx);
             (r, watchdog.join().unwrap_or(false))
         });
@@ -1020,10 +840,14 @@ impl Engine {
                 else {
                     return;
                 };
+                // A parsed script's lines count from its tag, as browsers report them.
+                let line = script
+                    .and_then(|s| r.dom.borrow().script_line(s))
+                    .map_or(0, |l| i32::try_from(l.saturating_sub(1)).unwrap_or(0));
                 let origin = v8::ScriptOrigin::new(
                     tc,
                     n.into(),
-                    0,
+                    line,
                     0,
                     false,
                     0,
@@ -2261,6 +2085,7 @@ fn notify_observers(cx: &mut Cx<'_, '_, '_>) {
         let media = crate::dom::platform::deliver_media(cx);
         let resized = crate::dom::platform::deliver_resize(cx, resize_pass);
         let timed = crate::dom::timing::deliver(cx);
+        let frames = crate::frames::deliver_blank_frames(cx);
         let errors = crate::dom::deliver_page_errors(cx);
         let selected = crate::dom::selecting::deliver(cx);
         if matches!(resized, Ok(true)) {
@@ -2273,6 +2098,7 @@ fn notify_observers(cx: &mut Cx<'_, '_, '_>) {
             || matches!(media, Ok(true))
             || matches!(timed, Ok(true))
             || matches!(errors, Ok(true))
+            || frames
             || matches!(selected, Ok(true))
             || matches!(resized, Ok(true));
         if !ran || cx.scope.is_execution_terminating() {
@@ -2280,6 +2106,240 @@ fn notify_observers(cx: &mut Cx<'_, '_, '_>) {
         }
         cx.scope.perform_microtask_checkpoint();
     }
+}
+
+/// A context for `realm` in `world`, with the window's interfaces, the extras and the clock
+/// and RNG prelude, and its registry key. `token` is the engine's security token for main
+/// worlds (made on first use).
+pub(crate) fn build_context(
+    hs: &mut v8::PinScope<'_, '_, ()>,
+    templates: &[v8::Global<v8::FunctionTemplate>],
+    token: &mut Option<v8::Global<v8::Value>>,
+    realm: &Rc<Realm>,
+    world: u32,
+    ua_data: bool,
+    secure: bool,
+) -> (v8::Global<v8::Context>, v8::Global<v8::Context>, u32) {
+    let worker = realm.worker.is_some();
+    let global_iface = if worker {
+        crate::generated::Iface::DedicatedWorkerGlobalScope
+    } else {
+        crate::generated::Iface::Window
+    };
+    let window = v8::Local::new(hs, &templates[global_iface as usize]);
+    let global_template = window.instance_template(hs);
+    let context = v8::Context::new(
+        hs,
+        v8::ContextOptions {
+            global_template: Some(global_template),
+            ..Default::default()
+        },
+    );
+    let scope = &mut v8::ContextScope::new(hs, context);
+    // The documents of an engine share an origin, so their main worlds share a security
+    // token and reach each other's windows; isolated worlds keep their own.
+    // A worker shares nothing with the documents: a token of its own.
+    if worker {
+        let t: v8::Local<'_, v8::Value> = v8::Object::new(scope).into();
+        context.set_security_token(t);
+    } else if world == 0 {
+        let token = match &*token {
+            Some(t) => v8::Local::new(scope, t),
+            None => {
+                let t: v8::Local<'_, v8::Value> = v8::Object::new(scope).into();
+                *token = Some(v8::Global::new(scope, t));
+                t
+            }
+        };
+        context.set_security_token(token);
+    }
+    let global = context.global(scope);
+    let key = crate::realm::register(scope, global, realm.clone(), world);
+    if worker {
+        crate::generated::expose_worker(scope, global, templates);
+        crate::cv::expose(
+            scope,
+            global,
+            &templates[crate::generated::Iface::DedicatedWorkerGlobalScope as usize],
+            "DedicatedWorkerGlobalScope",
+        );
+        // No nested workers.
+        if let Some(k) = v8::String::new(scope, "Worker") {
+            let _ = global.delete(scope, k.into());
+        }
+    } else {
+        crate::generated::expose(scope, global, templates);
+        crate::dom::window::install_extras(scope, global);
+    }
+    if !ua_data {
+        hide(scope, global, "Navigator", "userAgentData");
+    }
+    // `document.modelContext` (WebMCP) and `crypto.randomUUID` are [SecureContext].
+    if !secure {
+        hide(scope, global, "Document", "modelContext");
+        hide(scope, global, "Crypto", "randomUUID");
+        hide(scope, global, "Crypto", "subtle");
+        hide(scope, global, "Navigator", "credentials");
+        for name in [
+            "Credential",
+            "CredentialsContainer",
+            "PublicKeyCredential",
+            "AuthenticatorResponse",
+            "AuthenticatorAttestationResponse",
+            "AuthenticatorAssertionResponse",
+        ] {
+            if let Some(k) = v8::String::new(scope, name) {
+                let _ = global.delete(scope, k.into());
+            }
+        }
+    }
+    // The clock and RNG seam, then the prelude that rebinds Date and Math.random to it.
+    let host = v8::Object::new(scope);
+    if let (Some(k), Some(func)) = (
+        v8::String::new(scope, "now"),
+        v8::Function::new(scope, host_now),
+    ) {
+        host.set(scope, k.into(), func.into());
+    }
+    if let (Some(k), Some(func)) = (
+        v8::String::new(scope, "random"),
+        v8::Function::new(scope, host_random),
+    ) {
+        host.set(scope, k.into(), func.into());
+    }
+    if let (Some(k), Some(func)) = (
+        v8::String::new(scope, "streams"),
+        v8::Function::new(scope, crate::streams::load),
+    ) {
+        host.set(scope, k.into(), func.into());
+    }
+    if let (Some(k), Some(func)) = (
+        v8::String::new(scope, "idb"),
+        v8::Function::new(scope, crate::indexeddb::load),
+    ) {
+        host.set(scope, k.into(), func.into());
+    }
+    if let (Some(k), Some(func)) = (
+        v8::String::new(scope, "platform"),
+        v8::Function::new(scope, platform_load),
+    ) {
+        host.set(scope, k.into(), func.into());
+    }
+    if let (Some(k), Some(func)) = (
+        v8::String::new(scope, "passkey"),
+        v8::Function::new(scope, crate::dom::credentials::host_call),
+    ) {
+        host.set(scope, k.into(), func.into());
+    }
+    if let Some(k) = v8::String::new(scope, "__pageon") {
+        global.set(scope, k.into(), host.into());
+    }
+    {
+        v8::tc_scope!(let tc, scope);
+        if let Some(src) = v8::String::new(tc, PRELUDE) {
+            let ran = v8::Script::compile(tc, src, None).and_then(|s| s.run(tc));
+            debug_assert!(ran.is_some(), "the prelude must run");
+        }
+    }
+    // Two handles, made while the isolate is locked: the engine's and the realm's.
+    (
+        v8::Global::new(scope, context),
+        v8::Global::new(scope, context),
+        key,
+    )
+}
+
+/// A realm's state for a document (or a worker), before it has a context.
+pub(crate) fn new_realm(
+    id: usize,
+    dom: Rc<RefCell<Dom>>,
+    cfg: RealmConfig,
+    templates: Rc<Vec<v8::Global<v8::FunctionTemplate>>>,
+    shared: Rc<RefCell<Shared>>,
+    worker: Option<crate::dom::workers::Link>,
+) -> Rc<Realm> {
+    Rc::new(Realm {
+        id,
+        dom,
+        st: RefCell::new(State {
+            url: cfg.url,
+            origin: cfg.origin,
+            wrappers: Default::default(),
+            slab: Vec::new(),
+            same: Default::default(),
+            window_same: Default::default(),
+            notifications_denied: false,
+            listeners: Default::default(),
+            handlers: Default::default(),
+            current_script: None,
+            written: None,
+            ready_state: "loading",
+            mutations: 0,
+            layout: None,
+            viewport: cfg.viewport,
+            stylesheets: cfg.stylesheets,
+            modals: Vec::new(),
+            focused: None,
+            navigator: cfg.navigator,
+            frames_changed: false,
+            started_scripts: Default::default(),
+            dialog_return: Default::default(),
+            window_name: String::new(),
+            canvases: Default::default(),
+            tools: Vec::new(),
+            declared: Vec::new(),
+            agent_submit: false,
+            agent_response: None,
+            client: cfg.client,
+            net: cfg.net,
+            navigation: None,
+            dialogs: Vec::new(),
+            popups: Vec::new(),
+            blocked: Vec::new(),
+            sheets: Default::default(),
+            refused: Default::default(),
+            files: Default::default(),
+            chooser: None,
+            dialogs_more: 0,
+            popups_more: 0,
+            requests_made: 0,
+            modules_loaded: 0,
+            hovered: None,
+            pressed: None,
+            mods: Default::default(),
+            timing: Vec::new(),
+            perf_observers: Vec::new(),
+            iterators: Vec::new(),
+            sel_obj: None,
+            control_sel: Vec::new(),
+            vault_values: Vec::new(),
+            button: Default::default(),
+            click_count: 0,
+            drag: None,
+            accept_dialogs: cfg.accept_dialogs,
+            observers: Vec::new(),
+            intersections: Vec::new(),
+            scroll: crate::dom::scroll::ScrollState::default(),
+            custom: crate::dom::custom_elements::Registry::default(),
+            slots: std::collections::HashMap::new(),
+            focus_seq: 0,
+            modules: Vec::new(),
+            import_map: Default::default(),
+            history: Default::default(),
+            media_lists: Vec::new(),
+            media_viewport: None,
+            resize_observers: Vec::new(),
+            crypto: crate::dom::platform::CryptoStream::new(cfg.crypto_key),
+            frame: None,
+            remote: Default::default(),
+            closed: false,
+            imports: Default::default(),
+        }),
+        templates,
+        shared,
+        worlds: RefCell::new(Vec::new()),
+        worker,
+    })
 }
 
 fn host_now(

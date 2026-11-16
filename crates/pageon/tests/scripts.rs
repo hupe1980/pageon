@@ -113,7 +113,7 @@ fn errors_are_reported_with_location_and_later_scripts_run() {
     let e = &doc.errors()[0];
     assert_eq!(
         (e.kind, e.source.as_str(), e.line),
-        (PageErrorKind::Exception, "<inline #1>", 2)
+        (PageErrorKind::Exception, "https://a.test/", 2)
     );
     assert!(e.message.contains("TypeError"), "{e}");
     assert_eq!(doc.summary().errors, 1);
@@ -244,4 +244,23 @@ fn replays_are_identical() {
     let b = load(html);
     assert_eq!(text(&a, "out"), text(&b, "out"));
     assert_eq!(a.dump(pageon::Dump::Html), b.dump(pageon::Dump::Html));
+}
+
+#[test]
+fn inline_script_errors_carry_document_lines() {
+    let doc = load(
+        "<!doctype html>\n<title>t</title>\n<p>a</p>\n<script>\nlet ok = 1;\nnull.x;\n</script>\n<p>b</p>\n<script>null.y;</script>",
+    );
+    let lines: Vec<(String, u32)> = doc
+        .errors()
+        .iter()
+        .map(|e| (e.source.clone(), e.line))
+        .collect();
+    assert_eq!(
+        lines,
+        vec![
+            ("https://a.test/".to_string(), 6),
+            ("https://a.test/".to_string(), 9)
+        ]
+    );
 }

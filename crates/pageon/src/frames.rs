@@ -169,6 +169,17 @@ pub(crate) fn load_all(
             let parent_context = doc.context;
             let mut frames = Vec::new();
             for owner in iframes(doc) {
+                // A frame a script already gave its `about:blank` document (the engine made
+                // it as the script asked) is not loaded again.
+                if page.is_some_and(|p| {
+                    p.frames
+                        .borrow()
+                        .entries
+                        .iter()
+                        .any(|e| e.owner == Some(owner) && e.parent == Some(parent_context))
+                }) {
+                    continue;
+                }
                 let attr = |k: &str| {
                     doc.dom()
                         .get(owner)

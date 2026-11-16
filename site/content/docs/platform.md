@@ -24,7 +24,7 @@ and `pageon fetch URL --dump errors` names what a page tried to use.
 | Canvas | 2D drawing and text (`font`, `textAlign`, `textBaseline`, `measureText`, `fillText`, `strokeText`) with the bundled fonts, so metrics are the same everywhere; canvases appear in screenshots |
 | Stylesheets | `document.styleSheets`, `style.sheet` and `link.sheet`, `cssRules`, `insertRule`/`deleteRule`: rules a script inserts (styled-components, emotion) reach layout. Inserted `<link>` stylesheets, `preload` and `modulepreload` load and fire `load` or `error`. A `<link>`'s rules are not readable |
 | Web components | Shadow DOM (open, closed, declarative), slots, custom elements, `ElementInternals`, adopted stylesheets |
-| Frames and messaging | Same- and cross-origin iframes, `postMessage`, `contentWindow`/`contentDocument` across same-origin frames, `<iframe sandbox>` (`allow-same-origin`, `-scripts`, `-forms`, `-popups`, `-modals`), `MessageChannel` within a document (ports are not transferable) |
+| Frames and messaging | Same- and cross-origin iframes, `about:blank` iframes a script inserts (their window at once, as pages borrow a clean realm), `postMessage`, `contentWindow`/`contentDocument` across same-origin frames, `<iframe sandbox>` (`allow-same-origin`, `-scripts`, `-forms`, `-popups`, `-modals`), `MessageChannel` within a document (ports are not transferable) |
 | Networking | `fetch`, `XMLHttpRequest`, `AbortController`, CORS, cookies (`SameSite`, CHIPS), `document.cookie` |
 | Storage | `localStorage`, `sessionStorage` and IndexedDB, kept per origin for the session across loads and tabs (IndexedDB: 50 MiB per origin) |
 | Streams | `ReadableStream`, `WritableStream`, `TransformStream`, `TextDecoderStream`, `TextEncoderStream`, `Response.body` (a body arrives whole, in one chunk), `arrayBuffer()`, `bytes()` |
@@ -43,7 +43,7 @@ and `pageon fetch URL --dump errors` names what a page tried to use.
 
 ## Not supported
 
-`BroadcastChannel`, iframes a script inserts (their `contentWindow` is `null`), `blob:` URLs outside worker scripts,
+`BroadcastChannel`, iframes a script inserts with a `src` (an `about:blank` one gets its window, but not into pageon's views; a sandboxed one gets none), `blob:` URLs outside worker scripts,
 shared, service and nested workers, transferring anything but `ArrayBuffer`s, IME composition, undo (`historyUndo`) and formatting commands, `designMode`,
 `ClipboardItem`, `PasswordCredential` and `FederatedCredential`, the Navigation API (routers fall
 back to `history`), `document.write` after the page has loaded (it throws), `FontFace` (`document.fonts` reports

@@ -96,21 +96,25 @@ pub(crate) struct ImageUse {
     pub(crate) applied: usize,
 }
 
-/// A stylesheet's text for the mirror: pseudo-classes rewritten to markers (`pseudo`), and
-/// selectors scoped to their tree (pages with shadow trees).
+/// A stylesheet's text for the mirror: the rules that cannot match the document dropped
+/// (`tokens`), pseudo-classes rewritten to markers (`pseudo`), and selectors scoped to their
+/// tree (pages with shadow trees).
 fn sheet_css<'a>(
     css: &'a str,
     pseudo: bool,
     scope: Option<crate::scope::Scope>,
+    tokens: Option<&crate::scope::Tokens>,
 ) -> std::borrow::Cow<'a, str> {
-    let css: std::borrow::Cow<'a, str> =
-        match pseudo.then(|| crate::scope::pseudo_memo(css)).flatten() {
-            Some(r) => String::from(&*r).into(),
-            None => css.into(),
-        };
-    match scope {
-        Some(s) => String::from(&*crate::scope::rewrite_memo(&css, s)).into(),
-        None => css,
+    let pruned = tokens.and_then(|t| crate::scope::prune_memo(css, t));
+    let text: &str = pruned.as_deref().unwrap_or(css);
+    let marked = pseudo.then(|| crate::scope::pseudo_memo(text)).flatten();
+    let text: &str = marked.as_deref().unwrap_or(text);
+    let scoped = scope.map(|s| crate::scope::rewrite_memo(text, s));
+    match (scoped, marked, pruned) {
+        (Some(s), ..) => String::from(&*s).into(),
+        (None, Some(m), _) => String::from(&*m).into(),
+        (None, None, Some(p)) => String::from(&*p).into(),
+        (None, None, None) => css.into(),
     }
 }
 
@@ -294,6 +298,8 @@ pub(crate) fn build(
     // Pseudo-classes Blitz does not match (`:invalid`, `:state()`) are rewritten to mirror-only
     // markers, only when a sheet uses them.
     let pseudo = uses_pseudo(dom, stylesheets);
+    // The document's classes and ids: rules that need others are left out.
+    let tokens = crate::scope::Tokens::of(dom);
     let mut shown: Vec<NodeId> = Vec::new();
     // Subtrees replaced by the control's state (a textarea's value) or hidden (text in a
     // closed `<details>`): their nodes are not mirrored.
@@ -430,7 +436,12 @@ pub(crate) fn build(
                                         Some(&n) => crate::scope::Scope::Shadow(n),
                                         None => crate::scope::Scope::Document,
                                     });
-                                    let t = m.create_text_node(&sheet_css(css, pseudo, scope));
+                                    let t = m.create_text_node(&sheet_css(
+                                        css,
+                                        pseudo,
+                                        scope,
+                                        tokens.as_ref(),
+                                    ));
                                     m.append_children(el, &[t]);
                                 }
                                 if local == "textarea"
@@ -449,7 +460,12 @@ pub(crate) fn build(
                                         Some(&n) => crate::scope::Scope::Shadow(n),
                                         None => crate::scope::Scope::Document,
                                     });
-                                    let t = m.create_text_node(&sheet_css(css, pseudo, scope));
+                                    let t = m.create_text_node(&sheet_css(
+                                        css,
+                                        pseudo,
+                                        scope,
+                                        tokens.as_ref(),
+                                    ));
                                     m.append_children(el, &[t]);
                                     skip_inside = Some(id);
                                 }
@@ -461,12 +477,17 @@ pub(crate) fn build(
                                     .parent(id)
                                     .filter(|&p| dom.get(p).is_some_and(|n| n.is_html("style")));
                                 Some(match style {
-                                    Some(p) if pseudo || composed.is_some() => {
+                                    Some(p) => {
                                         let scope = composed.map(|c| match c.scope_of.get(&p) {
                                             Some(&n) => crate::scope::Scope::Shadow(n),
                                             None => crate::scope::Scope::Document,
                                         });
-                                        m.create_text_node(&sheet_css(t, pseudo, scope))
+                                        m.create_text_node(&sheet_css(
+                                            t,
+                                            pseudo,
+                                            scope,
+                                            tokens.as_ref(),
+                                        ))
                                     }
                                     _ => m.create_text_node(&redact(t, secrets)),
                                 })
@@ -526,7 +547,7 @@ pub(crate) fn build(
                         ),
                         Vec::new(),
                     );
-                    let t = m.create_text_node(&sheet_css(&css, pseudo, scope));
+                    let t = m.create_text_node(&sheet_css(&css, pseudo, scope, tokens.as_ref()));
                     m.append_children(el, &[t]);
                     m.append_children(html, &[el]);
                 }
@@ -536,7 +557,7 @@ pub(crate) fn build(
     for sheet in stylesheets {
         if let Some(b) = map.blitz(sheet.link) {
             let scope = composed.map(|_| crate::scope::Scope::Document);
-            let css = sheet_css(&sheet.css, pseudo, scope);
+            let css = sheet_css(&sheet.css, pseudo, scope, tokens.as_ref());
             let s = doc.make_stylesheet(&css, Origin::Author);
             doc.add_stylesheet_for_node(s, b);
         }

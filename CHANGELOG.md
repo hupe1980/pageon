@@ -56,15 +56,20 @@ All notable changes to this project are documented here. The format follows
   stylesheets, `preload` and `modulepreload` load and fire `load`/`error`; SVG element
   interfaces (`SVGAElement`, …); `link.as`. crates.io and BBC News now run without errors.
 
+- `about:blank` iframes a script inserts get their window at once (`contentWindow`,
+  `contentDocument`, `load`), as SDKs that borrow a clean realm expect; sandboxed ones get none.
+
 ### Fixed
 
+- Layouts leave out the style rules that cannot match the document (classes and ids no
+  element has), before the style engine parses them: GitHub's home page uses well under half
+  the CPU it did.
+- Inline script errors carry the document's line numbers and URL, as browsers report them.
 - `<noscript>` content no longer shows while scripts run.
 - Event handlers run in the order they were set among listeners (they ran first).
 - Streams work on pages with an AMD loader (`define`) or CommonJS globals.
 - `performance.measure(name, 'navigationStart')` and the other timing names work.
 - A thrown `DOMException` is reported as `Uncaught SyntaxError: …`, not a bare `Uncaught`.
-- Pages that lay out many times (GitHub's home page) load about 45 % faster: stylesheet
-  rewrites are remembered between layouts.
 - `performance.measure(name, {}, endMark)` no longer throws; options follow Chrome's rules.
 - Canvases appear in screenshots (they were painted blank and noted as not painted).
 - Workflow URL checks keep the port, so two local apps on different ports are told apart.

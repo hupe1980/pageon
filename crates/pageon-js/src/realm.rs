@@ -762,6 +762,11 @@ pub struct Shared {
     pub blob_urls: HashMap<String, (Vec<u8>, String)>,
     /// The engine's realms, by index (weak: the engine owns them).
     pub realms: Vec<std::rc::Weak<Realm>>,
+    /// Realms made while a script ran (an `about:blank` frame's), with their contexts and
+    /// registry keys: the engine adopts them after the task.
+    pub adopted: Vec<(v8::Global<v8::Context>, Rc<Realm>, u32)>,
+    /// `<iframe>`s a script inserted that get an `about:blank` document: (realm, element).
+    pub blank_frames: Vec<(usize, NodeId)>,
     /// The realm each page error happened in (parallel to `errors`, filled as realms run).
     pub error_realms: Vec<usize>,
 }

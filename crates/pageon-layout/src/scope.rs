@@ -27,7 +27,6 @@ pub enum Scope {
 mod memo {
     use std::cell::RefCell;
     use std::collections::HashMap;
-    use std::hash::{Hash, Hasher};
     use std::rc::Rc;
 
     /// Most bytes of rewritten text kept; past it the cache starts over.
@@ -35,7 +34,7 @@ mod memo {
 
     #[derive(Default)]
     struct Memo {
-        map: HashMap<(u64, usize, u32), Option<Rc<str>>>,
+        map: HashMap<(u64, usize, u64), Option<Rc<str>>>,
         bytes: usize,
     }
 
@@ -43,15 +42,29 @@ mod memo {
         static MEMO: RefCell<Memo> = RefCell::new(Memo::default());
     }
 
+    /// A fast hash of a sheet's text (a word at a time, as FxHash): the key of every memo,
+    /// computed at each layout for each sheet. Not keyed: the text is the page's own.
+    pub(super) fn fast_hash(s: &str) -> u64 {
+        const K: u64 = 0x517c_c1b7_2722_0a95;
+        let b = s.as_bytes();
+        let mut h: u64 = b.len() as u64;
+        let (words, rest) = b.as_chunks::<8>();
+        for w in words {
+            h = (h.rotate_left(5) ^ u64::from_le_bytes(*w)).wrapping_mul(K);
+        }
+        for &x in rest {
+            h = (h.rotate_left(5) ^ u64::from(x)).wrapping_mul(K);
+        }
+        h
+    }
+
     /// `f(css)`, remembered by the text and `kind` (which rewrite, which scope).
     pub(super) fn get(
         css: &str,
-        kind: u32,
+        kind: u64,
         f: impl FnOnce(&str) -> Option<String>,
     ) -> Option<Rc<str>> {
-        let mut h = std::collections::hash_map::DefaultHasher::new();
-        css.hash(&mut h);
-        let key = (h.finish(), css.len(), kind);
+        let key = (fast_hash(css), css.len(), kind);
         if let Some(v) = MEMO.with(|m| m.borrow().map.get(&key).cloned()) {
             return v;
         }
@@ -75,16 +88,271 @@ pub fn pseudo_memo(css: &str) -> Option<std::rc::Rc<str>> {
     memo::get(css, 0, pseudo)
 }
 
+/// The classes and ids of the document being laid out, for [`prune_memo`].
+pub struct Tokens {
+    classes: std::collections::HashSet<String>,
+    ids: std::collections::HashSet<String>,
+    fingerprint: u64,
+}
+
+impl Tokens {
+    /// The classes and ids of every element of `dom` (shadow trees included when `dom` is the
+    /// composed tree); `None` in quirks mode, where they match without regard to case.
+    pub fn of(dom: &pageon_dom::Dom) -> Option<Self> {
+        if dom.quirks_mode == pageon_dom::QuirksMode::Quirks {
+            return None;
+        }
+        let mut classes = std::collections::HashSet::new();
+        let mut ids = std::collections::HashSet::new();
+        for e in dom.traverse(dom.root()) {
+            if let pageon_dom::Edge::Enter(id) = e
+                && let Some(n) = dom.get(id)
+            {
+                if let Some(c) = n.attr("class") {
+                    classes.extend(c.split_ascii_whitespace().map(str::to_string));
+                }
+                if let Some(i) = n.attr("id") {
+                    ids.insert(i.to_string());
+                }
+            }
+        }
+        let mut all: Vec<&String> = classes.iter().chain(ids.iter()).collect();
+        all.sort_unstable();
+        let mut h = std::collections::hash_map::DefaultHasher::new();
+        std::hash::Hash::hash(&(classes.len(), &all), &mut h);
+        Some(Self {
+            classes,
+            ids,
+            fingerprint: std::hash::Hasher::finish(&h) | 1 << 63,
+        })
+    }
+}
+
+/// [`prune`] for the document's tokens, remembered (`None`: nothing to drop).
+pub fn prune_memo(css: &str, tokens: &Tokens) -> Option<std::rc::Rc<str>> {
+    memo::get(css, tokens.fingerprint, |c| prune(c, tokens))
+}
+
+/// The stylesheet without the style rules that cannot match the document: rules whose every
+/// selector requires a class or id no element has (outside `:is()`, `:not()` and the like,
+/// which are kept). Such rules are most of a large design system's sheet; dropping them before
+/// the style engine parses them makes a layout of a page with such sheets several times
+/// cheaper. `None` when nothing is dropped.
+pub fn prune(css: &str, tokens: &Tokens) -> Option<String> {
+    plan_of(css).apply(css, tokens)
+}
+
+/// A sheet taken apart once: pieces that are always kept (at-rule preludes and braces,
+/// statements, other blocks) and style rules with what each of their selectors requires.
+#[derive(Default)]
+struct Plan {
+    pieces: Vec<Piece>,
+}
+
+enum Piece {
+    Keep(std::ops::Range<usize>),
+    /// A style rule, kept if any selector's requirements are all in the document.
+    Rule(std::ops::Range<usize>, Vec<Vec<Token>>),
+}
+
+/// A class (`true`) or id the selector needs.
+type Token = (bool, String);
+
+impl Plan {
+    fn apply(&self, css: &str, tokens: &Tokens) -> Option<String> {
+        let mut out = String::with_capacity(css.len() / 4);
+        let mut dropped = false;
+        for p in &self.pieces {
+            match p {
+                Piece::Keep(r) => out.push_str(&css[r.clone()]),
+                Piece::Rule(r, sels) => {
+                    let possible = sels.iter().any(|need| {
+                        need.iter().all(|(class, name)| {
+                            if *class {
+                                tokens.classes.contains(name)
+                            } else {
+                                tokens.ids.contains(name)
+                            }
+                        })
+                    });
+                    if possible {
+                        out.push_str(&css[r.clone()]);
+                    } else {
+                        dropped = true;
+                    }
+                }
+            }
+        }
+        dropped.then_some(out)
+    }
+}
+
+/// Plans by sheet (hash and length), and the bytes of text they stand for.
+type Plans = (
+    std::collections::HashMap<(u64, usize), std::rc::Rc<Plan>>,
+    usize,
+);
+
+/// The plan of a sheet, made once per text (per thread).
+fn plan_of(css: &str) -> std::rc::Rc<Plan> {
+    thread_local! {
+        static PLANS: std::cell::RefCell<Plans> =
+            std::cell::RefCell::new((std::collections::HashMap::new(), 0));
+    }
+    let key = (memo::fast_hash(css), css.len());
+    if let Some(p) = PLANS.with(|p| p.borrow().0.get(&key).cloned()) {
+        return p;
+    }
+    let mut plan = Plan::default();
+    plan_rules(css, 0, &mut plan);
+    let plan = std::rc::Rc::new(plan);
+    PLANS.with(|p| {
+        let mut p = p.borrow_mut();
+        // Plans hold ranges, not text: a bound on the texts they stand for is enough.
+        if p.1 + css.len() > 256 << 20 {
+            p.0.clear();
+            p.1 = 0;
+        }
+        p.1 += css.len();
+        p.0.insert(key, plan.clone());
+    });
+    plan
+}
+
+fn plan_rules(css: &str, base: usize, plan: &mut Plan) {
+    let b = css.as_bytes();
+    let mut i = 0;
+    while i < b.len() {
+        let start = i;
+        let (end, term) = scan_to(css, i, b"{;");
+        let prelude = &css[start..end];
+        match term {
+            Some(b';') => {
+                plan.pieces.push(Piece::Keep(base + start..base + end + 1));
+                i = end + 1;
+            }
+            Some(_) => {
+                let close = block_end(css, end).min(b.len().saturating_sub(1));
+                let trimmed = prelude.trim_start();
+                if let Some(at) = trimmed.strip_prefix('@') {
+                    let name: String = at
+                        .chars()
+                        .take_while(|c| c.is_ascii_alphanumeric() || *c == '-')
+                        .collect::<String>()
+                        .to_ascii_lowercase();
+                    if GROUPING.contains(&name.as_str()) && close > end {
+                        plan.pieces.push(Piece::Keep(base + start..base + end + 1));
+                        plan_rules(&css[end + 1..close], base + end + 1, plan);
+                        plan.pieces
+                            .push(Piece::Keep(base + close..base + close + 1));
+                    } else {
+                        plan.pieces
+                            .push(Piece::Keep(base + start..base + close + 1));
+                    }
+                } else {
+                    let list = strip_comments(prelude);
+                    let sels = split_top(&list, b',').into_iter().map(required).collect();
+                    plan.pieces
+                        .push(Piece::Rule(base + start..base + close + 1, sels));
+                }
+                i = close + 1;
+            }
+            None => {
+                plan.pieces.push(Piece::Keep(base + start..base + b.len()));
+                break;
+            }
+        }
+    }
+}
+
+/// The classes and ids a selector requires at its top level (inside `(...)` and `[...]`
+/// anything may be optional).
+fn required(sel: &str) -> Vec<Token> {
+    let b = sel.as_bytes();
+    let mut out = Vec::new();
+    let mut depth = 0i32;
+    let mut i = 0;
+    while i < b.len() {
+        match b[i] {
+            b'(' | b'[' => depth += 1,
+            b')' | b']' => depth -= 1,
+            b'\\' => {
+                i += 2;
+                continue;
+            }
+            q @ (b'"' | b'\'') => {
+                i += 1;
+                while i < b.len() && b[i] != q {
+                    i += if b[i] == b'\\' { 2 } else { 1 };
+                }
+            }
+            c @ (b'.' | b'#') if depth == 0 => {
+                let (name, next) = ident(sel, i + 1);
+                if !name.is_empty() {
+                    out.push((c == b'.', name));
+                }
+                i = next;
+                continue;
+            }
+            _ => {}
+        }
+        i += 1;
+    }
+    out
+}
+
+/// A CSS identifier starting at `i`, unescaped (`md\:flex` is `md:flex`), and where it ends.
+fn ident(s: &str, mut i: usize) -> (String, usize) {
+    let b = s.as_bytes();
+    let mut out = String::new();
+    while i < b.len() {
+        let c = b[i];
+        if c == b'\\' {
+            let hex: String = s[i + 1..]
+                .chars()
+                .take_while(char::is_ascii_hexdigit)
+                .take(6)
+                .collect();
+            if hex.is_empty() {
+                if let Some(ch) = s[i + 1..].chars().next() {
+                    out.push(ch);
+                    i += 1 + ch.len_utf8();
+                } else {
+                    i += 1;
+                }
+            } else {
+                let v = u32::from_str_radix(&hex, 16).unwrap_or(0xFFFD);
+                out.push(
+                    char::from_u32(v)
+                        .filter(|&c| c != '\0')
+                        .unwrap_or('\u{FFFD}'),
+                );
+                i += 1 + hex.len();
+                if b.get(i).is_some_and(u8::is_ascii_whitespace) {
+                    i += 1;
+                }
+            }
+        } else if c.is_ascii_alphanumeric() || c == b'-' || c == b'_' || c >= 0x80 {
+            let ch = s[i..].chars().next().unwrap_or('\u{FFFD}');
+            out.push(ch);
+            i += ch.len_utf8();
+        } else {
+            break;
+        }
+    }
+    (out, i)
+}
+
 /// [`uses_pseudo`], remembered.
 pub fn uses_pseudo_memo(css: &str) -> bool {
-    memo::get(css, u32::MAX, |c| uses_pseudo(c).then(String::new)).is_some()
+    memo::get(css, u64::MAX, |c| uses_pseudo(c).then(String::new)).is_some()
 }
 
 /// [`rewrite`], remembered.
 pub fn rewrite_memo(css: &str, scope: Scope) -> std::rc::Rc<str> {
     let kind = match scope {
         Scope::Document => 1,
-        Scope::Shadow(n) => 2 + n,
+        Scope::Shadow(n) => 2 + u64::from(n),
     };
     memo::get(css, kind, |c| Some(rewrite(c, scope))).unwrap_or_else(|| css.into())
 }
@@ -559,5 +827,37 @@ mod tests {
             rewrite(":root{--x:1}", d),
             ":root:not([pageon-scope]){--x:1}"
         );
+    }
+}
+
+#[cfg(test)]
+mod prune_tests {
+    use super::*;
+
+    fn tokens(html: &str) -> Tokens {
+        let dom = pageon_dom::parse_document(html, pageon_dom::ParseOptions::default());
+        Tokens::of(&dom).unwrap_or_else(|| panic!("quirks"))
+    }
+
+    #[test]
+    fn rules_that_cannot_match_are_dropped() {
+        let t = tokens(r#"<!doctype html><div id=main class="btn md:flex"></div>"#);
+        let css = ".btn{a:1}.nope{b:2}#main .x{c:3}#gone{d:4}.nope,.btn{e:5}\
+                   :not(.nope){f:6}div:is(.nope){g:7}.md\\:flex{h:8}@media (x){.nope{i:9}.btn{j:10}}\
+                   @keyframes k{from{k:11}}[class~=nope]{l:12}";
+        let out = prune(css, &t).unwrap_or_else(|| panic!("nothing dropped"));
+        for kept in ["a:1", "e:5", "f:6", "g:7", "h:8", "j:10", "k:11", "l:12"] {
+            assert!(out.contains(kept), "{kept} dropped: {out}");
+        }
+        for gone in ["b:2", "c:3", "d:4", "i:9"] {
+            assert!(!out.contains(gone), "{gone} kept: {out}");
+        }
+        assert_eq!(prune(".btn{a:1}", &t), None);
+    }
+
+    #[test]
+    fn quirks_documents_are_not_pruned() {
+        let dom = pageon_dom::parse_document("<div class=a>", pageon_dom::ParseOptions::default());
+        assert!(Tokens::of(&dom).is_none());
     }
 }

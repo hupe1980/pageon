@@ -496,6 +496,7 @@ pub(crate) fn inserted(cx: &Cx<'_, '_, '_>, nodes: &[NodeId]) {
     let dom = cx.dom();
     let mut found = Vec::new();
     let mut links = Vec::new();
+    let mut frames = Vec::new();
     for &n in nodes {
         // Connected, shadow-including: scripts in shadow trees run too.
         if !dom.is_connected(n) {
@@ -514,6 +515,11 @@ pub(crate) fn inserted(cx: &Cx<'_, '_, '_>, nodes: &[NodeId]) {
                 }
             }
             if let pageon_dom::Edge::Enter(x) = e
+                && crate::frames::blank(&dom, x)
+            {
+                frames.push(x);
+            }
+            if let pageon_dom::Edge::Enter(x) = e
                 && let Some(el) = dom.get(x)
                 && el.is_html("link")
                 && el.attr("href").is_some()
@@ -524,6 +530,14 @@ pub(crate) fn inserted(cx: &Cx<'_, '_, '_>, nodes: &[NodeId]) {
         }
     }
     drop(dom);
+    if !frames.is_empty() {
+        let mut sh = cx.realm.shared.borrow_mut();
+        for f in frames {
+            if !sh.blank_frames.contains(&(cx.realm.id, f)) {
+                sh.blank_frames.push((cx.realm.id, f));
+            }
+        }
+    }
     if found.is_empty() && links.is_empty() {
         return;
     }

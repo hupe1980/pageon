@@ -57,6 +57,7 @@ impl Parser {
             Sink {
                 dom: dom.clone(),
                 fragment: false,
+                line: std::cell::Cell::new(1),
             },
             o.tree_builder,
         );

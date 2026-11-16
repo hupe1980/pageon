@@ -274,3 +274,80 @@ fn errors_of_other_origins_are_muted() {
         "{errors}"
     );
 }
+
+/// An `<iframe>` a script inserts gets its `about:blank` window at once, as in browsers: the
+/// clean realm pages borrow globals from, a DOM to write, messages, `load`. A sandboxed one
+/// gets none rather than a same-origin realm.
+const FRAMES: &str = r#"<!doctype html><pre id=out>waiting</pre><script>
+const r = [];
+const f = document.createElement('iframe');
+f.onload = () => r.push('load');
+document.body.appendChild(f);
+const w = f.contentWindow;
+r.push(!!w, w.Promise !== Promise, typeof w.Promise.prototype.finally, w.location.href, w.parent === window, f.contentDocument === w.document);
+w.document.body.innerHTML = '<b>inside</b>';
+r.push(w.document.body.textContent);
+const got = [];
+w.addEventListener('message', (e) => got.push(e.data));
+w.postMessage('hi', '*');
+const s = document.createElement('iframe');
+s.setAttribute('sandbox', '');
+document.body.appendChild(s);
+r.push(s.contentWindow === null);
+setTimeout(() => { r.push(got.join(), window.frames.length); document.getElementById('out').textContent = r.join('|'); }, 50);
+</script>"#;
+
+const FRAMES_WANT: &str = "true|true|function|about:blank|true|true|inside|true|load|hi|1";
+
+#[test]
+fn script_inserted_iframes_get_a_window() {
+    let env = Capture::new(site(vec![html("https://p.test/", FRAMES)]));
+    let s = Session::new(&env);
+    let mut tab = s
+        .open("https://p.test/", LoadOptions::default())
+        .unwrap_or_else(|e| panic!("{e}"));
+    let view = tab.observe_full();
+    assert!(view.contains(FRAMES_WANT), "{view}");
+    let mut sb = Sandbox::new(
+        Replay::new(site(vec![html("https://p.test/", FRAMES)])),
+        SandboxOptions {
+            program: Some(env!("CARGO_BIN_EXE_pageon").into()),
+            ..SandboxOptions::default()
+        },
+    )
+    .unwrap_or_else(|e| panic!("{e}"));
+    let (t, _) = sb
+        .open_tab("https://p.test/", LoadOptions::default())
+        .unwrap_or_else(|e| panic!("{e}"));
+    let view = sb.observe_tab(t, true).unwrap_or_else(|e| panic!("{e}"));
+    assert!(view.contains(FRAMES_WANT), "{view}");
+}
+
+/// Rules that cannot match are left out of a layout, and come back when the document changes:
+/// a class added later applies its rules.
+#[test]
+fn rules_left_out_come_back_when_classes_change() {
+    let page_html = r#"<!doctype html><style>.later .x { display: none } .never-used { color: red }</style>
+<div class=x>Hidden once the body has the class</div><button id=b onclick="document.body.classList.add('later')">Go</button>"#;
+    let env = Capture::new(site(vec![html("https://p.test/", page_html)]));
+    let s = Session::new(&env);
+    let mut tab = s
+        .open("https://p.test/", LoadOptions::default())
+        .unwrap_or_else(|e| panic!("{e}"));
+    let view = tab.observe_full();
+    assert!(view.contains("Hidden once"), "{view}");
+    let button = view
+        .lines()
+        .find(|l| l.contains("\"Go\""))
+        .and_then(|l| l.split_whitespace().nth(1))
+        .unwrap_or("e1")
+        .to_string();
+    tab.act(
+        format!("click {button}")
+            .parse()
+            .unwrap_or_else(|e| panic!("{e}")),
+    )
+    .unwrap_or_else(|e| panic!("{e}"));
+    let view = tab.observe_full();
+    assert!(!view.contains("Hidden once"), "{view}");
+}
