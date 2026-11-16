@@ -34,7 +34,6 @@ const HARMLESS: &[&str] = &[
     "Performance.disable",
     "Log.enable",
     "Log.disable",
-    "WebMCP.enable",
     "Inspector.enable",
     "Page.setFontFamilies",
     "Emulation.setEmulatedMedia",

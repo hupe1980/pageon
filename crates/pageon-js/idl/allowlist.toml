@@ -48,6 +48,10 @@ members = ["constructor", "pointerId", "pointerType", "isPrimary"]
 [FocusEvent]
 members = ["constructor", "relatedTarget"]
 
+# `agentInvoked` and `respondWith`: WebMCP's declarative API.
+[SubmitEvent]
+members = ["constructor", "submitter", "agentInvoked", "respondWith"]
+
 [DOMException]
 members = ["constructor", "name", "message", "code"]
 
@@ -293,6 +297,12 @@ members = ["userAgentData"]
 # WebMCP: the page registers tools; the agent side lives in the engine.
 [ModelContext]
 members = ["registerTool"]
+
+[ToolActivatedEvent]
+members = ["constructor", "toolName"]
+
+[ToolCancelEvent]
+members = ["constructor", "toolName"]
 
 [NavigatorUAData]
 members = ["brands", "mobile", "platform", "getHighEntropyValues", "toJSON"]

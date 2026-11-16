@@ -695,7 +695,7 @@ pub(crate) fn submit_form(
     if validate && !crate::dom::validation::interactive(cx, form)? {
         return Ok(());
     }
-    if event && !fire(cx, Target::Node(form), "submit", true, true)? {
+    if event && !crate::dom::submit_event::fire(cx, form, submitter)? {
         return Ok(());
     }
     let pick = |cx: &Cx<'_, '_, '_>, sub: &str, own: &str| {
@@ -1112,29 +1112,31 @@ pub fn fill_secret(cx: &mut Cx<'_, '_, '_>, el: NodeId, value: &str) -> R<()> {
     Ok(())
 }
 
+/// A form's default button: its first submit button in tree order.
+pub(crate) fn default_button(cx: &Cx<'_, '_, '_>, form: NodeId) -> Option<NodeId> {
+    let dom = cx.dom();
+    dom.traverse(form).find_map(|e| match e {
+        Edge::Enter(n) => {
+            let x = dom.get(n)?;
+            let submit = (x.is_html("button")
+                && x.attr("type")
+                    .is_none_or(|t| t.eq_ignore_ascii_case("submit")))
+                || (x.is_html("input")
+                    && x.attr("type").is_some_and(|t| {
+                        t.eq_ignore_ascii_case("submit") || t.eq_ignore_ascii_case("image")
+                    }));
+            submit.then_some(n)
+        }
+        Edge::Leave(_) => None,
+    })
+}
+
 /// Implicit submission (Enter in a field): the form's default button, else the form.
 fn implicit_submit(cx: &mut Cx<'_, '_, '_>, el: NodeId) -> R<()> {
     let Some(form) = form_of(cx, el) else {
         return Ok(());
     };
-    let default = {
-        let dom = cx.dom();
-        dom.traverse(form).find_map(|e| match e {
-            Edge::Enter(n) => {
-                let x = dom.get(n)?;
-                let submit = (x.is_html("button")
-                    && x.attr("type")
-                        .is_none_or(|t| t.eq_ignore_ascii_case("submit")))
-                    || (x.is_html("input")
-                        && x.attr("type").is_some_and(|t| {
-                            t.eq_ignore_ascii_case("submit") || t.eq_ignore_ascii_case("image")
-                        }));
-                submit.then_some(n)
-            }
-            Edge::Leave(_) => None,
-        })
-    };
-    match default {
+    match default_button(cx, form) {
         Some(b) if attr(cx, b, "disabled").is_some() => Ok(()),
         Some(b) => crate::dom::event_target::click_with(cx, b, true, center(cx, b)),
         None => submit_form(cx, form, None, true),

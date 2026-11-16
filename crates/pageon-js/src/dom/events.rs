@@ -8,7 +8,7 @@ use pageon_dom::NodeId;
 use crate::cv::{Cx, Error, Obj, OrBool, R, Value};
 use crate::generated::{
     AddEventListenerOptions, CustomEventInit, EventInit, EventListenerOptions, FocusEventInit,
-    Iface, KeyboardEventInit, MouseEventInit, UIEventInit, WheelEventInit,
+    Iface, KeyboardEventInit, MouseEventInit, SubmitEventInit, UIEventInit, WheelEventInit,
 };
 use crate::realm::{EventData, InputData, Listener, Slot, Target};
 
@@ -36,7 +36,7 @@ fn target_obj(t: Target) -> Obj {
     }
 }
 
-fn now(cx: &Cx<'_, '_, '_>) -> f64 {
+pub(crate) fn now(cx: &Cx<'_, '_, '_>) -> f64 {
     let sh = cx.realm.shared.borrow();
     sh.now - sh.origin
 }
@@ -986,6 +986,75 @@ pub mod keyboard_event {
             "Meta" => e.input.mods.3,
             _ => false,
         })
+    }
+}
+
+/// `SubmitEvent`, with WebMCP's `agentInvoked` and `respondWith`.
+pub mod submit_event {
+    use super::*;
+
+    pub fn constructor(cx: &mut Cx<'_, '_, '_>, ty: String, init: SubmitEventInit) -> R<Obj> {
+        let mut data = base(
+            cx,
+            ty,
+            &EventInit {
+                bubbles: init.bubbles,
+                cancelable: init.cancelable,
+                composed: init.composed,
+            },
+        );
+        data.submitter = init.submitter.and_then(|o| o.node().ok());
+        Ok(cx.alloc(Iface::SubmitEvent, Slot::Event(Box::new(data))))
+    }
+
+    pub fn get_submitter(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<Option<Obj>> {
+        Ok(ev(cx, this, |e| e.submitter)?.map(Obj::Node))
+    }
+
+    pub fn get_agent_invoked(cx: &mut Cx<'_, '_, '_>, this: Obj) -> R<bool> {
+        ev(cx, this, |e| e.agent)
+    }
+
+    /// Answers the agent's call with `response` (a promise or a value) instead of
+    /// navigating: only for an agent's submission the page has already canceled.
+    pub fn respond_with(cx: &mut Cx<'_, '_, '_>, this: Obj, response: Value) -> R<()> {
+        let (agent, canceled) = ev(cx, this, |e| (e.agent, e.canceled))?;
+        if !agent {
+            return Err(Error::Dom(
+                "InvalidStateError",
+                "respondWith() is only for a submission an agent invoked".into(),
+            ));
+        }
+        if !canceled {
+            return Err(Error::Dom(
+                "InvalidStateError",
+                "call preventDefault() before respondWith()".into(),
+            ));
+        }
+        cx.st().agent_response = Some(response);
+        Ok(())
+    }
+
+    /// Fires `submit` at a form as a `SubmitEvent`; returns `false` if it was canceled.
+    pub(crate) fn fire(
+        cx: &mut Cx<'_, '_, '_>,
+        form: NodeId,
+        submitter: Option<NodeId>,
+    ) -> R<bool> {
+        let agent = cx.st().agent_submit;
+        let data = EventData {
+            ty: "submit".into(),
+            bubbles: true,
+            cancelable: true,
+            initialized: true,
+            trusted: true,
+            time: now(cx),
+            submitter,
+            agent,
+            ..EventData::default()
+        };
+        let e = cx.alloc(Iface::SubmitEvent, Slot::Event(Box::new(data)));
+        super::event_target::dispatch(cx, Target::Node(form), e)
     }
 }
 

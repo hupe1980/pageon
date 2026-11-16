@@ -398,7 +398,7 @@ impl<E: Env> Session<'_, E> {
             .ok_or_else(|| CdpError::server("No node with given id found"))
     }
 
-    fn backend_id(&mut self, ti: usize, frame: usize, n: NodeId) -> u64 {
+    pub(super) fn backend_id(&mut self, ti: usize, frame: usize, n: NodeId) -> u64 {
         if let Some(&b) = self.targets[ti].nodes.get(&(frame, n)) {
             return b;
         }

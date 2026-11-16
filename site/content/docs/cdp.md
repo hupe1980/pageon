@@ -75,6 +75,9 @@ Init scripts run as in Chrome: `Page.addScriptToEvaluateOnNewDocument` (Puppetee
 frames included, before the page's own scripts; with `worldName` it runs in that isolated world
 instead. Scripts last as long as the page and are never recorded or replayed.
 
+Page tools (WebMCP) are listed and run through Chrome's `WebMCP` domain (Puppeteer's
+`page.webmcp`); see [WebMCP](@/docs/webmcp.md#for-automation-clients).
+
 Methods pageon lacks fail at once with what to use instead, for example request interception
 (use `--origin` or a recorded session).
 

@@ -1,0 +1,4 @@
+partial interface SubmitEvent {
+  readonly attribute boolean agentInvoked;
+  undefined respondWith(Promise<any> agentResponse);
+};

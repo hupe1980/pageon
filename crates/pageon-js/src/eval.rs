@@ -201,11 +201,67 @@ impl Engine {
         self.finish(out)
     }
 
-    /// The tools a realm's page registered (WebMCP), with their provenance.
+    /// The tools a realm's page offers (WebMCP): registered ones, then its tool forms, with
+    /// their provenance.
     pub fn tools(&self, realm: usize) -> Vec<crate::ToolInfo> {
         self.realm(realm)
-            .map(|r| r.st.borrow().tools.iter().map(|t| t.info.clone()).collect())
+            .map(|r| {
+                let mut v: Vec<crate::ToolInfo> =
+                    r.st.borrow().tools.iter().map(|t| t.info.clone()).collect();
+                v.extend(crate::dom::webmcp::declared(r));
+                v
+            })
             .unwrap_or_default()
+    }
+
+    /// Submits a form for an agent's tool call (WebMCP's declarative API), as its default
+    /// button would, with `SubmitEvent.agentInvoked` set; validation and the page's `submit`
+    /// listeners run as for a person's submission. Returns what the page answered with
+    /// (`respondWith`), if it did.
+    pub fn agent_submit(&mut self, realm: usize, form: NodeId) -> Option<Handle> {
+        let (_, fired) = self.guarded(|e| {
+            e.with_cx(realm, |cx| {
+                {
+                    let mut st = cx.st();
+                    st.agent_submit = true;
+                    st.agent_response = None;
+                }
+                let submitter = crate::dom::input::default_button(cx, form);
+                let _ = crate::dom::input::submit_form(cx, form, submitter, true);
+                cx.st().agent_submit = false;
+            })
+        });
+        self.terminated(fired, "a form tool");
+        let answer = self.realm(realm)?.st.borrow_mut().agent_response.take()?;
+        Some(self.keep_handle(answer))
+    }
+
+    /// Whether a checkbox or radio button is checked.
+    pub fn checked(&mut self, realm: usize, node: NodeId) -> bool {
+        self.with_cx(realm, |cx| {
+            crate::dom::html_input_element::checked(cx, node)
+        })
+        .unwrap_or(false)
+    }
+
+    /// The default (submit) button of a form, if it has one.
+    pub fn default_button(&mut self, realm: usize, form: NodeId) -> Option<NodeId> {
+        self.with_cx(realm, |cx| crate::dom::input::default_button(cx, form))
+            .flatten()
+    }
+
+    /// The controls that are a form tool's parameters: (name, node), in tree order.
+    pub fn tool_parameters(&self, realm: usize, form: NodeId) -> Vec<(String, NodeId)> {
+        self.realm(realm)
+            .map(|r| crate::dom::webmcp::parameters(&r.dom.borrow(), form))
+            .unwrap_or_default()
+    }
+
+    /// Fires `toolactivated` (with `toolName`) at `document.modelContext`.
+    pub fn tool_activated(&mut self, realm: usize, name: &str) {
+        let (_, fired) =
+            self.guarded(|e| e.with_cx(realm, |cx| crate::dom::webmcp::activated(cx, name)));
+        self.terminated(fired, "toolactivated");
     }
 
     /// Calls the page's tool `name`: its `execute(input, {signal})`, with `input`

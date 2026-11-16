@@ -274,8 +274,13 @@ impl Gen<'_> {
                 }
                 ("Value".into(), "cv::value(cx, v)".into())
             }
-            // Records, and buffer sources (bytes are read by the implementation).
-            Ty::Other(o) if o.starts_with("RecordType") || o.starts_with("BufferSource") => {
+            // Records, buffer sources (bytes are read by the implementation), and promises
+            // (Web IDL resolves any value into one; the implementation does).
+            Ty::Other(o)
+                if o.starts_with("RecordType")
+                    || o.starts_with("BufferSource")
+                    || o.starts_with("Promise") =>
+            {
                 ("Value".into(), "cv::value(cx, v)".into())
             }
             other => {

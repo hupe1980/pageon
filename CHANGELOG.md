@@ -6,6 +6,14 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- WebMCP form tools (the declarative API): `<form toolname tooldescription toolautosubmit>`
+  is listed and called like a registered tool, with `SubmitEvent.agentInvoked` and
+  `respondWith`; autosubmitting calls are labelled consequential.
+- Chrome's `WebMCP` DevTools domain: Puppeteer's `page.webmcp` lists and runs page tools.
+- `SubmitEvent` with `submitter`.
+
 ## [0.3.0] - 2026-11-16
 
 ### Added

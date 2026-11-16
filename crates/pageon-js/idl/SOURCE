@@ -6,6 +6,8 @@ selection-api, clipboard-apis, input-events, webauthn, credential-management, pe
 notifications, web-animations, scheduling-apis, beacon, screen-orientation. Extracted from the W3C/WHATWG specifications
 by Webref. Licence: the specifications' licences (WHATWG: CC BY 4.0; W3C: W3C Software and
 Document License). Used unmodified, as generator input.
+webmcp-declarative.idl: the `SubmitEvent` partial interface of WebMCP's declarative API
+explainer (https://github.com/webmachinelearning/webmcp, declarative-api-explainer.md), verbatim.
 webmcp.idl: the WebIDL blocks of the WebMCP draft (https://github.com/webmachinelearning/webmcp,
 index.bs at commit 4c7ed44, 2026-11-13), extracted verbatim. Licence: W3C Software and Document
 License. Used unmodified, as generator input.

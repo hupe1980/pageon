@@ -170,6 +170,12 @@ pub struct EventData {
     pub input: InputData,
     /// `relatedTarget`.
     pub related: Option<Target>,
+    /// `SubmitEvent.submitter`.
+    pub submitter: Option<NodeId>,
+    /// `SubmitEvent.agentInvoked`: an agent's tool call submitted the form.
+    pub agent: bool,
+    /// `ToolActivatedEvent.toolName`, `ToolCancelEvent.toolName`.
+    pub tool: String,
     /// The path of the current dispatch (for `composedPath()`).
     pub path: Vec<Target>,
     /// `ProgressEvent`: `lengthComputable`, `loaded`, `total`.
@@ -508,6 +514,13 @@ pub struct State {
     pub canvases: crate::dom::Canvases,
     /// Tools the page registered (WebMCP), with their provenance.
     pub tools: Vec<crate::dom::webmcp::Tool>,
+    /// Form tools (WebMCP's declarative API) seen so far: form, name and the id they were
+    /// given, so a form keeps its tool's id while it keeps its name.
+    pub declared: Vec<(NodeId, String, u64)>,
+    /// An agent's tool call is submitting a form (`SubmitEvent.agentInvoked`).
+    pub agent_submit: bool,
+    /// What the page answered an agent's submission with (`SubmitEvent.respondWith`).
+    pub agent_response: Option<Value>,
     /// The document as a network client (origin, top-level site).
     pub client: pageon_net::Client,
     /// The session's network state (cookies, storage).
@@ -697,6 +710,8 @@ pub struct Shared {
     pub uncaused: bool,
     /// Next timer id.
     pub next_id: u32,
+    /// Next WebMCP tool id (a new one per registration, imperative or declarative).
+    pub tool_seq: u64,
     /// Page errors.
     pub errors: Vec<PageError>,
     /// Console messages (level, text): the latest 1,000.

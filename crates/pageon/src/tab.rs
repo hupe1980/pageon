@@ -2810,6 +2810,7 @@ impl<'s, E: Env> Tab<'s, E> {
                 for (on, mark) in [
                     (t.third_party, "third-party frame"),
                     (t.consequential, "consequential"),
+                    (t.autosubmit, "submits itself"),
                     (t.read_only, "read-only"),
                 ] {
                     if on {
@@ -2860,15 +2861,23 @@ impl<'s, E: Env> Tab<'s, E> {
                 origin.map(|o| format!(" from {o}")).unwrap_or_default()
             )));
         };
+        // A form that submits itself for an agent is a write nobody reviewed: consequential.
+        let consequential = tool.consequential || tool.autosubmit;
         {
             let net = self.session.net().clone();
             let mut n = net.borrow_mut();
             n.labels = vec![format!("tool:{name}")];
-            if tool.consequential {
+            if consequential {
                 n.labels.push("consequential".into());
             }
         }
-        out.consequential = tool.consequential;
+        out.consequential = consequential;
+        if let Some(form) = tool.form {
+            out.tool_origin = Some(tool.origin.clone());
+            let r = self.call_form_tool(frame, &tool, form, input, out);
+            self.session.net().borrow_mut().labels.clear();
+            return r;
+        }
         out.tool_origin = Some(tool.origin.clone());
         let live = self.live(frame)?;
         let errors = self.frame_errors(frame);
@@ -2881,6 +2890,191 @@ impl<'s, E: Env> Tab<'s, E> {
             out.tool_result = Some("null".into());
             return Ok(());
         }
+        self.tool_value(&live, handle, name, out)
+    }
+
+    /// Calls a form tool (WebMCP's declarative API): fills its fields as typing, selecting
+    /// and clicking do, fires `toolactivated`, then submits it if it says `toolautosubmit`.
+    /// The result is the page's `respondWith` answer, the JSON-LD of the page the submission
+    /// loaded, or, for a form the agent must submit itself, its submit button.
+    fn call_form_tool(
+        &mut self,
+        frame: usize,
+        tool: &pageon_js::ToolInfo,
+        form: NodeId,
+        input: &serde_json::Value,
+        out: &mut Outcome,
+    ) -> Result<(), ActionError> {
+        let name = tool.name.as_str();
+        let live = self.live(frame)?;
+        let errors = self.frame_errors(frame);
+        let params = live.engine.borrow().tool_parameters(live.realm, form);
+        let fail = |m: String| ActionError::Tool(format!("{name}: {m}"));
+        for (key, value) in input.as_object().into_iter().flatten() {
+            let Some(&(_, node)) = params.iter().find(|(n, _)| n == key) else {
+                let known: Vec<&str> = params.iter().map(|(n, _)| n.as_str()).collect();
+                return Err(fail(format!(
+                    "no parameter {key:?} (it has {})",
+                    known.join(", ")
+                )));
+            };
+            let (tag, ty) = {
+                let dom = live.dom.borrow();
+                let n = dom.get(node);
+                (
+                    n.and_then(|x| x.local_name().map(str::to_string))
+                        .unwrap_or_default(),
+                    n.and_then(|x| x.attr("type"))
+                        .unwrap_or("text")
+                        .to_ascii_lowercase(),
+                )
+            };
+            let text = |v: &serde_json::Value| match v {
+                serde_json::Value::String(s) => s.clone(),
+                other => other.to_string(),
+            };
+            match (tag.as_str(), ty.as_str()) {
+                ("select", _) => {
+                    let values: Vec<String> = match value {
+                        serde_json::Value::Array(a) => a.iter().map(text).collect(),
+                        v => vec![text(v)],
+                    };
+                    let missing = live.engine.borrow_mut().select(live.realm, node, &values);
+                    if !missing.is_empty() {
+                        return Err(fail(format!("{key}: no option {}", missing.join(", "))));
+                    }
+                }
+                ("input", "checkbox") => {
+                    let want = value
+                        .as_bool()
+                        .ok_or_else(|| fail(format!("{key} takes true or false")))?;
+                    let mut engine = live.engine.borrow_mut();
+                    if engine.checked(live.realm, node) != want {
+                        engine.click(live.realm, node, None);
+                    }
+                }
+                ("input", "radio") => {
+                    let want = text(value);
+                    let radio = {
+                        let dom = live.dom.borrow();
+                        dom.traverse(form).find_map(|e| match e {
+                            pageon_dom::Edge::Enter(r) => dom.get(r).and_then(|x| {
+                                (x.is_html("input")
+                                    && x.attr("type")
+                                        .is_some_and(|t| t.eq_ignore_ascii_case("radio"))
+                                    && x.attr("name") == Some(key.as_str())
+                                    && x.attr("value").unwrap_or("on") == want)
+                                    .then_some(r)
+                            }),
+                            pageon_dom::Edge::Leave(_) => None,
+                        })
+                    };
+                    let r = radio.ok_or_else(|| fail(format!("{key}: no choice {want:?}")))?;
+                    live.engine.borrow_mut().click(live.realm, r, None);
+                }
+                _ => self.enter_value(frame, &live, node, &text(value))?,
+            }
+        }
+        live.engine.borrow_mut().tool_activated(live.realm, name);
+        if !tool.autosubmit {
+            self.after(frame, &live, errors, out)?;
+            let button = live.engine.borrow_mut().default_button(live.realm, form);
+            let submit = button.and_then(|b| {
+                self.episode
+                    .ref_of(&format!("F{frame}"), crate::capture::backend(frame, b))
+            });
+            out.tool_result =
+                Some(serde_json::json!({"filled": true, "submit": submit}).to_string());
+            return Ok(());
+        }
+        let answer = live.engine.borrow_mut().agent_submit(live.realm, form);
+        self.after(frame, &live, errors, out)?;
+        if !out.invalid.is_empty() {
+            return Ok(());
+        }
+        match answer {
+            Some(h) if out.navigated.is_none() => self.tool_value(&live, h, name, out),
+            _ => {
+                out.tool_result = Some(if out.navigated.is_some() {
+                    self.json_ld().unwrap_or_else(|| "null".into())
+                } else {
+                    "null".into()
+                });
+                Ok(())
+            }
+        }
+    }
+
+    /// The page's first `<script type="application/ld+json">`, as compact JSON (the answer of a
+    /// form tool whose submission loaded a page).
+    fn json_ld(&self) -> Option<String> {
+        let dom = self.doc.dom();
+        let script = dom.traverse(dom.root()).find_map(|e| match e {
+            pageon_dom::Edge::Enter(n) => dom
+                .get(n)
+                .filter(|x| {
+                    x.is_html("script")
+                        && x.attr("type")
+                            .is_some_and(|t| t.trim().eq_ignore_ascii_case("application/ld+json"))
+                })
+                .map(|_| n),
+            pageon_dom::Edge::Leave(_) => None,
+        })?;
+        let text: String = dom
+            .children(script)
+            .filter_map(|c| match dom.get(c).map(|x| &x.data) {
+                Some(pageon_dom::NodeData::Text(t)) => Some(t.as_str()),
+                _ => None,
+            })
+            .collect();
+        let v: serde_json::Value = serde_json::from_str(text.trim()).ok()?;
+        let s = v.to_string();
+        const MAX: usize = 32 * 1024;
+        Some(if s.len() > MAX {
+            let mut cut = MAX;
+            while !s.is_char_boundary(cut) {
+                cut -= 1;
+            }
+            format!("{}… (cut at 32 KB)", &s[..cut])
+        } else {
+            s
+        })
+    }
+
+    /// Puts text into a field as the agent's `type` does: a `secret://` handle is filled at
+    /// once with the secret for the field's origin; anything else is typed.
+    fn enter_value(
+        &mut self,
+        frame: usize,
+        live: &Rc<LiveDoc>,
+        node: NodeId,
+        text: &str,
+    ) -> Result<(), ActionError> {
+        match text.strip_prefix("secret://") {
+            Some(name) => {
+                let origin = self.frame_origin(frame);
+                let v = self
+                    .session
+                    .env()
+                    .secret(name, &origin)
+                    .map_err(|e| ActionError::Secret(e.to_string()))?;
+                self.session.keep_secret(v.clone(), text.to_string());
+                live.engine.borrow_mut().fill_secret(live.realm, node, &v);
+            }
+            None => live.engine.borrow_mut().type_text(live.realm, node, text),
+        }
+        Ok(())
+    }
+
+    /// The settled value of a tool's answer as its result (JSON text, page data, cut at
+    /// 32 KB), or why there is none.
+    fn tool_value(
+        &self,
+        live: &Rc<LiveDoc>,
+        handle: pageon_js::Handle,
+        name: &str,
+        out: &mut Outcome,
+    ) -> Result<(), ActionError> {
         let mut engine = live.engine.borrow_mut();
         let value = match engine.promise_state(live.realm, handle) {
             pageon_js::PromiseState::NotPromise => handle,

@@ -178,12 +178,18 @@ pub enum Iface {
     Storage,
     /// `StyleSheet`.
     StyleSheet,
+    /// `SubmitEvent`.
+    SubmitEvent,
     /// `SubtleCrypto`.
     SubtleCrypto,
     /// `TextDecoder`.
     TextDecoder,
     /// `TextEncoder`.
     TextEncoder,
+    /// `ToolActivatedEvent`.
+    ToolActivatedEvent,
+    /// `ToolCancelEvent`.
+    ToolCancelEvent,
     /// `TreeWalker`.
     TreeWalker,
     /// `UIEvent`.
@@ -426,7 +432,7 @@ pub enum Iface {
 
 impl Iface {
     /// All interfaces.
-    pub const ALL: &'static [Iface] = &[Iface::AbortController, Iface::AbstractRange, Iface::AuthenticatorResponse, Iface::Blob, Iface::CSS, Iface::CSSStyleDeclaration, Iface::CSSStyleProperties, Iface::CanvasRenderingContext2D, Iface::CaretPosition, Iface::Credential, Iface::CredentialsContainer, Iface::Crypto, Iface::CryptoKey, Iface::CustomElementRegistry, Iface::CustomStateSet, Iface::DOMException, Iface::DOMImplementation, Iface::DOMParser, Iface::DOMRectList, Iface::DOMRectReadOnly, Iface::DOMStringMap, Iface::DOMTokenList, Iface::DataTransfer, Iface::DataTransferItem, Iface::DataTransferItemList, Iface::ElementInternals, Iface::Event, Iface::EventTarget, Iface::File, Iface::FileList, Iface::FileReader, Iface::FormData, Iface::HTMLCollection, Iface::HTMLFormControlsCollection, Iface::HTMLOptionsCollection, Iface::Headers, Iface::History, Iface::IdleDeadline, Iface::IntersectionObserver, Iface::IntersectionObserverEntry, Iface::Location, Iface::MediaQueryList, Iface::MediaQueryListEvent, Iface::MessageChannel, Iface::MessageEvent, Iface::MessagePort, Iface::MimeType, Iface::MimeTypeArray, Iface::ModelContext, Iface::MutationObserver, Iface::MutationRecord, Iface::NamedNodeMap, Iface::Navigator, Iface::NavigatorUAData, Iface::Node, Iface::NodeFilter, Iface::NodeIterator, Iface::NodeList, Iface::Notification, Iface::Performance, Iface::PerformanceEntry, Iface::PerformanceMark, Iface::PerformanceMeasure, Iface::PerformanceObserver, Iface::PerformanceObserverEntryList, Iface::PermissionStatus, Iface::Permissions, Iface::Plugin, Iface::PluginArray, Iface::PopStateEvent, Iface::ProgressEvent, Iface::PublicKeyCredential, Iface::Range, Iface::Request, Iface::ResizeObserver, Iface::ResizeObserverEntry, Iface::ResizeObserverSize, Iface::Response, Iface::Screen, Iface::ScreenOrientation, Iface::Selection, Iface::StaticRange, Iface::Storage, Iface::StyleSheet, Iface::SubtleCrypto, Iface::TextDecoder, Iface::TextEncoder, Iface::TreeWalker, Iface::UIEvent, Iface::URL, Iface::URLSearchParams, Iface::UserActivation, Iface::ValidityState, Iface::VisualViewport, Iface::WebSocket, Iface::Window, Iface::Worker, Iface::WorkerGlobalScope, Iface::WorkerLocation, Iface::WorkerNavigator, Iface::XMLHttpRequestEventTarget, Iface::XMLSerializer, Iface::console, Iface::AbortSignal, Iface::Attr, Iface::AuthenticatorAssertionResponse, Iface::AuthenticatorAttestationResponse, Iface::CSSStyleSheet, Iface::CharacterData, Iface::Clipboard, Iface::ClipboardEvent, Iface::CloseEvent, Iface::Comment, Iface::CustomEvent, Iface::DOMRect, Iface::DedicatedWorkerGlobalScope, Iface::Document, Iface::DocumentFragment, Iface::DocumentType, Iface::Element, Iface::ErrorEvent, Iface::EventSource, Iface::FocusEvent, Iface::HTMLElement, Iface::HTMLEmbedElement, Iface::HTMLFieldSetElement, Iface::HTMLFontElement, Iface::HTMLFormElement, Iface::HTMLFrameElement, Iface::HTMLFrameSetElement, Iface::HTMLHRElement, Iface::HTMLHeadElement, Iface::HTMLHeadingElement, Iface::HTMLHtmlElement, Iface::HTMLIFrameElement, Iface::HTMLImageElement, Iface::HTMLInputElement, Iface::HTMLLIElement, Iface::HTMLLabelElement, Iface::HTMLLegendElement, Iface::HTMLLinkElement, Iface::HTMLMapElement, Iface::HTMLMarqueeElement, Iface::HTMLMediaElement, Iface::HTMLMenuElement, Iface::HTMLMetaElement, Iface::HTMLMeterElement, Iface::HTMLModElement, Iface::HTMLOListElement, Iface::HTMLObjectElement, Iface::HTMLOptGroupElement, Iface::HTMLOptionElement, Iface::HTMLOutputElement, Iface::HTMLParagraphElement, Iface::HTMLParamElement, Iface::HTMLPictureElement, Iface::HTMLPreElement, Iface::HTMLProgressElement, Iface::HTMLQuoteElement, Iface::HTMLScriptElement, Iface::HTMLSelectElement, Iface::HTMLSelectedContentElement, Iface::HTMLSlotElement, Iface::HTMLSourceElement, Iface::HTMLSpanElement, Iface::HTMLStyleElement, Iface::HTMLTableCaptionElement, Iface::HTMLTableCellElement, Iface::HTMLTableColElement, Iface::HTMLTableElement, Iface::HTMLTableRowElement, Iface::HTMLTableSectionElement, Iface::HTMLTemplateElement, Iface::HTMLTextAreaElement, Iface::HTMLTimeElement, Iface::HTMLTitleElement, Iface::HTMLTrackElement, Iface::HTMLUListElement, Iface::HTMLUnknownElement, Iface::HTMLVideoElement, Iface::InputEvent, Iface::KeyboardEvent, Iface::MouseEvent, Iface::PointerEvent, Iface::SVGElement, Iface::SVGGraphicsElement, Iface::ShadowRoot, Iface::Text, Iface::WheelEvent, Iface::XMLHttpRequest, Iface::DragEvent, Iface::HTMLAnchorElement, Iface::HTMLAreaElement, Iface::HTMLAudioElement, Iface::HTMLBRElement, Iface::HTMLBaseElement, Iface::HTMLBodyElement, Iface::HTMLButtonElement, Iface::HTMLCanvasElement, Iface::HTMLDListElement, Iface::HTMLDataElement, Iface::HTMLDataListElement, Iface::HTMLDetailsElement, Iface::HTMLDialogElement, Iface::HTMLDirectoryElement, Iface::HTMLDivElement];
+    pub const ALL: &'static [Iface] = &[Iface::AbortController, Iface::AbstractRange, Iface::AuthenticatorResponse, Iface::Blob, Iface::CSS, Iface::CSSStyleDeclaration, Iface::CSSStyleProperties, Iface::CanvasRenderingContext2D, Iface::CaretPosition, Iface::Credential, Iface::CredentialsContainer, Iface::Crypto, Iface::CryptoKey, Iface::CustomElementRegistry, Iface::CustomStateSet, Iface::DOMException, Iface::DOMImplementation, Iface::DOMParser, Iface::DOMRectList, Iface::DOMRectReadOnly, Iface::DOMStringMap, Iface::DOMTokenList, Iface::DataTransfer, Iface::DataTransferItem, Iface::DataTransferItemList, Iface::ElementInternals, Iface::Event, Iface::EventTarget, Iface::File, Iface::FileList, Iface::FileReader, Iface::FormData, Iface::HTMLCollection, Iface::HTMLFormControlsCollection, Iface::HTMLOptionsCollection, Iface::Headers, Iface::History, Iface::IdleDeadline, Iface::IntersectionObserver, Iface::IntersectionObserverEntry, Iface::Location, Iface::MediaQueryList, Iface::MediaQueryListEvent, Iface::MessageChannel, Iface::MessageEvent, Iface::MessagePort, Iface::MimeType, Iface::MimeTypeArray, Iface::ModelContext, Iface::MutationObserver, Iface::MutationRecord, Iface::NamedNodeMap, Iface::Navigator, Iface::NavigatorUAData, Iface::Node, Iface::NodeFilter, Iface::NodeIterator, Iface::NodeList, Iface::Notification, Iface::Performance, Iface::PerformanceEntry, Iface::PerformanceMark, Iface::PerformanceMeasure, Iface::PerformanceObserver, Iface::PerformanceObserverEntryList, Iface::PermissionStatus, Iface::Permissions, Iface::Plugin, Iface::PluginArray, Iface::PopStateEvent, Iface::ProgressEvent, Iface::PublicKeyCredential, Iface::Range, Iface::Request, Iface::ResizeObserver, Iface::ResizeObserverEntry, Iface::ResizeObserverSize, Iface::Response, Iface::Screen, Iface::ScreenOrientation, Iface::Selection, Iface::StaticRange, Iface::Storage, Iface::StyleSheet, Iface::SubmitEvent, Iface::SubtleCrypto, Iface::TextDecoder, Iface::TextEncoder, Iface::ToolActivatedEvent, Iface::ToolCancelEvent, Iface::TreeWalker, Iface::UIEvent, Iface::URL, Iface::URLSearchParams, Iface::UserActivation, Iface::ValidityState, Iface::VisualViewport, Iface::WebSocket, Iface::Window, Iface::Worker, Iface::WorkerGlobalScope, Iface::WorkerLocation, Iface::WorkerNavigator, Iface::XMLHttpRequestEventTarget, Iface::XMLSerializer, Iface::console, Iface::AbortSignal, Iface::Attr, Iface::AuthenticatorAssertionResponse, Iface::AuthenticatorAttestationResponse, Iface::CSSStyleSheet, Iface::CharacterData, Iface::Clipboard, Iface::ClipboardEvent, Iface::CloseEvent, Iface::Comment, Iface::CustomEvent, Iface::DOMRect, Iface::DedicatedWorkerGlobalScope, Iface::Document, Iface::DocumentFragment, Iface::DocumentType, Iface::Element, Iface::ErrorEvent, Iface::EventSource, Iface::FocusEvent, Iface::HTMLElement, Iface::HTMLEmbedElement, Iface::HTMLFieldSetElement, Iface::HTMLFontElement, Iface::HTMLFormElement, Iface::HTMLFrameElement, Iface::HTMLFrameSetElement, Iface::HTMLHRElement, Iface::HTMLHeadElement, Iface::HTMLHeadingElement, Iface::HTMLHtmlElement, Iface::HTMLIFrameElement, Iface::HTMLImageElement, Iface::HTMLInputElement, Iface::HTMLLIElement, Iface::HTMLLabelElement, Iface::HTMLLegendElement, Iface::HTMLLinkElement, Iface::HTMLMapElement, Iface::HTMLMarqueeElement, Iface::HTMLMediaElement, Iface::HTMLMenuElement, Iface::HTMLMetaElement, Iface::HTMLMeterElement, Iface::HTMLModElement, Iface::HTMLOListElement, Iface::HTMLObjectElement, Iface::HTMLOptGroupElement, Iface::HTMLOptionElement, Iface::HTMLOutputElement, Iface::HTMLParagraphElement, Iface::HTMLParamElement, Iface::HTMLPictureElement, Iface::HTMLPreElement, Iface::HTMLProgressElement, Iface::HTMLQuoteElement, Iface::HTMLScriptElement, Iface::HTMLSelectElement, Iface::HTMLSelectedContentElement, Iface::HTMLSlotElement, Iface::HTMLSourceElement, Iface::HTMLSpanElement, Iface::HTMLStyleElement, Iface::HTMLTableCaptionElement, Iface::HTMLTableCellElement, Iface::HTMLTableColElement, Iface::HTMLTableElement, Iface::HTMLTableRowElement, Iface::HTMLTableSectionElement, Iface::HTMLTemplateElement, Iface::HTMLTextAreaElement, Iface::HTMLTimeElement, Iface::HTMLTitleElement, Iface::HTMLTrackElement, Iface::HTMLUListElement, Iface::HTMLUnknownElement, Iface::HTMLVideoElement, Iface::InputEvent, Iface::KeyboardEvent, Iface::MouseEvent, Iface::PointerEvent, Iface::SVGElement, Iface::SVGGraphicsElement, Iface::ShadowRoot, Iface::Text, Iface::WheelEvent, Iface::XMLHttpRequest, Iface::DragEvent, Iface::HTMLAnchorElement, Iface::HTMLAreaElement, Iface::HTMLAudioElement, Iface::HTMLBRElement, Iface::HTMLBaseElement, Iface::HTMLBodyElement, Iface::HTMLButtonElement, Iface::HTMLCanvasElement, Iface::HTMLDListElement, Iface::HTMLDataElement, Iface::HTMLDataListElement, Iface::HTMLDetailsElement, Iface::HTMLDialogElement, Iface::HTMLDirectoryElement, Iface::HTMLDivElement];
 
     /// The interface name.
     pub fn name(self) -> &'static str {
@@ -515,9 +521,12 @@ impl Iface {
             Iface::StaticRange => "StaticRange",
             Iface::Storage => "Storage",
             Iface::StyleSheet => "StyleSheet",
+            Iface::SubmitEvent => "SubmitEvent",
             Iface::SubtleCrypto => "SubtleCrypto",
             Iface::TextDecoder => "TextDecoder",
             Iface::TextEncoder => "TextEncoder",
+            Iface::ToolActivatedEvent => "ToolActivatedEvent",
+            Iface::ToolCancelEvent => "ToolCancelEvent",
             Iface::TreeWalker => "TreeWalker",
             Iface::UIEvent => "UIEvent",
             Iface::URL => "URL",
@@ -727,9 +736,12 @@ impl Iface {
             Iface::StaticRange => Some(Iface::AbstractRange),
             Iface::Storage => None,
             Iface::StyleSheet => None,
+            Iface::SubmitEvent => Some(Iface::Event),
             Iface::SubtleCrypto => None,
             Iface::TextDecoder => None,
             Iface::TextEncoder => None,
+            Iface::ToolActivatedEvent => Some(Iface::Event),
+            Iface::ToolCancelEvent => Some(Iface::Event),
             Iface::TreeWalker => None,
             Iface::UIEvent => Some(Iface::Event),
             Iface::URL => None,
@@ -7326,6 +7338,47 @@ fn op__Storage__clear(scope: &mut v8::PinScope, args: v8::FunctionCallbackArgume
 }
 
 #[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__SubmitEvent__submitter(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SubmitEvent)?;
+        let r: Option<Obj> = crate::dom::submit_event::get_submitter(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__SubmitEvent__agentInvoked(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SubmitEvent)?;
+        let r: bool = crate::dom::submit_event::get_agent_invoked(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn op__SubmitEvent__respondWith(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::SubmitEvent)?;
+        if args.length() <= 0 { return Err(cv::Error::args("SubmitEvent.respondWith", 0)); }
+        let a0: Value = { let v = args.get(0); cv::value(cx, v) };
+        let r: () = crate::dom::submit_event::respond_with(cx, this, a0)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn ctor__SubmitEvent(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        if args.new_target().is_undefined() { return Err(cv::Error::Type("Failed to construct 'SubmitEvent': Please use the 'new' operator.".into())); }
+        if args.length() <= 0 { return Err(cv::Error::args("SubmitEvent constructor", 0)); }
+        let a0: String = { let v = args.get(0); cv::string(cx, v)? };
+        let a1: SubmitEventInit = { let v = args.get(1); if v.is_undefined() { SubmitEventInit::default() } else { dict_submit_event_init(cx, v)? } };
+        let r: Obj = crate::dom::submit_event::constructor(cx, a0, a1)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
 fn op__SubtleCrypto__encrypt(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
     cv::call(scope, &args, &mut rv, |cx, args| {
         let this = cx.this(args, Iface::SubtleCrypto)?;
@@ -7533,6 +7586,48 @@ fn ctor__TextEncoder(scope: &mut v8::PinScope, args: v8::FunctionCallbackArgumen
     cv::call(scope, &args, &mut rv, |cx, args| {
         if args.new_target().is_undefined() { return Err(cv::Error::Type("Failed to construct 'TextEncoder': Please use the 'new' operator.".into())); }
         let r: Obj = crate::dom::text_encoder::constructor(cx, )?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ToolActivatedEvent__toolName(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ToolActivatedEvent)?;
+        let r: String = crate::dom::tool_activated_event::get_tool_name(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn ctor__ToolActivatedEvent(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        if args.new_target().is_undefined() { return Err(cv::Error::Type("Failed to construct 'ToolActivatedEvent': Please use the 'new' operator.".into())); }
+        if args.length() <= 0 { return Err(cv::Error::args("ToolActivatedEvent constructor", 0)); }
+        let a0: String = { let v = args.get(0); cv::string(cx, v)? };
+        let a1: ToolActivatedEventInit = { let v = args.get(1); if v.is_undefined() { ToolActivatedEventInit::default() } else { dict_tool_activated_event_init(cx, v)? } };
+        let r: Obj = crate::dom::tool_activated_event::constructor(cx, a0, a1)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn get__ToolCancelEvent__toolName(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        let this = cx.this(args, Iface::ToolCancelEvent)?;
+        let r: String = crate::dom::tool_cancel_event::get_tool_name(cx, this)?;
+        cx.ret(r)
+    });
+}
+
+#[allow(non_snake_case, unused_variables, clippy::let_unit_value, clippy::unit_arg)]
+fn ctor__ToolCancelEvent(scope: &mut v8::PinScope, args: v8::FunctionCallbackArguments, mut rv: v8::ReturnValue) {
+    cv::call(scope, &args, &mut rv, |cx, args| {
+        if args.new_target().is_undefined() { return Err(cv::Error::Type("Failed to construct 'ToolCancelEvent': Please use the 'new' operator.".into())); }
+        if args.length() <= 0 { return Err(cv::Error::args("ToolCancelEvent constructor", 0)); }
+        let a0: String = { let v = args.get(0); cv::string(cx, v)? };
+        let a1: ToolCancelEventInit = { let v = args.get(1); if v.is_undefined() { ToolCancelEventInit::default() } else { dict_tool_cancel_event_init(cx, v)? } };
+        let r: Obj = crate::dom::tool_cancel_event::constructor(cx, a0, a1)?;
         cx.ret(r)
     });
 }
@@ -31249,6 +31344,43 @@ fn dict_structured_serialize_options(cx: &mut Cx<'_, '_, '_>, v: v8::Local<'_, v
     Ok(d)
 }
 
+/// The `SubmitEventInit` dictionary.
+#[derive(Debug, Clone)]
+#[allow(missing_docs)]
+pub struct SubmitEventInit {
+    /// `bubbles`.
+    pub bubbles: bool,
+    /// `cancelable`.
+    pub cancelable: bool,
+    /// `composed`.
+    pub composed: bool,
+    /// `submitter`.
+    pub submitter: Option<Obj>,
+}
+
+impl Default for SubmitEventInit {
+    fn default() -> Self {
+        Self {
+            bubbles: false,
+            cancelable: false,
+            composed: false,
+            submitter: None,
+        }
+    }
+}
+
+#[allow(unused_variables, unused_mut, clippy::all)]
+fn dict_submit_event_init(cx: &mut Cx<'_, '_, '_>, v: v8::Local<'_, v8::Value>) -> R<SubmitEventInit> {
+    let mut d = SubmitEventInit::default();
+    if v.is_null_or_undefined() { return Ok(d); }
+    let obj = cv::object(cx, v, "SubmitEventInit")?;
+    { let v = cv::get(cx, obj, "bubbles")?; if !v.is_undefined() { d.bubbles = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "cancelable")?; if !v.is_undefined() { d.cancelable = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "composed")?; if !v.is_undefined() { d.composed = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "submitter")?; if !v.is_undefined() { d.submitter = if v.is_null_or_undefined() { None } else { Some(cv::obj(cx, v, Iface::HTMLElement)?) }; } }
+    Ok(d)
+}
+
 /// The `TextDecodeOptions` dictionary.
 #[derive(Debug, Clone)]
 #[allow(missing_docs)]
@@ -31303,6 +31435,43 @@ fn dict_text_decoder_options(cx: &mut Cx<'_, '_, '_>, v: v8::Local<'_, v8::Value
     Ok(d)
 }
 
+/// The `ToolActivatedEventInit` dictionary.
+#[derive(Debug, Clone)]
+#[allow(missing_docs)]
+pub struct ToolActivatedEventInit {
+    /// `bubbles`.
+    pub bubbles: bool,
+    /// `cancelable`.
+    pub cancelable: bool,
+    /// `composed`.
+    pub composed: bool,
+    /// `toolName`.
+    pub tool_name: String,
+}
+
+impl Default for ToolActivatedEventInit {
+    fn default() -> Self {
+        Self {
+            bubbles: false,
+            cancelable: false,
+            composed: false,
+            tool_name: "".to_string(),
+        }
+    }
+}
+
+#[allow(unused_variables, unused_mut, clippy::all)]
+fn dict_tool_activated_event_init(cx: &mut Cx<'_, '_, '_>, v: v8::Local<'_, v8::Value>) -> R<ToolActivatedEventInit> {
+    let mut d = ToolActivatedEventInit::default();
+    if v.is_null_or_undefined() { return Ok(d); }
+    let obj = cv::object(cx, v, "ToolActivatedEventInit")?;
+    { let v = cv::get(cx, obj, "bubbles")?; if !v.is_undefined() { d.bubbles = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "cancelable")?; if !v.is_undefined() { d.cancelable = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "composed")?; if !v.is_undefined() { d.composed = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "toolName")?; if !v.is_undefined() { d.tool_name = cv::string(cx, v)?; } }
+    Ok(d)
+}
+
 /// The `ToolAnnotations` dictionary.
 #[derive(Debug, Clone)]
 #[allow(missing_docs)]
@@ -31337,6 +31506,43 @@ fn dict_tool_annotations(cx: &mut Cx<'_, '_, '_>, v: v8::Local<'_, v8::Value>) -
     { let v = cv::get(cx, obj, "debugging")?; if !v.is_undefined() { d.debugging = cv::boolean(cx, v); } }
     { let v = cv::get(cx, obj, "readOnlyHint")?; if !v.is_undefined() { d.read_only_hint = cv::boolean(cx, v); } }
     { let v = cv::get(cx, obj, "untrustedContentHint")?; if !v.is_undefined() { d.untrusted_content_hint = cv::boolean(cx, v); } }
+    Ok(d)
+}
+
+/// The `ToolCancelEventInit` dictionary.
+#[derive(Debug, Clone)]
+#[allow(missing_docs)]
+pub struct ToolCancelEventInit {
+    /// `bubbles`.
+    pub bubbles: bool,
+    /// `cancelable`.
+    pub cancelable: bool,
+    /// `composed`.
+    pub composed: bool,
+    /// `toolName`.
+    pub tool_name: String,
+}
+
+impl Default for ToolCancelEventInit {
+    fn default() -> Self {
+        Self {
+            bubbles: false,
+            cancelable: false,
+            composed: false,
+            tool_name: "".to_string(),
+        }
+    }
+}
+
+#[allow(unused_variables, unused_mut, clippy::all)]
+fn dict_tool_cancel_event_init(cx: &mut Cx<'_, '_, '_>, v: v8::Local<'_, v8::Value>) -> R<ToolCancelEventInit> {
+    let mut d = ToolCancelEventInit::default();
+    if v.is_null_or_undefined() { return Ok(d); }
+    let obj = cv::object(cx, v, "ToolCancelEventInit")?;
+    { let v = cv::get(cx, obj, "bubbles")?; if !v.is_undefined() { d.bubbles = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "cancelable")?; if !v.is_undefined() { d.cancelable = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "composed")?; if !v.is_undefined() { d.composed = cv::boolean(cx, v); } }
+    { let v = cv::get(cx, obj, "toolName")?; if !v.is_undefined() { d.tool_name = cv::string(cx, v)?; } }
     Ok(d)
 }
 
@@ -32919,6 +33125,18 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         crate::dom::hooks::template(scope, Iface::StyleSheet, f);
         out.push(v8::Global::new(scope, f));
     }
+    { // SubmitEvent
+        let f = cv::interface(scope, "SubmitEvent", ctor__SubmitEvent);
+        f.inherit(v8::Local::new(scope, &out[Iface::Event as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "submitter", get__SubmitEvent__submitter, None);
+        cv::accessor(scope, proto, "agentInvoked", get__SubmitEvent__agentInvoked, None);
+        cv::method(scope, proto.into(), "respondWith", op__SubmitEvent__respondWith, 1);
+        crate::dom::hooks::template(scope, Iface::SubmitEvent, f);
+        out.push(v8::Global::new(scope, f));
+    }
     { // SubtleCrypto
         let f = cv::interface(scope, "SubtleCrypto", cv::illegal_constructor);
         let inst = f.instance_template(scope);
@@ -32956,6 +33174,26 @@ pub fn templates(scope: &mut v8::PinScope<'_, '_, ()>) -> Vec<v8::Global<v8::Fun
         cv::method(scope, proto.into(), "encodeInto", op__TextEncoder__encodeInto, 2);
         cv::accessor(scope, proto, "encoding", get__TextEncoder__encoding, None);
         crate::dom::hooks::template(scope, Iface::TextEncoder, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // ToolActivatedEvent
+        let f = cv::interface(scope, "ToolActivatedEvent", ctor__ToolActivatedEvent);
+        f.inherit(v8::Local::new(scope, &out[Iface::Event as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "toolName", get__ToolActivatedEvent__toolName, None);
+        crate::dom::hooks::template(scope, Iface::ToolActivatedEvent, f);
+        out.push(v8::Global::new(scope, f));
+    }
+    { // ToolCancelEvent
+        let f = cv::interface(scope, "ToolCancelEvent", ctor__ToolCancelEvent);
+        f.inherit(v8::Local::new(scope, &out[Iface::Event as usize]));
+        let inst = f.instance_template(scope);
+        inst.set_internal_field_count(cv::FIELDS);
+        let proto = f.prototype_template(scope);
+        cv::accessor(scope, proto, "toolName", get__ToolCancelEvent__toolName, None);
+        crate::dom::hooks::template(scope, Iface::ToolCancelEvent, f);
         out.push(v8::Global::new(scope, f));
     }
     { // TreeWalker
@@ -35527,9 +35765,12 @@ pub fn expose(scope: &mut v8::PinScope<'_, '_>, global: v8::Local<'_, v8::Object
     cv::expose(scope, global, &t[Iface::StaticRange as usize], "StaticRange");
     cv::expose(scope, global, &t[Iface::Storage as usize], "Storage");
     cv::expose(scope, global, &t[Iface::StyleSheet as usize], "StyleSheet");
+    cv::expose(scope, global, &t[Iface::SubmitEvent as usize], "SubmitEvent");
     cv::expose(scope, global, &t[Iface::SubtleCrypto as usize], "SubtleCrypto");
     cv::expose(scope, global, &t[Iface::TextDecoder as usize], "TextDecoder");
     cv::expose(scope, global, &t[Iface::TextEncoder as usize], "TextEncoder");
+    cv::expose(scope, global, &t[Iface::ToolActivatedEvent as usize], "ToolActivatedEvent");
+    cv::expose(scope, global, &t[Iface::ToolCancelEvent as usize], "ToolCancelEvent");
     cv::expose(scope, global, &t[Iface::TreeWalker as usize], "TreeWalker");
     cv::expose(scope, global, &t[Iface::UIEvent as usize], "UIEvent");
     cv::expose(scope, global, &t[Iface::URL as usize], "URL");

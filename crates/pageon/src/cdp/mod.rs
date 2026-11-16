@@ -10,6 +10,7 @@ mod frames;
 pub(crate) mod page;
 mod runtime;
 pub mod server;
+mod webmcp;
 
 use std::collections::HashMap;
 
@@ -100,6 +101,9 @@ struct Target<'s, E: Env> {
     backends: HashMap<u64, (usize, NodeId)>,
     /// Where the mouse button went down, and whether it moved since (a drag).
     pressed: Option<((f64, f64), bool)>,
+    /// `WebMCP.enable`d, and the tools last reported: (id, name, frame).
+    webmcp: bool,
+    tools_seen: Vec<(u64, String, usize)>,
 }
 
 /// A call waiting on a promise.
@@ -167,6 +171,8 @@ pub struct Session<'s, E: Env> {
     next_backend: u64,
     next_request: u64,
     out: Vec<String>,
+    /// Events that follow the reply to the current command (`WebMCP.invokeTool`).
+    after_reply: Vec<String>,
     pending: Vec<Pending>,
     closed: bool,
 }
@@ -195,6 +201,7 @@ impl<'s, E: Env> Session<'s, E> {
             next_backend: 0,
             next_request: 0,
             out: Vec::new(),
+            after_reply: Vec::new(),
             pending: Vec::new(),
             closed: false,
         };
@@ -286,6 +293,7 @@ impl<'s, E: Env> Session<'s, E> {
         if !self.is_deferred(&id, session.as_deref()) {
             self.respond(&id, session.as_deref(), reply);
         }
+        self.out.append(&mut self.after_reply);
         self.drive_pending();
         self.take_out()
     }
@@ -418,6 +426,8 @@ impl<'s, E: Env> Session<'s, E> {
             nodes: HashMap::new(),
             backends: HashMap::new(),
             pressed: None,
+            webmcp: false,
+            tools_seen: Vec::new(),
         });
         let ti = self.targets.len() - 1;
         self.rebuild_frames(ti);
@@ -608,6 +618,7 @@ impl<'s, E: Env> Session<'s, E> {
         let (domain, _) = method.split_once('.').unwrap_or((method, ""));
         match domain {
             "Runtime" | "DOM" => self.runtime_method(ti, id, method, params),
+            "WebMCP" => self.webmcp_method(ti, method, params),
             _ => self.page_domain(ti, method, params),
         }
     }
@@ -722,6 +733,7 @@ impl<'s, E: Env> Session<'s, E> {
                 json!({"name": name, "payload": payload, "executionContextId": ctx}),
             );
         }
+        self.webmcp_sync(ti);
     }
 
     /// The client sent nothing for `elapsed_ms` of real time: each page's clock moves by that

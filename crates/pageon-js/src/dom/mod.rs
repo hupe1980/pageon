@@ -60,7 +60,7 @@ pub use elements::{
 };
 pub use events::{
     custom_event, drag_event, event, event_target, focus_event, keyboard_event, mouse_event,
-    pointer_event, ui_event, wheel_event,
+    pointer_event, submit_event, ui_event, wheel_event,
 };
 pub use globals::{
     animation_frame_provider, console, dom_exception, location, navigator_automation_information,
@@ -118,7 +118,7 @@ pub use timing::{
 };
 pub use urls::{form_data, url, url_search_params};
 pub use validation::{html_field_set_element, html_output_element, validity_state};
-pub use webmcp::model_context;
+pub use webmcp::{model_context, tool_activated_event, tool_cancel_event};
 pub use webstorage::{storage, window_local_storage, window_session_storage};
 pub use workers::{
     dedicated_worker_global_scope, error_event, worker, worker_global_scope, worker_location,
