@@ -9,7 +9,6 @@ from pathlib import Path
 
 import pytest
 from pageon import Browser, ExpectationError
-
 from test_browser import BIN
 
 pytestmark = pytest.mark.skipif(BIN is None, reason="build the binary: cargo build -p pageon")
@@ -33,8 +32,11 @@ class Portal(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:
         if self.path.startswith("/login"):
-            self._send(200, "<form method=post action=/login><label>User <input name=user></label>"
-                       "<label>Password <input type=password name=pw></label><button>Sign in</button></form>")
+            self._send(
+                200,
+                "<form method=post action=/login><label>User <input name=user></label>"
+                "<label>Password <input type=password name=pw></label><button>Sign in</button></form>",
+            )
         elif f"sid=t{Portal.token}" in (self.headers.get("cookie") or ""):
             self._send(200, "<title>Orders</title><h1>Orders</h1>")
         else:
@@ -62,8 +64,9 @@ def portal():
 
 def test_an_expired_sign_in_renews(portal: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("PAGEON_SECRET_SHOP", SECRET)
-    common = dict(binary=BIN, sandbox=False, private_network=True, robots="ignore",
-                  origins=[portal], secrets=[f"shop@{portal}"])
+    common = dict(
+        binary=BIN, sandbox=False, private_network=True, robots="ignore", origins=[portal], secrets=[f"shop@{portal}"]
+    )
     with Browser(**common) as browser:
         tab = browser.open(f"{portal}/login")
         tab.type("e1", "ada")
