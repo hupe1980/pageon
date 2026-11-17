@@ -423,3 +423,28 @@ document.getElementById('out').textContent = [before, width, display, offset, co
         "{view}"
     );
 }
+
+/// A custom element hidden until defined is shown once its definition runs, to the page's
+/// scripts (computed style) and to the agent (the view) alike; a style read does not move the
+/// page's clock, so whether a sheet was parsed before cannot be timed.
+#[test]
+fn defined_custom_elements_show_and_style_reads_take_no_time() {
+    let page_html = r#"<!doctype html><style>x-card:not(:defined){display:none} x-card{display:block}</style>
+<x-card id=c>Card content</x-card><p id=out></p><script>
+const c = document.getElementById('c');
+const before = getComputedStyle(c).display;
+customElements.define('x-card', class extends HTMLElement {});
+const t0 = performance.now();
+const after = getComputedStyle(c).display;
+const t1 = performance.now();
+document.getElementById('out').textContent = [before, after, t1 - t0].join('|');
+</script>"#;
+    let env = Capture::new(site(vec![html("https://p.test/", page_html)]));
+    let s = Session::new(&env);
+    let mut tab = s
+        .open("https://p.test/", LoadOptions::default())
+        .unwrap_or_else(|e| panic!("{e}"));
+    let view = tab.observe_full();
+    assert!(view.contains("none|block|0"), "{view}");
+    assert!(view.contains("Card content"), "{view}");
+}

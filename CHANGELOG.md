@@ -6,6 +6,19 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- Computed styles (`getComputedStyle`, except sizes and shorthands) are computed on pageon's
+  own document and kept up to date from its changes: after a few class changes on GitHub's home
+  page, 20× less work than restyling through the layout engine. Large stylesheets are parsed
+  once per process.
+
+### Fixed
+
+- Custom elements hidden until defined (`x-el:not(:defined)`) stayed hidden after their
+  definition ran; `:open`, `:modal`, `:placeholder-shown`, `:read-write` and `:read-only` now
+  match in layout and computed styles.
+
 ## [0.5.0] - 2026-11-17
 
 ### Added

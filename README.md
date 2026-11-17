@@ -207,7 +207,8 @@ faked, so pages and clients can detect them.
 | [`pageon`](crates/pageon) | The engine, the CLI, the sandbox and policy, the MCP, CDP and BiDi servers |
 | [`pageon-agent`](crates/pageon-agent) | The agent views: refs, quoting, budgets, diffs |
 | [`pageon-js`](crates/pageon-js) | V8, DOM bindings generated from WebIDL, the event loop on a virtual clock |
-| [`pageon-layout`](crates/pageon-layout) | CSS, layout with bundled fonts, hit-testing, paint |
+| [`pageon-style`](crates/pageon-style) | CSS styling with Stylo, directly on pageon's document |
+| [`pageon-layout`](crates/pageon-layout) | Layout with bundled fonts, hit-testing, paint |
 | [`pageon-ax`](crates/pageon-ax) | The accessibility tree (HTML-AAM, ARIA, AccName) |
 | [`pageon-net`](crates/pageon-net) | Fetch, CORS, cookies, storage, the egress policy |
 | [`pageon-dom`](crates/pageon-dom) | The document model and HTML parsing |

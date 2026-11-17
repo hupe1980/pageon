@@ -51,7 +51,7 @@ jobs:
       - run: |
           cargo package --locked --no-verify \
             -p pageon-dom -p pageon-env -p pageon-agent -p pageon-net \
-            -p pageon-layout -p pageon-ax -p pageon-js -p pageon
+            -p pageon-style -p pageon-layout -p pageon-ax -p pageon-js -p pageon
 
   build:
     needs: preflight

@@ -379,7 +379,11 @@ pub(crate) fn property(cx: &Cx<'_, '_, '_>, d: Decl, name: &str) -> String {
         Decl::Computed(n) if pageon_layout::Layout::needs_boxes(name) => {
             cx.realm.layout().style(n, name).unwrap_or_default()
         }
-        Decl::Computed(n) => cx.realm.styles().style(n, name).unwrap_or_default(),
+        Decl::Computed(n) => cx
+            .realm
+            .computed(n, name)
+            .or_else(|| cx.realm.styles().style(n, name))
+            .unwrap_or_default(),
     }
 }
 

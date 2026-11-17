@@ -285,7 +285,11 @@ impl Dom {
         let length = self.node_length(id);
         let offset = offset.min(length);
         let count = count.min(length - offset);
-        let old = match &mut self.get_mut(id).ok_or(DomError::Gone(id))?.data {
+        // Text styles nothing itself; its parent's `:empty` (and the like) may change.
+        if let Some(parent) = self.parent(id) {
+            self.log_style(crate::StyleChange::Children { parent });
+        }
+        let old = match &mut self.raw_mut(id).ok_or(DomError::Gone(id))?.data {
             NodeData::Text(t)
             | NodeData::Comment(t)
             | NodeData::ProcessingInstruction { data: t, .. } => {

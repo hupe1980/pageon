@@ -294,7 +294,41 @@ pub struct Dom {
     changes: u64,
     /// Open popovers, in the order they were shown.
     popovers: Vec<NodeId>,
+    /// Changes styles depend on, since the style system last took them.
+    style_log: Vec<StyleChange>,
 }
+
+/// A change styles depend on, logged for the style system ([`Dom::take_style_changes`]).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StyleChange {
+    /// An attribute of `element` was set or removed; its value before.
+    Attribute {
+        /// The element.
+        element: NodeId,
+        /// Local name.
+        name: String,
+        /// The value before (`None`: absent).
+        old: Option<String>,
+    },
+    /// A child was added to or removed from `parent`.
+    Children {
+        /// The parent.
+        parent: NodeId,
+    },
+    /// State selectors read changed (`:checked`, an open popover), or the node was changed
+    /// through [`Dom::get_mut`].
+    State {
+        /// The element.
+        element: NodeId,
+    },
+    /// A stylesheet changed through the CSSOM, or adopted sheets were set.
+    Sheets,
+    /// More changes than are kept: everything is restyled.
+    All,
+}
+
+/// Most style changes kept; past it the log is [`StyleChange::All`].
+const STYLE_LOG_MAX: usize = 4096;
 
 /// A change to the tree, logged for `MutationObserver` while [`Dom::set_observing`] is on.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -375,6 +409,7 @@ impl Dom {
             controls: std::collections::HashMap::new(),
             observing: false,
             mutations: Vec::new(),
+            style_log: vec![StyleChange::All],
             changes: 0,
             shadow: std::collections::HashMap::new(),
             scopes: std::collections::HashMap::new(),
@@ -399,6 +434,7 @@ impl Dom {
     /// A form control's state, for changes.
     pub fn control_mut(&mut self, id: NodeId) -> &mut ControlState {
         self.changes += 1;
+        self.log_style(StyleChange::State { element: id });
         self.controls.entry(id).or_default()
     }
 
@@ -420,6 +456,7 @@ impl Dom {
     /// Opens (at the top) or closes a popover.
     pub fn set_popover_open(&mut self, id: NodeId, open: bool) {
         self.changes += 1;
+        self.log_style(StyleChange::State { element: id });
         self.popovers
             .retain(|&p| p != id && self.slots.len() > p.index as usize);
         if open {
@@ -482,6 +519,13 @@ impl Dom {
 
     /// Mutable access to a node.
     pub fn get_mut(&mut self, id: NodeId) -> Option<&mut Node> {
+        // A caller may change anything: styles of the node are recomputed.
+        self.log_style(StyleChange::State { element: id });
+        self.raw_mut(id)
+    }
+
+    /// Mutable access for this crate's own changes (they log what they change).
+    pub(crate) fn raw_mut(&mut self, id: NodeId) -> Option<&mut Node> {
         self.changes += 1;
         self.slots
             .get_mut(id.index as usize)
@@ -494,7 +538,7 @@ impl Dom {
     }
 
     fn node_mut(&mut self, id: NodeId) -> Result<&mut Node, DomError> {
-        self.get_mut(id).ok_or(DomError::Gone(id))
+        self.raw_mut(id).ok_or(DomError::Gone(id))
     }
 
     /// Parent.
@@ -555,6 +599,7 @@ impl Dom {
         };
         let Some(parent) = parent else { return Ok(()) };
         self.ranges_before_remove(id, parent);
+        self.log_style(StyleChange::Children { parent });
         if self.observing {
             self.mutations.push(Mutation::ChildList {
                 target: parent,
@@ -598,6 +643,7 @@ impl Dom {
         }
         self.node_mut(parent)?.last_child = Some(child);
         self.ranges_after_insert(child);
+        self.log_style(StyleChange::Children { parent });
         if self.observing {
             self.mutations.push(Mutation::ChildList {
                 target: parent,
@@ -640,6 +686,7 @@ impl Dom {
             None => self.node_mut(parent)?.first_child = Some(child),
         }
         self.ranges_after_insert(child);
+        self.log_style(StyleChange::Children { parent });
         if self.observing {
             self.mutations.push(Mutation::ChildList {
                 target: parent,
@@ -699,6 +746,13 @@ impl Dom {
                 None => attrs.push(Attribute::new(local, value)),
             }
         }
+        if element && old.as_deref() != Some(value) {
+            self.log_style(StyleChange::Attribute {
+                element: id,
+                name: local.to_string(),
+                old: old.clone(),
+            });
+        }
         if self.observing && element {
             self.mutations.push(Mutation::Attribute {
                 target: id,
@@ -718,6 +772,13 @@ impl Dom {
                 .position(|a| a.name.ns.is_empty() && &*a.name.local == local)
         {
             old = Some(attrs.remove(i).value);
+        }
+        if old.is_some() {
+            self.log_style(StyleChange::Attribute {
+                element: id,
+                name: local.to_string(),
+                old: old.clone(),
+            });
         }
         if self.observing && old.is_some() {
             self.mutations.push(Mutation::Attribute {
@@ -751,6 +812,24 @@ impl Dom {
     /// The changes logged since the last call.
     pub fn take_mutations(&mut self) -> Vec<Mutation> {
         std::mem::take(&mut self.mutations)
+    }
+
+    /// The changes styles depend on since the last call (a new document starts with
+    /// [`StyleChange::All`]).
+    pub fn take_style_changes(&mut self) -> Vec<StyleChange> {
+        std::mem::take(&mut self.style_log)
+    }
+
+    pub(crate) fn log_style(&mut self, c: StyleChange) {
+        if self.style_log.first() == Some(&StyleChange::All) {
+            return;
+        }
+        if self.style_log.len() >= STYLE_LOG_MAX {
+            self.style_log.clear();
+            self.style_log.push(StyleChange::All);
+            return;
+        }
+        self.style_log.push(c);
     }
 
     /// Number of live nodes.
@@ -820,5 +899,36 @@ impl Iterator for Traverse<'_> {
         self.stack
             .extend(kids.into_iter().rev().map(|k| (k, false)));
         Some(Edge::Enter(id))
+    }
+}
+
+#[cfg(test)]
+mod style_log {
+    use super::*;
+
+    /// The style log is bounded: past its limit it is one entry, everything.
+    #[test]
+    fn the_style_log_is_bounded() {
+        let mut dom = Dom::new();
+        let _ = dom.take_style_changes();
+        let root = dom.root();
+        let el = dom.create(NodeData::Element {
+            name: html5ever::QualName::new(
+                None,
+                html5ever::ns!(html),
+                html5ever::local_name!("div"),
+            ),
+            attrs: Vec::new(),
+            template_contents: None,
+            mathml_annotation_xml_integration_point: false,
+        });
+        let _ = dom.append(root, el);
+        for i in 0..10_000 {
+            let _ = dom.set_attr(el, "data-i", &i.to_string());
+        }
+        assert_eq!(dom.take_style_changes(), vec![StyleChange::All]);
+        let _ = dom.set_attr(el, "class", "a");
+        let last = dom.take_style_changes();
+        assert_eq!(last.len(), 1, "{last:?}");
     }
 }

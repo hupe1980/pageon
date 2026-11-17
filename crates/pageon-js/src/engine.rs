@@ -2389,6 +2389,7 @@ pub(crate) fn new_realm(
             media_viewport: None,
             resize_observers: Vec::new(),
             resize_seen: None,
+            styler: None,
             crypto: crate::dom::platform::CryptoStream::new(cfg.crypto_key),
             frame: None,
             remote: Default::default(),

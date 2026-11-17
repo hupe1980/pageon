@@ -20,6 +20,7 @@ url = "2"
 tiny-skia = "0.12"
 pageon-dom.workspace = true
 pageon-layout.workspace = true
+pageon-style.workspace = true
 pageon-net.workspace = true
 pageon-env.workspace = true
 serde.workspace = true

@@ -13,7 +13,6 @@ use style::stylesheets::Origin;
 use crate::images::{Decoded, Recorder};
 use crate::{Stylesheet, Viewport, fonts};
 
-const UA_CSS: &str = include_str!("ua.css");
 /// The mirror-only attribute marking an element in the top layer.
 pub(crate) const TOP_LAYER: &str = "data-pageon-top-layer";
 /// The mirror-only attribute marking the `<option>` a drop-down shows (or the selected ones).
@@ -77,7 +76,7 @@ fn config(viewport: Viewport, base: &str, net: Option<std::sync::Arc<Recorder>>)
         )),
         ua_stylesheets: vec![
             UserAgentStylesheet::default_sheet(),
-            UserAgentStylesheet::parse(UA_CSS),
+            UserAgentStylesheet::parse(pageon_style::UA_CSS),
         ],
         font_ctx: Some(fonts::context()),
         style_threading: StyleThreading::Sequential,
@@ -216,9 +215,29 @@ fn adopted(
 }
 
 /// Mirror-only markers for the pseudo-classes rewritten by [`crate::scope::pseudo`].
-fn markers(dom: &Dom, id: NodeId, attrs: &mut Vec<blitz_dom::Attribute>) {
+fn markers(dom: &Dom, id: NodeId, defined: &[NodeId], attrs: &mut Vec<blitz_dom::Attribute>) {
     use pageon_dom::forms;
     let Some(n) = dom.get(id) else { return };
+    let text_control = n.is_html("input") || n.is_html("textarea");
+    if text_control && n.attr("placeholder").is_some() {
+        let value = dom
+            .control(id)
+            .and_then(|c| c.value.as_deref())
+            .or_else(|| n.attr("value"))
+            .unwrap_or("");
+        if value.is_empty() {
+            attrs.push(attr("pageon-placeholder-shown", String::new()));
+        }
+    }
+    let editable = (text_control && n.attr("readonly").is_none() && n.attr("disabled").is_none())
+        || n.attr("contenteditable")
+            .is_some_and(|v| v.is_empty() || v.eq_ignore_ascii_case("true"));
+    if editable {
+        attrs.push(attr("pageon-read-write", String::new()));
+    }
+    if n.local_name().is_some_and(pageon_dom::is_custom_name) && !defined.contains(&id) {
+        attrs.push(attr("pageon-undefined", String::new()));
+    }
     let invalid = if n.is_html("form") || n.is_html("fieldset") {
         Some(forms::has_invalid(dom, id))
     } else if forms::barred(dom, id) {
@@ -456,7 +475,7 @@ pub(crate) fn build(
                                     }
                                 }
                                 if pseudo {
-                                    markers(dom, id, &mut attrs);
+                                    markers(dom, id, opts.defined, &mut attrs);
                                 }
                                 // Modal dialogs live in the top layer: a mirror-only marker the
                                 // UA sheet positions (never visible to the page).

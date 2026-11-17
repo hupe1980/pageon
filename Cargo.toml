@@ -19,6 +19,7 @@ pageon-env = { path = "crates/pageon-env", version = "0.5.0" }
 pageon-js = { path = "crates/pageon-js", version = "0.5.0" }
 pageon-layout = { path = "crates/pageon-layout", version = "0.5.0" }
 pageon-net = { path = "crates/pageon-net", version = "0.5.0" }
+pageon-style = { path = "crates/pageon-style", version = "0.5.0" }
 procage = "0.8"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

@@ -25,7 +25,7 @@ mod sink;
 
 pub use dom::{
     Attribute, Children, ControlState, Dom, DomError, Edge, Mutation, Namespace, Node, NodeData,
-    NodeId, QuirksMode, Traverse,
+    NodeId, QuirksMode, StyleChange, Traverse,
 };
 pub use parser::{Parser, Step};
 pub use ranges::{Boundary, Direction, Position, RangeId};

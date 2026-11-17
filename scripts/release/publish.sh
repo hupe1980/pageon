@@ -9,7 +9,7 @@ published() {
   curl -fsS -o /dev/null -A "pageon-release (github.com/hupe1980/pageon)" \
     "https://crates.io/api/v1/crates/$1/$version"
 }
-for crate in pageon-dom pageon-env pageon-agent pageon-net pageon-layout pageon-ax pageon-js pageon; do
+for crate in pageon-dom pageon-env pageon-agent pageon-net pageon-style pageon-layout pageon-ax pageon-js pageon; do
   if published "$crate"; then
     echo "$crate $version is already published"
   else

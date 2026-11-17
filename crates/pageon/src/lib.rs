@@ -177,6 +177,8 @@ pub(crate) struct JsState {
     pub(crate) pending_timers: usize,
     pub(crate) virtual_ms: u64,
     pub(crate) modals: Vec<NodeId>,
+    /// Custom elements whose definition ran (`:defined`).
+    pub(crate) defined: Vec<NodeId>,
     /// Elements listening for `drop` (they get refs: drag onto them, drop files on them).
     pub(crate) drop_targets: Vec<NodeId>,
     pub(crate) focused: Option<NodeId>,
@@ -646,6 +648,7 @@ impl Document {
     pub fn layout(&self, viewport: Viewport) -> Layout {
         let opts = pageon_layout::LayoutOptions {
             modals: &self.js.modals,
+            defined: &self.js.defined,
             images: self.images.as_deref(),
             redact: &[],
             scroll: &self.js.scroll.elements,

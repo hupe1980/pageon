@@ -420,6 +420,12 @@ const PSEUDO: &[(&str, &str)] = &[
     (":valid", "[pageon-valid]"),
     (":required", ":is(input,select,textarea)[required]"),
     (":optional", ":is(input,select,textarea):not([required])"),
+    (":placeholder-shown", "[pageon-placeholder-shown]"),
+    (":read-write", "[pageon-read-write]"),
+    (":read-only", ":not([pageon-read-write])"),
+    (":modal", "[data-pageon-top-layer]"),
+    (":open", ":is(details,dialog)[open]"),
+    (":defined", ":not([pageon-undefined])"),
 ];
 
 /// Whether a stylesheet uses a pseudo-class the mirror marks (then [`pseudo`] rewrites it).
@@ -432,8 +438,10 @@ pub fn uses_pseudo(css: &str) -> bool {
         })
 }
 
-/// Rewrites `:valid`, `:invalid`, `:user-valid`, `:user-invalid`, `:required`, `:optional` and
-/// `:state(x)` in selectors to the mirror's markers; `None` when the sheet uses none.
+/// Rewrites the pseudo-classes the layout engine does not match (`:valid`, `:invalid`, their
+/// `:user-` forms, `:required`, `:optional`, `:placeholder-shown`, `:read-write`, `:read-only`,
+/// `:modal`, `:open`, `:defined`, `:state(x)`) to the mirror's markers; `None` when the sheet
+/// uses none.
 pub fn pseudo(css: &str) -> Option<String> {
     if !uses_pseudo(css) {
         return None;

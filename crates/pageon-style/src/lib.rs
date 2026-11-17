@@ -6,7 +6,8 @@ mod node;
 
 use std::cell::Cell;
 
-use pageon_dom::{Dom, Edge, NodeData, NodeId};
+use pageon_dom::{Dom, Edge, NodeData, NodeId, StyleChange};
+use selectors::matching::ElementSelectorFlags;
 use style::context::{
     QuirksMode, RegisteredSpeculativePainter, RegisteredSpeculativePainters, SharedStyleContext,
     StyleContext,
@@ -36,7 +37,9 @@ use style_dom::ElementState;
 
 use node::{Handle, N, Slot, Tree};
 
-const PAGEON_UA: &str = include_str!("../../pageon-layout/src/ua.css");
+/// pageon's user-agent sheet, beside the engine's default one: form controls, the top layer,
+/// popovers and other things pageon renders its own way.
+pub const UA_CSS: &str = include_str!("ua.css");
 
 /// Font metrics for `ex`, `ch` and friends: the CSS defaults (a later stage measures the
 /// bundled fonts).
@@ -71,15 +74,14 @@ impl RegisteredSpeculativePainters for NoPainters {
     }
 }
 
-/// An attribute that changed since the last restyle, with its value before.
-#[derive(Debug, Clone)]
-pub struct AttrChange {
-    /// The element.
-    pub element: NodeId,
-    /// The attribute's local name.
-    pub name: String,
-    /// Its value before (`None`: it was absent).
-    pub old: Option<String>,
+/// What styles read that the document does not hold: the top layer (open modal dialogs) and
+/// the custom elements whose definitions ran.
+#[derive(Debug, Default, Clone, Copy)]
+pub struct Page<'a> {
+    /// Elements in the top layer.
+    pub top_layer: &'a [NodeId],
+    /// Defined custom elements (`:defined`).
+    pub defined: &'a [NodeId],
 }
 
 /// What one restyle did.
@@ -99,6 +101,53 @@ pub struct Styler {
     url: UrlExtraData,
     /// The author sheets in cascade order, by the hash of their text.
     authors: Vec<(u64, DocumentStyleSheet)>,
+    /// The sheets or the top layer changed: the next sync restyles everything.
+    all: bool,
+    top_layer: Vec<NodeId>,
+    defined: Vec<NodeId>,
+}
+
+/// The lock of all style data: one per process, so parsed sheets are shared between pages.
+static GUARD: std::sync::LazyLock<SharedRwLock> = std::sync::LazyLock::new(SharedRwLock::new);
+
+/// Parsed sheets by text, base URL and origin: a page that loads a sheet another page loaded
+/// (the same site, a library's CSS) does not parse it again.
+fn parsed(css: &str, url: &UrlExtraData, origin: Origin) -> DocumentStyleSheet {
+    type Cache = std::collections::HashMap<(u64, usize, u64, bool), DocumentStyleSheet>;
+    thread_local! {
+        static SHEETS: std::cell::RefCell<(Cache, usize)> = std::cell::RefCell::default();
+    }
+    let key = (
+        hash(css),
+        css.len(),
+        hash(url.as_str()),
+        origin == Origin::Author,
+    );
+    if let Some(s) = SHEETS.with(|c| c.borrow().0.get(&key).cloned()) {
+        return s;
+    }
+    let sheet = DocumentStyleSheet(Arc::new(Stylesheet::from_str(
+        css,
+        url.clone(),
+        origin,
+        Arc::new(GUARD.wrap(MediaList::empty())),
+        GUARD.clone(),
+        None,
+        None,
+        QuirksMode::NoQuirks,
+        AllowImportRules::Yes,
+    )));
+    SHEETS.with(|c| {
+        let mut c = c.borrow_mut();
+        // Past 64 MiB of sheet text the cache starts over.
+        if c.1 + css.len() > 64 << 20 {
+            c.0.clear();
+            c.1 = 0;
+        }
+        c.1 += css.len();
+        c.0.insert(key, sheet.clone());
+    });
+    sheet
 }
 
 impl Styler {
@@ -127,13 +176,16 @@ impl Styler {
             });
         let mut s = Self {
             stylist: Stylist::new(device, QuirksMode::NoQuirks),
-            guard: SharedRwLock::new(),
+            guard: GUARD.clone(),
             snapshots: SnapshotMap::new(),
             slots: Vec::new(),
             url,
             authors: Vec::new(),
+            all: true,
+            top_layer: Vec::new(),
+            defined: Vec::new(),
         };
-        for css in [blitz_dom::DEFAULT_CSS, PAGEON_UA] {
+        for css in [blitz_dom::DEFAULT_CSS, UA_CSS] {
             let sheet = s.sheet(css, Origin::UserAgent);
             s.stylist.append_stylesheet(sheet, &s.guard.read());
         }
@@ -141,17 +193,7 @@ impl Styler {
     }
 
     fn sheet(&self, css: &str, origin: Origin) -> DocumentStyleSheet {
-        DocumentStyleSheet(Arc::new(Stylesheet::from_str(
-            css,
-            self.url.clone(),
-            origin,
-            Arc::new(self.guard.wrap(MediaList::empty())),
-            self.guard.clone(),
-            None,
-            None,
-            QuirksMode::NoQuirks,
-            AllowImportRules::Yes,
-        )))
+        parsed(css, &self.url, origin)
     }
 
     /// The document's author sheets, in cascade order. Unchanged texts keep their parsed sheet.
@@ -162,6 +204,7 @@ impl Styler {
         {
             return;
         }
+        self.all = true;
         let old = std::mem::take(&mut self.authors);
         for (_, sheet) in old {
             self.stylist.remove_stylesheet(sheet, &self.guard.read());
@@ -176,18 +219,27 @@ impl Styler {
 
     /// Styles every element of `dom` (all of them restyled).
     pub fn restyle_all(&mut self, dom: &Dom) -> Restyled {
-        self.restyle_all_with(dom, &[])
+        self.restyle_all_with(dom, Page::default())
     }
 
-    /// [`Styler::restyle_all`] with the elements in the top layer (open modal dialogs).
-    pub fn restyle_all_with(&mut self, dom: &Dom, top_layer: &[NodeId]) -> Restyled {
-        let elements = self.refresh(dom, top_layer);
-        self.traverse(dom, &elements, true)
+    /// [`Styler::restyle_all`] with what the page holds outside the document.
+    pub fn restyle_all_with(&mut self, dom: &Dom, page: Page<'_>) -> Restyled {
+        self.top_layer = page.top_layer.to_vec();
+        self.defined = page.defined.to_vec();
+        let elements = self.refresh(dom);
+        self.traverse(dom, &elements, &[], &[], true)
     }
 
     /// Runs Stylo's traversal: over everything (`all`), or down to `elements` (their
     /// snapshots say what to restyle).
-    fn traverse(&mut self, dom: &Dom, elements: &[NodeId], all: bool) -> Restyled {
+    fn traverse(
+        &mut self,
+        dom: &Dom,
+        elements: &[NodeId],
+        hinted: &[NodeId],
+        inline: &[NodeId],
+        all: bool,
+    ) -> Restyled {
         style::thread_state::enter(ThreadState::LAYOUT);
         let guards = StylesheetGuards {
             author: &self.guard.read(),
@@ -230,6 +282,21 @@ impl Styler {
             for &id in elements {
                 N(&handles[id.index() as usize]).mark_ancestors_dirty();
             }
+            for &id in inline {
+                let n = N(&handles[id.index() as usize]);
+                if let Some(mut data) = n.mutate_data() {
+                    data.hint |= RestyleHint::RESTYLE_STYLE_ATTRIBUTE;
+                }
+                n.mark_ancestors_dirty();
+            }
+            // Subtrees restyled in full (siblings that depend on position, changed state).
+            for &id in hinted {
+                let n = N(&handles[id.index() as usize]);
+                if let Some(mut data) = n.mutate_data() {
+                    data.hint |= RestyleHint::restyle_subtree();
+                }
+                n.mark_ancestors_dirty();
+            }
         }
         let context = SharedStyleContext {
             traversal_flags: TraversalFlags::empty(),
@@ -257,39 +324,190 @@ impl Styler {
         }
     }
 
-    /// Restyles after attribute changes: each changed element gets a snapshot of its
-    /// attributes before, and Stylo restyles only what the change can affect.
-    pub fn restyle(&mut self, dom: &Dom, changes: &[AttrChange]) -> Restyled {
-        use style::attr::AttrValue;
-        use style::selector_parser::ServoElementSnapshot;
-        let mut changed: Vec<NodeId> = Vec::new();
+    /// Brings styles up to date with `changes` (from [`Dom::take_style_changes`]) and the
+    /// top layer (open modal dialogs): changed attributes get a snapshot of their values
+    /// before, so Stylo restyles only what they can affect; inserted elements are styled;
+    /// siblings are restyled when the parent's selectors depend on position; state changes
+    /// restyle their parent's subtree. Sheet changes and [`StyleChange::All`] restyle
+    /// everything.
+    pub fn sync(&mut self, dom: &Dom, changes: &[StyleChange], page: Page<'_>) -> Restyled {
+        if self.all
+            || self.top_layer != page.top_layer
+            || changes.iter().any(|c| matches!(c, StyleChange::All))
+        {
+            self.all = false;
+            return self.restyle_all_with(dom, page);
+        }
+        // Custom elements defined since the last sync change state like any other.
+        let newly: Vec<StyleChange> = page
+            .defined
+            .iter()
+            .filter(|d| !self.defined.contains(d))
+            .chain(self.defined.iter().filter(|d| !page.defined.contains(d)))
+            .map(|&element| StyleChange::State { element })
+            .collect();
+        self.defined = page.defined.to_vec();
+        let changes: Vec<StyleChange> = changes.iter().cloned().chain(newly).collect();
+        let changes = &changes[..];
+        let mut snapped: Vec<NodeId> = Vec::new();
+        let mut fresh: Vec<NodeId> = Vec::new();
+        let mut hinted: Vec<NodeId> = Vec::new();
+        // Elements whose inline style changed: their declarations, not their matching.
+        let mut inline: Vec<NodeId> = Vec::new();
         for c in changes {
-            if !changed.contains(&c.element) {
-                changed.push(c.element);
+            match c {
+                StyleChange::Attribute { element, name, .. } => {
+                    if !snapped.contains(element) && dom.get(*element).is_some() {
+                        snapped.push(*element);
+                    }
+                    if name == "style" && !inline.contains(element) {
+                        inline.push(*element);
+                    }
+                }
+                StyleChange::Children { parent } => {
+                    if dom.get(*parent).is_none() {
+                        continue;
+                    }
+                    for child in dom.children(*parent) {
+                        // Moved here from elsewhere: restyled with what it inherits now.
+                        if let Some(s) = self.slots.get(child.index() as usize)
+                            && s.generation.get() == Some(child.generation())
+                            && s.has_data.get()
+                            && s.styled_under.get() != Some(*parent)
+                            && !hinted.contains(&child)
+                        {
+                            hinted.push(child);
+                        }
+                        for e in dom.traverse(child) {
+                            let Edge::Enter(id) = e else { continue };
+                            // New here, or never styled (it was in a subtree not rendered).
+                            let new = self.ensure_slot(id);
+                            if new || !self.slots[id.index() as usize].has_data.get() {
+                                self.refresh_one(dom, id);
+                                if dom.get(id).is_some_and(|n| n.local_name().is_some()) {
+                                    fresh.push(id);
+                                }
+                            }
+                        }
+                    }
+                    // A select shows its first enabled option when none is chosen: the order
+                    // of its options decides which.
+                    self.select_changed(dom, *parent, &mut hinted);
+                    let flags = self
+                        .slots
+                        .get(parent.index() as usize)
+                        .map_or(ElementSelectorFlags::empty(), |s| s.selector_flags.get());
+                    if flags.intersects(
+                        ElementSelectorFlags::HAS_SLOW_SELECTOR
+                            | ElementSelectorFlags::HAS_SLOW_SELECTOR_LATER_SIBLINGS
+                            | ElementSelectorFlags::HAS_EDGE_CHILD_SELECTOR
+                            | ElementSelectorFlags::HAS_EMPTY_SELECTOR,
+                    ) && !hinted.contains(parent)
+                    {
+                        hinted.push(*parent);
+                    }
+                }
+                StyleChange::State { element } => {
+                    if dom.get(*element).is_none() {
+                        continue;
+                    }
+                    self.ensure_slot(*element);
+                    self.refresh_one(dom, *element);
+                    // A select's options show its choice: their markers follow it.
+                    self.select_changed(dom, *element, &mut hinted);
+                    let at = dom.parent(*element).unwrap_or(*element);
+                    if !hinted.contains(&at) {
+                        hinted.push(at);
+                    }
+                }
+                // Sheets are compared by text in `set_sheets`.
+                StyleChange::Sheets | StyleChange::All => {}
             }
         }
-        for &id in &changed {
+        self.snapshot(dom, changes, &snapped);
+        let r = self.traverse(
+            dom,
+            &[&snapped[..], &fresh[..]].concat(),
+            &hinted,
+            &inline,
+            false,
+        );
+        for &id in &snapped {
+            if let Some(s) = self.slots.get(id.index() as usize) {
+                s.has_snapshot.set(false);
+            }
+        }
+        self.snapshots.clear();
+        r
+    }
+
+    /// When `at` is or is inside a `<select>`: its options' markers refreshed and the select
+    /// restyled (which option shows depends on the choice and on their order).
+    fn select_changed(&mut self, dom: &Dom, at: NodeId, hinted: &mut Vec<NodeId>) {
+        let select = std::iter::once(at)
+            .chain(dom.ancestors(at))
+            .find(|&a| dom.get(a).is_some_and(|n| n.is_html("select")));
+        let Some(sel) = select else { return };
+        for e in dom.traverse(sel) {
+            if let Edge::Enter(id) = e {
+                self.ensure_slot(id);
+                self.refresh_one(dom, id);
+            }
+        }
+        if !hinted.contains(&sel) {
+            hinted.push(sel);
+        }
+    }
+
+    /// The slot of `id`, made fresh if it belonged to another node (or none). Whether it was.
+    fn ensure_slot(&mut self, id: NodeId) -> bool {
+        let i = id.index() as usize;
+        if self.slots.len() <= i {
+            self.slots.resize_with(i + 1, Slot::default);
+        }
+        let slot = &mut self.slots[i];
+        if slot.generation.get() == Some(id.generation()) {
+            return false;
+        }
+        *slot = Slot::default();
+        slot.generation.set(Some(id.generation()));
+        true
+    }
+
+    /// Snapshots of `elements`' attributes before `changes` (the earliest old value of each
+    /// name), for Stylo's invalidation; their matching data refreshed.
+    fn snapshot(&mut self, dom: &Dom, changes: &[StyleChange], elements: &[NodeId]) {
+        use style::attr::AttrValue;
+        use style::selector_parser::ServoElementSnapshot;
+        for &id in elements {
             let Some(node) = dom.get(id) else { continue };
-            // The attributes as they were: the current ones with each change undone (the
-            // earliest old value of a name wins).
             let mut attrs: Vec<(String, Option<String>)> = node
                 .attrs()
                 .iter()
                 .map(|a| (a.qual_name().local.to_string(), Some(a.value.clone())))
                 .collect();
+            let mut snap = ServoElementSnapshot::new();
             let mut seen: Vec<&str> = Vec::new();
-            for c in changes.iter().filter(|c| c.element == id) {
-                if seen.contains(&c.name.as_str()) {
-                    // A later change of the same name: the earliest old value is kept.
+            for c in changes {
+                let StyleChange::Attribute { element, name, old } = c else {
+                    continue;
+                };
+                if *element != id || seen.contains(&name.as_str()) {
                     continue;
                 }
-                seen.push(&c.name);
-                match attrs.iter_mut().find(|(n, _)| *n == c.name) {
-                    Some(a) => a.1 = c.old.clone(),
-                    None => attrs.push((c.name.clone(), c.old.clone())),
+                seen.push(name);
+                match attrs.iter_mut().find(|(n, _)| n == name) {
+                    Some(a) => a.1.clone_from(old),
+                    None => attrs.push((name.clone(), old.clone())),
                 }
+                match name.as_str() {
+                    "class" => snap.class_changed = true,
+                    "id" => snap.id_changed = true,
+                    _ => snap.other_attributes_changed = true,
+                }
+                snap.changed_attrs
+                    .push(style::LocalName::from(name.as_str()));
             }
-            let mut snap = ServoElementSnapshot::new();
             snap.attrs = Some(
                 attrs
                     .into_iter()
@@ -313,33 +531,15 @@ impl Styler {
                     })
                     .collect(),
             );
-            for c in changes.iter().filter(|c| c.element == id) {
-                match c.name.as_str() {
-                    "class" => snap.class_changed = true,
-                    "id" => snap.id_changed = true,
-                    _ => snap.other_attributes_changed = true,
-                }
-                let name = style::LocalName::from(c.name.as_str());
-                if !snap.changed_attrs.contains(&name) {
-                    snap.changed_attrs.push(name);
-                }
-            }
             let key = (u64::from(id.generation()) << 32) | u64::from(id.index());
             self.snapshots
                 .insert(style::dom::OpaqueNode(key as usize), snap);
+            self.ensure_slot(id);
             self.refresh_one(dom, id);
             let slot = &self.slots[id.index() as usize];
             slot.has_snapshot.set(true);
             slot.handled_snapshot.set(false);
         }
-        let r = self.traverse(dom, &changed, false);
-        for &id in &changed {
-            if let Some(s) = self.slots.get(id.index() as usize) {
-                s.has_snapshot.set(false);
-            }
-        }
-        self.snapshots.clear();
-        r
     }
 
     /// The computed style of an element, once styled.
@@ -349,19 +549,37 @@ impl Styler {
             return None;
         }
         dom.get(id)?;
+        // Inside an undisplayed subtree nothing is styled (data from before is stale).
+        for a in dom.ancestors(id) {
+            if !matches!(dom.get(a).map(|n| &n.data), Some(NodeData::Element { .. })) {
+                continue;
+            }
+            let s = self.slots.get(a.index() as usize)?;
+            if !s.has_data.get() {
+                return None;
+            }
+            let shown = s
+                .data
+                .borrow()
+                .styles
+                .get_primary()
+                .is_some_and(|p| !p.clone_display().is_none());
+            if !shown {
+                return None;
+            }
+        }
         slot.data.borrow().styles.get_primary().cloned()
     }
 
-    /// The computed value of a longhand property, serialized (`display`, `color`, …).
+    /// The computed value of a longhand or custom property (`display`, `--accent`), serialized;
+    /// `None` for shorthands (their value is built from layout's resolved values).
     pub fn value(&self, dom: &Dom, id: NodeId, property: &str) -> Option<String> {
         let style = self.style(dom, id)?;
         let p = style::properties::PropertyId::parse_enabled_for_all_content(property).ok()?;
-        let longhand = p.longhand_id()?;
-        Some(
-            style.computed_value_to_string(style::properties::PropertyDeclarationId::Longhand(
-                longhand,
-            )),
-        )
+        match p.as_shorthand() {
+            Ok(_) => None,
+            Err(declaration) => Some(style.computed_value_to_string(declaration)),
+        }
     }
 
     /// Refreshes what matching reads of one element (after its attributes changed).
@@ -393,11 +611,23 @@ impl Styler {
             .unwrap_or_default();
         slot.style_attribute = style_attribute;
         slot.state = state(dom, id, &local);
+        let shown = &*local == "option"
+            && dom
+                .ancestors(id)
+                .find(|&a| dom.get(a).is_some_and(|n| n.is_html("select")))
+                .is_some_and(|sel| shown_options(dom, sel).contains(&id));
+        slot.markers = node::Markers {
+            shown,
+            popover_open: dom.popover_open(id),
+            scripting: &*local == "noscript" && dom.scripting(),
+            top_layer: self.top_layer.contains(&id),
+            defined: self.defined.contains(&id),
+        };
     }
 
     /// Sizes the slots to the document and refreshes what each element's matching reads
     /// (id, classes, inline style, state). The elements, in tree order.
-    fn refresh(&mut self, dom: &Dom, top_layer: &[NodeId]) -> Vec<NodeId> {
+    fn refresh(&mut self, dom: &Dom) -> Vec<NodeId> {
         let mut elements = Vec::new();
         let mut shown: Vec<NodeId> = Vec::new();
         for e in dom.traverse(dom.root()) {
@@ -441,7 +671,8 @@ impl Styler {
                 shown: &*name.local == "option" && shown.contains(&id),
                 popover_open: dom.popover_open(id),
                 scripting: &*name.local == "noscript" && dom.scripting(),
-                top_layer: top_layer.contains(&id),
+                top_layer: self.top_layer.contains(&id),
+                defined: self.defined.contains(&id),
             };
         }
         elements
@@ -551,6 +782,7 @@ impl<'dom> DomTraversal<N<'dom>> for Recalc<'_> {
             // SAFETY: the traversal is sequential and owns the tree's style data while it runs.
             let mut data = unsafe { el.ensure_data() };
             recalc_style_at(self, context, el, &mut data, note_child);
+            el.slot().styled_under.set(el.t.dom.parent(el.id));
             self.count.set(self.count.get() + 1);
             #[allow(unsafe_code)]
             // SAFETY: as above.

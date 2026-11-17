@@ -98,7 +98,8 @@ fn restyle_a_large_page() {
     let mut native = Styler::new(1280.0, 720.0, &base);
     let t = Instant::now();
     native.set_sheets(&ordered.iter().map(String::as_str).collect::<Vec<_>>());
-    native.restyle_all(&dom);
+    let first_changes = dom.take_style_changes();
+    native.sync(&dom, &first_changes, pageon_style::Page::default());
     let native_first = t.elapsed();
 
     // A full restyle with the sheets parsed: a class on <body> (Blitz restyles the parent's
@@ -116,6 +117,7 @@ fn restyle_a_large_page() {
         let l = Layout::again(&dom, vp, &linked, Some(&base), &styles, prev.take());
         blitz_again.push(t.elapsed());
         prev = Some(l);
+        let _ = dom.take_style_changes();
         let t = Instant::now();
         native.restyle_all(&dom);
         native_again.push(t.elapsed());
@@ -141,7 +143,6 @@ fn restyle_a_large_page() {
     let mut blitz_small = Vec::new();
     let mut native_small = Vec::new();
     for round in 0..20usize {
-        let mut changes = Vec::new();
         for k in 0..3usize {
             let id = all[(round * 131 + k * 577) % all.len()];
             let old = dom
@@ -158,18 +159,14 @@ fn restyle_a_large_page() {
                 None => "text-bold".into(),
             };
             let _ = dom.set_attr(id, "class", &new);
-            changes.push(pageon_style::AttrChange {
-                element: id,
-                name: "class".into(),
-                old,
-            });
         }
+        let changes = dom.take_style_changes();
         let t = Instant::now();
         let l = Layout::again(&dom, vp, &linked, Some(&base), &styles, prev.take());
         blitz_small.push(t.elapsed());
         prev = Some(l);
         let t = Instant::now();
-        let r = native.restyle(&dom, &changes);
+        let r = native.sync(&dom, &changes, pageon_style::Page::default());
         native_small.push(t.elapsed());
         if round == 0 {
             println!("incremental restyle styled {} elements", r.styled);

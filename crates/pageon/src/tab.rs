@@ -1233,6 +1233,7 @@ pub(crate) fn refresh(doc: &mut Document) {
         if let Some(r) = engine.realm(live.realm) {
             let st = r.st.borrow();
             doc.js.modals.clone_from(&st.modals);
+            doc.js.defined = st.custom.defined();
             doc.js.focused = st.focused;
         }
         doc.js.drop_targets = engine.drop_targets(live.realm);

@@ -24,6 +24,7 @@ pub(crate) struct Ran {
     pub(crate) pending_timers: usize,
     pub(crate) virtual_ms: u64,
     pub(crate) modals: Vec<NodeId>,
+    pub(crate) defined: Vec<NodeId>,
     pub(crate) drop_targets: Vec<NodeId>,
     pub(crate) focused: Option<NodeId>,
     pub(crate) scroll: crate::Scroll,
@@ -455,6 +456,7 @@ pub(crate) fn run(
             pending_timers: 0,
             virtual_ms: 0,
             modals: Vec::new(),
+            defined: Vec::new(),
             drop_targets: Vec::new(),
             focused: None,
             scroll: crate::Scroll::default(),
@@ -508,11 +510,11 @@ pub(crate) fn run(
     }
     let settled = e.settle(settle_ms as f64, env);
     let scroll = crate::Scroll::of(&e, realm);
-    let (modals, focused) = e
+    let (modals, defined, focused) = e
         .realm(realm)
         .map(|x| {
             let st = x.st.borrow();
-            (st.modals.clone(), st.focused)
+            (st.modals.clone(), st.custom.defined(), st.focused)
         })
         .unwrap_or_default();
     let drop_targets = e.drop_targets(realm);
@@ -535,6 +537,7 @@ pub(crate) fn run(
         pending_timers: settled.pending,
         virtual_ms: settled.virtual_ms,
         modals,
+        defined,
         drop_targets,
         focused,
         scroll,

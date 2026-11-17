@@ -128,6 +128,8 @@ pub struct LayoutOptions<'a> {
     /// Strings drawn as bullets wherever they appear in text or values (secrets typed into
     /// the page), so they never reach pixels.
     pub redact: &'a [String],
+    /// Custom elements whose definition ran (`:defined`); other custom elements are undefined.
+    pub defined: &'a [NodeId],
     /// Compute styles only, no boxes: enough for computed style values that do not depend on
     /// layout ([`Layout::style`]); boxes need a full layout ([`Layout::has_boxes`]).
     pub styles_only: bool,

@@ -27,7 +27,8 @@ and what a page can do, and reuses proven components for the rest.
 | --- | --- |
 | `pageon` | Sessions and tabs, actions, the sandbox broker, policy and vault, the MCP, CDP and BiDi servers, the CLI |
 | `pageon-js` | V8, bindings generated from pinned WebIDL, the HTML event loop and script model |
-| `pageon-layout` | Cascade, layout with bundled fonts, visibility, cover, hit-testing, paint |
+| `pageon-style` | Stylo on pageon's own document: computed styles kept beside the nodes, updated from the document's change log |
+| `pageon-layout` | Layout with bundled fonts (on Blitz's tree), visibility, cover, hit-testing, paint |
 | `pageon-ax` | Roles (HTML-AAM, ARIA), names (AccName 1.2), states |
 | `pageon-agent` | The `ax` view: refs, quoting, marks, budgets, diffs |
 | `pageon-net` | Fetch, CORS, cookies (RFC 6265bis, PSL, CHIPS), storage, the egress policy, the request log |

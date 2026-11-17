@@ -356,6 +356,7 @@ impl Document {
     fn paint_layout(&self, vp: Viewport, redact: &[String]) -> Layout {
         let opts = LayoutOptions {
             modals: &self.js.modals,
+            defined: &self.js.defined,
             images: self.images.as_deref(),
             redact,
             scroll: &self.js.scroll.elements,

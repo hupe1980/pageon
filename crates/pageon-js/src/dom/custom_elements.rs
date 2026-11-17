@@ -63,6 +63,15 @@ impl Registry {
         !self.defs.is_empty()
     }
 
+    /// Elements whose definition ran (`:defined`).
+    pub fn defined(&self) -> Vec<NodeId> {
+        self.state
+            .iter()
+            .filter(|(_, s)| matches!(s, State::Custom(..)))
+            .map(|(&id, _)| id)
+            .collect()
+    }
+
     fn by_name(&self, name: &str) -> Option<usize> {
         self.defs.iter().position(|d| d.name == name)
     }

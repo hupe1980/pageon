@@ -106,6 +106,7 @@ impl Dom {
 
     /// Sets the CSS texts `root` adopts.
     pub fn set_adopted(&mut self, root: NodeId, sheets: Vec<String>) {
+        self.log_style(crate::StyleChange::Sheets);
         if sheets.is_empty() {
             self.adopted.remove(&root);
         } else {
@@ -146,6 +147,7 @@ impl Dom {
 
     /// Sets (or, with `None`, clears) the CSSOM rules of a `<style>`.
     pub fn set_cssom_text(&mut self, style: NodeId, css: Option<String>) {
+        self.log_style(crate::StyleChange::Sheets);
         match css {
             Some(c) => {
                 self.cssom.insert(style, c);

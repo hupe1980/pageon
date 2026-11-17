@@ -52,6 +52,8 @@ pub(crate) struct Slot {
     /// The attributes pageon's user-agent sheet matches that the document holds as state
     /// (an `<option>` shown, an open popover, `<noscript>` with scripting on, the top layer).
     pub(crate) markers: Markers,
+    /// The parent the element was last styled under (a moved element is styled again).
+    pub(crate) styled_under: Cell<Option<NodeId>>,
 }
 
 /// State pageon's user-agent sheet matches as attributes.
@@ -61,6 +63,8 @@ pub(crate) struct Markers {
     pub(crate) popover_open: bool,
     pub(crate) scripting: bool,
     pub(crate) top_layer: bool,
+    /// A custom element whose definition ran (`:defined`).
+    pub(crate) defined: bool,
 }
 
 impl Markers {
@@ -101,6 +105,7 @@ impl Default for Slot {
             style_attribute: None,
             state: ElementState::empty(),
             markers: Markers::default(),
+            styled_under: Cell::new(None),
         }
     }
 }
@@ -424,7 +429,33 @@ impl Element for N<'_> {
         _context: &mut MatchingContext<Self::Impl>,
     ) -> bool {
         let state = self.slot().state;
-        match *pseudo_class {
+        let dom = self.t.dom;
+        let id = self.id;
+        let form_control = || {
+            ["input", "select", "textarea"]
+                .iter()
+                .any(|t| crate::node::is(self, t))
+        };
+        // Validity as constraint validation sees it: forms and fieldsets by their controls;
+        // elements barred from validation are neither valid nor invalid.
+        let invalid = || -> Option<bool> {
+            if crate::node::is(self, "form") || crate::node::is(self, "fieldset") {
+                Some(pageon_dom::forms::has_invalid(dom, id))
+            } else if pageon_dom::forms::barred(dom, id) {
+                None
+            } else {
+                Some(!pageon_dom::forms::validity(dom, id).valid())
+            }
+        };
+        let user =
+            || dom.control(id).is_some_and(|c| c.user_validity) && !crate::node::is(self, "form");
+        let text_value = || {
+            dom.control(id)
+                .and_then(|c| c.value.clone())
+                .or_else(|| self.attr("value").map(str::to_string))
+                .unwrap_or_default()
+        };
+        match pseudo_class {
             NonTSPseudoClass::Active => state.contains(ElementState::ACTIVE),
             NonTSPseudoClass::AnyLink => state.intersects(ElementState::VISITED_OR_UNVISITED),
             NonTSPseudoClass::Checked => state.contains(ElementState::CHECKED),
@@ -433,32 +464,54 @@ impl Element for N<'_> {
             NonTSPseudoClass::Focus => state.contains(ElementState::FOCUS),
             NonTSPseudoClass::Hover => state.contains(ElementState::HOVER),
             NonTSPseudoClass::Link => state.contains(ElementState::UNVISITED),
-            NonTSPseudoClass::PopoverOpen => self.t.dom.popover_open(self.id),
-            NonTSPseudoClass::Valid
-            | NonTSPseudoClass::Invalid
-            | NonTSPseudoClass::Defined
-            | NonTSPseudoClass::FocusWithin
+            NonTSPseudoClass::PopoverOpen => dom.popover_open(id),
+            NonTSPseudoClass::Modal => self.slot().markers.top_layer,
+            NonTSPseudoClass::Open => {
+                (crate::node::is(self, "details") || crate::node::is(self, "dialog"))
+                    && self.attr("open").is_some()
+            }
+            NonTSPseudoClass::Valid => invalid() == Some(false),
+            NonTSPseudoClass::Invalid => invalid() == Some(true),
+            NonTSPseudoClass::UserValid => user() && invalid() == Some(false),
+            NonTSPseudoClass::UserInvalid => user() && invalid() == Some(true),
+            NonTSPseudoClass::Required => form_control() && self.attr("required").is_some(),
+            NonTSPseudoClass::Optional => form_control() && self.attr("required").is_none(),
+            NonTSPseudoClass::PlaceholderShown => {
+                (crate::node::is(self, "input") || crate::node::is(self, "textarea"))
+                    && self.attr("placeholder").is_some()
+                    && text_value().is_empty()
+            }
+            NonTSPseudoClass::ReadWrite | NonTSPseudoClass::ReadOnly => {
+                let editable = ((crate::node::is(self, "input")
+                    || crate::node::is(self, "textarea"))
+                    && self.attr("readonly").is_none()
+                    && !state.contains(ElementState::DISABLED))
+                    || self
+                        .attr("contenteditable")
+                        .is_some_and(|v| v.is_empty() || v.eq_ignore_ascii_case("true"));
+                editable == matches!(pseudo_class, NonTSPseudoClass::ReadWrite)
+            }
+            NonTSPseudoClass::CustomState(name) => dom
+                .internals(id)
+                .is_some_and(|i| i.states.iter().any(|s| s.as_str() == &*name.0)),
+            NonTSPseudoClass::Defined => {
+                self.slot().markers.defined
+                    || self
+                        .element()
+                        .is_none_or(|(n, _)| !pageon_dom::is_custom_name(&n.local))
+            }
+            NonTSPseudoClass::FocusWithin
             | NonTSPseudoClass::FocusVisible
             | NonTSPseudoClass::Fullscreen
             | NonTSPseudoClass::Indeterminate
             | NonTSPseudoClass::Lang(_)
-            | NonTSPseudoClass::CustomState(_)
-            | NonTSPseudoClass::PlaceholderShown
-            | NonTSPseudoClass::ReadWrite
-            | NonTSPseudoClass::ReadOnly
             | NonTSPseudoClass::ServoNonZeroBorder
             | NonTSPseudoClass::Target
             | NonTSPseudoClass::Visited
             | NonTSPseudoClass::Autofill
             | NonTSPseudoClass::Default
             | NonTSPseudoClass::InRange
-            | NonTSPseudoClass::Modal
-            | NonTSPseudoClass::Open
-            | NonTSPseudoClass::Optional
             | NonTSPseudoClass::OutOfRange
-            | NonTSPseudoClass::Required
-            | NonTSPseudoClass::UserInvalid
-            | NonTSPseudoClass::UserValid
             | NonTSPseudoClass::MozMeterOptimum
             | NonTSPseudoClass::MozMeterSubOptimum
             | NonTSPseudoClass::MozMeterSubSubOptimum => false,
