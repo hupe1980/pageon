@@ -218,7 +218,6 @@ impl ElementCx<'_> {
     /// These backgrounds are only painted behind the table's cells (not in the
     /// `border-spacing` between them, nor where a row has no cell), so they are
     /// painted cell by cell.
-    #[cfg(any())] // Compiled once the table's grid (columns, rows, cells) is built.
     pub(super) fn draw_table_row_backgrounds(&self, scene: &mut impl PaintScene) {
         use crate::boxes::tree::{BoxId as NodeId, Special};
         use style::computed_values::border_collapse::T as BorderCollapse;
@@ -325,10 +324,6 @@ impl ElementCx<'_> {
         }
     }
 
-    /// Paint the backgrounds of the table's column groups, columns, row groups and rows
-    /// (nothing until the table's grid is built).
-    #[cfg(not(any()))]
-    pub(super) fn draw_table_row_backgrounds(&self, _scene: &mut impl PaintScene) {}
 
     fn draw_solid_bg(&self, scene: &mut impl PaintScene, shape: &BezPath) {
         let current_color = self.style.clone_color();

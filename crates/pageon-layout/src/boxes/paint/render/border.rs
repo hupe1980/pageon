@@ -507,7 +507,6 @@ impl ElementCx<'_> {
         scene.pop_layer();
     }
 
-    #[cfg(any())] // Compiled once the table's grid (computed tracks, border style) is built.
     pub(crate) fn draw_table_borders(&self, scene: &mut impl PaintScene) {
         use crate::boxes::paint::render::PhysicalTracks;
         use crate::boxes::tree::Special;
@@ -592,9 +591,6 @@ impl ElementCx<'_> {
         }
     }
 
-    /// Draw the collapsed borders of a table (nothing until the table's grid is built).
-    #[cfg(not(any()))]
-    pub(crate) fn draw_table_borders(&self, _scene: &mut impl PaintScene) {}
 
     /// ❌ dotted - Defines a dotted border
     /// ❌ dashed - Defines a dashed border
