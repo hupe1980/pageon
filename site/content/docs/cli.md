@@ -106,8 +106,8 @@ pageon bench https://example.com --against before.json
 pageon 0.5.0 · macos aarch64 · 5 runs · offline replays (p50)
 
 page                     first view      warm       CPU    memory  layouts   tokens
-news.ycombinator.com        113 ms     22 ms    108 ms     96 MB        0     2664
-github.com                  1.83 s    1.58 s    1.82 s    282 MB       80     1709
+news.ycombinator.com        101 ms     20 ms     97 ms    100 MB        0     2664
+github.com                  1.26 s    1.08 s    1.25 s    314 MB       79     1709
 ```
 
 A URL is recorded once (in `~/.cache/pageon/bench`; `--refresh` records it again) and every run

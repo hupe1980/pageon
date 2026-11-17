@@ -68,7 +68,7 @@ verdict for every format.
 | Web Platform Tests: roles · names | 323/323 · 539/572 |
 | WPT cookies (`http-state`) | 161/161 |
 | Native `ax` view vs the Chromium-based view | 204/204 lines on the corpus pages |
-| Layout vs Chromium (19 pages) | 96.9 % of boxes within 2 px, 98.2 % within 8 px |
+| Layout vs Chromium (19 pages) | 96.8 % of boxes within 2 px, 98.0 % within 8 px |
 | Screenshots vs Chromium | SSIM 0.980 |
 | MiniWoB++ task pages | 124/130 run their scripts without an error |
 | Puppeteer · Playwright · BiDi suites | pass in the sandbox and in-process |
@@ -81,14 +81,14 @@ median of 5 runs (`pageon bench`) or 3 (`pageon-bench engines`).
 
 | Page | First view | Warm | CPU | Memory | Layouts |
 | --- | --- | --- | --- | --- | --- |
-| github.com | 1.83 s | 1.58 s | 1.82 s | 282 MB | 80 |
-| bbc.com/news | 866 ms | 780 ms | 857 ms | 231 MB | 29 |
-| crates.io search | 135 ms | 33 ms | 131 ms | 115 MB | 2 |
-| todomvc.com | 130 ms | 38 ms | 125 ms | 110 MB | 1 |
-| gov.uk | 124 ms | 59 ms | 119 ms | 105 MB | 0 |
-| news.ycombinator.com | 113 ms | 22 ms | 108 ms | 96 MB | 0 |
-| docs.python.org | 99 ms | 12 ms | 96 ms | 99 MB | 2 |
-| rust-lang.org | 93 ms | 6 ms | 88 ms | 95 MB | 0 |
+| github.com | 1.26 s | 1.08 s | 1.25 s | 314 MB | 79 |
+| bbc.com/news | 737 ms | 619 ms | 733 ms | 234 MB | 29 |
+| crates.io search | 118 ms | 27 ms | 113 ms | 120 MB | 1 |
+| todomvc.com | 81 ms | 7 ms | 77 ms | 100 MB | 1 |
+| gov.uk | 101 ms | 17 ms | 97 ms | 111 MB | 0 |
+| news.ycombinator.com | 101 ms | 20 ms | 97 ms | 100 MB | 0 |
+| docs.python.org | 87 ms | 9 ms | 83 ms | 104 MB | 2 |
+| rust-lang.org | 81 ms | 5 ms | 77 ms | 99 MB | 0 |
 
 First view is a `pageon fetch --dump ax` process, caged, start to exit; warm opens the page in
 a started process; memory is the largest process; layouts are those the page's scripts forced.
@@ -98,19 +98,19 @@ from launch to Playwright's AI snapshot, CPU and memory summed over each engine'
 
 | Page | pageon first view · CPU · memory | Chromium first view · CPU · memory |
 | --- | --- | --- |
-| github.com | 3.30 s · 2.19 s · 346 MB | **1.09 s · 1.03 s** · 501 MB |
-| bbc.com/news | 2.22 s · 1.18 s · **262 MB** | **808 ms · 0.82 s** · 423 MB |
-| crates.io search | **228 ms · 0.15 s · 134 MB** | 323 ms · 0.28 s · 279 MB |
-| todomvc.com | **297 ms · 0.14 s · 128 MB** | 418 ms · 0.27 s · 291 MB |
-| gov.uk | **205 ms · 0.14 s · 125 MB** | 459 ms · 0.31 s · 325 MB |
-| news.ycombinator.com | **259 ms · 0.12 s · 112 MB** | 487 ms · 0.30 s · 301 MB |
-| docs.python.org | **174 ms · 0.12 s · 115 MB** | 308 ms · 0.27 s · 321 MB |
-| rust-lang.org | **151 ms · 0.09 s · 112 MB** | 341 ms · 0.27 s · 305 MB |
+| github.com | 1.28 s · 1.24 s · **375 MB** | **574 ms · 0.69 s** · 480 MB |
+| bbc.com/news | 742 ms · 0.72 s · **263 MB** | **442 ms · 0.72 s** · 427 MB |
+| crates.io search | **124 ms · 0.10 s · 137 MB** | 160 ms · 0.20 s · 277 MB |
+| todomvc.com | **99 ms · 0.06 s · 117 MB** | 163 ms · 0.19 s · 296 MB |
+| gov.uk | **108 ms · 0.08 s · 129 MB** | 177 ms · 0.23 s · 324 MB |
+| news.ycombinator.com | **104 ms · 0.08 s · 116 MB** | 157 ms · 0.19 s · 298 MB |
+| docs.python.org | **108 ms · 0.07 s · 120 MB** | 169 ms · 0.21 s · 322 MB |
+| rust-lang.org | **96 ms · 0.06 s · 116 MB** | 161 ms · 0.20 s · 290 MB |
 
-**What this shows.** On documents and light apps pageon reaches its view in about half
-Chromium's time, CPU and memory. On heavy script apps Chromium is 2–3× faster: its JIT tiers and
-threads pay off, and GitHub forces 80 layouts while loading. Memory stays lower on every page.
-These runs time a sampled process tree, so times are higher than `pageon bench`'s.
+**What this shows.** On documents and light apps pageon reaches its view in about two thirds of
+Chromium's time, with under half its CPU and memory. On heavy script apps Chromium is
+faster (2× on GitHub): its JIT tiers and threads pay off, and GitHub forces 79 layouts while
+loading. Memory stays lower on every page.
 
 ```sh
 pageon bench https://github.com https://news.ycombinator.com      # recorded once, then offline
