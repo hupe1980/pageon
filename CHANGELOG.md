@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-17
+
 ### Added
 
 - `pageon bench URL…`: how fast pages open (first view, warm opens, CPU, memory, layouts,
@@ -179,7 +181,8 @@ The first release.
   `2026-07-28` and earlier), CDP for Puppeteer and Playwright, WebDriver BiDi, a Python package
   with a BrowserGym backend, and the Rust crates.
 
-[Unreleased]: https://github.com/hupe1980/pageon/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/hupe1980/pageon/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/hupe1980/pageon/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/hupe1980/pageon/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/hupe1980/pageon/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/hupe1980/pageon/compare/v0.2.0...v0.3.0
