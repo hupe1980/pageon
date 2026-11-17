@@ -448,8 +448,6 @@ fn capitalize(
 
 
 
-/// Titlecases the first character of `text`, which must start with a typographic letter unit,
-/// leaving the rest unchanged.
 fn uppercase(text: &str, _lang: &LanguageIdentifier, output: &mut OutputSink<'_>) {
     for c in text.chars() {
         push_chars(output, c.to_uppercase());

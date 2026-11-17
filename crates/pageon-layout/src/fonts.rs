@@ -40,6 +40,15 @@ fn aliases(family: &str) -> &'static [&'static str] {
     }
 }
 
+/// The list-marker font (family `Bullet`): bullet glyphs (disc, circle, square, disclosure
+/// triangles) at the metrics list markers are laid out with.
+const BULLET: &[u8] = include_bytes!("../fonts/moz-bullet-font.otf");
+
+fn bullet() -> &'static Blob<u8> {
+    static BULLET_BLOB: OnceLock<Blob<u8>> = OnceLock::new();
+    BULLET_BLOB.get_or_init(|| Blob::new(Arc::new(BULLET.to_vec())))
+}
+
 fn blobs() -> &'static Vec<(&'static str, Blob<u8>)> {
     static BLOBS: OnceLock<Vec<(&'static str, Blob<u8>)>> = OnceLock::new();
     BLOBS.get_or_init(|| {
@@ -71,6 +80,7 @@ pub(crate) fn context() -> FontContext {
             );
         }
     }
+    ctx.collection.register_fonts(bullet().clone(), None);
     let id = |f: &str| families.iter().find(|(n, _)| *n == f).map(|(_, id)| *id);
     let (sans, serif, mono) = (
         id("LiberationSans"),
@@ -92,4 +102,13 @@ pub(crate) fn context() -> FontContext {
         }
     }
     ctx
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn the_bullet_font_serves_its_family() {
+        let mut ctx = super::context();
+        assert!(ctx.collection.family_by_name("Bullet").is_some());
+    }
 }

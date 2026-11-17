@@ -21,7 +21,6 @@ pub(crate) mod transform;
 #[cfg(test)]
 mod tests;
 
-use html5ever::local_name;
 use style::properties::ComputedValues;
 use style::url::ComputedUrl;
 use style::values::computed::Display;
@@ -117,15 +116,6 @@ fn layer_images(
 
 // Node helpers the painter uses (blitz-dom `node/node.rs`, `node/element.rs`).
 impl Node {
-    /// An `<input type=button|submit|reset>`.
-    pub(crate) fn is_button_input(&self) -> bool {
-        self.is(&local_name!("input"))
-            && matches!(
-                self.attr(&local_name!("type")),
-                Some("button" | "submit" | "reset")
-            )
-    }
-
     /// `display` as layout uses it (a button input's display is blockified).
     pub(crate) fn used_display(&self) -> Option<Display> {
         let display = self.style.as_ref()?.clone_display();

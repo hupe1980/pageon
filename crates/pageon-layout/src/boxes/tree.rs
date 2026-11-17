@@ -184,6 +184,10 @@ pub(crate) struct Node {
     pub(crate) background_images: Vec<Option<Arc<Decoded>>>,
     /// Decoded `mask-image` layers (`None` for non-`url()` or unknown images).
     pub(crate) mask_images: Vec<Option<Arc<Decoded>>>,
+    // Layout pass
+    /// Construction reached this box's pseudo-elements: only then are they boxes (pseudo-elements
+    /// of boxes construction never reaches are dropped after it).
+    pub(crate) pseudos_flushed: bool,
 }
 
 impl Node {
@@ -216,6 +220,7 @@ impl Node {
             scrollable_overflow: kurbo::Rect::ZERO,
             background_images: Vec::new(),
             mask_images: Vec::new(),
+            pseudos_flushed: false,
         }
     }
 
@@ -234,9 +239,24 @@ impl Node {
         self.style.as_ref()
     }
 
-    /// The computed `display` (`None` for text).
+    /// The computed `display` (`None` for text); button inputs are blockified (`inline-block`
+    /// or `block`).
     pub(crate) fn display_style(&self) -> Option<Display> {
-        self.style.as_ref().map(|s| s.clone_display())
+        let display = self.style.as_ref()?.clone_display();
+        Some(if self.is_button_input() {
+            stylo_taffy::convert::button_input_display(display)
+        } else {
+            display
+        })
+    }
+
+    /// `<input type=button|submit|reset>`.
+    pub(crate) fn is_button_input(&self) -> bool {
+        self.is(&local_name!("input"))
+            && matches!(
+                self.attr(&local_name!("type")),
+                Some("button" | "submit" | "reset")
+            )
     }
 
     pub(crate) fn is_element(&self) -> bool {
@@ -294,23 +314,24 @@ impl Node {
             if self.tag == local_name!("button") {
                 flags |= stylo_taffy::StyleFlags::IS_BUTTON;
             }
-            if self.tag == local_name!("input")
-                && matches!(
-                    self.attr(&local_name!("type")),
-                    Some("button" | "submit" | "reset")
-                )
-            {
+            if self.is_button_input() {
                 flags |= stylo_taffy::StyleFlags::IS_BUTTON_INPUT;
             }
+        }
+        if let Some(inline) = &self.inline_layout {
+            flags |= inline.span_cb_flags;
         }
         stylo_taffy::TaffyStyloStyle::new(style, flags)
     }
 
-    /// Whether the box is out of flow (absolutely or fixed positioned).
+    /// Whether the box is out of flow (absolutely or fixed positioned, and rendered): Taffy
+    /// positions it from its containing block's hoisted children.
     pub(crate) fn is_out_of_flow(&self) -> bool {
-        self.style
-            .as_ref()
-            .is_some_and(|s| s.clone_position().is_absolutely_positioned())
+        self.style.as_ref().is_some_and(|s| {
+            let b = s.get_box();
+            stylo_taffy::convert::position(b.position).is_out_of_flow()
+                && stylo_taffy::convert::display(b.display) != taffy::Display::None
+        })
     }
 
     pub(crate) fn is_floated(&self) -> bool {
@@ -525,6 +546,20 @@ impl Tree {
                         self.nodes[me].before = Some(pid);
                     } else {
                         self.nodes[me].after = Some(pid);
+                    }
+                }
+                // A button input's label: its value as a text child.
+                if self.nodes[me].is_button_input() {
+                    let value = dom
+                        .control(id)
+                        .and_then(|c| c.value.clone())
+                        .or_else(|| node.attr("value").map(str::to_string));
+                    if let Some(value) = value {
+                        let mut tn = Node::new(0, Kind::Text, None);
+                        tn.text = redact(&value, b.redact);
+                        tn.parent = Some(me);
+                        let tid = self.push(tn);
+                        self.nodes[me].children.push(tid);
                     }
                 }
                 // Replaced content: an input's or textarea's children, a sheet's text, an
