@@ -48,7 +48,7 @@ select {
   border: 1px solid;
 }
 /* A drop-down select box: as wide as its widest option plus the arrow (options stack in a
-   one-row column and none paints). Blitz has no select rendering of its own. */
+   one-row column and none paints). */
 select:not([multiple]):not([size]), select[size="0"], select[size="1"] {
   display: inline-flex;
   flex-direction: column;
@@ -109,9 +109,9 @@ slot {
   display: contents;
 }
 /* Popovers (the HTML UA sheet): hidden until open, then centred in the viewport above the
-   page. `pageon-popover-open` is the mirror's marker for `:popover-open`, which Blitz does not
-   match: its own sheet hides every `[popover]:not(:popover-open)` (specificity 0,3,1), so the
-   open rule repeats the marker to win. */
+   page. `pageon-popover-open` is pageon's marker for `:popover-open`, answered from the
+   document's state; the HTML sheet hides every `[popover]:not(:popover-open)` (specificity
+   0,3,1), so the open rule repeats the marker to win. */
 [popover]:not([pageon-popover-open]) {
   display: none;
 }
@@ -132,12 +132,7 @@ slot {
   z-index: 2147483647;
 }
 
-/* With scripting on, `<noscript>` is not rendered; `pageon-scripting` is the mirror's marker. */
+/* With scripting on, `<noscript>` is not rendered; `pageon-scripting` is pageon's marker. */
 noscript[pageon-scripting] {
-  display: none !important;
-}
-
-/* A stylesheet's element in the mirror: its rules are the document's sheets. */
-pageon-sheet {
   display: none !important;
 }

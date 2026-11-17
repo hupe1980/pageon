@@ -12,11 +12,17 @@ All notable changes to this project are documented here. The format follows
   own document and kept up to date from its changes: after a few class changes on GitHub's home
   page, 20× less work than restyling through the layout engine. Large stylesheets are parsed
   once per process.
-- Layout uses the same styles: one cascade per change instead of two. Shadow trees, slots,
-  `::part` and font-relative units (`ch`, `ex`, `cap`, `ic`) are styled on pageon's document too.
+- Layout runs on pageon's own box tree, laid out with Taffy and Parley from those styles, and
+  painted by pageon: Blitz is no longer a dependency. One cascade per change; GitHub's home page
+  opens with 21 % less CPU (1.39 s, from 1.76 s). Shadow trees, slots, `::part` and
+  font-relative units (`ch`, `ex`, `cap`, `ic`) are styled natively.
+- Nodes inside a `display: none` subtree have no box (`box_of` is `None`; scripts still read
+  zeros).
 
 ### Fixed
 
+- Table cells that stop being cells (`display: block` on a `<td>`) laid out differently after a
+  change than on a fresh page.
 - Inserting a shadow host into its own shadow tree hung the page; it now throws
   `HierarchyRequestError`.
 - Custom elements hidden until defined (`x-el:not(:defined)`) stayed hidden after their

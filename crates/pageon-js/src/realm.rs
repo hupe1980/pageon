@@ -904,7 +904,6 @@ impl std::fmt::Debug for Styles {
     }
 }
 
-
 impl Realm {
     /// The computed value of `property` (not a used value: see [`Layout::needs_boxes`])
     /// from styles computed on the document itself, brought up to date from its change log;
@@ -933,10 +932,7 @@ impl Realm {
                 pageon_dom::StyleChange::Sheets | pageon_dom::StyleChange::All
             )
         });
-        let fresh = st
-            .styler
-            .as_ref()
-            .is_none_or(|s| s.viewport != st.viewport);
+        let fresh = st.styler.as_ref().is_none_or(|s| s.viewport != st.viewport);
         if fresh {
             st.styler = Some(Styles {
                 styler: pageon_style::Styler::with_metrics(
@@ -970,11 +966,8 @@ impl Realm {
         } else {
             changes
         };
-        let linked: Vec<(NodeId, &str)> = st
-            .stylesheets
-            .iter()
-            .map(|s| (s.link, s.css()))
-            .collect();
+        let linked: Vec<(NodeId, &str)> =
+            st.stylesheets.iter().map(|s| (s.link, s.css())).collect();
         styles.styler.sync(
             &dom,
             &changes,

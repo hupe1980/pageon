@@ -1002,7 +1002,11 @@ mod style_log {
         let mut dom = Dom::new();
         let root = dom.root();
         let host = dom.create(NodeData::Element {
-            name: html5ever::QualName::new(None, html5ever::ns!(html), html5ever::local_name!("div")),
+            name: html5ever::QualName::new(
+                None,
+                html5ever::ns!(html),
+                html5ever::local_name!("div"),
+            ),
             attrs: Vec::new(),
             template_contents: None,
             mathml_annotation_xml_integration_point: false,
