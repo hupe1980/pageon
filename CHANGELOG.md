@@ -6,11 +6,13 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-17
+
 ### Changed
 
 - Computed styles (`getComputedStyle`, except sizes and shorthands) are computed on pageon's
   own document and kept up to date from its changes: after a few class changes on GitHub's home
-  page, 20× less work than restyling through the layout engine. Large stylesheets are parsed
+  page, 20× less work than restyling through Blitz before. Large stylesheets are parsed
   once per process.
 - Layout runs on pageon's own box tree, laid out with Taffy and Parley from those styles, and
   painted by pageon: Blitz is no longer a dependency. One cascade per change; GitHub's home page
@@ -208,7 +210,8 @@ The first release.
   `2026-07-28` and earlier), CDP for Puppeteer and Playwright, WebDriver BiDi, a Python package
   with a BrowserGym backend, and the Rust crates.
 
-[Unreleased]: https://github.com/hupe1980/pageon/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/hupe1980/pageon/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/hupe1980/pageon/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/hupe1980/pageon/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/hupe1980/pageon/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/hupe1980/pageon/compare/v0.3.0...v0.4.0
