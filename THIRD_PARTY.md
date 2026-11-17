@@ -8,6 +8,7 @@ own licences.
 | Liberation fonts 2.1.5 (Sans, Serif, Mono) | `crates/pageon-layout/fonts/` (built into `pageon-layout`) | SIL Open Font License 1.1 (`fonts/LICENSE`) |
 | web-streams-polyfill 4.5.1 (`dist/ponyfill.js`, unmodified, SHA-256 pinned by a test) | `crates/pageon-js/src/streams/` (built into `pageon-js`) | MIT (header in the file) |
 | fake-indexeddb 6.2.8, bundled with pageon's persistence (`indexeddb/fake-indexeddb.js`) | `crates/pageon-js/src/indexeddb/` (in the binary) | Apache-2.0 |
+| Blitz's Stylo binding (blitz-dom 0.3.0-beta.4 `stylo.rs`), adapted | `crates/pageon-style/src/` (`node.rs`, `hints.rs`) | MIT OR Apache-2.0 |
 | html5lib tree-construction tests | `crates/pageon-dom/tests/html5lib/` (tests only) | MIT |
 | WebIDL from `@webref/idl` 3.86.0 and the WebMCP draft (the specifications listed in `idl/SOURCE`) | `crates/pageon-js/idl/` (generator input) | WHATWG: CC BY 4.0; W3C: W3C Software and Document License (see `idl/SOURCE`) |
 | Web Platform Tests: html-aam, wai-aria role, accname files | `crates/pageon-ax/tests/wpt/` (tests only) | W3C 3-clause BSD (see `tests/wpt/SOURCE`) |

@@ -1,0 +1,31 @@
+[package]
+name = "pageon-style"
+description = "CSS styling of pageon's document with Stylo, directly on its tree"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+publish = false
+
+[dependencies]
+pageon-dom.workspace = true
+style = { version = "0.22.0", package = "stylo" }
+style_dom = { version = "0.22.0", package = "stylo_dom" }
+style_traits = { version = "0.22.0", package = "stylo_traits" }
+selectors = "0.41.0"
+markup5ever = "0.40.0"
+euclid = "0.22"
+app_units = "0.7.8"
+url = "2"
+# The default user-agent sheet, shared with the layout engine while both exist.
+blitz-dom = { version = "=0.3.0-beta.4", default-features = false, features = ["floats"] }
+
+[dev-dependencies]
+pageon-layout.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true
