@@ -391,9 +391,14 @@ impl Tree {
                 }
             }
         }
-        let kids: Vec<NodeId> = dom.children(dom.root()).collect();
-        for c in kids {
-            t.add(dom, b, &slotted, c, root, 1);
+        // Depth-first in document order, without recursion (pages nest arbitrarily deep).
+        let mut work: Vec<(NodeId, BoxId, usize)> =
+            dom.children(dom.root()).map(|c| (c, root, 1)).collect();
+        work.reverse();
+        while let Some((id, parent, depth)) = work.pop() {
+            if let Some((me, kids)) = t.add(dom, b, &slotted, id, parent, depth) {
+                work.extend(kids.into_iter().rev().map(|c| (c, me, depth + 1)));
+            }
         }
         t
     }
@@ -417,6 +422,8 @@ impl Tree {
         dom.children(id).collect()
     }
 
+    /// Adds the box of `id` under `parent`; an element whose children are rendered returns
+    /// its box and those children.
     fn add(
         &mut self,
         dom: &Dom,
@@ -425,15 +432,15 @@ impl Tree {
         id: NodeId,
         parent: BoxId,
         depth: usize,
-    ) {
-        let Some(node) = dom.get(id) else { return };
+    ) -> Option<(BoxId, Vec<NodeId>)> {
+        let node = dom.get(id)?;
         match &node.data {
             NodeData::Text(text) => {
                 // Text directly in a closed <details> is not rendered (only the summary is).
                 if self.nodes[parent].is(&local_name!("details"))
                     && !self.nodes[parent].has_attr(&LocalName::from("open"))
                 {
-                    return;
+                    return None;
                 }
                 let mut n = Node::new(0, Kind::Text, Some(id));
                 n.text = redact(text, b.redact);
@@ -441,14 +448,11 @@ impl Tree {
                 let t = self.push(n);
                 self.by_dom.insert(id, t);
                 self.nodes[parent].children.push(t);
+                None
             }
             NodeData::Element { name, attrs, .. } => {
-                let Some(styles) = b.styler.element_styles(dom, id) else {
-                    return;
-                };
-                let Some(style) = styles.get_primary().cloned() else {
-                    return;
-                };
+                let styles = b.styler.element_styles(dom, id)?;
+                let style = styles.get_primary().cloned()?;
                 let local = name.local.clone();
                 let mut n = Node::new(0, Kind::Element, Some(id));
                 n.attrs = attrs
@@ -474,7 +478,7 @@ impl Tree {
                 }
                 self.nodes[at].children.push(me);
                 if undisplayed {
-                    return;
+                    return None;
                 }
                 self.special(dom, b, id, me, &local, node);
                 // Pseudo-elements with generated content.
@@ -505,13 +509,11 @@ impl Tree {
                 // Replaced content: an input's or textarea's children, a sheet's text, an
                 // image's or frame's fallback are not rendered.
                 if matches!(&*local, "input" | "textarea" | "style" | "img" | "iframe") {
-                    return;
+                    return None;
                 }
-                for c in Self::flat_children(dom, slotted, id) {
-                    self.add(dom, b, slotted, c, me, depth + 1);
-                }
+                Some((me, Self::flat_children(dom, slotted, id)))
             }
-            _ => {}
+            _ => None,
         }
     }
 
@@ -630,5 +632,66 @@ impl std::ops::Index<BoxId> for Tree {
 impl std::ops::IndexMut<BoxId> for Tree {
     fn index_mut(&mut self, i: BoxId) -> &mut Node {
         &mut self.nodes[i]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pageon_dom::{ParseOptions, parse_document};
+
+    fn tree(html: &str, redact: &[String]) -> Tree {
+        let dom = parse_document(html, ParseOptions::default());
+        let mut styler = pageon_style::Styler::new(1280.0, 720.0, "about:blank");
+        styler.restyle_all(&dom);
+        Tree::build(
+            &dom,
+            &Build {
+                styler: &styler,
+                images: None,
+                redact,
+                base: "about:blank",
+                viewport: crate::Viewport::default(),
+            },
+        )
+    }
+
+    #[test]
+    fn no_secret_reaches_the_boxes() {
+        let secret = "hunter2-secret".to_string();
+        let t = tree(
+            "<p>pw: hunter2-secret</p><input value='hunter2-secret'>\
+             <input type=password value='other'><textarea>hunter2-secret</textarea>\
+             <div title='hunter2-secret' data-x='hunter2-secret'>x</div>",
+            std::slice::from_ref(&secret),
+        );
+        for n in &t.nodes {
+            assert!(!n.text.contains(&secret), "text {:?}", n.text);
+            assert!(n.attrs.iter().all(|(_, v)| !v.contains(&secret)));
+            if let Special::TextInput(c) = &n.special {
+                assert!(!c.text.contains(&secret), "control {:?}", c.text);
+                assert!(!c.text.contains("other"), "a password shows bullets");
+            }
+        }
+    }
+
+    #[test]
+    fn deep_nesting_builds_on_a_small_stack() {
+        let html = format!("{}x{}", "<div>".repeat(20_000), "</div>".repeat(20_000));
+        let deepest = std::thread::Builder::new()
+            .stack_size(2 << 20)
+            .spawn(move || {
+                let t = tree(&html, &[]);
+                // Flattened at the cap: no box is nested deeper.
+                t.nodes
+                    .iter()
+                    .map(|n| std::iter::successors(n.parent, |&p| t.nodes[p].parent).count())
+                    .max()
+                    .unwrap_or(0)
+            })
+            .unwrap_or_else(|e| panic!("{e}"))
+            .join()
+            .unwrap_or_else(|_| panic!("overflowed"));
+        assert!(deepest <= MAX_DEPTH + 1, "{deepest}");
     }
 }
