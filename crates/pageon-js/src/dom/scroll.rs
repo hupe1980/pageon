@@ -56,6 +56,18 @@ pub(crate) fn scroller_of(cx: &Cx<'_, '_, '_>, el: NodeId) -> Scroller {
 
 /// The current offset.
 pub(crate) fn offset(cx: &Cx<'_, '_, '_>, s: Scroller) -> (f64, f64) {
+    // Never scrolled (or scrolled back to 0): 0 whatever the layout, since a layout only ever
+    // clamps an offset down. Pages read these often; no layout is needed for them.
+    {
+        let st = cx.realm.st.borrow();
+        let at_start = match s {
+            Scroller::Viewport => st.scroll.viewport == (0.0, 0.0),
+            Scroller::Element(id) => st.scroll.elements.get(&id).is_none_or(|&o| o == (0.0, 0.0)),
+        };
+        if at_start {
+            return (0.0, 0.0);
+        }
+    }
     match s {
         Scroller::Viewport => {
             let (x, y) = cx.realm.layout().viewport_scroll();
