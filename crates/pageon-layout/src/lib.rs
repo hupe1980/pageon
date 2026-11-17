@@ -27,6 +27,7 @@ mod fonts;
 mod metrics;
 mod images;
 mod media;
+mod boxes;
 mod mirror;
 mod paint;
 pub mod scope;

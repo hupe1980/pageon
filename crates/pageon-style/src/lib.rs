@@ -615,6 +615,16 @@ impl Styler {
         Some(slot.data.borrow().styles.clone())
     }
 
+    /// The style of an anonymous box (a block wrapping inline content) inside `parent`.
+    pub fn anonymous_style(&self, parent: &ComputedValues) -> Arc<ComputedValues> {
+        let guard = self.guard.read();
+        self.stylist.style_for_anonymous::<N<'_>>(
+            &StylesheetGuards::same(&guard),
+            &style::selector_parser::PseudoElement::ServoAnonymousBox,
+            parent,
+        )
+    }
+
     /// The computed style of an element, once styled.
     pub fn style(&self, dom: &Dom, id: NodeId) -> Option<Arc<ComputedValues>> {
         let slot = self.slots.get(id.index() as usize)?;
