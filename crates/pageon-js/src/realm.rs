@@ -271,7 +271,7 @@ pub struct Dialog {
 }
 
 /// A live collection's definition.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Coll {
     /// `getElementsByTagName` (qualified name, `*` for all).
     Tag(NodeId, String),
@@ -525,6 +525,9 @@ pub struct State {
     pub ready_state: &'static str,
     /// Mutations so far (invalidates the layout cache).
     pub mutations: u64,
+    /// Live collections' items as of a document version (`Dom::changes`): reading `length`
+    /// and every index in a loop walks the document once, not once per read.
+    pub collections: std::collections::HashMap<Coll, (u64, std::rc::Rc<[NodeId]>)>,
     /// Cached layout: ((mutations, element scroll generation) at build time, layout).
     pub layout: Option<((u64, u64), Rc<Layout>)>,
     /// Scroll positions.

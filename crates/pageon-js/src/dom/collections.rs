@@ -1,5 +1,7 @@
 //! Collections, token lists, style declarations and rects.
 
+use std::rc::Rc;
+
 use pageon_dom::NodeId;
 
 use super::{collect, gone};
@@ -17,11 +19,27 @@ pub(crate) fn slot(cx: &Cx<'_, '_, '_>, this: Obj) -> R<Slot> {
 }
 
 /// The nodes of a list or collection object, now.
-pub(crate) fn items(cx: &Cx<'_, '_, '_>, this: Obj) -> R<Vec<NodeId>> {
+pub(crate) fn items(cx: &Cx<'_, '_, '_>, this: Obj) -> R<Rc<[NodeId]>> {
     Ok(match slot(cx, this)? {
-        Slot::Static(v) => v,
+        Slot::Static(v) => v.into(),
         Slot::ChildNodes(p) => cx.dom().children(p).collect(),
-        Slot::Collection(c) => collect(&cx.dom(), &c),
+        Slot::Collection(c) => {
+            let dom = cx.dom();
+            let version = dom.changes();
+            if let Some((v, items)) = cx.realm.st.borrow().collections.get(&c)
+                && *v == version
+            {
+                return Ok(items.clone());
+            }
+            let items: Rc<[NodeId]> = collect(&dom, &c).into();
+            let mut st = cx.realm.st.borrow_mut();
+            // Bounded: pages make collections without end.
+            if st.collections.len() >= 256 {
+                st.collections.clear();
+            }
+            st.collections.insert(c, (version, items.clone()));
+            items
+        }
         _ => return Err(Error::Type("Illegal invocation".into())),
     })
 }
@@ -58,7 +76,8 @@ pub mod html_collection {
         let all = items(cx, this)?;
         let dom = cx.dom();
         Ok(all
-            .into_iter()
+            .iter()
+            .copied()
             .find(|&n| {
                 dom.get(n).is_some_and(|x| {
                     x.attr("id") == Some(name.as_str()) || x.attr("name") == Some(name.as_str())
@@ -75,7 +94,8 @@ pub mod radio_node_list {
     fn radios(cx: &Cx<'_, '_, '_>, this: Obj) -> R<Vec<NodeId>> {
         let dom = cx.dom();
         Ok(items(cx, this)?
-            .into_iter()
+            .iter()
+            .copied()
             .filter(|&n| {
                 dom.get(n).is_some_and(|x| x.is_html("input"))
                     && pageon_dom::forms::input_type(&dom, n) == "radio"

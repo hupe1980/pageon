@@ -273,9 +273,12 @@ impl Layout {
             .unwrap_or("about:blank")
             .to_string();
         let mut own = None;
+        let (recycle, prev_own) = match prev {
+            Some(p) => (Some(p.tree), p.own),
+            None => (None, None),
+        };
         if opts.styles.is_none() {
-            let mut kept = prev
-                .and_then(|p| p.own)
+            let mut kept = prev_own
                 .filter(|o| o.viewport == viewport && o.base == base)
                 .unwrap_or_else(|| Own {
                     styler: pageon_style::Styler::with_metrics(
@@ -311,6 +314,7 @@ impl Layout {
             .or(own.as_ref().map(|o| &o.styler))
             .unwrap_or_else(|| unreachable!("a styler was made above"));
         let build = boxes::tree::Build {
+            recycle: std::cell::RefCell::new(recycle),
             styler,
             images: opts.images,
             redact: opts.redact,

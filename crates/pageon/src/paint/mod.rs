@@ -746,7 +746,7 @@ impl<E: Env> Tab<'_, E> {
     fn marks(&mut self, area: Rect) -> Vec<marks::Mark> {
         let capture = self.doc.capture(viewport());
         let elements = self.episode.elements(&capture);
-        let mut layouts: Vec<(usize, Layout)> = Vec::new();
+        let mut layouts: Vec<(usize, std::rc::Rc<Layout>)> = Vec::new();
         let mut out = Vec::new();
         for el in elements {
             let Some((frame, node)) = self.doc.node_for(&el.target) else {

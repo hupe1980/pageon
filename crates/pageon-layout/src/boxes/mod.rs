@@ -20,10 +20,28 @@ use self::tree::{BoxId, Kind, Node, Tree};
 
 /// Builds the box tree of `dom` and lays it out at the viewport.
 pub(crate) fn lay_out(dom: &pageon_dom::Dom, build: &tree::Build<'_>) -> Tree {
+    type Contexts = (parley::FontContext, parley::LayoutContext<tree::TextBrush>);
+    thread_local! {
+        /// The font and layout contexts, kept between layouts: fonts are registered once and
+        /// shaping caches stay warm.
+        static CONTEXTS: std::cell::RefCell<Option<Contexts>> = const { std::cell::RefCell::new(None) };
+    }
+    let (mut fonts, mut layouts) = CONTEXTS
+        .with(|c| c.borrow_mut().take())
+        .unwrap_or_else(|| (crate::fonts::context(), parley::LayoutContext::new()));
+    let tree = lay_out_with(dom, build, &mut fonts, &mut layouts);
+    CONTEXTS.with(|c| *c.borrow_mut() = Some((fonts, layouts)));
+    tree
+}
+
+fn lay_out_with(
+    dom: &pageon_dom::Dom,
+    build: &tree::Build<'_>,
+    fonts: &mut parley::FontContext,
+    layouts: &mut parley::LayoutContext<tree::TextBrush>,
+) -> Tree {
     let mut tree = Tree::build(dom, build);
-    let mut fonts = crate::fonts::context();
-    let mut layouts = parley::LayoutContext::new();
-    construct::Construct::new(&mut tree, build.styler, &mut fonts, &mut layouts).run();
+    construct::Construct::new(&mut tree, build.styler, fonts, layouts).run();
     // Layout starts at the root element.
     let root = tree[tree.root()]
         .children
@@ -37,8 +55,8 @@ pub(crate) fn lay_out(dom: &pageon_dom::Dom, build: &tree::Build<'_>) -> Tree {
         };
         let mut pass = layout::Pass {
             tree: &mut tree,
-            fonts: &mut fonts,
-            layouts: &mut layouts,
+            fonts,
+            layouts,
         };
         taffy::compute_root_layout(&mut pass, taffy::NodeId::from(root), available);
         taffy::round_layout(&mut pass, taffy::NodeId::from(root));

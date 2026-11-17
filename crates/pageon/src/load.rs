@@ -268,6 +268,7 @@ pub(crate) fn inline(
         popups: ran.popups,
     };
     doc.dom = ran.dom;
+    doc.laid_out.get_mut().take();
     doc.stylesheets = ran.stylesheets;
     doc.loaded_at = end;
     doc.client = Some(parent.clone());
@@ -516,6 +517,7 @@ pub(crate) fn fetch(
         context: start.page.map_or(0, |(_, c)| c),
         source,
         usage,
+        laid_out: std::cell::RefCell::default(),
     })))
 }
 

@@ -333,6 +333,10 @@ pub(crate) struct Tree {
 
 /// What a build takes besides the document.
 pub(crate) struct Build<'a> {
+    /// The previous tree of the page, whose allocations the new one reuses (a large page
+    /// lays out many times; fresh multi-megabyte allocations each time pile up in the
+    /// allocator).
+    pub(crate) recycle: std::cell::RefCell<Option<Tree>>,
     pub(crate) styler: &'a pageon_style::Styler,
     pub(crate) images: Option<&'a Images>,
     pub(crate) redact: &'a [String],
@@ -396,9 +400,21 @@ fn text_input(kind: Option<&str>) -> bool {
 impl Tree {
     /// Builds the tree of the rendered part of `dom`'s flat tree with the styler's styles.
     pub(crate) fn build(dom: &Dom, b: &Build<'_>) -> Self {
+        let (mut nodes, mut by_dom) = b
+            .recycle
+            .borrow_mut()
+            .take()
+            .map(|mut t| (std::mem::take(&mut t.nodes), std::mem::take(&mut t.by_dom)))
+            .unwrap_or_default();
+        nodes.clear();
+        by_dom.clear();
+        // About one box per node, and a few anonymous ones.
+        let estimate = dom.index_bound() + dom.index_bound() / 8;
+        nodes.reserve(estimate.saturating_sub(nodes.capacity()));
+        by_dom.reserve(dom.index_bound().saturating_sub(by_dom.capacity()));
         let mut t = Self {
-            nodes: Vec::new(),
-            by_dom: HashMap::new(),
+            nodes,
+            by_dom,
             images: b.images.cloned(),
             wanted: Vec::new(),
             applied: 0,
@@ -695,6 +711,7 @@ mod tests {
         Tree::build(
             &dom,
             &Build {
+                recycle: std::cell::RefCell::new(None),
                 styler: &styler,
                 images: None,
                 redact,

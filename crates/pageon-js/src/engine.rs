@@ -2333,6 +2333,7 @@ pub(crate) fn new_realm(
             written: None,
             ready_state: "loading",
             mutations: 0,
+            collections: std::collections::HashMap::new(),
             layout: None,
             viewport: cfg.viewport,
             stylesheets: cfg.stylesheets,

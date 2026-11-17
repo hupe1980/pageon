@@ -134,7 +134,7 @@ pub(crate) fn build(doc: &Document, viewport: Viewport) -> (Capture, bool) {
     let mut strings = Strings::default();
     let mut documents = Vec::new();
     let mut out_frames = Vec::new();
-    let mut layouts: Vec<Option<Layout>> = Vec::new();
+    let mut layouts: Vec<Option<std::rc::Rc<Layout>>> = Vec::new();
     let mut layout_failed = false;
     for (fi, entry) in frames.iter().enumerate() {
         let frame_id = format!("F{fi}");
@@ -225,8 +225,8 @@ pub(crate) fn build(doc: &Document, viewport: Viewport) -> (Capture, bool) {
         load_state: LoadState::Complete,
         viewport: {
             let top = layouts.first().and_then(Option::as_ref);
-            let (x, y) = top.map_or((0.0, 0.0), pageon_layout::Layout::viewport_scroll);
-            let (w, h) = top.map_or((0.0, 0.0), pageon_layout::Layout::document_size);
+            let (x, y) = top.map_or((0.0, 0.0), |l| l.viewport_scroll());
+            let (w, h) = top.map_or((0.0, 0.0), |l| l.document_size());
             pageon_agent::capture::Viewport {
                 x: f64::from(x),
                 y: f64::from(y),

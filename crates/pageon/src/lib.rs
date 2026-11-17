@@ -135,6 +135,9 @@ pub struct Document {
     pub(crate) source: Option<&'static str>,
     /// The site's AI usage preferences (`Content-Usage`, from the response or robots.txt).
     pub(crate) usage: Option<String>,
+    /// The last layout and the hash of what it was made from: views and actions between
+    /// changes share it, and a changed page reuses its parsed sheets.
+    pub(crate) laid_out: std::cell::RefCell<Option<(u64, Rc<Layout>)>>,
 }
 
 /// A document whose scripts keep running (in a tab): its engine, realm and live DOM.
@@ -403,6 +406,7 @@ pub(crate) fn parse_without_frames(html: &str, base_url: &str) -> Document {
         context: 0,
         source: None,
         usage: None,
+        laid_out: std::cell::RefCell::default(),
     }
 }
 
@@ -645,7 +649,41 @@ impl Document {
     }
 
     /// Styles and lays out the document at `viewport` (stylesheets loaded with the page apply).
-    pub fn layout(&self, viewport: Viewport) -> Layout {
+    pub fn layout(&self, viewport: Viewport) -> Rc<Layout> {
+        let key = {
+            use std::hash::{Hash, Hasher};
+            let mut h = std::collections::hash_map::DefaultHasher::new();
+            (
+                self.dom.changes(),
+                self.dom.index_bound(),
+                viewport.width,
+                viewport.height,
+            )
+                .hash(&mut h);
+            self.stylesheets
+                .iter()
+                .for_each(|s| (s.link, s.hash()).hash(&mut h));
+            (&self.js.modals, &self.js.defined, &self.final_url).hash(&mut h);
+            for (id, x, y) in &self.js.scroll.elements {
+                (id, x.to_bits(), y.to_bits()).hash(&mut h);
+            }
+            self.images
+                .as_ref()
+                .map(|i| (Rc::as_ptr(i) as usize, i.len()))
+                .hash(&mut h);
+            h.finish()
+        };
+        let (x, y) = self.js.scroll.viewport;
+        let kept = self.laid_out.borrow_mut().take();
+        let prev = match kept {
+            Some((k, l)) if k == key => {
+                l.set_viewport_scroll(x as f32, y as f32);
+                *self.laid_out.borrow_mut() = Some((k, l.clone()));
+                return l;
+            }
+            Some((_, l)) => Rc::try_unwrap(l).ok(),
+            None => None,
+        };
         let opts = pageon_layout::LayoutOptions {
             modals: &self.js.modals,
             defined: &self.js.defined,
@@ -655,15 +693,16 @@ impl Document {
             styles_only: false,
             styles: None,
         };
-        let l = Layout::with_options(
+        let l = Rc::new(Layout::again(
             &self.dom,
             viewport,
             &self.stylesheets,
             Some(&self.final_url),
             &opts,
-        );
-        let (x, y) = self.js.scroll.viewport;
+            prev,
+        ));
         l.set_viewport_scroll(x as f32, y as f32);
+        *self.laid_out.borrow_mut() = Some((key, l.clone()));
         l
     }
 
@@ -690,6 +729,7 @@ impl Document {
 
     /// Mutable access to the document model.
     pub fn dom_mut(&mut self) -> &mut Dom {
+        self.laid_out.get_mut().take();
         &mut self.dom
     }
 }

@@ -45,6 +45,18 @@ window.define = function () { defined = true; }; window.define.amd = {}; window.
 ok('streams beside AMD', new TransformStream().readable instanceof ReadableStream && !defined && !('WebStreamsPolyfill' in window), typeof ReadableStream);
 // measure() takes the navigation's timing points as marks.
 ok('measure navigationStart', performance.measure('since start', 'navigationStart').startTime === 0, 'threw');
+// Live collections see every kind of change (they are cached between changes).
+const live = document.getElementsByClassName('lv');
+const kids = document.body.children;
+const n0 = live.length, k0 = kids.length;
+const d1 = document.createElement('p'); d1.className = 'lv'; document.body.appendChild(d1);
+const afterAdd = live.length;
+d1.className = 'other';
+const afterClass = live.length;
+d1.classList.add('lv');
+const afterToken = live.length;
+d1.remove();
+ok('live collections', n0 === 0 && afterAdd === 1 && afterClass === 0 && afterToken === 1 && live.length === 0 && live[0] === undefined && kids.length === k0, [n0, afterAdd, afterClass, afterToken, live.length].join());
 // A thrown DOMException is reported by its name.
 setTimeout(() => { document.querySelector(':::'); }, 2);
 // SVG element interfaces.
@@ -68,7 +80,7 @@ setTimeout(() => {
 }, 50);
 </script>"##;
 
-const EXPECTED: usize = 13;
+const EXPECTED: usize = 14;
 
 fn log() -> pageon_env::Log {
     site(vec![
