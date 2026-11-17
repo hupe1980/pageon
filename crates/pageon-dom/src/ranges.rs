@@ -288,6 +288,9 @@ impl Dom {
         // Text styles nothing itself; its parent's `:empty` (and the like) may change.
         if let Some(parent) = self.parent(id) {
             self.log_style(crate::StyleChange::Children { parent });
+            if self.get(parent).is_some_and(|n| n.is_html("style")) {
+                self.log_style(crate::StyleChange::Sheets);
+            }
         }
         let old = match &mut self.raw_mut(id).ok_or(DomError::Gone(id))?.data {
             NodeData::Text(t)

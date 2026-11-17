@@ -153,7 +153,14 @@ impl Dom {
             slot_assignment: init.slot_assignment,
         });
         self.shadow.insert(host, root);
+        // The host's children in the flat tree are now its shadow tree's.
+        self.log_style(crate::StyleChange::Children { parent: host });
         Ok(root)
+    }
+
+    /// Every shadow host and its shadow root.
+    pub fn shadow_hosts(&self) -> impl Iterator<Item = (NodeId, NodeId)> + '_ {
+        self.shadow.iter().map(|(&h, &r)| (h, r))
     }
 
     /// The shadow root of `host`, open or closed.

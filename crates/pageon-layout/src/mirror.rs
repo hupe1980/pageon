@@ -361,7 +361,10 @@ pub(crate) fn build(
     let (modals, images, secrets) = (opts.modals, opts.images, opts.redact);
     // Pseudo-classes Blitz does not match (`:invalid`, `:state()`) are rewritten to mirror-only
     // markers, only when a sheet uses them.
-    let pseudo = uses_pseudo(dom, stylesheets);
+    // Styles computed on the document itself: the layout engine gets none of its sheets (no
+    // rewrites, no pruning) and takes each element's styles from them.
+    let native = opts.styles;
+    let pseudo = native.is_none() && uses_pseudo(dom, stylesheets);
     let mut shown: Vec<NodeId> = Vec::new();
     // Subtrees replaced by the control's state (a textarea's value) or hidden (text in a
     // closed `<details>`): their nodes are not mirrored.
@@ -383,7 +386,11 @@ pub(crate) fn build(
     let mut kids = Kids::default();
     // Every class and id the page has had: rules that need others are left out. The set only
     // grows, so the sheets' texts (and their parsed form) stay the same from layout to layout.
-    let tokens = crate::scope::Tokens::of(dom).map(|t| sheets.seen(t));
+    let tokens = if native.is_some() {
+        None
+    } else {
+        crate::scope::Tokens::of(dom).map(|t| sheets.seen(t))
+    };
     // The document's sheets in cascade order (style elements, links, then adopted sheets).
     let mut ordered: Vec<Sheet> = Vec::new();
     let linked: std::collections::HashMap<NodeId, &Stylesheet> =
@@ -525,13 +532,15 @@ pub(crate) fn build(
                                             Some(&n) => crate::scope::Scope::Shadow(n),
                                             None => crate::scope::Scope::Document,
                                         });
-                                        ordered.push(sheet_css(
-                                            &css.0,
-                                            css.1,
-                                            pseudo,
-                                            scope,
-                                            tokens.as_ref(),
-                                        ));
+                                        if native.is_none() {
+                                            ordered.push(sheet_css(
+                                                &css.0,
+                                                css.1,
+                                                pseudo,
+                                                scope,
+                                                tokens.as_ref(),
+                                            ));
+                                        }
                                         skip_inside = Some(id);
                                         let sheet = html5ever::QualName::new(
                                             None,
@@ -641,8 +650,10 @@ pub(crate) fn build(
         }
     }
     // Adopted stylesheets: after every sheet of the document, scoped to their tree.
-    for (scope, css) in adopted(dom, composed) {
-        ordered.push(sheet_css(&css, None, pseudo, scope, tokens.as_ref()));
+    if native.is_none() {
+        for (scope, css) in adopted(dom, composed) {
+            ordered.push(sheet_css(&css, None, pseudo, scope, tokens.as_ref()));
+        }
     }
     let sheets_changed = sheets.attach(&mut doc, ordered);
     if old.is_some() {
@@ -660,6 +671,12 @@ pub(crate) fn build(
         // Styles are kept and only what changed is restyled; boxes are built and laid out
         // again in full (Blitz's incremental box layout keeps stale sizes in places).
         doc.set_incremental_layout(false);
+    }
+    if let Some(styler) = native {
+        // The engine's own pass (user-agent sheets only) does its bookkeeping; every element
+        // then gets the styles computed on the document.
+        doc.resolve_stylist(0.0);
+        inject(&mut doc, &map, dom, styler);
     }
     if opts.styles_only {
         doc.resolve_stylist(0.0);
@@ -814,6 +831,29 @@ impl Kids {
             if let Some(n) = m.doc.get_node(c) {
                 *n.layout_children.borrow_mut() = None;
             }
+        }
+    }
+}
+
+/// Gives every mirrored element the styles computed on the document (primary and
+/// pseudo-elements), with no restyle pending.
+fn inject(doc: &mut BaseDocument, map: &Map, dom: &Dom, styler: &pageon_style::Styler) {
+    use style::invalidation::element::restyle_hints::RestyleHint;
+    let ids: Vec<NodeId> = map.pageon_ids().collect();
+    for id in ids {
+        let Some(styles) = styler.element_styles(dom, id) else {
+            continue;
+        };
+        let Some(node) = map.blitz(id).and_then(|b| doc.get_node_mut(b)) else {
+            continue;
+        };
+        if node.element_data().is_none() {
+            continue;
+        }
+        if let Some(data) = node.try_stylo_element_data_mut() {
+            let mut d = data.ensure_init_mut();
+            d.styles = styles;
+            d.hint = RestyleHint::empty();
         }
     }
 }

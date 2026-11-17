@@ -70,7 +70,7 @@ fn styles_equal_the_layout_engines() {
         let layout = Layout::new(&dom, Viewport::default(), &[], None);
         let mut styler = Styler::new(1280.0, 720.0, "about:blank");
         let css = sheets(&dom);
-        styler.set_sheets(&css.iter().map(String::as_str).collect::<Vec<_>>());
+        styler.set_sheets(&css.iter().map(|s| (pageon_style::text_hash(s), s.as_str())).collect::<Vec<_>>());
         styler.restyle_all(&dom);
         let name = page
             .file_name()
@@ -103,4 +103,28 @@ fn styles_equal_the_layout_engines() {
         diffs.len(),
         diffs[..diffs.len().min(40)].join("\n")
     );
+}
+
+/// Font-relative units resolve against the bundled fonts, as in layout.
+#[test]
+fn font_relative_units_match_layout() {
+    let html = "<style>p{letter-spacing:1ch;word-spacing:1ex;text-indent:3cap;outline-offset:2ic}\
+        code{font-family:monospace;letter-spacing:.5ch} h1{font-family:serif;word-spacing:2ex}</style>\
+        <p>Text <code>x</code></p><h1>Title</h1>";
+    let dom = parse_document(html, ParseOptions::default());
+    let layout = Layout::new(&dom, Viewport::default(), &[], None);
+    let mut styler =
+        Styler::with_metrics(1280.0, 720.0, "about:blank", pageon_layout::font_metrics());
+    let css = sheets(&dom);
+    styler.set_sheets(&css.iter().map(|s| (pageon_style::text_hash(s), s.as_str())).collect::<Vec<_>>());
+    styler.restyle_all(&dom);
+    let mut compared = 0;
+    for id in elements(&dom) {
+        for p in ["letter-spacing", "word-spacing", "text-indent", "outline-offset"] {
+            let Some(theirs) = layout.style(id, p) else { continue };
+            compared += 1;
+            assert_eq!(styler.value(&dom, id, p).as_deref(), Some(theirs.as_str()), "{p}");
+        }
+    }
+    assert!(compared >= 8, "{compared}");
 }

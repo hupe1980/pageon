@@ -892,8 +892,9 @@ impl std::fmt::Debug for Realm {
 pub struct Styles {
     styler: pageon_style::Styler,
     viewport: Viewport,
-    /// The author sheets in cascade order, and how many loaded sheets they were built with.
-    sheets: Vec<String>,
+    /// The author sheets in cascade order with their hashes, and how many loaded sheets they
+    /// were built with.
+    sheets: Vec<(u64, String)>,
     loaded: usize,
 }
 
@@ -905,15 +906,13 @@ impl std::fmt::Debug for Styles {
 
 /// The document's author sheets in cascade order: `<style>` and loaded `<link>` sheets (their
 /// CSSOM rules when a script changed them), then the document's adopted sheets.
-fn author_sheets(dom: &pageon_dom::Dom, loaded: &[Stylesheet]) -> Vec<String> {
+fn author_sheets(dom: &pageon_dom::Dom, loaded: &[Stylesheet]) -> Vec<(u64, String)> {
     let mut out = Vec::new();
     for e in dom.traverse(dom.root()) {
-        let pageon_dom::Edge::Enter(id) = e else {
-            continue;
-        };
+        let pageon_dom::Edge::Enter(id) = e else { continue };
         let Some(n) = dom.get(id) else { continue };
         if n.is_html("style") {
-            out.push(dom.cssom_text(id).map_or_else(
+            let text: String = dom.cssom_text(id).map_or_else(
                 || {
                     dom.children(id)
                         .filter_map(|c| match dom.get(c).map(|n| &n.data) {
@@ -923,47 +922,61 @@ fn author_sheets(dom: &pageon_dom::Dom, loaded: &[Stylesheet]) -> Vec<String> {
                         .collect()
                 },
                 str::to_string,
-            ));
-        } else if n.is_html("link")
-            && let Some(css) = dom
-                .cssom_text(id)
-                .or_else(|| loaded.iter().find(|s| s.link == id).map(Stylesheet::css))
-        {
-            out.push(css.to_string());
+            );
+            out.push((pageon_style::text_hash(&text), text));
+        } else if n.is_html("link") {
+            if let Some(css) = dom.cssom_text(id) {
+                out.push((pageon_style::text_hash(css), css.to_string()));
+            } else if let Some(s) = loaded.iter().find(|s| s.link == id) {
+                out.push((s.hash(), s.css().to_string()));
+            }
         }
     }
-    out.extend(dom.adopted(dom.root()).iter().cloned());
+    for css in dom.adopted(dom.root()) {
+        out.push((pageon_style::text_hash(css), css.clone()));
+    }
     out
 }
 
 impl Realm {
     /// The computed value of `property` (not a used value: see [`Layout::needs_boxes`])
     /// from styles computed on the document itself, brought up to date from its change log;
-    /// `None` when they cannot give it (shorthands, documents with shadow trees).
+    /// `None` for shorthands.
     pub fn computed(&self, id: NodeId, property: &str) -> Option<String> {
-        let mut dom = self.dom.try_borrow_mut().ok()?;
-        if dom.has_shadow() {
+        if !self.sync_styles() {
             return None;
         }
+        let dom = self.dom.borrow();
+        let st = self.st.borrow();
+        st.styler.as_ref()?.styler.value(&dom, id, property)
+    }
+
+    /// Brings the styles computed on the document up to date with its changes (made on first
+    /// use). Whether the document has them (not while it is borrowed for a change).
+    fn sync_styles(&self) -> bool {
+        let Ok(mut dom) = self.dom.try_borrow_mut() else {
+            return false;
+        };
         let changes = dom.take_style_changes();
         let mut st = self.st.borrow_mut();
         let st = &mut *st;
-        let sheets_may_differ = changes.iter().any(|c| match c {
-            pageon_dom::StyleChange::Children { .. }
-            | pageon_dom::StyleChange::Sheets
-            | pageon_dom::StyleChange::All => true,
-            pageon_dom::StyleChange::Attribute { element, .. } => dom
-                .get(*element)
-                .is_some_and(|n| n.is_html("style") || n.is_html("link")),
-            pageon_dom::StyleChange::State { .. } => false,
+        let sheets_may_differ = changes.iter().any(|c| {
+            matches!(
+                c,
+                pageon_dom::StyleChange::Sheets | pageon_dom::StyleChange::All
+            )
         });
-        let fresh = st.styler.as_ref().is_none_or(|s| s.viewport != st.viewport);
+        let fresh = st
+            .styler
+            .as_ref()
+            .is_none_or(|s| s.viewport != st.viewport);
         if fresh {
             st.styler = Some(Styles {
-                styler: pageon_style::Styler::new(
+                styler: pageon_style::Styler::with_metrics(
                     st.viewport.width as f32,
                     st.viewport.height as f32,
                     &st.url,
+                    pageon_layout::font_metrics(),
                 ),
                 viewport: st.viewport,
                 sheets: Vec::new(),
@@ -971,12 +984,18 @@ impl Realm {
             });
         }
         let defined = st.custom.defined();
-        let styles = st.styler.as_mut()?;
+        let Some(styles) = st.styler.as_mut() else {
+            return false;
+        };
         if fresh || sheets_may_differ || styles.loaded != st.stylesheets.len() {
             styles.sheets = author_sheets(&dom, &st.stylesheets);
             styles.loaded = st.stylesheets.len();
         }
-        let texts: Vec<&str> = styles.sheets.iter().map(String::as_str).collect();
+        let texts: Vec<(u64, &str)> = styles
+            .sheets
+            .iter()
+            .map(|(h, t)| (*h, t.as_str()))
+            .collect();
         styles.styler.set_sheets(&texts);
         // A styler made now restyles everything; the log before it is not needed.
         let changes = if fresh {
@@ -984,15 +1003,21 @@ impl Realm {
         } else {
             changes
         };
+        let linked: Vec<(NodeId, &str)> = st
+            .stylesheets
+            .iter()
+            .map(|s| (s.link, s.css()))
+            .collect();
         styles.styler.sync(
             &dom,
             &changes,
             pageon_style::Page {
                 top_layer: &st.modals,
                 defined: &defined,
+                linked: &linked,
             },
         );
-        styles.styler.value(&dom, id, property)
+        true
     }
 
     /// The current layout of the document (rebuilt after mutations).
@@ -1007,7 +1032,7 @@ impl Realm {
     }
 
     fn laid_out(&self, styles_only: bool) -> Rc<Layout> {
-        let mut st = self.st.borrow_mut();
+        let st = self.st.borrow();
         let key = (st.mutations, st.scroll.generation);
         let (vx, vy) = st.scroll.viewport;
         if let Some((k, l)) = &st.layout
@@ -1018,6 +1043,10 @@ impl Realm {
             l.set_viewport_scroll(vx as f32, vy as f32);
             return l;
         }
+        // Styles first (they take the document's change log), then the layout with them.
+        drop(st);
+        let native = self.sync_styles();
+        let mut st = self.st.borrow_mut();
         let dom = self.dom.borrow();
         st.scroll.elements.retain(|&id, _| dom.get(id).is_some());
         let offsets: Vec<(NodeId, f64, f64)> = st
@@ -1033,11 +1062,17 @@ impl Realm {
         // parsed (pages that change and measure themselves lay out many times).
         let prev = st.layout.take().and_then(|(_, l)| Rc::try_unwrap(l).ok());
         let defined = st.custom.defined();
+        let st = &mut *st;
         let opts = pageon_layout::LayoutOptions {
             modals: &st.modals,
             defined: &defined,
             scroll: &offsets,
             styles_only,
+            styles: if native {
+                st.styler.as_ref().map(|s| &s.styler)
+            } else {
+                None
+            },
             ..pageon_layout::LayoutOptions::default()
         };
         let l = Rc::new(Layout::again(

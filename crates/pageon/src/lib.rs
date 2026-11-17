@@ -653,6 +653,7 @@ impl Document {
             redact: &[],
             scroll: &self.js.scroll.elements,
             styles_only: false,
+            styles: None,
         };
         let l = Layout::with_options(
             &self.dom,

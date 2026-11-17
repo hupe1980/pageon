@@ -321,7 +321,8 @@ pub enum StyleChange {
         /// The element.
         element: NodeId,
     },
-    /// A stylesheet changed through the CSSOM, or adopted sheets were set.
+    /// Stylesheets may have changed: a `<style>` or `<link>` came, went or changed, a
+    /// script changed a sheet through the CSSOM, or adopted sheets were set.
     Sheets,
     /// More changes than are kept: everything is restyled.
     All,
@@ -517,6 +518,21 @@ impl Dom {
             .and_then(|s| s.node.as_ref())
     }
 
+    /// One past the highest node index in use: node ids index below it.
+    pub fn index_bound(&self) -> usize {
+        self.slots.len()
+    }
+
+    /// The live node at an index, if any.
+    pub fn node_at(&self, index: usize) -> Option<NodeId> {
+        let s = self.slots.get(index)?;
+        s.node.as_ref()?;
+        Some(NodeId {
+            index: u32::try_from(index).ok()?,
+            generation: s.generation,
+        })
+    }
+
     /// Mutable access to a node.
     pub fn get_mut(&mut self, id: NodeId) -> Option<&mut Node> {
         // A caller may change anything: styles of the node are recomputed.
@@ -579,6 +595,20 @@ impl Dom {
         }
     }
 
+    /// Whether `a` is a host-including inclusive ancestor of `b`: an inclusive ancestor, or
+    /// one of the host of the shadow tree `b` is in (and so on outwards). Inserting `a` under
+    /// `b` would make a cycle in the flat tree.
+    pub fn is_host_including_ancestor(&self, a: NodeId, b: NodeId) -> bool {
+        let mut cur = Some(b);
+        while let Some(c) = cur {
+            if c == a {
+                return true;
+            }
+            cur = self.shadow_parent(c);
+        }
+        false
+    }
+
     /// Whether `a` is `b` or an ancestor of `b`.
     pub fn is_inclusive_ancestor(&self, a: NodeId, b: NodeId) -> bool {
         let mut cur = Some(b);
@@ -600,6 +630,9 @@ impl Dom {
         let Some(parent) = parent else { return Ok(()) };
         self.ranges_before_remove(id, parent);
         self.log_style(StyleChange::Children { parent });
+        if self.holds_sheets(id) {
+            self.log_style(StyleChange::Sheets);
+        }
         if self.observing {
             self.mutations.push(Mutation::ChildList {
                 target: parent,
@@ -627,7 +660,7 @@ impl Dom {
     /// Appends `child` as the last child of `parent` (moving it if attached).
     pub fn append(&mut self, parent: NodeId, child: NodeId) -> Result<(), DomError> {
         self.node(parent)?;
-        if self.is_inclusive_ancestor(child, parent) {
+        if self.is_host_including_ancestor(child, parent) {
             return Err(DomError::Cycle);
         }
         self.detach(child)?;
@@ -644,6 +677,9 @@ impl Dom {
         self.node_mut(parent)?.last_child = Some(child);
         self.ranges_after_insert(child);
         self.log_style(StyleChange::Children { parent });
+        if self.holds_sheets(child) {
+            self.log_style(StyleChange::Sheets);
+        }
         if self.observing {
             self.mutations.push(Mutation::ChildList {
                 target: parent,
@@ -666,7 +702,7 @@ impl Dom {
         if self.node(reference)?.parent != Some(parent) {
             return Err(DomError::NotAChild);
         }
-        if self.is_inclusive_ancestor(child, parent) {
+        if self.is_host_including_ancestor(child, parent) {
             return Err(DomError::Cycle);
         }
         if child == reference {
@@ -687,6 +723,9 @@ impl Dom {
         }
         self.ranges_after_insert(child);
         self.log_style(StyleChange::Children { parent });
+        if self.holds_sheets(child) {
+            self.log_style(StyleChange::Sheets);
+        }
         if self.observing {
             self.mutations.push(Mutation::ChildList {
                 target: parent,
@@ -746,6 +785,9 @@ impl Dom {
                 None => attrs.push(Attribute::new(local, value)),
             }
         }
+        if element && old.as_deref() != Some(value) && self.is_sheet(id) {
+            self.log_style(StyleChange::Sheets);
+        }
         if element && old.as_deref() != Some(value) {
             self.log_style(StyleChange::Attribute {
                 element: id,
@@ -772,6 +814,9 @@ impl Dom {
                 .position(|a| a.name.ns.is_empty() && &*a.name.local == local)
         {
             old = Some(attrs.remove(i).value);
+        }
+        if old.is_some() && self.is_sheet(id) {
+            self.log_style(StyleChange::Sheets);
         }
         if old.is_some() {
             self.log_style(StyleChange::Attribute {
@@ -818,6 +863,25 @@ impl Dom {
     /// [`StyleChange::All`]).
     pub fn take_style_changes(&mut self) -> Vec<StyleChange> {
         std::mem::take(&mut self.style_log)
+    }
+
+    /// Whether `id` is a `<style>` or `<link>`.
+    fn is_sheet(&self, id: NodeId) -> bool {
+        self.get(id)
+            .is_some_and(|n| n.is_html("style") || n.is_html("link"))
+    }
+
+    /// Whether `id` is or holds a `<style>` or `<link>` (its changes may change stylesheets).
+    pub(crate) fn holds_sheets(&self, id: NodeId) -> bool {
+        if self.style_log.first() == Some(&StyleChange::All) {
+            return false;
+        }
+        self.traverse(id).any(|e| match e {
+            crate::Edge::Enter(n) => self
+                .get(n)
+                .is_some_and(|n| n.is_html("style") || n.is_html("link")),
+            crate::Edge::Leave(_) => false,
+        })
     }
 
     pub(crate) fn log_style(&mut self, c: StyleChange) {
@@ -930,5 +994,23 @@ mod style_log {
         let _ = dom.set_attr(el, "class", "a");
         let last = dom.take_style_changes();
         assert_eq!(last.len(), 1, "{last:?}");
+    }
+
+    /// A host cannot be inserted into its own shadow tree (a cycle in the flat tree).
+    #[test]
+    fn a_host_cannot_go_into_its_shadow_tree() {
+        let mut dom = Dom::new();
+        let root = dom.root();
+        let host = dom.create(NodeData::Element {
+            name: html5ever::QualName::new(None, html5ever::ns!(html), html5ever::local_name!("div")),
+            attrs: Vec::new(),
+            template_contents: None,
+            mathml_annotation_xml_integration_point: false,
+        });
+        let _ = dom.append(root, host);
+        let shadow = dom
+            .attach_shadow(host, crate::ShadowInit::open())
+            .unwrap_or_else(|e| panic!("{e:?}"));
+        assert_eq!(dom.append(shadow, host), Err(DomError::Cycle));
     }
 }

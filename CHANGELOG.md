@@ -12,9 +12,13 @@ All notable changes to this project are documented here. The format follows
   own document and kept up to date from its changes: after a few class changes on GitHub's home
   page, 20× less work than restyling through the layout engine. Large stylesheets are parsed
   once per process.
+- Layout uses the same styles: one cascade per change instead of two. Shadow trees, slots,
+  `::part` and font-relative units (`ch`, `ex`, `cap`, `ic`) are styled on pageon's document too.
 
 ### Fixed
 
+- Inserting a shadow host into its own shadow tree hung the page; it now throws
+  `HierarchyRequestError`.
 - Custom elements hidden until defined (`x-el:not(:defined)`) stayed hidden after their
   definition ran; `:open`, `:modal`, `:placeholder-shown`, `:read-write` and `:read-only` now
   match in layout and computed styles.

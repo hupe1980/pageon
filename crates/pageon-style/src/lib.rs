@@ -41,8 +41,7 @@ use node::{Handle, N, Slot, Tree};
 /// popovers and other things pageon renders its own way.
 pub const UA_CSS: &str = include_str!("ua.css");
 
-/// Font metrics for `ex`, `ch` and friends: the CSS defaults (a later stage measures the
-/// bundled fonts).
+/// Font metrics for `ex`, `ch` and friends without fonts: the CSS defaults.
 #[derive(Debug)]
 struct Metrics;
 
@@ -82,6 +81,8 @@ pub struct Page<'a> {
     pub top_layer: &'a [NodeId],
     /// Defined custom elements (`:defined`).
     pub defined: &'a [NodeId],
+    /// Loaded stylesheets of `<link>` elements (for those in shadow trees).
+    pub linked: &'a [(NodeId, &'a str)],
 }
 
 /// What one restyle did.
@@ -105,6 +106,15 @@ pub struct Styler {
     all: bool,
     top_layer: Vec<NodeId>,
     defined: Vec<NodeId>,
+    /// Each shadow root's sheets and their cascade data.
+    shadows: std::collections::HashMap<NodeId, ShadowStyles>,
+}
+
+/// A shadow root's styles: its sheets (`<style>`, loaded `<link>`, adopted) by hash, and their
+/// cascade data.
+pub(crate) struct ShadowStyles {
+    pub(crate) styles: style::author_styles::AuthorStyles<DocumentStyleSheet>,
+    hashes: Vec<u64>,
 }
 
 /// The lock of all style data: one per process, so parsed sheets are shared between pages.
@@ -150,17 +160,34 @@ fn parsed(css: &str, url: &UrlExtraData, origin: Origin) -> DocumentStyleSheet {
     sheet
 }
 
+impl std::fmt::Debug for Styler {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Styler").finish_non_exhaustive()
+    }
+}
+
 impl Styler {
     /// A styler for a viewport of `width`×`height` CSS px; URLs in sheets resolve against
     /// `base`.
     pub fn new(width: f32, height: f32, base: &str) -> Self {
+        Self::with_metrics(width, height, base, Box::new(Metrics))
+    }
+
+    /// [`Styler::new`] with the fonts' metrics (`ex`, `ch`, `cap`, `ic` resolve against
+    /// them, as layout shapes text).
+    pub fn with_metrics(
+        width: f32,
+        height: f32,
+        base: &str,
+        metrics: Box<dyn FontMetricsProvider>,
+    ) -> Self {
         let device = Device::new(
             MediaType::screen(),
             QuirksMode::NoQuirks,
             euclid::Size2D::new(width, height),
             euclid::Size2D::new(width, height),
             euclid::Scale::new(1.0),
-            Box::new(Metrics),
+            metrics,
             ComputedValues::initial_values_with_font_override(Font::initial_values()),
             PrefersColorScheme::Light,
             PointerCapabilities::default(),
@@ -184,6 +211,7 @@ impl Styler {
             all: true,
             top_layer: Vec::new(),
             defined: Vec::new(),
+            shadows: std::collections::HashMap::new(),
         };
         for css in [blitz_dom::DEFAULT_CSS, UA_CSS] {
             let sheet = s.sheet(css, Origin::UserAgent);
@@ -196,11 +224,11 @@ impl Styler {
         parsed(css, &self.url, origin)
     }
 
-    /// The document's author sheets, in cascade order. Unchanged texts keep their parsed sheet.
-    pub fn set_sheets(&mut self, sheets: &[&str]) {
-        let hashes: Vec<u64> = sheets.iter().map(|s| hash(s)).collect();
-        if hashes.len() == self.authors.len()
-            && hashes.iter().zip(&self.authors).all(|(h, (a, _))| h == a)
+    /// The document's author sheets in cascade order, each with its [`text_hash`]. Unchanged
+    /// texts keep their parsed sheet.
+    pub fn set_sheets(&mut self, sheets: &[(u64, &str)]) {
+        if sheets.len() == self.authors.len()
+            && sheets.iter().zip(&self.authors).all(|((h, _), (a, _))| h == a)
         {
             return;
         }
@@ -209,7 +237,7 @@ impl Styler {
         for (_, sheet) in old {
             self.stylist.remove_stylesheet(sheet, &self.guard.read());
         }
-        for (css, h) in sheets.iter().zip(hashes) {
+        for &(h, css) in sheets {
             let sheet = self.sheet(css, Origin::Author);
             self.stylist
                 .append_stylesheet(sheet.clone(), &self.guard.read());
@@ -226,6 +254,7 @@ impl Styler {
     pub fn restyle_all_with(&mut self, dom: &Dom, page: Page<'_>) -> Restyled {
         self.top_layer = page.top_layer.to_vec();
         self.defined = page.defined.to_vec();
+        self.sync_shadows(dom, page.linked);
         let elements = self.refresh(dom);
         self.traverse(dom, &elements, &[], &[], true)
     }
@@ -240,6 +269,30 @@ impl Styler {
         inline: &[NodeId],
         all: bool,
     ) -> Restyled {
+        // Every node has a slot of its own: a node the log did not name (one inside a nested
+        // shadow tree, say) gets a fresh one and is styled.
+        let mut elements = elements.to_vec();
+        let bound = dom.index_bound();
+        if self.slots.len() < bound {
+            self.slots.resize_with(bound, Slot::default);
+        }
+        for i in 0..bound {
+            if let Some(id) = dom.node_at(i)
+                && self.ensure_slot(id)
+            {
+                self.refresh_one(dom, id);
+                if dom.get(id).is_some_and(|n| n.local_name().is_some()) {
+                    elements.push(id);
+                }
+            }
+        }
+        let elements = &elements[..];
+        // Slotted nodes and their slots, once per restyle.
+        let assigned: std::collections::HashMap<NodeId, NodeId> = dom
+            .shadow_hosts()
+            .flat_map(|(host, _)| dom.children(host).collect::<Vec<_>>())
+            .filter_map(|c| dom.assigned_slot(c).map(|s| (c, s)))
+            .collect();
         style::thread_state::enter(ThreadState::LAYOUT);
         let guards = StylesheetGuards {
             author: &self.guard.read(),
@@ -250,14 +303,13 @@ impl Styler {
             slots: &self.slots,
             guard: &self.guard,
             handles: std::cell::OnceCell::new(),
+            shadows: &self.shadows,
+            assigned: &assigned,
         };
         let handles: Vec<Handle<'_>> = (0..self.slots.len())
             .map(|i| Handle {
                 t: &tree,
-                id: self.slots[i]
-                    .generation
-                    .get()
-                    .map_or_else(|| dom.root(), |g| NodeId::from_parts(i as u32, g)),
+                id: dom.node_at(i).unwrap_or_else(|| dom.root()),
             })
             .collect();
         let _ = tree.handles.set(&handles);
@@ -272,11 +324,9 @@ impl Styler {
             if let Some(mut data) = root.mutate_data() {
                 data.hint |= RestyleHint::restyle_subtree();
             }
-            // Every element is walked: mark each element's parent.
-            for &id in elements {
-                if let Some(p) = dom.parent(id) {
-                    self.slots[p.index() as usize].dirty_descendants.set(true);
-                }
+            // Every element is walked.
+            for s in &self.slots {
+                s.dirty_descendants.set(true);
             }
         } else {
             for &id in elements {
@@ -331,7 +381,9 @@ impl Styler {
     /// restyle their parent's subtree. Sheet changes and [`StyleChange::All`] restyle
     /// everything.
     pub fn sync(&mut self, dom: &Dom, changes: &[StyleChange], page: Page<'_>) -> Restyled {
+        let shadows_changed = self.sync_shadows(dom, page.linked);
         if self.all
+            || shadows_changed
             || self.top_layer != page.top_layer
             || changes.iter().any(|c| matches!(c, StyleChange::All))
         {
@@ -369,11 +421,21 @@ impl Styler {
                         continue;
                     }
                     for child in dom.children(*parent) {
-                        // Moved here from elsewhere: restyled with what it inherits now.
+                        // Moved here from elsewhere (or styled under this parent before it
+                        // changed): restyled with what it inherits now.
+                        let parent_now = self
+                            .slots
+                            .get(parent.index() as usize)
+                            .filter(|s| s.has_data.get())
+                            .and_then(|s| {
+                                s.data.borrow().styles.get_primary().map(|p| std::ptr::from_ref::<ComputedValues>(p) as usize)
+                            })
+                            .unwrap_or(0);
                         if let Some(s) = self.slots.get(child.index() as usize)
                             && s.generation.get() == Some(child.generation())
                             && s.has_data.get()
-                            && s.styled_under.get() != Some(*parent)
+                            && (s.styled_under.get() != Some(*parent)
+                                || s.inherited_from.get() != parent_now)
                             && !hinted.contains(&child)
                         {
                             hinted.push(child);
@@ -542,6 +604,17 @@ impl Styler {
         }
     }
 
+    /// An element's styles as computed (primary and pseudo-elements), for a layout engine to
+    /// lay out with; elements in subtrees not rendered may hold styles from before.
+    pub fn element_styles(&self, dom: &Dom, id: NodeId) -> Option<style::data::ElementStyles> {
+        let slot = self.slots.get(id.index() as usize)?;
+        if slot.generation.get() != Some(id.generation()) || !slot.has_data.get() {
+            return None;
+        }
+        dom.get(id)?;
+        Some(slot.data.borrow().styles.clone())
+    }
+
     /// The computed style of an element, once styled.
     pub fn style(&self, dom: &Dom, id: NodeId) -> Option<Arc<ComputedValues>> {
         let slot = self.slots.get(id.index() as usize)?;
@@ -549,24 +622,27 @@ impl Styler {
             return None;
         }
         dom.get(id)?;
-        // Inside an undisplayed subtree nothing is styled (data from before is stale).
-        for a in dom.ancestors(id) {
-            if !matches!(dom.get(a).map(|n| &n.data), Some(NodeData::Element { .. })) {
-                continue;
+        // Outside the flat tree (an unassigned child of a host) or inside an undisplayed
+        // subtree nothing is styled: data from before is stale.
+        let mut at = id;
+        while at != dom.root() {
+            let p = dom.flat_parent(at)?;
+            if matches!(dom.get(p).map(|n| &n.data), Some(NodeData::Element { .. })) {
+                let s = self.slots.get(p.index() as usize)?;
+                if !s.has_data.get() {
+                    return None;
+                }
+                let shown = s
+                    .data
+                    .borrow()
+                    .styles
+                    .get_primary()
+                    .is_some_and(|p| !p.clone_display().is_none());
+                if !shown {
+                    return None;
+                }
             }
-            let s = self.slots.get(a.index() as usize)?;
-            if !s.has_data.get() {
-                return None;
-            }
-            let shown = s
-                .data
-                .borrow()
-                .styles
-                .get_primary()
-                .is_some_and(|p| !p.clone_display().is_none());
-            if !shown {
-                return None;
-            }
+            at = p;
         }
         slot.data.borrow().styles.get_primary().cloned()
     }
@@ -625,57 +701,79 @@ impl Styler {
         };
     }
 
-    /// Sizes the slots to the document and refreshes what each element's matching reads
-    /// (id, classes, inline style, state). The elements, in tree order.
+    /// Every element's matching data refreshed (the document's, its shadow trees' and any
+    /// other live element's); the elements.
     fn refresh(&mut self, dom: &Dom) -> Vec<NodeId> {
         let mut elements = Vec::new();
-        let mut shown: Vec<NodeId> = Vec::new();
-        for e in dom.traverse(dom.root()) {
-            let Edge::Enter(id) = e else { continue };
-            let i = id.index() as usize;
-            if self.slots.len() <= i {
-                self.slots.resize_with(i + 1, Slot::default);
+        let bound = dom.index_bound();
+        if self.slots.len() < bound {
+            self.slots.resize_with(bound, Slot::default);
+        }
+        for i in 0..bound {
+            let Some(id) = dom.node_at(i) else { continue };
+            self.ensure_slot(id);
+            if dom.get(id).is_some_and(|n| n.local_name().is_some()) {
+                self.refresh_one(dom, id);
+                elements.push(id);
             }
-            let slot = &mut self.slots[i];
-            if slot.generation.get() != Some(id.generation()) {
-                *slot = Slot::default();
-                slot.generation.set(Some(id.generation()));
-            }
-            let Some(node) = dom.get(id) else { continue };
-            let NodeData::Element { name, .. } = &node.data else {
-                continue;
-            };
-            elements.push(id);
-            slot.id = node
-                .attr("id")
-                .filter(|v| !v.is_empty())
-                .map(style::Atom::from);
-            slot.classes = node
-                .attr("class")
-                .map(|c| c.split_ascii_whitespace().map(style::Atom::from).collect())
-                .unwrap_or_default();
-            slot.style_attribute = node.attr("style").map(|css| {
-                Arc::new(self.guard.wrap(style::properties::parse_style_attribute(
-                    css,
-                    &self.url,
-                    None,
-                    QuirksMode::NoQuirks,
-                    style::stylesheets::CssRuleType::Style,
-                )))
-            });
-            slot.state = state(dom, id, &name.local);
-            if &*name.local == "select" {
-                shown.extend(shown_options(dom, id));
-            }
-            slot.markers = node::Markers {
-                shown: &*name.local == "option" && shown.contains(&id),
-                popover_open: dom.popover_open(id),
-                scripting: &*name.local == "noscript" && dom.scripting(),
-                top_layer: self.top_layer.contains(&id),
-                defined: self.defined.contains(&id),
-            };
         }
         elements
+    }
+
+    /// Brings each shadow root's styles up to date (its `<style>` and loaded `<link>`
+    /// sheets, then its adopted ones). Whether any changed.
+    fn sync_shadows(&mut self, dom: &Dom, linked: &[(NodeId, &str)]) -> bool {
+        let mut changed = false;
+        let roots: Vec<NodeId> = dom.shadow_hosts().map(|(_, r)| r).collect();
+        let before = self.shadows.len();
+        self.shadows.retain(|r, _| roots.contains(r));
+        changed |= self.shadows.len() != before;
+        for root in roots {
+            let mut texts: Vec<String> = Vec::new();
+            for e in dom.traverse(root) {
+                let Edge::Enter(id) = e else { continue };
+                let Some(n) = dom.get(id) else { continue };
+                if n.is_html("style") {
+                    texts.push(dom.cssom_text(id).map_or_else(
+                        || {
+                            dom.children(id)
+                                .filter_map(|c| match dom.get(c).map(|n| &n.data) {
+                                    Some(NodeData::Text(t)) => Some(t.as_str()),
+                                    _ => None,
+                                })
+                                .collect()
+                        },
+                        str::to_string,
+                    ));
+                } else if n.is_html("link")
+                    && let Some(css) = dom
+                        .cssom_text(id)
+                        .or_else(|| linked.iter().find(|(l, _)| *l == id).map(|(_, c)| *c))
+                {
+                    texts.push(css.to_string());
+                }
+            }
+            texts.extend(dom.adopted(root).iter().cloned());
+            let hashes: Vec<u64> = texts.iter().map(|t| hash(t)).collect();
+            if self.shadows.get(&root).is_some_and(|s| s.hashes == hashes) {
+                continue;
+            }
+            changed = true;
+            let mut styles = style::author_styles::AuthorStyles::new();
+            {
+                let guard = self.guard.read();
+                let media = style::stylesheets::CustomMediaMap::default();
+                for t in &texts {
+                    let sheet = parsed(t, &self.url, Origin::Author);
+                    styles
+                        .stylesheets
+                        .append_stylesheet(None, &media, sheet, &guard);
+                }
+                styles.flush(&mut self.stylist, &guard);
+            }
+            self.shadows.insert(root, ShadowStyles { styles, hashes });
+        }
+        changed
     }
 }
 
@@ -744,6 +842,16 @@ fn shown_options(dom: &Dom, select: NodeId) -> Vec<NodeId> {
         .collect()
 }
 
+/// Which style an element inherited (its flat-tree parent's, by address; 0: none).
+fn parent_style(el: N<'_>) -> usize {
+    TElement::traversal_parent(&el)
+        .and_then(|p| {
+            p.borrow_data()
+                .and_then(|d| d.styles.get_primary().map(|s| std::ptr::from_ref::<ComputedValues>(s) as usize))
+        })
+        .unwrap_or(0)
+}
+
 fn root_element<'a>(tree: &'a Tree<'a>) -> Option<N<'a>> {
     let handles = tree.handles.get()?;
     let doc = N(&handles[tree.dom.root().index() as usize]);
@@ -757,11 +865,24 @@ fn root_element<'a>(tree: &'a Tree<'a>) -> Option<N<'a>> {
     None
 }
 
+/// A fast hash of a text (a word at a time, as FxHash), for telling sheets apart. Not keyed:
+/// texts are the page's own.
+pub fn text_hash(s: &str) -> u64 {
+    const K: u64 = 0x517c_c1b7_2722_0a95;
+    let b = s.as_bytes();
+    let mut h: u64 = b.len() as u64;
+    let (words, rest) = b.as_chunks::<8>();
+    for w in words {
+        h = (h.rotate_left(5) ^ u64::from_le_bytes(*w)).wrapping_mul(K);
+    }
+    for &x in rest {
+        h = (h.rotate_left(5) ^ u64::from(x)).wrapping_mul(K);
+    }
+    h
+}
+
 fn hash(s: &str) -> u64 {
-    use std::hash::{Hash, Hasher};
-    let mut h = std::collections::hash_map::DefaultHasher::new();
-    s.hash(&mut h);
-    h.finish()
+    text_hash(s)
 }
 
 struct Recalc<'a> {
@@ -783,6 +904,7 @@ impl<'dom> DomTraversal<N<'dom>> for Recalc<'_> {
             let mut data = unsafe { el.ensure_data() };
             recalc_style_at(self, context, el, &mut data, note_child);
             el.slot().styled_under.set(el.t.dom.parent(el.id));
+            el.slot().inherited_from.set(parent_style(el));
             self.count.set(self.count.get() + 1);
             #[allow(unsafe_code)]
             // SAFETY: as above.

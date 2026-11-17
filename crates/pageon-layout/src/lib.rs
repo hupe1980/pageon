@@ -24,6 +24,7 @@ pub use canvas_text::{CanvasFont, CanvasTextMetrics, Segment, canvas_text};
 mod actionability;
 mod caret;
 mod fonts;
+mod metrics;
 mod images;
 mod media;
 mod mirror;
@@ -36,6 +37,7 @@ use pageon_dom::{Dom, NodeId};
 pub use actionability::Visibility;
 pub use images::{Images, MAX_BYTES as MAX_IMAGE_BYTES, MAX_SIDE as MAX_IMAGE_SIDE};
 pub use media::{css_supports, media_query};
+pub use metrics::font_metrics;
 pub use paint::Pixmap;
 
 /// The viewport in CSS pixels (scroll position 0,0).
@@ -112,6 +114,11 @@ impl Stylesheet {
     pub fn css(&self) -> &str {
         &self.css
     }
+
+    /// A hash of its text (computed once).
+    pub fn hash(&self) -> u64 {
+        self.hash
+    }
 }
 
 /// What a layout takes besides the document: the top layer, images and redactions.
@@ -130,6 +137,9 @@ pub struct LayoutOptions<'a> {
     pub redact: &'a [String],
     /// Custom elements whose definition ran (`:defined`); other custom elements are undefined.
     pub defined: &'a [NodeId],
+    /// Styles computed on the document itself (up to date): the layout takes elements' styles
+    /// from it instead of styling with the document's sheets (documents without shadow trees).
+    pub styles: Option<&'a pageon_style::Styler>,
     /// Compute styles only, no boxes: enough for computed style values that do not depend on
     /// layout ([`Layout::style`]); boxes need a full layout ([`Layout::has_boxes`]).
     pub styles_only: bool,

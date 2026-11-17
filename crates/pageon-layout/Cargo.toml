@@ -23,6 +23,7 @@ blitz-traits = "=0.3.0-beta.4"
 style = { package = "stylo", version = "0.22" }
 style_traits = { package = "stylo_traits", version = "0.22" }
 cssparser = "0.38"
+app_units = "0.7.8"
 selectors = "0.41"
 blitz-paint = { version = "=0.3.0-beta.4", default-features = false }
 taffy = { version = "=0.15.1", default-features = false }

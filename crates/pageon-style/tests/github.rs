@@ -97,7 +97,7 @@ fn restyle_a_large_page() {
     let blitz_first = t.elapsed();
     let mut native = Styler::new(1280.0, 720.0, &base);
     let t = Instant::now();
-    native.set_sheets(&ordered.iter().map(String::as_str).collect::<Vec<_>>());
+    native.set_sheets(&ordered.iter().map(|s| (pageon_style::text_hash(s), s.as_str())).collect::<Vec<_>>());
     let first_changes = dom.take_style_changes();
     native.sync(&dom, &first_changes, pageon_style::Page::default());
     let native_first = t.elapsed();

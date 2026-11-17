@@ -30,7 +30,12 @@ impl Rng {
 }
 
 fn elements(dom: &Dom) -> Vec<NodeId> {
-    dom.traverse(dom.root())
+    let roots: Vec<NodeId> = std::iter::once(dom.root())
+        .chain(dom.shadow_hosts().map(|(_, r)| r))
+        .collect();
+    roots
+        .into_iter()
+        .flat_map(|r| dom.traverse(r).collect::<Vec<_>>())
         .filter_map(|e| match e {
             Edge::Enter(id) => {
                 matches!(dom.get(id).map(|n| &n.data), Some(NodeData::Element { .. })).then_some(id)
@@ -154,6 +159,14 @@ fn styles_from_the_change_log_equal_a_fresh_styling() {
         })
         .collect();
     sources.push(("selectors".into(), extra.into()));
+    sources.push((
+        "shadow".into(),
+        "<style>my-card{--c:green} my-card::part(t){font-weight:700}</style>\
+         <my-card class=a><template shadowrootmode=open><style>:host{display:block} \
+         ::slotted(p){color:red} .x{color:var(--c)} b{float:left}</style><b class=x part=t>s</b>\
+         <slot></slot><i>in</i></template><p>slotted</p><span slot=none>lost</span></my-card>"
+            .into(),
+    ));
     for (page, html) in sources {
         let mut dom = parse_document(&html, ParseOptions::default());
         let css = sheets(&dom);
@@ -168,7 +181,7 @@ fn styles_from_the_change_log_equal_a_fresh_styling() {
             .chain(["a".into()])
             .collect();
         let mut kept = Styler::new(1280.0, 720.0, "about:blank");
-        kept.set_sheets(&css);
+        kept.set_sheets(&css.iter().map(|s| (pageon_style::text_hash(s), *s)).collect::<Vec<_>>());
         let first = dom.take_style_changes();
         kept.sync(&dom, &first, pageon_style::Page::default());
         let mut rng = Rng(page.len() as u64 + 7);
@@ -177,7 +190,7 @@ fn styles_from_the_change_log_equal_a_fresh_styling() {
             let changes = dom.take_style_changes();
             kept.sync(&dom, &changes, pageon_style::Page::default());
             let mut fresh = Styler::new(1280.0, 720.0, "about:blank");
-            fresh.set_sheets(&css);
+            fresh.set_sheets(&css.iter().map(|s| (pageon_style::text_hash(s), *s)).collect::<Vec<_>>());
             fresh.restyle_all(&dom);
             for id in elements(&dom) {
                 for p in PROPERTIES {

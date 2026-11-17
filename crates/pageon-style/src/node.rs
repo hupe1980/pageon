@@ -52,8 +52,10 @@ pub(crate) struct Slot {
     /// The attributes pageon's user-agent sheet matches that the document holds as state
     /// (an `<option>` shown, an open popover, `<noscript>` with scripting on, the top layer).
     pub(crate) markers: Markers,
-    /// The parent the element was last styled under (a moved element is styled again).
+    /// The parent the element was last styled under, and that parent's style then (an
+    /// element moved, or under a parent restyled while it was elsewhere, is styled again).
     pub(crate) styled_under: Cell<Option<NodeId>>,
+    pub(crate) inherited_from: Cell<usize>,
 }
 
 /// State pageon's user-agent sheet matches as attributes.
@@ -106,6 +108,7 @@ impl Default for Slot {
             state: ElementState::empty(),
             markers: Markers::default(),
             styled_under: Cell::new(None),
+            inherited_from: Cell::new(0),
         }
     }
 }
@@ -117,6 +120,10 @@ pub(crate) struct Tree<'a> {
     pub(crate) slots: &'a [Slot],
     pub(crate) guard: &'a SharedRwLock,
     pub(crate) handles: std::cell::OnceCell<&'a [Handle<'a>]>,
+    /// Each shadow root's styles (its sheets' cascade data).
+    pub(crate) shadows: &'a std::collections::HashMap<NodeId, crate::ShadowStyles>,
+    /// Each slotted node's slot (assignment computed once per restyle).
+    pub(crate) assigned: &'a std::collections::HashMap<NodeId, NodeId>,
 }
 
 /// One node's handle: its tree and id.
@@ -217,14 +224,67 @@ impl<'a> N<'a> {
 
     /// Marks this node's ancestors as having dirty descendants (stops at one already marked).
     pub(crate) fn mark_ancestors_dirty(&self) {
-        let mut at = self.t.dom.parent(self.id);
+        // Up to the root, always: a flag left set inside a subtree the traversal skipped (not
+        // rendered) does not mean its ancestors are marked.
+        let mut at = self.flat_parent();
         while let Some(p) = at {
-            let s = &self.t.slots[p.index() as usize];
-            if s.dirty_descendants.replace(true) {
-                break;
-            }
-            at = self.t.dom.parent(p);
+            self.t.slots[p.index() as usize].dirty_descendants.set(true);
+            at = self.with(p).flat_parent();
         }
+    }
+
+    /// The parent in the flat tree (the slot of a slotted node, the host of a shadow tree's
+    /// top nodes).
+    pub(crate) fn flat_parent(&self) -> Option<NodeId> {
+        if let Some(&slot) = self.t.assigned.get(&self.id) {
+            return Some(slot);
+        }
+        let dom = self.t.dom;
+        let p = dom.parent(self.id)?;
+        if let Some(h) = dom.host(p) {
+            return Some(h);
+        }
+        if dom.shadow_root(p).is_some() {
+            return None;
+        }
+        Some(p)
+    }
+
+    /// The children in the flat tree: a host's shadow tree, a slot's assigned nodes (or its
+    /// own children when it has none), otherwise the children.
+    pub(crate) fn flat_children(&self) -> Vec<NodeId> {
+        let dom = self.t.dom;
+        if let Some(root) = dom.shadow_root(self.id) {
+            return dom.children(root).collect();
+        }
+        if self.is_slot() {
+            let mine: Vec<NodeId> = self
+                .t
+                .assigned
+                .iter()
+                .filter(|(_, s)| **s == self.id)
+                .map(|(n, _)| *n)
+                .collect();
+            if !mine.is_empty() {
+                // In the host's child order.
+                let host = dom.host(dom.root_of(self.id));
+                return host
+                    .map(|h| dom.children(h).filter(|c| mine.contains(c)).collect())
+                    .unwrap_or(mine);
+            }
+        }
+        dom.children(self.id).collect()
+    }
+
+    /// A `<slot>` in a shadow tree.
+    fn is_slot(&self) -> bool {
+        is(self, "slot") && self.t.dom.host(self.t.dom.root_of(self.id)).is_some()
+    }
+
+    /// The shadow root of the tree this node is in.
+    fn shadow(&self) -> Option<NodeId> {
+        let r = self.t.dom.root_of(self.id);
+        self.t.dom.host(r).map(|_| r)
     }
 }
 
@@ -266,14 +326,14 @@ impl<'a> TShadowRoot for N<'a> {
     }
 
     fn host(&self) -> <Self::ConcreteNode as TNode>::ConcreteElement {
-        *self
+        self.t.dom.host(self.id).map_or(*self, |h| self.with(h))
     }
 
     fn style_data<'b>(&self) -> Option<&'b style::stylist::CascadeData>
     where
         Self: 'b,
     {
-        None
+        self.0.t.shadows.get(&self.id).map(|s| &*s.styles.data)
     }
 }
 
@@ -311,7 +371,7 @@ impl<'a> TNode for N<'a> {
     }
 
     fn traversal_parent(&self) -> Option<Self::ConcreteElement> {
-        self.parent_node().and_then(|p| p.as_element())
+        self.flat_parent().and_then(|p| self.with(p).as_element())
     }
 
     fn opaque(&self) -> OpaqueNode {
@@ -331,7 +391,7 @@ impl<'a> TNode for N<'a> {
     }
 
     fn as_shadow_root(&self) -> Option<Self::ConcreteShadowRoot> {
-        None
+        matches!(self.data(), Some(NodeData::ShadowRoot { .. })).then_some(*self)
     }
 }
 
@@ -345,15 +405,21 @@ impl Element for N<'_> {
     }
 
     fn parent_element(&self) -> Option<Self> {
-        TElement::traversal_parent(self)
+        self.parent_node().and_then(|p| p.as_element())
     }
 
     fn parent_node_is_shadow_root(&self) -> bool {
-        false
+        self.parent_node()
+            .is_some_and(|p| matches!(p.data(), Some(NodeData::ShadowRoot { .. })))
     }
 
     fn containing_shadow_host(&self) -> Option<Self> {
-        None
+        let root = self.shadow()?;
+        self.t.dom.host(root).map(|h| self.with(h))
+    }
+
+    fn assigned_slot(&self) -> Option<Self> {
+        self.t.assigned.get(&self.id).map(|&s| self.with(s))
     }
 
     fn is_pseudo_element(&self) -> bool {
@@ -547,7 +613,7 @@ impl Element for N<'_> {
     }
 
     fn is_html_slot_element(&self) -> bool {
-        false
+        self.is_slot()
     }
 
     fn has_id(&self, id: &AtomIdent, case_sensitivity: CaseSensitivity) -> bool {
@@ -568,8 +634,9 @@ impl Element for N<'_> {
         None
     }
 
-    fn is_part(&self, _name: &AtomIdent) -> bool {
-        false
+    fn is_part(&self, name: &AtomIdent) -> bool {
+        self.attr("part")
+            .is_some_and(|p| p.split_ascii_whitespace().any(|w| w == &*name.0))
     }
 
     fn is_empty(&self) -> bool {
@@ -600,18 +667,16 @@ impl Element for N<'_> {
     }
 }
 
-/// The children styling walks (elements and text).
+/// The children styling walks (elements and text), in the flat tree.
 pub(crate) struct Children<'a> {
-    at: Option<N<'a>>,
+    at: std::vec::IntoIter<N<'a>>,
 }
 
 impl<'a> Iterator for Children<'a> {
     type Item = N<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let n = self.at?;
-        self.at = n.next_sibling();
-        Some(n)
+        self.at.next()
     }
 }
 
@@ -633,9 +698,21 @@ impl<'a> TElement for N<'a> {
     }
 
     fn traversal_children(&self) -> LayoutIterator<Self::TraversalChildrenIterator> {
+        let t = self.0.t;
         LayoutIterator(Children {
-            at: self.first_child(),
+            at: self
+                .flat_children()
+                .into_iter()
+                .map(|id| N(&t.handles.get().map_or(&[][..], |h| h)[id.index() as usize]))
+                .collect::<Vec<_>>()
+                .into_iter(),
         })
+    }
+
+    /// Styles inherit along the flat tree (into shadow trees through their host, into
+    /// slotted nodes through their slot).
+    fn inheritance_parent(&self) -> Option<Self> {
+        TElement::traversal_parent(self)
     }
 
     fn is_html_element(&self) -> bool {
@@ -659,11 +736,11 @@ impl<'a> TElement for N<'a> {
     }
 
     fn has_part_attr(&self) -> bool {
-        false
+        self.attr("part").is_some()
     }
 
     fn exports_any_part(&self) -> bool {
-        false
+        self.attr("exportparts").is_some()
     }
 
     fn id(&self) -> Option<&Atom> {
@@ -676,6 +753,35 @@ impl<'a> TElement for N<'a> {
     {
         for c in &self.slot().classes {
             callback(AtomIdent::cast(c));
+        }
+    }
+
+    fn each_part<F>(&self, mut callback: F)
+    where
+        F: FnMut(&AtomIdent),
+    {
+        if let Some(p) = self.attr("part") {
+            for name in p.split_ascii_whitespace() {
+                callback(AtomIdent::cast(&Atom::from(name)));
+            }
+        }
+    }
+
+    /// `exportparts="inner: outer, plain"`: the names `name` is exported as.
+    fn each_exported_part<F>(&self, name: &AtomIdent, mut callback: F)
+    where
+        F: FnMut(&AtomIdent),
+    {
+        let Some(map) = self.attr("exportparts") else {
+            return;
+        };
+        for entry in map.split(',') {
+            let (inner, outer) = entry
+                .split_once(':')
+                .map_or((entry.trim(), entry.trim()), |(a, b)| (a.trim(), b.trim()));
+            if inner == &*name.0 {
+                callback(AtomIdent::cast(&Atom::from(outer)));
+            }
         }
     }
 
@@ -794,11 +900,11 @@ impl<'a> TElement for N<'a> {
     }
 
     fn shadow_root(&self) -> Option<<Self::ConcreteNode as TNode>::ConcreteShadowRoot> {
-        None
+        self.t.dom.shadow_root(self.id).map(|r| self.with(r))
     }
 
     fn containing_shadow(&self) -> Option<<Self::ConcreteNode as TNode>::ConcreteShadowRoot> {
-        None
+        self.shadow().map(|r| self.with(r))
     }
 
     fn get_attr(&self, attr: &style::LocalName, ns: &style::Namespace) -> Option<String> {
