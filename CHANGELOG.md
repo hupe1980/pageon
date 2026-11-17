@@ -14,13 +14,17 @@ All notable changes to this project are documented here. The format follows
   once per process.
 - Layout runs on pageon's own box tree, laid out with Taffy and Parley from those styles, and
   painted by pageon: Blitz is no longer a dependency. One cascade per change; GitHub's home page
-  opens with 21 % less CPU (1.39 s, from 1.76 s). Shadow trees, slots, `::part` and
-  font-relative units (`ch`, `ex`, `cap`, `ic`) are styled natively.
+  takes 23 % fewer instructions to open (CPU 1.28 s, from 1.76 s). Shadow trees, slots,
+  `::part` and font-relative units (`ch`, `ex`, `cap`, `ic`) are styled natively.
+- Live collections (`children`, `getElementsByClassName`, `form.elements` …) are walked once
+  per change, not per read; a document's layout is shared by views and actions until the page
+  changes.
 - Nodes inside a `display: none` subtree have no box (`box_of` is `None`; scripts still read
   zeros).
 
 ### Fixed
 
+- A `<slot>`'s fallback content kept its styles after nodes were assigned to the slot.
 - Table cells that stop being cells (`display: block` on a `<td>`) laid out differently after a
   change than on a fresh page.
 - Inserting a shadow host into its own shadow tree hung the page; it now throws

@@ -74,3 +74,44 @@ fn dump_goldens() {
         insta::assert_snapshot!(format!("{name}-tree"), tree);
     }
 }
+
+#[test]
+fn a_document_layout_is_shared_until_the_page_changes() {
+    let mut doc = pageon::parse(
+        "<!DOCTYPE html><div id=box style='width:100px;height:10px'></div>",
+        "https://a.test/",
+    );
+    let find = |doc: &pageon::Document| {
+        let dom = doc.dom();
+        dom.traverse(dom.root())
+            .find_map(|e| match e {
+                pageon_dom::Edge::Enter(id)
+                    if dom.get(id).and_then(|n| n.attr("id")) == Some("box") =>
+                {
+                    Some(id)
+                }
+                _ => None,
+            })
+            .unwrap_or_else(|| panic!("no #box"))
+    };
+    let id = find(&doc);
+    let vp = pageon::Viewport::default();
+    let a = doc.layout(vp);
+    let b = doc.layout(vp);
+    assert!(std::rc::Rc::ptr_eq(&a, &b), "unchanged: the same layout");
+    assert_eq!(a.box_of(id).map(|r| r.width), Some(100.0));
+    let _ = doc
+        .dom_mut()
+        .set_attr(id, "style", "width:300px;height:10px");
+    let c = doc.layout(vp);
+    assert!(!std::rc::Rc::ptr_eq(&a, &c), "changed: laid out again");
+    assert_eq!(c.box_of(id).map(|r| r.width), Some(300.0));
+    let d = doc.layout(pageon::Viewport {
+        width: 800,
+        height: 600,
+    });
+    assert!(
+        !std::rc::Rc::ptr_eq(&c, &d),
+        "another viewport: laid out again"
+    );
+}
