@@ -733,6 +733,16 @@ impl Kids {
             .flat_map(|(_, w)| w.iter().copied())
             .collect();
         let mut removed: Vec<BId> = Vec::new();
+        // Containers that held a node moved or removed: their lists of layout children are
+        // dropped (a layout that builds them makes new ones; one that does not, a container
+        // not rendered, keeps none that are stale).
+        let mut containers: Vec<BId> = Vec::new();
+        let mut held = |m: &DocumentMutator<'_>, c: BId| {
+            if let Some(n) = m.doc.get_node(c) {
+                containers.extend(n.parent);
+                containers.extend(n.layout_parent.get());
+            }
+        };
         for (parent, want) in &self.of {
             let have = m.child_ids(*parent);
             if have.as_slice() == want.as_slice() {
@@ -748,6 +758,7 @@ impl Kids {
                 .take_while(|(a, b)| a == b)
                 .count();
             for &c in &have[pre..have.len() - suf] {
+                held(m, c);
                 if !wanted.contains(&c) {
                     m.remove_node(c);
                     removed.push(c);
@@ -758,10 +769,12 @@ impl Kids {
                 continue;
             }
             // A moved node's layout parent is from its old place (an anonymous block that may
-            // be dropped); its new parent's layout sets it again, if it lays out children.
+            // be dropped): it starts from its new parent, which a layout that builds the
+            // parent's boxes sets again (to an anonymous block, if any).
             for &c in mid {
+                held(m, c);
                 if let Some(n) = m.doc.get_node(c) {
-                    n.layout_parent.set(None);
+                    n.layout_parent.set(Some(*parent));
                 }
             }
             match have
@@ -777,6 +790,11 @@ impl Kids {
         // What is no longer wanted is dropped, with what it still holds.
         for b in removed {
             m.remove_node_if_unparented(b);
+        }
+        for c in containers {
+            if let Some(n) = m.doc.get_node(c) {
+                *n.layout_children.borrow_mut() = None;
+            }
         }
     }
 }
