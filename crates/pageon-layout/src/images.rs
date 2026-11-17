@@ -5,9 +5,7 @@
 
 use std::collections::HashMap;
 use std::io::Cursor;
-use std::sync::{Arc, Mutex};
-
-use blitz_traits::net::{NetHandler, NetProvider, Request};
+use std::sync::Arc;
 
 /// Largest image side accepted, in pixels.
 pub const MAX_SIDE: u32 = 16_384;
@@ -176,33 +174,4 @@ fn svg(bytes: &[u8]) -> Result<Decoded, String> {
         height: h,
         rgba: Arc::new(rgba),
     })
-}
-
-/// A network provider that only records the URLs the layout engine asks for. It reports
-/// itself as a no-op, so nothing waits on it (no "critical" resources block painting).
-#[derive(Default)]
-pub(crate) struct Recorder(Mutex<Vec<String>>);
-
-impl Recorder {
-    pub(crate) fn urls(&self) -> Vec<String> {
-        let mut out: Vec<String> = Vec::new();
-        for u in self.0.lock().map(|v| v.clone()).unwrap_or_default() {
-            if !out.contains(&u) {
-                out.push(u);
-            }
-        }
-        out
-    }
-}
-
-impl NetProvider for Recorder {
-    fn fetch(&self, _doc_id: usize, request: Request, _handler: Box<dyn NetHandler>) {
-        if let Ok(mut v) = self.0.lock() {
-            v.push(request.url.to_string());
-        }
-    }
-
-    fn is_noop(&self) -> bool {
-        true
-    }
 }

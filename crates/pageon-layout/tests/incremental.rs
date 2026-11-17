@@ -36,12 +36,7 @@ fn is(dom: &Dom, id: NodeId, tag: &str) -> bool {
 
 /// One random change, as a page's script would make it.
 fn mutate(dom: &mut Dom, rng: &mut Rng, classes: &[String]) -> String {
-    // Table parts are left alone: Blitz builds a table part that stops being one (a `<td>`
-    // made `display: block`) differently on a fresh tree, where it gets no box at all.
-    let skip = [
-        "html", "head", "body", "table", "caption", "colgroup", "col", "thead", "tbody", "tfoot",
-        "tr", "td", "th",
-    ];
+    let skip = ["html", "head", "body"];
     let els: Vec<NodeId> = elements(dom)
         .into_iter()
         .filter(|&id| !skip.iter().any(|t| is(dom, id, t)))

@@ -591,7 +591,6 @@ impl ElementCx<'_> {
         }
     }
 
-
     /// ❌ dotted - Defines a dotted border
     /// ❌ dashed - Defines a dashed border
     /// ✅ solid - Defines a solid border

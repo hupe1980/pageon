@@ -1,9 +1,7 @@
 //! Styles on pageon's tree with shadow trees: scoped sheets, `:host`, `::slotted`, `::part`,
-//! custom properties through hosts, unassigned children not styled; equal to the layout
-//! engine's (which styles the composed tree).
+//! custom properties through hosts, unassigned children not styled.
 
 use pageon_dom::{Dom, Edge, NodeId, ParseOptions, parse_document};
-use pageon_layout::{Layout, Viewport};
 use pageon_style::{Page, Styler};
 
 fn id(dom: &Dom, name: &str) -> NodeId {
@@ -69,25 +67,53 @@ fn document_sheets(dom: &Dom) -> Vec<String> {
 }
 
 #[test]
-fn shadow_trees_style_as_in_layout() {
+fn shadow_trees_style_as_browsers_do() {
     let mut dom = parse_document(PAGE, ParseOptions::default());
-    let layout = Layout::new(&dom, Viewport::default(), &[], None);
-    let mut styler = Styler::with_metrics(1280.0, 720.0, "about:blank", pageon_layout::font_metrics());
+    let mut styler = Styler::new(1280.0, 720.0, "about:blank");
     let css = document_sheets(&dom);
-    styler.set_sheets(&css.iter().map(|s| (pageon_style::text_hash(s), s.as_str())).collect::<Vec<_>>());
+    styler.set_sheets(
+        &css.iter()
+            .map(|s| (pageon_style::text_hash(s), s.as_str()))
+            .collect::<Vec<_>>(),
+    );
     let changes = dom.take_style_changes();
     styler.sync(&dom, &changes, Page::default());
-    for n in ["card", "inner", "tint", "label", "title", "body", "outer"] {
-        for p in ["display", "color", "font-weight", "font-style"] {
-            let theirs = layout.style(id(&dom, n), p);
-            assert_eq!(styler.value(&dom, id(&dom, n), p), theirs, "#{n} {p}");
+    // display, color, font-weight, font-style
+    for (n, want) in [
+        ("card", ["block", "rgb(0, 0, 0)", "400", "normal"]),
+        (
+            "inner",
+            ["inline-block", "rgb(255, 165, 0)", "400", "normal"],
+        ),
+        ("tint", ["inline", "rgb(255, 0, 0)", "400", "normal"]),
+        ("label", ["inline", "rgb(0, 0, 0)", "700", "italic"]),
+        ("title", ["block", "rgb(0, 128, 0)", "700", "normal"]),
+        ("body", ["block", "rgb(0, 0, 0)", "400", "normal"]),
+        ("outer", ["inline-block", "rgb(0, 0, 255)", "400", "normal"]),
+    ] {
+        for (p, w) in ["display", "color", "font-weight", "font-style"]
+            .iter()
+            .zip(want)
+        {
+            assert_eq!(
+                styler.value(&dom, id(&dom, n), p).as_deref(),
+                Some(w),
+                "#{n} {p}"
+            );
         }
     }
-    assert_eq!(styler.value(&dom, id(&dom, "lost"), "display"), None, "unassigned: not styled");
+    assert_eq!(
+        styler.value(&dom, id(&dom, "lost"), "display"),
+        None,
+        "unassigned: not styled"
+    );
     // A change inside the shadow tree is synced.
     let inner = id(&dom, "inner");
     let _ = dom.set_attr(inner, "style", "color: rgb(1, 2, 3)");
     let changes = dom.take_style_changes();
     styler.sync(&dom, &changes, Page::default());
-    assert_eq!(styler.value(&dom, inner, "color").as_deref(), Some("rgb(1, 2, 3)"));
+    assert_eq!(
+        styler.value(&dom, inner, "color").as_deref(),
+        Some("rgb(1, 2, 3)")
+    );
 }

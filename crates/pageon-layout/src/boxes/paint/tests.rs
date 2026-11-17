@@ -90,19 +90,15 @@ fn tree() -> (Tree, [BoxId; 4]) {
             by_dom.insert(d, n.id);
         }
     }
-    let mut t = Tree {
+    let t = Tree {
         nodes,
         by_dom,
         images: None,
         wanted: Vec::new(),
         applied: 0,
         base: None,
-        viewport: crate::Viewport {
-            width: 100,
-            height: 100,
-        },
     };
-    super::prepare(&mut t);
+    super::prepare(&t);
     (t, [h, body, a, b])
 }
 
@@ -125,7 +121,7 @@ fn pixel(data: &[u8], x: usize, y: usize) -> [u8; 4] {
 fn paints_background_border_and_z_order() {
     let (tree, [_, _, a, b]) = tree();
     // The z-indexed box is hoisted to the root's stacking context.
-    let sc = tree[tree_root(&tree)].stacking_context.as_ref();
+    let sc = tree[tree_root(&tree)].stacking_context.get();
     assert_eq!(sc.map(|s| s.children.len()), Some(1));
     assert_eq!(sc.map(|s| s.children[0].node_id), Some(b));
     assert_eq!(*tree[a].paint_children.borrow(), Some(vec![]));

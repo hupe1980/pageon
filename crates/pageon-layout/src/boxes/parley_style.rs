@@ -42,7 +42,6 @@ pub(crate) mod parley {
     pub(crate) use parley::BaseDirection;
     pub(crate) use parley::FontFeature;
     pub(crate) use parley::FontVariation;
-    pub(crate) use parley::fontique::QueryFamily;
     pub(crate) use parley::layout::Alignment;
     pub(crate) use parley::setting::*;
     pub(crate) use parley::style::*;
@@ -57,31 +56,6 @@ pub(crate) fn generic_font_family(input: stylo::GenericFontFamily) -> parley::Ge
         stylo::GenericFontFamily::Cursive => parley::GenericFamily::Cursive,
         stylo::GenericFontFamily::Fantasy => parley::GenericFamily::Fantasy,
         stylo::GenericFontFamily::SystemUi => parley::GenericFamily::SystemUi,
-    }
-}
-
-pub(crate) fn query_font_family(input: &stylo::SingleFontFamily) -> parley::QueryFamily<'_> {
-    match input {
-        stylo::SingleFontFamily::FamilyName(name) => {
-            'ret: {
-                let name = name.name.as_str();
-
-                // Legacy web compatibility
-                #[cfg(target_vendor = "apple")]
-                if name == "-apple-system" {
-                    break 'ret parley::QueryFamily::Generic(parley::GenericFamily::SystemUi);
-                }
-                #[cfg(target_os = "macos")]
-                if name == "BlinkMacSystemFont" {
-                    break 'ret parley::QueryFamily::Generic(parley::GenericFamily::SystemUi);
-                }
-
-                break 'ret parley::QueryFamily::Named(name);
-            }
-        }
-        stylo::SingleFontFamily::Generic(generic) => {
-            parley::QueryFamily::Generic(self::generic_font_family(*generic))
-        }
     }
 }
 

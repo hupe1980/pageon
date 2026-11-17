@@ -392,7 +392,6 @@ impl<'a> OutputSink<'a> {
         self.buffer.push_str(s);
     }
 
-
     fn finish(self) -> &'a str {
         match self.unchanged_len {
             Some(len) => &self.original[..len],
@@ -400,7 +399,6 @@ impl<'a> OutputSink<'a> {
         }
     }
 }
-
 
 /// Writes `text` to `output`, titlecasing the first typographic letter unit of each word and
 /// leaving other characters unchanged. `context` is the text preceding `text` in the same word
@@ -446,14 +444,11 @@ fn capitalize(
     }
 }
 
-
-
 fn uppercase(text: &str, _lang: &LanguageIdentifier, output: &mut OutputSink<'_>) {
     for c in text.chars() {
         push_chars(output, c.to_uppercase());
     }
 }
-
 
 fn lowercase(text: &str, _lang: &LanguageIdentifier, output: &mut OutputSink<'_>) {
     // Only `str::to_lowercase` implements the context-sensitive final sigma rule.
@@ -474,7 +469,6 @@ fn titlecase_segment(text: &str, _lang: &LanguageIdentifier, output: &mut Output
     }
     output.push_str(chars.as_str());
 }
-
 
 fn push_chars(output: &mut OutputSink<'_>, chars: impl Iterator<Item = char>) {
     for c in chars {
@@ -885,5 +879,4 @@ mod tests {
             assert_eq!(transformer.output.capacity(), 0);
         });
     }
-
 }

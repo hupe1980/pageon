@@ -67,7 +67,9 @@ fn format_matrix(m: &euclid::default::Transform3D<f64>, is_3d: bool) -> String {
 /// The containing block of a box: its out-of-flow containing block, else its box parent.
 fn containing_block(tree: &Tree, id: BoxId) -> Option<BoxId> {
     let n = &tree[id];
-    n.oof_containing_block.get().or_else(|| n.layout_parent.get())
+    n.oof_containing_block
+        .get()
+        .or_else(|| n.layout_parent.get())
 }
 
 /// Whether the box is a flex or grid item: its nearest ancestor that generates a box (past
@@ -213,9 +215,8 @@ pub(crate) fn value(tree: &Tree, id: BoxId, property: &str) -> Option<String> {
             return Some(used(p));
         }
         "transform-origin" | "perspective-origin" if has_layout_box => {
-            let resolve = |v: &LengthPercentage, basis: f32| {
-                used(v.resolve(CSSPixelLength::new(basis)).px())
-            };
+            let resolve =
+                |v: &LengthPercentage, basis: f32| used(v.resolve(CSSPixelLength::new(basis)).px());
             let b = styles.get_box();
             return Some(if property == "transform-origin" {
                 let o = &b.transform_origin;
@@ -257,9 +258,15 @@ pub(crate) fn value(tree: &Tree, id: BoxId, property: &str) -> Option<String> {
                     let vertical = matches!(property, "top" | "bottom");
                     let basis = if vertical { h } else { w };
                     let (start, end) = if vertical {
-                        (resolve_inset(&pos.top, basis), resolve_inset(&pos.bottom, basis))
+                        (
+                            resolve_inset(&pos.top, basis),
+                            resolve_inset(&pos.bottom, basis),
+                        )
                     } else {
-                        (resolve_inset(&pos.left, basis), resolve_inset(&pos.right, basis))
+                        (
+                            resolve_inset(&pos.left, basis),
+                            resolve_inset(&pos.right, basis),
+                        )
                     };
                     let is_start = matches!(property, "top" | "left");
                     let v = match (start, end) {

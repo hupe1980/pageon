@@ -1003,9 +1003,11 @@ impl<'a> TElement for N<'a> {
     }
 }
 
-/// The element's attribute named `local` (no namespace), for presentational hints.
-pub(crate) fn attr<'a>(n: &N<'a>, local: &str) -> Option<&'a str> {
-    n.attr(local)
+/// The element's name and attributes.
+pub(crate) fn element<'a>(
+    n: &N<'a>,
+) -> Option<(&'a markup5ever::QualName, &'a [pageon_dom::Attribute])> {
+    n.element()
 }
 
 /// Whether the element is the HTML element `tag`.

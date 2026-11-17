@@ -17,20 +17,20 @@ use super::super::tree::{BoxId, Node, Tree};
 
 /// Resolves the transform and scrollable overflow of `node_id` and its descendants, and
 /// returns the box's overflow in its parent's coordinates (device px).
-pub(crate) fn resolve_transforms(tree: &mut Tree, node_id: BoxId, scale: f64) -> kurbo::Rect {
+pub(crate) fn resolve_transforms(tree: &Tree, node_id: BoxId, scale: f64) -> kurbo::Rect {
     if node_id >= tree.nodes.len() {
         return kurbo::Rect::ZERO;
     }
 
-    let transform = set_transform(&mut tree[node_id], scale as f32);
+    let transform = set_transform(&tree[node_id], scale as f32);
 
     let w = tree[node_id].final_layout().size.width as f64 * scale;
     let h = tree[node_id].final_layout().size.height as f64 * scale;
     let mut overflow = kurbo::Rect::new(0.0, 0.0, w, h);
 
-    let layout_children = std::mem::take(tree[node_id].layout_children.get_mut());
+    let layout_children = tree[node_id].layout_children.borrow();
 
-    if let Some(ref children) = layout_children {
+    if let Some(children) = &*layout_children {
         for &child_id in children {
             // Out-of-flow children are laid out relative to their containing block, not their
             // parent: they are visited (and their overflow accounted for) via the containing
@@ -42,15 +42,13 @@ pub(crate) fn resolve_transforms(tree: &mut Tree, node_id: BoxId, scale: f64) ->
             overflow = overflow.union(child_rect_in_self);
         }
     }
-    let hoisted_children = std::mem::take(&mut *tree[node_id].hoisted_children.borrow_mut());
-    for &child_id in &hoisted_children {
+    for &child_id in tree[node_id].hoisted_children.borrow().iter() {
         if child_id >= tree.nodes.len() {
             continue;
         }
         let child_rect_in_self = resolve_transforms(tree, child_id, scale);
         overflow = overflow.union(child_rect_in_self);
     }
-    *tree[node_id].hoisted_children.borrow_mut() = hoisted_children;
     for pseudo in [tree[node_id].before, tree[node_id].after] {
         let Some(pseudo) = pseudo else { continue };
         if tree[pseudo].is_hoisted_out_of_flow() {
@@ -60,8 +58,7 @@ pub(crate) fn resolve_transforms(tree: &mut Tree, node_id: BoxId, scale: f64) ->
         overflow = overflow.union(child_rect_in_self);
     }
 
-    tree[node_id].scrollable_overflow = overflow;
-    *tree[node_id].layout_children.get_mut() = layout_children;
+    tree[node_id].scrollable_overflow.set(overflow);
 
     let scaled_x = tree[node_id].final_layout().location.x as f64 * scale;
     let scaled_y = tree[node_id].final_layout().location.y as f64 * scale;
@@ -76,7 +73,7 @@ pub(crate) fn resolve_transforms(tree: &mut Tree, node_id: BoxId, scale: f64) ->
 }
 
 /// Resolves the box's transform (in device px) into `Node::transform`.
-fn set_transform(node: &mut Node, scale: f32) -> Option<Affine> {
+fn set_transform(node: &Node, scale: f32) -> Option<Affine> {
     let transform = node.style.as_ref().and_then(|s| {
         let size = node.final_layout().size;
         let reference_box = Rect::new(
@@ -94,7 +91,7 @@ fn set_transform(node: &mut Node, scale: f32) -> Option<Affine> {
             Affine::new([m11, m12, m21, m22, m41 * scale, m42 * scale])
         })
     });
-    node.transform = transform;
+    node.transform.set(transform);
     transform
 }
 

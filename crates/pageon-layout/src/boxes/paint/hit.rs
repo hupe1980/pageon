@@ -62,7 +62,7 @@ pub(crate) fn hit_inner(tree: &Tree, id: BoxId, x: f32, y: f32, scale: f64) -> O
     let mut x = x - node.final_layout().location.x + scroll_offset.x as f32;
     let mut y = y - node.final_layout().location.y + scroll_offset.y as f32;
 
-    if let Some(t) = node.transform {
+    if let Some(t) = node.transform.get() {
         let p = t.inverse() * kurbo::Point::new(x as f64 * scale, y as f64 * scale);
         x = (p.x / scale) as f32;
         y = (p.y / scale) as f32;
@@ -80,7 +80,7 @@ pub(crate) fn hit_inner(tree: &Tree, id: BoxId, x: f32, y: f32, scale: f64) -> O
         || y < 0.0
         || y > overflow_rect.bottom + scroll_offset.y as f32);
 
-    let matches_hoisted_content = match &node.stacking_context {
+    let matches_hoisted_content = match node.stacking_context.get() {
         Some(sc) => {
             // Both the point (after the scroll adjustment above) and the bbox are in this
             // box's unscrolled content coordinates.
@@ -92,7 +92,7 @@ pub(crate) fn hit_inner(tree: &Tree, id: BoxId, x: f32, y: f32, scale: f64) -> O
 
     // `scrollable_overflow` is stored in device (scaled) pixels, whereas the coordinates here
     // are in CSS pixels, so unscale it before comparing.
-    let overflow = node.scrollable_overflow;
+    let overflow = node.scrollable_overflow.get();
 
     let matches_overflow = x >= (overflow.x0 / scale) as f32
         && x <= (overflow.x1 / scale) as f32
@@ -114,7 +114,7 @@ pub(crate) fn hit_inner(tree: &Tree, id: BoxId, x: f32, y: f32, scale: f64) -> O
 
     // Positive z_index hoisted children
     if matches_hoisted_content {
-        if let Some(hoisted) = &node.stacking_context {
+        if let Some(hoisted) = node.stacking_context.get() {
             for hoisted_child in hoisted.pos_z_hoisted_children().rev() {
                 let pos = hoisted_child.position(tree, id);
                 let x = x - pos.x;
@@ -158,7 +158,7 @@ pub(crate) fn hit_inner(tree: &Tree, id: BoxId, x: f32, y: f32, scale: f64) -> O
 
     // Negative z_index hoisted children
     if matches_hoisted_content {
-        if let Some(hoisted) = &node.stacking_context {
+        if let Some(hoisted) = node.stacking_context.get() {
             for hoisted_child in hoisted.neg_z_hoisted_children().rev() {
                 let pos = hoisted_child.position(tree, id);
                 let x = x - pos.x;

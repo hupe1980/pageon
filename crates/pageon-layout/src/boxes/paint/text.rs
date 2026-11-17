@@ -654,7 +654,12 @@ pub(crate) fn stroke_text<'a>(
                     kurbo::Vec2::default()
                 };
 
-                let normalized_coords: &[i16] = bytemuck::cast_slice(run.normalized_coords());
+                let coords: Vec<i16> = run
+                    .normalized_coords()
+                    .iter()
+                    .map(|c| c.to_bits())
+                    .collect();
+                let normalized_coords: &[i16] = &coords;
                 scene.draw_glyphs(
                     font,
                     font_size,

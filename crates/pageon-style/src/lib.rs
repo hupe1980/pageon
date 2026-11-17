@@ -40,7 +40,7 @@ use node::{Handle, N, Slot, Tree};
 /// pageon's user-agent sheet, beside the engine's default one: form controls, the top layer,
 /// popovers and other things pageon renders its own way.
 pub const UA_CSS: &str = include_str!("ua.css");
-/// The HTML user-agent stylesheet (Servo's, as Blitz ships it; MPL-2.0, see its header).
+/// The HTML user-agent stylesheet (Servo's; MPL-2.0, see its header).
 const HTML_CSS: &str = include_str!("html.css");
 
 /// Font metrics for `ex`, `ch` and friends without fonts: the CSS defaults.
@@ -248,7 +248,10 @@ impl Styler {
     /// texts keep their parsed sheet.
     pub fn set_sheets(&mut self, sheets: &[(u64, &str)]) {
         if sheets.len() == self.authors.len()
-            && sheets.iter().zip(&self.authors).all(|((h, _), (a, _))| h == a)
+            && sheets
+                .iter()
+                .zip(&self.authors)
+                .all(|((h, _), (a, _))| h == a)
         {
             return;
         }
@@ -448,7 +451,11 @@ impl Styler {
                             .get(parent.index() as usize)
                             .filter(|s| s.has_data.get())
                             .and_then(|s| {
-                                s.data.borrow().styles.get_primary().map(|p| std::ptr::from_ref::<ComputedValues>(p) as usize)
+                                s.data
+                                    .borrow()
+                                    .styles
+                                    .get_primary()
+                                    .map(|p| std::ptr::from_ref::<ComputedValues>(p) as usize)
                             })
                             .unwrap_or(0);
                         if let Some(s) = self.slots.get(child.index() as usize)
@@ -624,7 +631,7 @@ impl Styler {
         }
     }
 
-    /// An element's styles as computed (primary and pseudo-elements), for a layout engine to
+    /// An element's styles as computed (primary and pseudo-elements), for layout to
     /// lay out with; elements in subtrees not rendered may hold styles from before.
     pub fn element_styles(&self, dom: &Dom, id: NodeId) -> Option<style::data::ElementStyles> {
         let slot = self.slots.get(id.index() as usize)?;
@@ -881,8 +888,11 @@ fn shown_options(dom: &Dom, select: NodeId) -> Vec<NodeId> {
 fn parent_style(el: N<'_>) -> usize {
     TElement::traversal_parent(&el)
         .and_then(|p| {
-            p.borrow_data()
-                .and_then(|d| d.styles.get_primary().map(|s| std::ptr::from_ref::<ComputedValues>(s) as usize))
+            p.borrow_data().and_then(|d| {
+                d.styles
+                    .get_primary()
+                    .map(|s| std::ptr::from_ref::<ComputedValues>(s) as usize)
+            })
         })
         .unwrap_or(0)
 }

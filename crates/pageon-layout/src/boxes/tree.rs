@@ -53,7 +53,6 @@ impl TextBrush {
 #[derive(Clone, Default)]
 pub(crate) struct TextLayout {
     pub(crate) text: String,
-    pub(crate) content_widths: Option<parley::ContentWidths>,
     pub(crate) layout: parley::Layout<TextBrush>,
     /// Block-axis offset (CSS px) of the line boxes from the top of the content box
     /// (`align-content`).
@@ -174,12 +173,12 @@ pub(crate) struct Node {
     /// boxes hoisted here) other than those lifted into a stacking context.
     pub(crate) paint_children: RefCell<Option<Vec<BoxId>>>,
     /// For a stacking-context root: the z-indexed boxes painted with it.
-    pub(crate) stacking_context: Option<Box<super::paint::StackingContext>>,
+    pub(crate) stacking_context: std::cell::OnceCell<Box<super::paint::StackingContext>>,
     /// The resolved 2D transform (device px), if any.
-    pub(crate) transform: Option<kurbo::Affine>,
+    pub(crate) transform: Cell<Option<kurbo::Affine>>,
     /// The border box united with the descendants' (transformed) overflow, relative to the
     /// border box (device px).
-    pub(crate) scrollable_overflow: kurbo::Rect,
+    pub(crate) scrollable_overflow: Cell<kurbo::Rect>,
     /// Decoded `background-image` layers (`None` for non-`url()` or unknown images).
     pub(crate) background_images: Vec<Option<Arc<Decoded>>>,
     /// Decoded `mask-image` layers (`None` for non-`url()` or unknown images).
@@ -215,9 +214,9 @@ impl Node {
             layout: LayoutData::default(),
             detailed_layout_info: taffy::DetailedLayoutInfo::None,
             paint_children: RefCell::new(None),
-            stacking_context: None,
-            transform: None,
-            scrollable_overflow: kurbo::Rect::ZERO,
+            stacking_context: std::cell::OnceCell::new(),
+            transform: Cell::new(None),
+            scrollable_overflow: Cell::new(kurbo::Rect::ZERO),
             background_images: Vec::new(),
             mask_images: Vec::new(),
             pseudos_flushed: false,
@@ -263,25 +262,8 @@ impl Node {
         matches!(self.kind, Kind::Element | Kind::Anonymous | Kind::Pseudo)
     }
 
-    pub(crate) fn is_text(&self) -> bool {
-        self.kind == Kind::Text
-    }
-
-    pub(crate) fn is_anonymous(&self) -> bool {
-        self.kind == Kind::Anonymous
-    }
-
     pub(crate) fn is(&self, tag: &LocalName) -> bool {
         self.kind == Kind::Element && &self.tag == tag
-    }
-
-    /// Text that collapses away entirely (only spaces, tabs and newlines).
-    pub(crate) fn is_whitespace(&self) -> bool {
-        self.kind == Kind::Text
-            && self
-                .text
-                .chars()
-                .all(|c| matches!(c, ' ' | '\t' | '\n' | '\r' | '\u{c}'))
     }
 
     pub(crate) fn final_layout(&self) -> &taffy::Layout {
@@ -294,10 +276,6 @@ impl Node {
 
     pub(crate) fn is_inline_root(&self) -> bool {
         self.flags.inline_root
-    }
-
-    pub(crate) fn is_table_root(&self) -> bool {
-        self.flags.table_root
     }
 
     /// Taffy's view of the style (replaced elements and buttons are flagged).
@@ -334,10 +312,6 @@ impl Node {
         })
     }
 
-    pub(crate) fn is_floated(&self) -> bool {
-        self.style.as_ref().is_some_and(|s| s.clone_float().is_floating())
-    }
-
     pub(crate) fn scroll_offset(&self) -> kurbo::Vec2 {
         self.layout.scroll
     }
@@ -355,7 +329,6 @@ pub(crate) struct Tree {
     /// How many known images were used.
     pub(crate) applied: usize,
     pub(crate) base: Option<url::Url>,
-    pub(crate) viewport: crate::Viewport,
 }
 
 /// What a build takes besides the document.
@@ -368,9 +341,9 @@ pub(crate) struct Build<'a> {
 }
 
 /// Attributes layout reads.
-const ATTRS: [&str; 12] = [
-    "disabled", "type", "rows", "cols", "width", "height", "start", "reversed", "value", "colspan",
-    "rowspan", "span",
+const ATTRS: [&str; 14] = [
+    "id", "for", "disabled", "type", "rows", "cols", "width", "height", "start", "reversed",
+    "value", "colspan", "rowspan", "span",
 ];
 
 pub(crate) fn redact(text: &str, secrets: &[String]) -> String {
@@ -404,8 +377,18 @@ fn text_input(kind: Option<&str>) -> bool {
     matches!(
         kind.map(str::to_ascii_lowercase).as_deref(),
         None | Some(
-            "text" | "password" | "email" | "number" | "search" | "tel" | "url" | "date"
-                | "time" | "datetime-local" | "month" | "week"
+            "text"
+                | "password"
+                | "email"
+                | "number"
+                | "search"
+                | "tel"
+                | "url"
+                | "date"
+                | "time"
+                | "datetime-local"
+                | "month"
+                | "week"
         )
     )
 }
@@ -420,7 +403,6 @@ impl Tree {
             wanted: Vec::new(),
             applied: 0,
             base: url::Url::parse(b.base).ok(),
-            viewport: b.viewport,
         };
         let root = t.push(Node::new(0, Kind::Document, Some(dom.root())));
         t.by_dom.insert(dom.root(), root);
@@ -524,7 +506,8 @@ impl Tree {
                 }
                 self.special(dom, b, id, me, &local, node);
                 // Pseudo-elements with generated content.
-                for (pseudo, before) in [(PseudoElement::Before, true), (PseudoElement::After, false)]
+                for (pseudo, before) in
+                    [(PseudoElement::Before, true), (PseudoElement::After, false)]
                 {
                     let Some(ps) = styles.pseudos.get(&pseudo).cloned() else {
                         continue;
@@ -668,9 +651,18 @@ impl Tree {
         }
     }
 
-    /// The box of a document node.
-    pub(crate) fn of(&self, id: NodeId) -> Option<&Node> {
-        self.by_dom.get(&id).map(|&b| &self.nodes[b])
+    /// A tree with only the document (a layout that failed).
+    pub(crate) fn empty() -> Self {
+        let mut t = Self {
+            nodes: Vec::new(),
+            by_dom: HashMap::new(),
+            images: None,
+            wanted: Vec::new(),
+            applied: 0,
+            base: None,
+        };
+        t.push(Node::new(0, Kind::Document, None));
+        t
     }
 
     pub(crate) fn root(&self) -> BoxId {

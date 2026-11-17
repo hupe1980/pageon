@@ -1,6 +1,5 @@
-//! Layout with styles computed on the document itself (no sheets given to the layout engine)
-//! equals layout with the engine's own styling, on every geometry fixture, before and after
-//! random changes.
+//! Layout with styles kept up to date from the document's change log equals layout styled
+//! afresh, on every geometry fixture, before and after random changes.
 
 use pageon_dom::{Dom, Edge, NodeData, NodeId, ParseOptions, parse_document};
 use pageon_layout::{Layout, LayoutOptions, Viewport};
@@ -9,8 +8,9 @@ use pageon_style::{Page, Styler};
 fn elements(dom: &Dom) -> Vec<NodeId> {
     dom.traverse(dom.root())
         .filter_map(|e| match e {
-            Edge::Enter(id) => matches!(dom.get(id).map(|n| &n.data), Some(NodeData::Element { .. }))
-                .then_some(id),
+            Edge::Enter(id) => {
+                matches!(dom.get(id).map(|n| &n.data), Some(NodeData::Element { .. })).then_some(id)
+            }
             Edge::Leave(_) => None,
         })
         .collect()
@@ -52,7 +52,11 @@ fn same(dom: &Dom, ours: &Layout, theirs: &Layout, what: &str) {
             dom.get(id).and_then(|n| n.local_name()).unwrap_or_default()
         );
         for p in ["display", "color", "font-size"] {
-            assert_eq!(ours.style(id, p), theirs.style(id, p), "{what}: {p} of {id:?}");
+            assert_eq!(
+                ours.style(id, p),
+                theirs.style(id, p),
+                "{what}: {p} of {id:?}"
+            );
         }
     }
 }
@@ -69,20 +73,31 @@ fn layout_with_native_styles_equals_the_engines_own() {
     pages.sort();
     let vp = Viewport::default();
     for page in pages {
-        let name = page.file_name().unwrap_or_default().to_string_lossy().to_string();
+        let name = page
+            .file_name()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .to_string();
         let html = std::fs::read_to_string(&page).unwrap_or_else(|e| panic!("{e}"));
         let mut dom = parse_document(&html, ParseOptions::default());
         let css = sheets(&dom);
         let css: Vec<&str> = css.iter().map(String::as_str).collect();
         let mut styler =
             Styler::with_metrics(1280.0, 720.0, "about:blank", pageon_layout::font_metrics());
-        styler.set_sheets(&css.iter().map(|s| (pageon_style::text_hash(s), *s)).collect::<Vec<_>>());
+        styler.set_sheets(
+            &css.iter()
+                .map(|s| (pageon_style::text_hash(s), *s))
+                .collect::<Vec<_>>(),
+        );
         let changes = dom.take_style_changes();
         styler.sync(&dom, &changes, Page::default());
         let mut prev: Option<Layout> = None;
         let mut rng = Rng(name.len() as u64);
         for step in 0..12 {
-            let opts = LayoutOptions { styles: Some(&styler), ..LayoutOptions::default() };
+            let opts = LayoutOptions {
+                styles: Some(&styler),
+                ..LayoutOptions::default()
+            };
             let ours = Layout::again(&dom, vp, &[], None, &opts, prev.take());
             let theirs = Layout::with_options(&dom, vp, &[], None, &LayoutOptions::default());
             same(&dom, &ours, &theirs, &format!("{name} step {step}"));
@@ -90,7 +105,11 @@ fn layout_with_native_styles_equals_the_engines_own() {
             // A change, then the styles brought up to date.
             let els: Vec<NodeId> = elements(&dom)
                 .into_iter()
-                .filter(|&id| !["html", "head", "body", "style"].iter().any(|t| dom.get(id).is_some_and(|n| n.is_html(t))))
+                .filter(|&id| {
+                    !["html", "head", "body", "style"]
+                        .iter()
+                        .any(|t| dom.get(id).is_some_and(|n| n.is_html(t)))
+                })
                 .collect();
             if els.is_empty() {
                 break;
@@ -98,7 +117,11 @@ fn layout_with_native_styles_equals_the_engines_own() {
             let el = els[rng.below(els.len())];
             match rng.below(4) {
                 0 => {
-                    let _ = dom.set_attr(el, "style", ["display:none", "width:40px", "padding:7px"][rng.below(3)]);
+                    let _ = dom.set_attr(
+                        el,
+                        "style",
+                        ["display:none", "width:40px", "padding:7px"][rng.below(3)],
+                    );
                 }
                 1 => {
                     let _ = dom.remove(el);

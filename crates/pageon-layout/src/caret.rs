@@ -1,15 +1,16 @@
 //! Text geometry: where a point in text is laid out (`Range.getClientRects`) and which point in
 //! text is at a position (`caretPositionFromPoint`, clicks in text).
 //!
-//! Blitz lays out each inline formatting context as one parley layout, its text collapsed and
-//! transformed, with element brushes. A text node's place in it is found by aligning the DOM
-//! text of the context, in Blitz's tree order, with the laid-out text.
+//! Each inline formatting context is one Parley layout, its text collapsed and transformed,
+//! with box brushes. A text node's place in it is found by aligning the DOM text of the
+//! context, in box tree order, with the laid-out text.
 
-use blitz_dom::NodeId as BId;
 use pageon_dom::NodeId;
 use parley::{Affinity, Cursor, Selection};
+use style::values::specified::box_::{DisplayInside, DisplayOutside};
 
-use crate::{Layout, Rect};
+use crate::boxes::tree::{Kind, TextLayout};
+use crate::{BoxId as BId, Layout, Rect};
 
 /// A text node's characters mapped to layout byte indexes: `units[i]` is where UTF-16 offset
 /// `i` is (one entry past the end).
@@ -18,7 +19,7 @@ struct Segment {
     units: Vec<usize>,
 }
 
-/// An inline formatting context: its Blitz node and the text nodes in it.
+/// An inline formatting context: its box and the text nodes in it.
 struct Context {
     root: BId,
     segments: Vec<Segment>,
@@ -29,58 +30,53 @@ fn is_space(c: char) -> bool {
 }
 
 impl Layout {
-    fn inline_layout(&self, b: BId) -> Option<&blitz_dom::node::TextLayout> {
-        self.doc
-            .get_node(b)?
-            .element_data()?
-            .inline_layout_data
-            .as_deref()
+    fn inline_layout(&self, b: BId) -> Option<&TextLayout> {
+        self.tree.nodes.get(b)?.inline_layout.as_deref()
     }
 
-    /// The nearest Blitz ancestor (or self) that lays out inline content.
+    /// The nearest box (or self) that lays out inline content: up the box tree (an anonymous
+    /// block holds text among blocks), else the flat tree.
     fn context_root(&self, b: BId) -> Option<BId> {
         let mut cur = Some(b);
         while let Some(c) = cur {
             if self.inline_layout(c).is_some() {
                 return Some(c);
             }
-            cur = self.doc.get_node(c)?.parent;
+            let n = &self.tree[c];
+            cur = n.layout_parent.get().or(n.parent);
         }
         None
     }
 
-    /// The text nodes of a context in Blitz's order, skipping what does not add text
+    /// The text nodes of a context in layout order, skipping what does not add text
     /// (`display: none`, inline boxes with their own layout).
     fn context_texts(&self, root: BId) -> Vec<(NodeId, String)> {
         let mut out = Vec::new();
-        let mut stack: Vec<BId> = self
-            .doc
-            .get_node(root)
-            .map(|n| n.children.iter().rev().copied().collect())
-            .unwrap_or_default();
+        let r = &self.tree[root];
+        let mut stack: Vec<BId> = r.after.into_iter().collect();
+        stack.extend(r.children.iter().rev().copied());
+        stack.extend(r.before);
         while let Some(b) = stack.pop() {
-            let Some(node) = self.doc.get_node(b) else {
-                continue;
-            };
-            match &node.data {
-                blitz_dom::NodeData::Text(t) => {
-                    if let Some(id) = self.map.pageon(b) {
-                        out.push((id, t.content.to_string()));
+            let node = &self.tree[b];
+            match node.kind {
+                Kind::Text => {
+                    if let Some(id) = node.dom {
+                        out.push((id, node.text.clone()));
                     }
                 }
-                blitz_dom::NodeData::Element(_) | blitz_dom::NodeData::AnonymousBlock(_) => {
+                Kind::Element | Kind::Anonymous | Kind::Pseudo => {
                     let display = node.primary_styles().map(|s| s.clone_display());
                     let inline = display.is_some_and(|d| {
-                        d.outside() == style::values::specified::box_::DisplayOutside::Inline
-                            && d.inside() == style::values::specified::box_::DisplayInside::Flow
-                    }) || display.is_some_and(|d| {
-                        d.inside() == style::values::specified::box_::DisplayInside::Contents
+                        (d.outside() == DisplayOutside::Inline && d.inside() == DisplayInside::Flow)
+                            || d.inside() == DisplayInside::Contents
                     });
                     if inline && self.inline_layout(b).is_none() {
+                        stack.extend(node.after);
                         stack.extend(node.children.iter().rev().copied());
+                        stack.extend(node.before);
                     }
                 }
-                _ => {}
+                Kind::Document => {}
             }
         }
         out
@@ -128,35 +124,24 @@ impl Layout {
 
     /// The content-box origin of a context in client coordinates.
     fn origin(&self, root: BId) -> Option<(f32, f32)> {
-        let node = self.doc.get_node(root)?;
-        let r = self.doc.get_client_bounding_rect(root)?;
+        let node = &self.tree[root];
+        let r = crate::boxes::border_box(&self.tree, root)?;
         let l = node.final_layout();
         let offset = self.inline_layout(root).map_or(0.0, |t| t.block_offset);
         let (mut x, mut y) = (
-            r.x as f32 + l.border.left + l.padding.left,
-            r.y as f32 + l.border.top + l.padding.top + offset,
+            r.x + l.border.left + l.padding.left,
+            r.y + l.border.top + l.padding.top + offset,
         );
         let (sx, sy) = self.viewport_scroll();
-        if !self.blitz_fixed(root) {
+        if !self.box_fixed(root) {
             x -= sx;
             y -= sy;
         }
         Some((x, y))
     }
 
-    fn blitz_fixed(&self, b: BId) -> bool {
-        let mut cur = Some(b);
-        while let Some(c) = cur {
-            if self.fixed.contains(&c) {
-                return true;
-            }
-            cur = self.doc.get_node(c).and_then(|n| n.parent);
-        }
-        false
-    }
-
     fn locate(&self, node: NodeId) -> Option<(Context, usize)> {
-        let b = self.map.blitz(node)?;
+        let b = self.bx(node)?;
         let root = self.context_root(b)?;
         let ctx = self.context(root)?;
         let i = ctx.segments.iter().position(|s| s.node == node)?;
@@ -205,7 +190,7 @@ impl Layout {
     /// and a child offset where there is no text (an empty paragraph).
     pub fn caret_at(&self, x: f32, y: f32) -> Option<(NodeId, u32)> {
         let hit = self.element_at(x, y)?;
-        let b = self.map.blitz(hit)?;
+        let b = self.bx(hit)?;
         let root = self
             .context_root(b)
             .or_else(|| self.nearest_context(b, y))?;
@@ -233,7 +218,7 @@ impl Layout {
             }
         }
         best.or_else(|| {
-            let root_id = self.map.pageon(root).or(Some(hit))?;
+            let root_id = self.tree[root].dom.or(Some(hit))?;
             Some((root_id, 0))
         })
     }
@@ -243,9 +228,7 @@ impl Layout {
         let mut stack = vec![b];
         let mut best: Option<(f32, BId)> = None;
         while let Some(c) = stack.pop() {
-            let Some(node) = self.doc.get_node(c) else {
-                continue;
-            };
+            let node = &self.tree[c];
             if self.inline_layout(c).is_some() {
                 if let Some((_, oy)) = self.origin(c) {
                     let h = node.final_layout().size.height;
@@ -262,7 +245,7 @@ impl Layout {
                 }
                 continue;
             }
-            stack.extend(node.children.iter().copied());
+            stack.extend(node.layout_children.borrow().iter().flatten().copied());
         }
         best.map(|(_, c)| c)
     }

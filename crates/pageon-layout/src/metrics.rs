@@ -94,7 +94,12 @@ fn location(r: &skrifa::FontRef<'_>, variations: &[FontVariation]) -> skrifa::in
 }
 
 /// A glyph's advance, scaled as layout scales shaped advances (font units × size / upem).
-fn advance(query: &mut Query<'_>, ch: char, size: f32, variations: &[FontVariation]) -> Option<f32> {
+fn advance(
+    query: &mut Query<'_>,
+    ch: char,
+    size: f32,
+    variations: &[FontVariation],
+) -> Option<f32> {
     let font = find(query, ch)?;
     let r = skrifa::FontRef::from_index(font.blob.as_ref(), font.index).ok()?;
     let loc = location(&r, variations);

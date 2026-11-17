@@ -235,7 +235,7 @@ mod b64 {
 /// Why nothing was painted.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum PaintError {
-    /// The layout engine failed on this page.
+    /// Layout failed on this page.
     Layout(String),
     /// The clip lies outside the document or is empty.
     EmptyClip {

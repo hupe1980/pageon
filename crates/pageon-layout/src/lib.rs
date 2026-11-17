@@ -22,17 +22,15 @@
 mod canvas_text;
 pub use canvas_text::{CanvasFont, CanvasTextMetrics, Segment, canvas_text};
 mod actionability;
+mod boxes;
 mod caret;
 mod fonts;
-mod metrics;
 mod images;
 mod media;
-mod boxes;
-mod mirror;
+mod metrics;
 mod paint;
-pub mod scope;
 
-use blitz_dom::BaseDocument;
+use boxes::tree::{BoxId, Special, Tree};
 use pageon_dom::{Dom, NodeId};
 
 pub use actionability::Visibility;
@@ -107,7 +105,7 @@ impl Stylesheet {
     /// The sheet of a `<link>`.
     pub fn new(link: NodeId, css: impl Into<std::sync::Arc<str>>) -> Self {
         let css = css.into();
-        let hash = scope::fast_hash(&css);
+        let hash = pageon_style::text_hash(&css);
         Self { link, css, hash }
     }
 
@@ -138,34 +136,73 @@ pub struct LayoutOptions<'a> {
     pub redact: &'a [String],
     /// Custom elements whose definition ran (`:defined`); other custom elements are undefined.
     pub defined: &'a [NodeId],
-    /// Styles computed on the document itself (up to date): the layout takes elements' styles
-    /// from it instead of styling with the document's sheets (documents without shadow trees).
+    /// Styles computed on the document and kept up to date from its changes. Without them
+    /// the layout styles the document itself (and keeps its styler for the next layout).
     pub styles: Option<&'a pageon_style::Styler>,
     /// Compute styles only, no boxes: enough for computed style values that do not depend on
     /// layout ([`Layout::style`]); boxes need a full layout ([`Layout::has_boxes`]).
     pub styles_only: bool,
 }
 
+/// The document's author sheets in cascade order (`<style>`, loaded `<link>`, adopted), each
+/// with its [`pageon_style::text_hash`].
+pub fn author_sheets(dom: &Dom, loaded: &[Stylesheet]) -> Vec<(u64, String)> {
+    let mut out = Vec::new();
+    for e in dom.traverse(dom.root()) {
+        let pageon_dom::Edge::Enter(id) = e else {
+            continue;
+        };
+        let Some(n) = dom.get(id) else { continue };
+        if n.is_html("style") {
+            let text: String = dom.cssom_text(id).map_or_else(
+                || {
+                    dom.children(id)
+                        .filter_map(|c| match dom.get(c).map(|n| &n.data) {
+                            Some(pageon_dom::NodeData::Text(t)) => Some(t.as_str()),
+                            _ => None,
+                        })
+                        .collect()
+                },
+                str::to_string,
+            );
+            out.push((pageon_style::text_hash(&text), text));
+        } else if n.is_html("link") {
+            if let Some(css) = dom.cssom_text(id) {
+                out.push((pageon_style::text_hash(css), css.to_string()));
+            } else if let Some(s) = loaded.iter().find(|s| s.link == id) {
+                out.push((s.hash(), s.css().to_string()));
+            }
+        }
+    }
+    for css in dom.adopted(dom.root()) {
+        out.push((pageon_style::text_hash(css), css.clone()));
+    }
+    out
+}
+
+/// A styler a layout made itself (no styles given), kept for the next layout of the page.
+struct Own {
+    styler: pageon_style::Styler,
+    viewport: Viewport,
+    base: String,
+}
+
 /// A laid-out document.
 pub struct Layout {
-    doc: BaseDocument,
-    map: mirror::Map,
-    /// The document's stylesheets, kept for a later layout of the same page.
-    sheets: Option<mirror::Sheets>,
-    /// The base URL the document was laid out with.
-    base: String,
+    tree: Tree,
+    own: Option<Own>,
     viewport: Viewport,
-    /// The viewport's scroll offset (CSS px). Kept by pageon rather than blitz: blitz's
-    /// geometry and hit-testing of fixed boxes under a viewport scroll are wrong, so blitz
-    /// stays at 0,0 and pageon applies the offset (painting sets blitz's own while it runs).
+    /// The viewport's scroll offset (CSS px). Boxes are laid out at 0,0; the offset applies
+    /// to client coordinates, fixed boxes and painting.
     scroll: std::cell::Cell<(f32, f32)>,
-    /// Elements with `position: fixed` (blitz ids): their boxes are relative to the viewport.
-    fixed: std::collections::HashSet<blitz_dom::NodeId>,
-    /// Elements that clip their content (found on first use): blitz id → what they clip.
-    clippers:
-        std::cell::OnceCell<std::collections::HashMap<blitz_dom::NodeId, actionability::Clip>>,
+    /// Boxes with `position: fixed`: they follow the viewport.
+    fixed: std::collections::HashSet<BoxId>,
+    /// Paint children, stacking contexts and transforms built (on first paint or hit test:
+    /// most layouts only answer geometry).
+    painted: std::cell::Cell<bool>,
+    /// Boxes that clip their content (found on first use).
+    clippers: std::cell::OnceCell<std::collections::HashMap<BoxId, actionability::Clip>>,
     error: Option<String>,
-    images: Option<mirror::ImageUse>,
     /// Laid out (not only styled).
     boxes: bool,
 }
@@ -182,8 +219,8 @@ impl Layout {
     /// Styles and lays out `dom` at `viewport`, with extra author `stylesheets`; relative URLs in
     /// CSS resolve against `base_url` (`None`: `about:blank`).
     ///
-    /// Never panics: a failure inside the layout engine yields an empty layout (every node
-    /// reports *not rendered*) and [`Layout::error`] says why.
+    /// Never panics: a failure inside layout yields an empty layout (every node reports *not
+    /// rendered*) and [`Layout::error`] says why.
     pub fn new(
         dom: &Dom,
         viewport: Viewport,
@@ -219,10 +256,8 @@ impl Layout {
         Self::again(dom, viewport, stylesheets, base_url, opts, None)
     }
 
-    /// [`Layout::with_options`], reusing `prev` (a layout of the same page) when it can: its
-    /// tree is updated in place and its stylesheets stay parsed, so only what changed is
-    /// restyled, as browsers keep a page's style data between layouts. The boxes are laid out
-    /// in full; the result equals a fresh layout.
+    /// [`Layout::with_options`], reusing `prev` (a layout of the same page): without
+    /// [`LayoutOptions::styles`], its styler (parsed sheets) styles the document again.
     pub fn again(
         dom: &Dom,
         viewport: Viewport,
@@ -235,68 +270,124 @@ impl Layout {
             .filter(|u| {
                 u.starts_with("http://") || u.starts_with("https://") || u.starts_with("file://")
             })
-            .unwrap_or("about:blank");
-        // Images are applied through the document's network hooks, made with it: a document
-        // laid out with images is not reused.
-        let reuse = prev
-            .filter(|p| {
-                p.error.is_none()
-                    && p.viewport == viewport
-                    && p.base == base
-                    && p.images.is_none()
-                    && opts.images.is_none()
-            })
-            .and_then(|p| p.sheets.map(|s| (p.doc, s, p.map)));
-        let built = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            // Shadow trees render as the composed (flat) tree, same ids, styles scoped.
-            if dom.has_shadow() {
-                let composed = dom.composed();
-                mirror::build(
-                    &composed.dom,
+            .unwrap_or("about:blank")
+            .to_string();
+        let mut own = None;
+        if opts.styles.is_none() {
+            let mut kept = prev
+                .and_then(|p| p.own)
+                .filter(|o| o.viewport == viewport && o.base == base)
+                .unwrap_or_else(|| Own {
+                    styler: pageon_style::Styler::with_metrics(
+                        viewport.width as f32,
+                        viewport.height as f32,
+                        &base,
+                        font_metrics(),
+                    ),
                     viewport,
-                    stylesheets,
-                    base,
-                    opts,
-                    Some(&composed),
-                    reuse,
-                )
-            } else {
-                mirror::build(dom, viewport, stylesheets, base, opts, None, reuse)
+                    base: base.clone(),
+                });
+            let sheets = author_sheets(dom, stylesheets);
+            kept.styler.set_sheets(
+                &sheets
+                    .iter()
+                    .map(|(h, s)| (*h, s.as_str()))
+                    .collect::<Vec<_>>(),
+            );
+            let linked: Vec<(NodeId, &str)> =
+                stylesheets.iter().map(|s| (s.link, s.css())).collect();
+            kept.styler.restyle_all_with(
+                dom,
+                pageon_style::Page {
+                    top_layer: opts.modals,
+                    defined: opts.defined,
+                    linked: &linked,
+                },
+            );
+            own = Some(kept);
+        }
+        let styler = opts
+            .styles
+            .or(own.as_ref().map(|o| &o.styler))
+            .unwrap_or_else(|| unreachable!("a styler was made above"));
+        let build = boxes::tree::Build {
+            styler,
+            images: opts.images,
+            redact: opts.redact,
+            base: &base,
+            viewport,
+        };
+        let built = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            if opts.styles_only {
+                return Tree::build(dom, &build);
             }
+            let mut tree = boxes::lay_out(dom, &build);
+            // Decoded images now: the URLs a page wants are known right after layout.
+            boxes::paint::resolve_images(&mut tree);
+            tree
         }));
-        match built {
-            Ok((doc, map, images, sheets)) => Self {
-                fixed: mirror::fixed(&doc, &map),
-                clippers: std::cell::OnceCell::new(),
-                doc,
-                map,
-                sheets: Some(sheets),
-                base: base.to_string(),
-                viewport,
-                scroll: std::cell::Cell::default(),
-                error: None,
-                images,
-                boxes: !opts.styles_only,
-            },
+        let (tree, error) = match built {
+            Ok(t) => (t, None),
             Err(e) => {
                 let why = e
                     .downcast_ref::<String>()
                     .cloned()
                     .or_else(|| e.downcast_ref::<&str>().map(|s| (*s).to_string()))
                     .unwrap_or_else(|| "unknown".into());
-                Self {
-                    doc: mirror::empty(viewport),
-                    map: mirror::Map::default(),
-                    sheets: None,
-                    base: base.to_string(),
-                    viewport,
-                    scroll: std::cell::Cell::default(),
-                    fixed: std::collections::HashSet::new(),
-                    clippers: std::cell::OnceCell::new(),
-                    error: Some(format!("layout engine failed: {why}")),
-                    images: None,
-                    boxes: true,
-                }
+                (Tree::empty(), Some(format!("layout failed: {why}")))
+            }
+        };
+        let fixed = tree
+            .nodes
+            .iter()
+            .filter(|n| {
+                n.is_element()
+                    && n.primary_styles().is_some_and(|s| {
+                        s.clone_position() == style::computed_values::position::T::Fixed
+                    })
+            })
+            .map(|n| n.id)
+            .collect();
+        let mut l = Self {
+            tree,
+            own,
+            viewport,
+            scroll: std::cell::Cell::default(),
+            fixed,
+            painted: std::cell::Cell::new(false),
+            clippers: std::cell::OnceCell::new(),
+            error,
+            boxes: !opts.styles_only,
+        };
+        if l.boxes {
+            l.apply_scroll(opts.scroll);
+        }
+        l
+    }
+
+    /// The tree, ready to paint and hit test.
+    fn paint_tree(&self) -> &Tree {
+        if self.boxes && !self.painted.replace(true) {
+            boxes::paint::prepare(&self.tree);
+        }
+        &self.tree
+    }
+
+    /// Applies element scroll offsets, each clamped to its element's range.
+    fn apply_scroll(&mut self, offsets: &[(NodeId, f64, f64)]) {
+        for &(id, x, y) in offsets {
+            let Some((mx, my)) = self.scroll_range(id) else {
+                continue;
+            };
+            let Some(&b) = self.tree.by_dom.get(&id) else {
+                continue;
+            };
+            let (x, y) = ((x as f32).clamp(0.0, mx), (y as f32).clamp(0.0, my));
+            let node = &mut self.tree.nodes[b];
+            match &mut node.special {
+                // A textarea scrolls its text.
+                Special::TextInput(t) if t.multiline => t.scroll = y,
+                _ => node.layout.scroll = kurbo::Vec2::new(f64::from(x), f64::from(y)),
             }
         }
     }
@@ -329,19 +420,20 @@ impl Layout {
             || property.contains("height")
     }
 
-    /// Why layout is unavailable, if the layout engine failed on this document.
+    /// Why layout is unavailable, if it failed on this document.
     pub fn error(&self) -> Option<&str> {
         self.error.as_deref()
     }
 
-    /// Image URLs the document uses that the [`Images`] in [`LayoutOptions`] did not know (document order; empty without images).
+    /// Image URLs the document uses that the [`Images`] in [`LayoutOptions`] did not know
+    /// (document order; empty without images).
     pub fn wanted_images(&self) -> &[String] {
-        self.images.as_ref().map_or(&[], |u| u.wanted.as_slice())
+        &self.tree.wanted
     }
 
     /// How many known images this layout applied.
     pub fn applied_images(&self) -> usize {
-        self.images.as_ref().map_or(0, |u| u.applied)
+        self.tree.applied
     }
 
     /// The viewport.
@@ -349,9 +441,14 @@ impl Layout {
         self.viewport
     }
 
+    /// The box of a document node.
+    fn bx(&self, id: NodeId) -> Option<BoxId> {
+        self.tree.by_dom.get(&id).copied()
+    }
+
     /// The border box of a rendered element in document coordinates (`None` for text and
-    /// comments: text is measured through its element). A box fixed to the viewport moves with
-    /// the viewport's scroll.
+    /// nodes that are not rendered; an element with `display: none` has an empty box). A box
+    /// fixed to the viewport moves with the viewport's scroll.
     pub fn box_of(&self, id: NodeId) -> Option<Rect> {
         let mut r = self.raw_box(id)?;
         if self.is_fixed(id) {
@@ -373,17 +470,14 @@ impl Layout {
 
     /// Whether the element or an ancestor has `position: fixed` (its box follows the viewport).
     pub fn is_fixed(&self, id: NodeId) -> bool {
+        self.bx(id).is_some_and(|b| self.box_fixed(b))
+    }
+
+    fn box_fixed(&self, b: BoxId) -> bool {
         if self.fixed.is_empty() {
             return false;
         }
-        let mut cur = self.map.blitz(id);
-        while let Some(c) = cur {
-            if self.fixed.contains(&c) {
-                return true;
-            }
-            cur = self.doc.get_node(c).and_then(|n| n.parent);
-        }
-        false
+        std::iter::successors(Some(b), |&c| self.tree[c].parent).any(|c| self.fixed.contains(&c))
     }
 
     /// The viewport's scroll offset (CSS px).
@@ -412,18 +506,23 @@ impl Layout {
     /// The largest scroll offset of a scroll container (`overflow` `auto`, `scroll` or `hidden`
     /// on either axis, or a `<textarea>`); `None` for other elements.
     pub fn scroll_range(&self, id: NodeId) -> Option<(f32, f32)> {
-        let b = self.map.blitz(id)?;
-        let node = self.doc.get_node(b)?;
-        let el = node.element_data()?;
-        let scrolls = |p: &str| {
-            self.style(id, p)
-                .is_some_and(|v| matches!(v.as_str(), "auto" | "scroll" | "hidden"))
+        let node = &self.tree[self.bx(id)?];
+        let style = node.primary_styles()?;
+        let scrolls = |o: style::values::computed::Overflow| {
+            o.is_scrollable() || o == style::values::computed::Overflow::Hidden
         };
-        if &*el.name.local != "textarea" && !scrolls("overflow-x") && !scrolls("overflow-y") {
-            return None;
+        let b = style.get_box();
+        if let Special::TextInput(t) = &node.special
+            && t.multiline
+        {
+            let text = t.layout.height();
+            return Some((
+                0.0,
+                (text - node.final_layout().content_box_height()).max(0.0),
+            ));
         }
-        if let Some(max) = mirror::text_range(node) {
-            return Some((0.0, max));
+        if !scrolls(b.overflow_x) && !scrolls(b.overflow_y) {
+            return None;
         }
         let l = node.final_layout();
         Some((l.scroll_width(), l.scroll_height()))
@@ -431,66 +530,50 @@ impl Layout {
 
     /// The scroll offset applied to an element (0,0 for elements that do not scroll).
     pub fn scroll_of(&self, id: NodeId) -> (f32, f32) {
-        self.map
-            .blitz(id)
-            .and_then(|b| self.doc.get_node(b))
-            .map_or((0.0, 0.0), |n| {
-                if let Some(t) = n.element_data().and_then(|e| e.text_input_data())
-                    && t.is_multiline
-                {
-                    return (0.0, t.scroll_offset);
-                }
-                let o = n.scroll_offset();
-                (o.x as f32, o.y as f32)
-            })
-    }
-
-    /// Whether an ancestor element is not rendered (`display: none`, or never styled).
-    fn undisplayed_above(&self, node: &blitz_dom::Node) -> bool {
-        std::iter::successors(node.parent.and_then(|p| self.doc.get_node(p)), |n| {
-            n.parent.and_then(|p| self.doc.get_node(p))
-        })
-        .filter(|n| n.element_data().is_some())
-        .any(undisplayed)
+        let Some(b) = self.bx(id) else {
+            return (0.0, 0.0);
+        };
+        let n = &self.tree[b];
+        if let Special::TextInput(t) = &n.special
+            && t.multiline
+        {
+            return (0.0, t.scroll);
+        }
+        (n.layout.scroll.x as f32, n.layout.scroll.y as f32)
     }
 
     fn raw_box(&self, id: NodeId) -> Option<Rect> {
-        let b = self.map.blitz(id)?;
-        // Blitz keeps layout data on elements only (and panics when asked for anything else).
-        let node = self.doc.get_node(b)?;
-        node.element_data()?;
-        // Not rendered (`display: none` on it or above): no box, as in Chromium.
-        if undisplayed(node) || self.undisplayed_above(node) {
+        let b = self.bx(id)?;
+        let node = &self.tree[b];
+        if !node.is_element() {
+            return None;
+        }
+        // Not rendered (`display: none`): an empty box, as in Chromium.
+        if node.display_style().is_none_or(|d| d.is_none()) {
             return Some(Rect::default());
         }
-        let r = self.doc.get_client_bounding_rect(b)?;
-        // Blitz moves a scrolled element's own box by its scroll offset; only its content moves.
+        let rect = boxes::border_box(&self.tree, b)?;
+        // A scrolled element's own box does not move; its content does.
         let own = node.scroll_offset();
         let rect = Rect {
-            x: r.x as f32 + own.x as f32,
-            y: r.y as f32 + own.y as f32,
-            width: r.width as f32,
-            height: r.height as f32,
+            x: rect.x + own.x as f32,
+            y: rect.y + own.y as f32,
+            ..rect
         };
         if rect.area() > 0.0 {
             return Some(rect);
         }
-        // Blitz lays out table rows and row groups through their cells and leaves them without a
-        // box: theirs is the union of their children's boxes, as in Chromium.
+        // Table rows and row groups are laid out through their cells: their box is the union
+        // of their children's, as in Chromium.
         let display = self.style(id, "display").unwrap_or_default();
         if matches!(
             display.as_str(),
             "table-row" | "table-row-group" | "table-header-group" | "table-footer-group"
         ) {
-            let children: Vec<NodeId> = self
-                .doc
-                .get_node(b)?
+            let union = node
                 .children
                 .iter()
-                .filter_map(|&c| self.map.pageon(c))
-                .collect();
-            let union = children
-                .into_iter()
+                .filter_map(|&c| self.tree[c].dom)
                 .filter_map(|c| self.raw_box(c))
                 .filter(|c| c.area() > 0.0)
                 .reduce(|a, c| {
@@ -513,25 +596,13 @@ impl Layout {
         Some(rect)
     }
 
-    /// The computed value of a CSS property (e.g. `display`, `opacity`, `cursor`).
+    /// The resolved value of a CSS property (`getComputedStyle`: computed, or used for sizes
+    /// and positions), e.g. `display`, `opacity`, `width`.
     pub fn style(&self, id: NodeId, property: &str) -> Option<String> {
-        let b = self.map.blitz(id)?;
-        let node = self.doc.get_node(b)?;
-        node.element_data()?;
-        // Inside an undisplayed subtree there is no computed style (a kept layout may still hold
-        // one from before): never ask Blitz to resolve those (its fallback path is not supported
-        // with sequential styling).
-        node.primary_styles()?;
-        if self.undisplayed_above(node) {
+        let b = self.bx(id)?;
+        if !self.tree[b].is_element() {
             return None;
         }
-        let v = self.doc.resolved_style_value(b, property);
-        (!v.is_empty()).then_some(v)
+        boxes::resolved::value(&self.tree, b, property).filter(|v| !v.is_empty())
     }
-}
-
-/// Whether an element is not rendered by its own style (`display: none`, or never styled).
-fn undisplayed(n: &blitz_dom::Node) -> bool {
-    n.primary_styles()
-        .is_none_or(|s| s.clone_display().is_none())
 }

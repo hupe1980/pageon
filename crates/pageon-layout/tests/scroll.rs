@@ -71,8 +71,8 @@ fn hit_testing_is_in_viewport_coordinates() {
     assert_eq!(l.element_at(10.0, 10.0), Some(header));
     assert_eq!(l.element_at(150.0, 210.0), Some(target));
     assert_eq!(l.element_at(150.0, 5000.0), None, "outside the viewport");
-    // The fixed bar at the bottom of the viewport, and — after a small scroll, where blitz
-    // would match the bar at its unscrolled place — the page beneath a point above it.
+    // The fixed bar at the bottom of the viewport, and — after a small scroll, where the hit
+    // test would match the bar at its unscrolled place — the page beneath a point above it.
     assert!(
         l.element_at(500.0, 680.0)
             .is_some_and(|e| e == bar || dom.parent(e) == Some(bar))

@@ -15,22 +15,19 @@ categories = ["web-programming"]
 pageon-dom.workspace = true
 pageon-style.workspace = true
 serde.workspace = true
-blitz-dom = { version = "=0.3.0-beta.4", default-features = false, features = ["floats"] }
 parley = { version = "=0.12.0", default-features = false, features = ["std", "complex-scripts"] }
 skrifa = { version = "0.44", default-features = false, features = ["std"] }
 html5ever = "0.40"
-blitz-traits = "=0.3.0-beta.4"
 style = { package = "stylo", version = "0.22" }
 style_traits = { package = "stylo_traits", version = "0.22" }
 cssparser = "0.38"
 app_units = "0.7.8"
 euclid = "0.22"
-stylo_taffy = { version = "=0.3.0-beta.4", default-features = false, features = ["floats"] }
+stylo_taffy = { version = "=0.3.0-beta.4", features = ["floats"] }
 icu_locale_core = "2.3"
 icu_properties = "2.3"
 icu_segmenter = "2.3"
 selectors = "0.41"
-blitz-paint = { version = "=0.3.0-beta.4", default-features = false }
 taffy = { version = "=0.15.1", default-features = false }
 anyrender = "0.14"
 anyrender_vello_cpu = "0.18"
@@ -38,7 +35,6 @@ kurbo = "0.13"
 peniko = "0.6"
 color = "0.3"
 smallvec = "1"
-bytemuck = "1"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "webp"] }
 url = "2"
 resvg = { version = "0.50", default-features = false, features = ["text"] }

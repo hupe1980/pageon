@@ -1,4 +1,4 @@
-//! Restyle cost on a large real page, pageon-style beside the layout engine's styling.
+//! Restyle cost on a large real page: first styling, a full restyle, a few class changes.
 //! `PAGEON_PAGE_HTML=page.html PAGEON_PAGE_REC=page.rec.json cargo test --release -p
 //! pageon-style --test github -- --ignored --nocapture`
 // A timing harness measures wall time on purpose.
@@ -8,7 +8,6 @@ use std::collections::HashMap;
 use std::time::Instant;
 
 use pageon_dom::{Dom, Edge, NodeData, NodeId, ParseOptions, parse_document};
-use pageon_layout::{Layout, LayoutOptions, Stylesheet, Viewport};
 use pageon_style::Styler;
 
 fn elements(dom: &Dom) -> Vec<NodeId> {
@@ -54,7 +53,6 @@ fn restyle_a_large_page() {
     let base_url = url::Url::parse(&base).unwrap_or_else(|e| panic!("{e}"));
     // The sheets in cascade order: style elements and linked sheets.
     let mut ordered: Vec<String> = Vec::new();
-    let mut linked: Vec<Stylesheet> = Vec::new();
     for id in elements(&dom) {
         let Some(n) = dom.get(id) else { continue };
         if n.is_html("style") {
@@ -77,7 +75,6 @@ fn restyle_a_large_page() {
                 .and_then(|u| bodies.get(u.as_str()))
         {
             ordered.push(css.clone());
-            linked.push(Stylesheet::new(id, css.as_str()));
         }
     }
     let count = elements(&dom).len();
@@ -86,53 +83,28 @@ fn restyle_a_large_page() {
         "{count} elements, {} sheets, {css} bytes of CSS",
         ordered.len()
     );
-    let vp = Viewport::default();
-    let styles = LayoutOptions {
-        styles_only: true,
-        ..LayoutOptions::default()
-    };
-
-    let t = Instant::now();
-    let first = Layout::with_options(&dom, vp, &linked, Some(&base), &styles);
-    let blitz_first = t.elapsed();
     let mut native = Styler::new(1280.0, 720.0, &base);
     let t = Instant::now();
-    native.set_sheets(&ordered.iter().map(|s| (pageon_style::text_hash(s), s.as_str())).collect::<Vec<_>>());
+    native.set_sheets(
+        &ordered
+            .iter()
+            .map(|s| (pageon_style::text_hash(s), s.as_str()))
+            .collect::<Vec<_>>(),
+    );
     let first_changes = dom.take_style_changes();
     native.sync(&dom, &first_changes, pageon_style::Page::default());
-    let native_first = t.elapsed();
-
-    // A full restyle with the sheets parsed: a class on <body> (Blitz restyles the parent's
-    // subtree on any attribute change).
-    let body = elements(&dom)
-        .into_iter()
-        .find(|&id| dom.get(id).is_some_and(|n| n.is_html("body")))
-        .unwrap_or(dom.root());
-    let mut blitz_again = Vec::new();
-    let mut native_again = Vec::new();
-    let mut prev = Some(first);
-    for i in 0..5 {
-        let _ = dom.set_attr(body, "data-x", &i.to_string());
-        let t = Instant::now();
-        let l = Layout::again(&dom, vp, &linked, Some(&base), &styles, prev.take());
-        blitz_again.push(t.elapsed());
-        prev = Some(l);
-        let _ = dom.take_style_changes();
+    let first = t.elapsed();
+    let mut full = Vec::new();
+    for _ in 0..5 {
         let t = Instant::now();
         native.restyle_all(&dom);
-        native_again.push(t.elapsed());
+        full.push(t.elapsed());
     }
     let med = |v: &mut Vec<std::time::Duration>| {
         v.sort();
         v[v.len() / 2]
     };
-    println!("first (sheets parsed): layout engine {blitz_first:?}, pageon-style {native_first:?}");
-    println!(
-        "full restyle again:    layout engine {:?}, pageon-style {:?}",
-        med(&mut blitz_again),
-        med(&mut native_again)
-    );
-    // Incremental: a page toggling a class on a few elements, as scripts do between layouts.
+    // A page toggling a class on a few elements, as scripts do between layouts.
     let all: Vec<NodeId> = elements(&dom)
         .into_iter()
         .filter(|&id| {
@@ -140,8 +112,7 @@ fn restyle_a_large_page() {
                 .is_some_and(|n| !["html", "head", "body"].iter().any(|t| n.is_html(t)))
         })
         .collect();
-    let mut blitz_small = Vec::new();
-    let mut native_small = Vec::new();
+    let mut small = Vec::new();
     for round in 0..20usize {
         for k in 0..3usize {
             let id = all[(round * 131 + k * 577) % all.len()];
@@ -162,43 +133,30 @@ fn restyle_a_large_page() {
         }
         let changes = dom.take_style_changes();
         let t = Instant::now();
-        let l = Layout::again(&dom, vp, &linked, Some(&base), &styles, prev.take());
-        blitz_small.push(t.elapsed());
-        prev = Some(l);
-        let t = Instant::now();
-        let r = native.sync(&dom, &changes, pageon_style::Page::default());
-        native_small.push(t.elapsed());
-        if round == 0 {
-            println!("incremental restyle styled {} elements", r.styled);
-        }
+        native.sync(&dom, &changes, pageon_style::Page::default());
+        small.push(t.elapsed());
     }
     println!(
-        "3 class changes:       layout engine {:?}, pageon-style {:?}",
-        med(&mut blitz_small),
-        med(&mut native_small)
+        "first (sheets parsed) {first:?}, full restyle {:?}, 3 class changes {:?}",
+        med(&mut full),
+        med(&mut small)
     );
-    // Same styles on the page.
-    let l = prev.unwrap_or_else(|| panic!("no layout"));
-    let mut differ = 0;
-    let mut compared = 0;
-    for id in elements(&dom) {
-        for p in [
-            "display",
-            "color",
-            "visibility",
-            "position",
-            "font-size",
-            "font-weight",
-            "background-color",
-        ] {
-            let Some(theirs) = l.style(id, p) else {
-                continue;
-            };
-            compared += 1;
-            if native.value(&dom, id, p).as_deref() != Some(theirs.as_str()) {
-                differ += 1;
-            }
-        }
-    }
-    println!("styles: {differ} of {compared} differ");
+    // Incremental styles equal a fresh styling.
+    let mut fresh = Styler::new(1280.0, 720.0, &base);
+    fresh.set_sheets(
+        &ordered
+            .iter()
+            .map(|s| (pageon_style::text_hash(s), s.as_str()))
+            .collect::<Vec<_>>(),
+    );
+    fresh.restyle_all(&dom);
+    let differ = elements(&dom)
+        .into_iter()
+        .filter(|&id| {
+            ["display", "color", "font-weight", "background-color"]
+                .iter()
+                .any(|p| native.value(&dom, id, p) != fresh.value(&dom, id, p))
+        })
+        .count();
+    assert_eq!(differ, 0, "elements whose incremental styles differ");
 }

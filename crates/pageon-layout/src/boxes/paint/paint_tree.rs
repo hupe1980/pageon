@@ -114,8 +114,8 @@ impl StackingContext {
             let node = &tree[child.node_id];
             let position = child.position(tree, sc_root_id);
             let location = node.final_layout().location;
-            let mut overflow = node.scrollable_overflow;
-            if let Some(transform) = node.transform {
+            let mut overflow = node.scrollable_overflow.get();
+            if let Some(transform) = node.transform.get() {
                 overflow = transform.transform_rect_bbox(overflow);
             }
             let left = position.x + location.x;
@@ -174,14 +174,14 @@ impl StackingContext {
 /// Each box's layout children are placed either in its `paint_children` (sorted by paint
 /// order) or, when they have a non-zero `z-index` and are positioned or flex/grid items, in
 /// the nearest ancestor stacking context.
-pub(crate) fn build_paint_tree(tree: &mut Tree, root_id: BoxId) {
+pub(crate) fn build_paint_tree(tree: &Tree, root_id: BoxId) {
     build_paint_tree_impl(tree, root_id, None);
 }
 
 /// `stacking_context` is the entry list of the nearest ancestor stacking context, or `None`
 /// when `node_id` is itself a stacking-context root.
 fn build_paint_tree_impl(
-    tree: &mut Tree,
+    tree: &Tree,
     node_id: BoxId,
     stacking_context: Option<&mut Vec<HoistedPaintChild>>,
 ) {
@@ -273,12 +273,12 @@ fn build_paint_tree_impl(
         *node.layout_children.borrow_mut() = Some(children);
     }
 
-    let node = &mut tree[node_id];
     if let Some(stacking_context) = stacking_context {
-        node.stacking_context = None;
         stacking_context.extend(entries);
     } else {
-        node.stacking_context = Some(Box::new(StackingContext::from_children(entries)));
+        let _ = tree[node_id]
+            .stacking_context
+            .set(Box::new(StackingContext::from_children(entries)));
     }
 }
 
@@ -299,7 +299,7 @@ fn layout_child_containing(tree: &Tree, node_id: BoxId, id: BoxId) -> Option<Box
 /// z-indexed positioned child, the rest join `paint_children` at the same paint level as other
 /// positioned boxes (the caller's stable sort keeps tree order).
 fn attach_hoisted_past_parent(
-    tree: &mut Tree,
+    tree: &Tree,
     child_id: BoxId,
     paint_children: &mut Vec<BoxId>,
     entries: &mut Vec<HoistedPaintChild>,

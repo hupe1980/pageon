@@ -22,10 +22,8 @@ markup5ever = "0.40.0"
 euclid = "0.22"
 app_units = "0.7.8"
 url = "2"
-# The default user-agent sheet, shared with the layout engine while both exist.
 
 [dev-dependencies]
-pageon-layout = { path = "../pageon-layout" }
 serde_json.workspace = true
 
 [lints]

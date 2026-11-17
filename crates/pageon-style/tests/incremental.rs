@@ -181,7 +181,11 @@ fn styles_from_the_change_log_equal_a_fresh_styling() {
             .chain(["a".into()])
             .collect();
         let mut kept = Styler::new(1280.0, 720.0, "about:blank");
-        kept.set_sheets(&css.iter().map(|s| (pageon_style::text_hash(s), *s)).collect::<Vec<_>>());
+        kept.set_sheets(
+            &css.iter()
+                .map(|s| (pageon_style::text_hash(s), *s))
+                .collect::<Vec<_>>(),
+        );
         let first = dom.take_style_changes();
         kept.sync(&dom, &first, pageon_style::Page::default());
         let mut rng = Rng(page.len() as u64 + 7);
@@ -190,7 +194,11 @@ fn styles_from_the_change_log_equal_a_fresh_styling() {
             let changes = dom.take_style_changes();
             kept.sync(&dom, &changes, pageon_style::Page::default());
             let mut fresh = Styler::new(1280.0, 720.0, "about:blank");
-            fresh.set_sheets(&css.iter().map(|s| (pageon_style::text_hash(s), *s)).collect::<Vec<_>>());
+            fresh.set_sheets(
+                &css.iter()
+                    .map(|s| (pageon_style::text_hash(s), *s))
+                    .collect::<Vec<_>>(),
+            );
             fresh.restyle_all(&dom);
             for id in elements(&dom) {
                 for p in PROPERTIES {

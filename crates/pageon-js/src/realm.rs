@@ -904,39 +904,6 @@ impl std::fmt::Debug for Styles {
     }
 }
 
-/// The document's author sheets in cascade order: `<style>` and loaded `<link>` sheets (their
-/// CSSOM rules when a script changed them), then the document's adopted sheets.
-fn author_sheets(dom: &pageon_dom::Dom, loaded: &[Stylesheet]) -> Vec<(u64, String)> {
-    let mut out = Vec::new();
-    for e in dom.traverse(dom.root()) {
-        let pageon_dom::Edge::Enter(id) = e else { continue };
-        let Some(n) = dom.get(id) else { continue };
-        if n.is_html("style") {
-            let text: String = dom.cssom_text(id).map_or_else(
-                || {
-                    dom.children(id)
-                        .filter_map(|c| match dom.get(c).map(|n| &n.data) {
-                            Some(pageon_dom::NodeData::Text(t)) => Some(t.as_str()),
-                            _ => None,
-                        })
-                        .collect()
-                },
-                str::to_string,
-            );
-            out.push((pageon_style::text_hash(&text), text));
-        } else if n.is_html("link") {
-            if let Some(css) = dom.cssom_text(id) {
-                out.push((pageon_style::text_hash(css), css.to_string()));
-            } else if let Some(s) = loaded.iter().find(|s| s.link == id) {
-                out.push((s.hash(), s.css().to_string()));
-            }
-        }
-    }
-    for css in dom.adopted(dom.root()) {
-        out.push((pageon_style::text_hash(css), css.clone()));
-    }
-    out
-}
 
 impl Realm {
     /// The computed value of `property` (not a used value: see [`Layout::needs_boxes`])
@@ -988,7 +955,7 @@ impl Realm {
             return false;
         };
         if fresh || sheets_may_differ || styles.loaded != st.stylesheets.len() {
-            styles.sheets = author_sheets(&dom, &st.stylesheets);
+            styles.sheets = pageon_layout::author_sheets(&dom, &st.stylesheets);
             styles.loaded = st.stylesheets.len();
         }
         let texts: Vec<(u64, &str)> = styles

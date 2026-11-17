@@ -1,5 +1,5 @@
-//! Paint on demand: the laid-out document is drawn by Blitz's painter onto
-//! a CPU rasterizer (vello_cpu), single-threaded and deterministic. Pixels come from the same
+//! Paint on demand: the box tree is painted onto a CPU rasterizer (vello_cpu),
+//! single-threaded and deterministic. Pixels come from the same
 //! boxes as hit-testing and the views, so refs and pixels agree by construction.
 
 use anyrender::ImageRenderer as _;
@@ -42,10 +42,10 @@ impl Layout {
     /// The document's scrollable size in CSS px (at least the viewport).
     pub fn document_size(&self) -> (f32, f32) {
         let (vw, vh) = (self.viewport.width as f32, self.viewport.height as f32);
-        let Some(root) = self.doc.try_root_element() else {
+        let Some(root) = crate::boxes::paint::root_element(&self.tree) else {
             return (vw, vh);
         };
-        let l = root.final_layout();
+        let l = self.tree[root].final_layout();
         let w = l.size.width.max(l.scrollable_overflow_rect.right);
         let h = l.size.height.max(l.scrollable_overflow_rect.bottom);
         (w.max(vw).ceil(), h.max(vh).ceil())
@@ -69,25 +69,33 @@ impl Layout {
                 "{width}×{height} px exceeds the {MAX_PAINT_SIDE} px limit"
             ));
         }
-        let saved = self.doc.viewport_scroll();
-        self.doc.set_viewport_scroll(blitz_dom::Point {
-            x: f64::from(area.x),
-            y: f64::from(area.y),
-        });
+        self.paint_tree();
+        // The painter reads the viewport scroll from the document's box.
+        let root = self.tree.root();
+        let saved = self.tree[root].layout.scroll;
+        self.tree[root].layout.scroll = kurbo::Vec2::new(f64::from(area.x), f64::from(area.y));
         let mut renderer = anyrender_vello_cpu::VelloCpuImageRenderer::new(width, height);
         let mut data = Vec::new();
-        let doc = &mut self.doc;
-        // Blitz culls with unscaled boxes, so the page is painted at scale 1 (in CSS px) and
-        // the recorded scene is scaled as a whole.
+        let tree = &self.tree;
+        // The painter culls with unscaled boxes, so the page is painted at scale 1 (in CSS px)
+        // and the recorded scene is scaled as a whole.
         let (css_w, css_h) = (area.width.ceil() as u32, area.height.ceil() as u32);
         let painted = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             renderer.render_to_vec(
                 |scene| {
                     if (scale - 1.0).abs() < f32::EPSILON {
-                        blitz_paint::paint_scene(scene, doc, 1.0, css_w, css_h, 0, 0);
+                        crate::boxes::paint::paint_scene(scene, tree, 1.0, css_w, css_h, 0, 0);
                     } else {
                         let mut recorded = anyrender::Scene::new();
-                        blitz_paint::paint_scene(&mut recorded, doc, 1.0, css_w, css_h, 0, 0);
+                        crate::boxes::paint::paint_scene(
+                            &mut recorded,
+                            tree,
+                            1.0,
+                            css_w,
+                            css_h,
+                            0,
+                            0,
+                        );
                         anyrender::PaintScene::append_scene(
                             scene,
                             recorded,
@@ -98,7 +106,7 @@ impl Layout {
                 &mut data,
             );
         }));
-        self.doc.set_viewport_scroll(saved);
+        self.tree[root].layout.scroll = saved;
         if painted.is_err() {
             return Err("the painter failed on this page".into());
         }
@@ -120,19 +128,13 @@ impl Layout {
     /// Embeds `child` (a frame's document, laid out at the iframe's content-box size) into
     /// the `<iframe>` element `iframe`, so it is painted inside it, in stacking order.
     pub fn embed(&mut self, iframe: NodeId, child: Layout) -> bool {
-        let Some(b) = self.map.blitz(iframe) else {
+        let Some(b) = self.bx(iframe) else {
             return false;
         };
-        if self
-            .doc
-            .get_node(b)
-            .and_then(|n| n.element_data())
-            .is_none()
-            || child.error.is_some()
-        {
+        if !self.tree[b].is_element() || child.error.is_some() {
             return false;
         }
-        self.doc.set_sub_document(b, Box::new(child.doc));
+        self.tree[b].special = crate::boxes::tree::Special::SubDocument(Box::new(child));
         true
     }
 
@@ -140,15 +142,12 @@ impl Layout {
     /// as nothing.
     pub fn missing_glyphs(&self) -> usize {
         let mut n = 0;
-        for b in self.map.blitz_ids() {
-            let Some(text) = self
-                .doc
-                .get_node(b)
-                .and_then(|node| node.element_data())
-                .and_then(|e| e.inline_layout_data.as_ref())
-            else {
-                continue;
-            };
+        for text in self
+            .tree
+            .nodes
+            .iter()
+            .filter_map(|b| b.inline_layout.as_ref())
+        {
             for line in text.layout.lines() {
                 for item in line.items() {
                     if let parley::PositionedLayoutItem::GlyphRun(run) = item {
@@ -162,9 +161,10 @@ impl Layout {
 
     /// The size of an element's content box (for laying out the document of an iframe).
     pub fn content_size(&self, id: NodeId) -> Option<(f32, f32)> {
-        let b = self.map.blitz(id)?;
-        let node = self.doc.get_node(b)?;
-        node.element_data()?;
+        let node = &self.tree[self.bx(id)?];
+        if !node.is_element() {
+            return None;
+        }
         let l = node.final_layout();
         let w = l.size.width - l.border.left - l.border.right - l.padding.left - l.padding.right;
         let h = l.size.height - l.border.top - l.border.bottom - l.padding.top - l.padding.bottom;

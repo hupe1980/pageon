@@ -100,7 +100,7 @@ impl<'a> PhysicalTracks<'a> {
 
 /// A short-lived struct which holds a bunch of parameters for rendering a scene so
 /// that we don't have to pass them down as parameters
-pub struct BlitzDomPainter<'dom> {
+pub struct Painter<'dom> {
     /// Input parameters (read only) for generating the Scene
     pub(crate) dom: &'dom Tree,
     pub(crate) scale: f64,
@@ -115,8 +115,8 @@ pub struct BlitzDomPainter<'dom> {
     pub(crate) draw_text_context: RefCell<DrawTextContext>,
 }
 
-impl<'dom> BlitzDomPainter<'dom> {
-    /// Create a new BlitzDomPainter for the given document
+impl<'dom> Painter<'dom> {
+    /// A painter for the given tree.
     pub fn new(
         dom: &'dom Tree,
         scale: f64,
@@ -308,10 +308,10 @@ impl<'dom> BlitzDomPainter<'dom> {
         };
 
         // Don't render things that are out of view
-        let overflow = node.scrollable_overflow;
+        let overflow = node.scrollable_overflow.get();
         let transform = parent_style_transform
             * Affine::translate(box_position)
-            * node.transform.unwrap_or_default();
+            * node.transform.get().unwrap_or_default();
 
         let screen_transform = Affine::translate(Vec2 {
             x: -self.initial_x,
@@ -349,7 +349,8 @@ impl<'dom> BlitzDomPainter<'dom> {
 
         // Optimise zero-area (/very small area) clips by not rendering at all
         let clip_area = content_box_size.width * content_box_size.height;
-        let overflow_area = node.scrollable_overflow.width() * node.scrollable_overflow.height();
+        let overflow_area =
+            node.scrollable_overflow.get().width() * node.scrollable_overflow.get().height();
         if should_clip && clip_area < 0.01 && overflow_area < 0.01 {
             return;
         }
@@ -483,6 +484,7 @@ impl<'dom> BlitzDomPainter<'dom> {
                                     y: -node.scroll_offset().y * self.scale,
                                 });
                                 cx.draw_image(scene);
+                                cx.draw_sub_document(scene);
                                 cx.draw_input(scene);
                                 cx.draw_text_input_text(scene, content_position);
                                 cx.draw_inline_layout(scene, content_position);
@@ -598,7 +600,7 @@ fn image_size(image: &Decoded) -> (u32, u32) {
 
 /// A context of loaded and hot data to draw the element from
 struct ElementCx<'dom> {
-    context: &'dom BlitzDomPainter<'dom>,
+    context: &'dom Painter<'dom>,
     frame: CssBox,
     style: style::servo_arc::Arc<ComputedValues>,
     scale: f64,
@@ -751,7 +753,7 @@ impl ElementCx<'_> {
     ) {
         // Negative z_index hoisted nodes
 
-        if let Some(hoisted) = &self.node.stacking_context {
+        if let Some(hoisted) = self.node.stacking_context.get() {
             for hoisted_child in hoisted.neg_z_hoisted_children() {
                 let position = hoisted_child.position(self.context.dom, self.node.id);
                 let pos = kurbo::Vec2 {
@@ -791,7 +793,7 @@ impl ElementCx<'_> {
         }
 
         // Positive z_index hoisted nodes
-        if let Some(hoisted) = &self.node.stacking_context {
+        if let Some(hoisted) = self.node.stacking_context.get() {
             for hoisted_child in hoisted.pos_z_hoisted_children() {
                 let position = hoisted_child.position(self.context.dom, self.node.id);
                 let pos = kurbo::Vec2 {
@@ -833,6 +835,25 @@ impl ElementCx<'_> {
             None,
             paint,
         );
+    }
+
+    /// A frame's document, painted into the frame's content box.
+    fn draw_sub_document(&self, scene: &mut impl PaintScene) {
+        let Special::SubDocument(sub) = &self.node.special else {
+            return;
+        };
+        let width = self.frame.content_box.width() as u32;
+        let height = self.frame.content_box.height() as u32;
+        let translation = self.transform.translation();
+        let painter = Painter::new(
+            &sub.tree,
+            self.scale,
+            width,
+            height,
+            translation.x + self.frame.content_box.origin().x,
+            translation.y + self.frame.content_box.origin().y,
+        );
+        painter.paint_scene(scene);
     }
 
     fn draw_image(&self, scene: &mut impl PaintScene) {
@@ -890,7 +911,7 @@ impl ElementCx<'_> {
     }
 }
 impl<'dom> std::ops::Deref for ElementCx<'dom> {
-    type Target = BlitzDomPainter<'dom>;
+    type Target = Painter<'dom>;
     fn deref(&self) -> &Self::Target {
         self.context
     }

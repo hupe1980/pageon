@@ -27,7 +27,7 @@ use style::values::computed::Display;
 use style::values::generics::image::Image as StyloImage;
 
 pub(crate) use paint_tree::StackingContext;
-use render::BlitzDomPainter;
+use render::Painter;
 
 use super::tree::{BoxId, Kind, Node, Special, Tree};
 
@@ -38,9 +38,9 @@ const FONT_EMBOLDEN_ENABLED: bool = false;
 /// pageon lays out and paints at 1 and scales the recorded scene.
 pub(crate) const LAYOUT_SCALE: f64 = 1.0;
 
-/// Builds paint children, stacking contexts and transforms after layout.
-pub(crate) fn prepare(tree: &mut Tree) {
-    resolve_images(tree);
+/// Builds paint children, stacking contexts and transforms: once per tree, before the
+/// first paint or hit test.
+pub(crate) fn prepare(tree: &Tree) {
     let Some(root) = root_element(tree) else {
         return;
     };
@@ -58,8 +58,7 @@ pub(crate) fn paint_scene(
     x_offset: u32,
     y_offset: u32,
 ) {
-    let generator =
-        BlitzDomPainter::new(tree, scale, width, height, x_offset as f64, y_offset as f64);
+    let generator = Painter::new(tree, scale, width, height, x_offset as f64, y_offset as f64);
     generator.paint_scene(scene);
 }
 
