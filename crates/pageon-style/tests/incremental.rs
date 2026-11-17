@@ -167,7 +167,12 @@ fn styles_from_the_change_log_equal_a_fresh_styling() {
          <slot></slot><i>in</i></template><p>slotted</p><span slot=none>lost</span></my-card>"
             .into(),
     ));
-    for (page, html) in sources {
+    // Two seeds: the second once found slot fallback content left styled.
+    let runs: Vec<(String, String, u64)> = sources
+        .into_iter()
+        .flat_map(|(p, h)| [(p.clone(), h.clone(), 7), (p, h, 29)])
+        .collect();
+    for (page, html, seed) in runs {
         let mut dom = parse_document(&html, ParseOptions::default());
         let css = sheets(&dom);
         let css: Vec<&str> = css.iter().map(String::as_str).collect();
@@ -188,7 +193,7 @@ fn styles_from_the_change_log_equal_a_fresh_styling() {
         );
         let first = dom.take_style_changes();
         kept.sync(&dom, &first, pageon_style::Page::default());
-        let mut rng = Rng(page.len() as u64 + 7);
+        let mut rng = Rng(page.len() as u64 + seed);
         for step in 0..40 {
             let what = mutate(&mut dom, &mut rng, &classes);
             let changes = dom.take_style_changes();

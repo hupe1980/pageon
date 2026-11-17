@@ -302,7 +302,7 @@ fn the_file_api_checks_pass() {
     assert!(failed.is_empty(), "{failed:#?}\n{:#?}", doc.errors());
 }
 
-/// SC-004: a 10 MiB upload through the broker into a caged page, in under a second (release).
+/// A 10 MiB upload through the broker into a caged page, in under a second (release).
 #[test]
 #[ignore = "timing: cargo test --release -p pageon --test files -- --ignored"]
 #[allow(clippy::disallowed_methods)] // wall time

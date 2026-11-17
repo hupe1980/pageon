@@ -429,6 +429,13 @@ impl Styler {
         let mut hinted: Vec<NodeId> = Vec::new();
         // Elements whose inline style changed: their declarations, not their matching.
         let mut inline: Vec<NodeId> = Vec::new();
+        // A parent whose children changed many times (a script appending in a loop) is
+        // looked at once.
+        let mut parents: std::collections::HashSet<NodeId> = std::collections::HashSet::new();
+        // Unstyled nodes already refreshed: a new subtree's own parents are logged too.
+        let mut walked: std::collections::HashSet<NodeId> = std::collections::HashSet::new();
+        // Selects whose options or choice changed.
+        let mut selects: Vec<NodeId> = Vec::new();
         for c in changes {
             match c {
                 StyleChange::Attribute { element, name, .. } => {
@@ -440,7 +447,7 @@ impl Styler {
                     }
                 }
                 StyleChange::Children { parent } => {
-                    if dom.get(*parent).is_none() {
+                    if dom.get(*parent).is_none() || !parents.insert(*parent) {
                         continue;
                     }
                     for child in dom.children(*parent) {
@@ -467,11 +474,21 @@ impl Styler {
                         {
                             hinted.push(child);
                         }
+                        // New here, or never styled (it was in a subtree not rendered): its
+                        // subtree too. Below a child styled before, anything new was logged
+                        // under its own parent.
+                        let new = self.ensure_slot(child);
+                        if (!new && self.slots[child.index() as usize].has_data.get())
+                            || walked.contains(&child)
+                        {
+                            continue;
+                        }
                         for e in dom.traverse(child) {
                             let Edge::Enter(id) = e else { continue };
-                            // New here, or never styled (it was in a subtree not rendered).
                             let new = self.ensure_slot(id);
-                            if new || !self.slots[id.index() as usize].has_data.get() {
+                            if (new || !self.slots[id.index() as usize].has_data.get())
+                                && walked.insert(id)
+                            {
                                 self.refresh_one(dom, id);
                                 if dom.get(id).is_some_and(|n| n.local_name().is_some()) {
                                     fresh.push(id);
@@ -481,7 +498,7 @@ impl Styler {
                     }
                     // A select shows its first enabled option when none is chosen: the order
                     // of its options decides which.
-                    self.select_changed(dom, *parent, &mut hinted);
+                    self.select_changed(dom, *parent, &mut selects);
                     let flags = self
                         .slots
                         .get(parent.index() as usize)
@@ -503,7 +520,7 @@ impl Styler {
                     self.ensure_slot(*element);
                     self.refresh_one(dom, *element);
                     // A select's options show its choice: their markers follow it.
-                    self.select_changed(dom, *element, &mut hinted);
+                    self.select_changed(dom, *element, &mut selects);
                     let at = dom.parent(*element).unwrap_or(*element);
                     if !hinted.contains(&at) {
                         hinted.push(at);
@@ -512,6 +529,9 @@ impl Styler {
                 // Sheets are compared by text in `set_sheets`.
                 StyleChange::Sheets | StyleChange::All => {}
             }
+        }
+        for sel in selects {
+            self.refresh_select(dom, sel, &mut hinted);
         }
         self.snapshot(dom, changes, &snapped);
         let r = self.traverse(
@@ -532,15 +552,25 @@ impl Styler {
 
     /// When `at` is or is inside a `<select>`: its options' markers refreshed and the select
     /// restyled (which option shows depends on the choice and on their order).
-    fn select_changed(&mut self, dom: &Dom, at: NodeId, hinted: &mut Vec<NodeId>) {
+    fn select_changed(&mut self, dom: &Dom, at: NodeId, selects: &mut Vec<NodeId>) {
         let select = std::iter::once(at)
             .chain(dom.ancestors(at))
             .find(|&a| dom.get(a).is_some_and(|n| n.is_html("select")));
-        let Some(sel) = select else { return };
+        if let Some(sel) = select
+            && !selects.contains(&sel)
+        {
+            selects.push(sel);
+        }
+    }
+
+    /// A changed select's options refreshed with its shown options (computed once) and the
+    /// select restyled.
+    fn refresh_select(&mut self, dom: &Dom, sel: NodeId, hinted: &mut Vec<NodeId>) {
+        let shown = shown_options(dom, sel);
         for e in dom.traverse(sel) {
             if let Edge::Enter(id) = e {
                 self.ensure_slot(id);
-                self.refresh_one(dom, id);
+                self.refresh_with(dom, id, Some(&shown));
             }
         }
         if !hinted.contains(&sel) {
@@ -702,6 +732,11 @@ impl Styler {
 
     /// Refreshes what matching reads of one element (after its attributes changed).
     fn refresh_one(&mut self, dom: &Dom, id: NodeId) {
+        self.refresh_with(dom, id, None);
+    }
+
+    /// [`Styler::refresh_one`] with the shown options of its select, when known.
+    fn refresh_with(&mut self, dom: &Dom, id: NodeId, shown: Option<&[NodeId]>) {
         let Some(node) = dom.get(id) else { return };
         let NodeData::Element { name, .. } = &node.data else {
             return;
@@ -730,10 +765,13 @@ impl Styler {
         slot.style_attribute = style_attribute;
         slot.state = state(dom, id, &local);
         let shown = &*local == "option"
-            && dom
-                .ancestors(id)
-                .find(|&a| dom.get(a).is_some_and(|n| n.is_html("select")))
-                .is_some_and(|sel| shown_options(dom, sel).contains(&id));
+            && match shown {
+                Some(s) => s.contains(&id),
+                None => dom
+                    .ancestors(id)
+                    .find(|&a| dom.get(a).is_some_and(|n| n.is_html("select")))
+                    .is_some_and(|sel| shown_options(dom, sel).contains(&id)),
+            };
         slot.markers = node::Markers {
             shown,
             popover_open: dom.popover_open(id),

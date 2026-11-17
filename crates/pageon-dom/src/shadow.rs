@@ -204,7 +204,8 @@ impl Dom {
     }
 
     /// The parent in the flat tree: an assigned node's slot, a shadow tree's top nodes'
-    /// host, otherwise the parent. Unassigned children of a host have none.
+    /// host, otherwise the parent. Unassigned children of a host have none, nor has a slot's
+    /// fallback content while nodes are assigned to the slot.
     pub fn flat_parent(&self, id: NodeId) -> Option<NodeId> {
         if let Some(slot) = self.assigned_slot(id) {
             return Some(slot);
@@ -215,6 +216,9 @@ impl Dom {
         }
         if self.shadow_root(p).is_some() {
             return None; // a host's light child that no slot takes is not rendered
+        }
+        if self.is_slot(p) && !self.assigned_nodes(p, false).is_empty() {
+            return None;
         }
         Some(p)
     }

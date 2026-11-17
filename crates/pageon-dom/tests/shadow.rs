@@ -155,3 +155,27 @@ fn scripted_roots() {
     assert!(pageon_dom::is_custom_name("my-card") && !pageon_dom::is_custom_name("font-face"));
     assert!(!pageon_dom::is_custom_name("My-card") && !pageon_dom::is_custom_name("card"));
 }
+
+#[test]
+fn slot_fallback_leaves_the_flat_tree_while_nodes_are_assigned() {
+    let dom = parse_document(CARD, ParseOptions::default());
+    let card = by_id(&dom, dom.root(), "card");
+    let root = dom.shadow_root(card).unwrap_or_else(|| panic!("no root"));
+    let fallback = |slot: &str| {
+        let s = by_id(&dom, root, slot);
+        dom.children(s)
+            .next()
+            .unwrap_or_else(|| panic!("no fallback"))
+    };
+    // `title` has an assigned node: its fallback text is not rendered.
+    assert_eq!(dom.flat_parent(fallback("ts")), None);
+    // `foot` has none: its fallback is.
+    assert_eq!(
+        dom.flat_parent(fallback("fs")),
+        Some(by_id(&dom, root, "fs"))
+    );
+    assert_eq!(
+        dom.flat_parent(by_id(&dom, card, "title")),
+        Some(by_id(&dom, root, "ts"))
+    );
+}

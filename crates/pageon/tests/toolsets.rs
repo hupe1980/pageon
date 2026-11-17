@@ -770,7 +770,7 @@ fn miniwob_through_the_browser_toolset() {
     }
 }
 
-/// SC-002: a toolset call costs what its action costs over MCP (release build:
+/// A toolset call costs what its action costs over MCP (release build:
 /// `cargo test --release -p pageon --test toolsets -- --ignored`).
 #[test]
 #[ignore = "timing; run in release"]
