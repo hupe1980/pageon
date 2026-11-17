@@ -207,9 +207,9 @@ impl Layout {
     }
 
     /// [`Layout::with_options`], reusing `prev` (a layout of the same page) when it can: its
-    /// stylesheets stay parsed and its cascade built, so a page that changes and measures
-    /// itself is laid out again for the cost of its tree, as browsers keep a page's style
-    /// data between layouts.
+    /// tree is updated in place and its stylesheets stay parsed, so only what changed is
+    /// restyled, as browsers keep a page's style data between layouts. The boxes are laid out
+    /// in full; the result equals a fresh layout.
     pub fn again(
         dom: &Dom,
         viewport: Viewport,

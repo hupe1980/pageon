@@ -6,7 +6,9 @@ in the viewport, what covers it, and which element is at a point.
 
 Styling and layout run on [Blitz](https://github.com/DioxusLabs/blitz) (Stylo for the cascade,
 Taffy for block, flex and grid, Parley for text). Blitz works on a derived copy of the document;
-`pageon-dom` remains the source of truth, and results are keyed by its node ids. Text is
+`pageon-dom` remains the source of truth, and results are keyed by its node ids.
+`Layout::again` updates the previous layout's copy in place, so only what changed is restyled;
+`LayoutOptions::styles_only` computes styles without boxes. Text is
 measured only with the bundled Liberation fonts, never host fonts, so boxes are the same on every
 machine. Liberation is metric-compatible with Arial, Times New Roman and Courier New.
 

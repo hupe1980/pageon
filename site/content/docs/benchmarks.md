@@ -92,7 +92,6 @@ median of 5 runs (`pageon bench`) or 3 (`pageon-bench engines`).
 
 First view is a `pageon fetch --dump ax` process, caged, start to exit; warm opens the page in
 a started process; memory is the largest process; layouts are those the page's scripts forced.
-Against 0.4.1, GitHub's home page takes 58 % less CPU (5.21 s → 2.19 s) and BBC 25 % less.
 
 Beside Chromium's headless shell (Playwright 1.65, the same recordings served as a HAR),
 from launch to Playwright's AI snapshot, CPU and memory summed over each engine's processes:
