@@ -2617,6 +2617,7 @@ dependencies = [
  "blitz-paint",
  "blitz-traits",
  "cssparser",
+ "euclid 0.22.14",
  "html5ever",
  "icu_locale_core",
  "icu_properties",
@@ -2664,7 +2665,6 @@ name = "pageon-style"
 version = "0.5.0"
 dependencies = [
  "app_units",
- "blitz-dom",
  "euclid 0.22.14",
  "markup5ever",
  "pageon-dom",
@@ -2673,6 +2673,7 @@ dependencies = [
  "serde_json",
  "stylo",
  "stylo_dom",
+ "stylo_static_prefs",
  "stylo_traits",
  "url",
 ]

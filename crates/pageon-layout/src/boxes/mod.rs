@@ -7,6 +7,7 @@
 pub(crate) mod construct;
 pub(crate) mod parley_style;
 pub(crate) mod replaced;
+pub(crate) mod resolved;
 pub(crate) mod table;
 pub(crate) mod text_transform;
 pub(crate) mod tree;

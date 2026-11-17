@@ -14,6 +14,7 @@ categories = ["web-programming"]
 [dependencies]
 pageon-dom.workspace = true
 style = { version = "0.22.0", package = "stylo" }
+style_config = { version = "0.22.0", package = "stylo_static_prefs" }
 style_dom = { version = "0.22.0", package = "stylo_dom" }
 style_traits = { version = "0.22.0", package = "stylo_traits" }
 selectors = "0.41.0"
@@ -22,7 +23,6 @@ euclid = "0.22"
 app_units = "0.7.8"
 url = "2"
 # The default user-agent sheet, shared with the layout engine while both exist.
-blitz-dom = { version = "=0.3.0-beta.4", default-features = false, features = ["floats"] }
 
 [dev-dependencies]
 pageon-layout = { path = "../pageon-layout" }

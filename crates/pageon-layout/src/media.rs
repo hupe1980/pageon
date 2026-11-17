@@ -3,7 +3,6 @@
 
 use std::cell::RefCell;
 
-use blitz_dom::BaseDocument;
 use cssparser::Parser;
 use selectors::matching::QuirksMode;
 use style::media_queries::MediaList;
@@ -15,7 +14,11 @@ use style_traits::{ParsingMode, ToCss};
 use crate::Viewport;
 
 thread_local! {
-    static DEVICE: RefCell<Option<(Viewport, BaseDocument)>> = const { RefCell::new(None) };
+    static DEVICE: RefCell<Option<(Viewport, pageon_style::Styler)>> = const { RefCell::new(None) };
+}
+
+fn styler(viewport: Viewport) -> pageon_style::Styler {
+    pageon_style::Styler::new(viewport.width as f32, viewport.height as f32, "about:blank")
 }
 
 /// A media query list as `MediaQueryList.media` serializes it, and whether it matches at
@@ -41,12 +44,12 @@ pub fn media_query(viewport: Viewport, query: &str) -> (String, bool) {
     let matches = DEVICE.with(|d| {
         let mut d = d.borrow_mut();
         if d.as_ref().is_none_or(|(v, _)| *v != viewport) {
-            *d = Some((viewport, crate::mirror::empty(viewport)));
+            *d = Some((viewport, styler(viewport)));
         }
-        let Some((_, doc)) = d.as_mut() else {
+        let Some((_, styler)) = d.as_ref() else {
             return false;
         };
-        let device = doc.stylist_device();
+        let device = styler.device();
         list.evaluate(
             device,
             QuirksMode::NoQuirks,
@@ -59,15 +62,8 @@ pub fn media_query(viewport: Viewport, query: &str) -> (String, bool) {
 /// `CSS.supports`: whether Stylo supports a condition (`display: grid`, `(gap: 1px) and
 /// selector(:has(a))`), as `@supports` evaluates it; a bare declaration is a condition too.
 pub fn css_supports(condition: &str) -> bool {
-    // Stylo's feature preferences are set when the engine creates a document (blitz does it):
-    // make sure one exists, so `@supports` and `CSS.supports` agree.
-    DEVICE.with(|d| {
-        let mut d = d.borrow_mut();
-        if d.is_none() {
-            let v = Viewport::default();
-            *d = Some((v, crate::mirror::empty(v)));
-        }
-    });
+    // Stylo's feature preferences, as for `@supports` in sheets.
+    pageon_style::prefs();
     let url = UrlExtraData(ServoArc::new(
         url::Url::parse("about:blank").unwrap_or_else(|_| unreachable!("a valid URL")),
     ));

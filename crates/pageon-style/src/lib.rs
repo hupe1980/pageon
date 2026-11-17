@@ -40,6 +40,8 @@ use node::{Handle, N, Slot, Tree};
 /// pageon's user-agent sheet, beside the engine's default one: form controls, the top layer,
 /// popovers and other things pageon renders its own way.
 pub const UA_CSS: &str = include_str!("ua.css");
+/// The HTML user-agent stylesheet (Servo's, as Blitz ships it; MPL-2.0, see its header).
+const HTML_CSS: &str = include_str!("html.css");
 
 /// Font metrics for `ex`, `ch` and friends without fonts: the CSS defaults.
 #[derive(Debug)]
@@ -117,6 +119,23 @@ pub(crate) struct ShadowStyles {
     hashes: Vec<u64>,
 }
 
+/// Turns on Stylo's features (grid, columns, …), process-wide; styling does it itself, CSS
+/// parsed outside a [`Styler`] (`@supports`, media queries) needs it first.
+pub fn prefs() {
+    static ONCE: std::sync::Once = std::sync::Once::new();
+    ONCE.call_once(|| {
+        style_config::set_pref!("layout.grid.enabled", true);
+        style_config::set_pref!("layout.flexbox.balance", true);
+        style_config::set_pref!("layout.unimplemented", true);
+        style_config::set_pref!("layout.columns.enabled", true);
+        style_config::set_pref!("layout.css.basic-shape-shape.enabled", true);
+        style_config::set_pref!("layout.css.tree-counting-functions.enabled", true);
+        style_config::set_pref!("layout.css.progress-function.enabled", true);
+        style_config::set_pref!("layout.variable_fonts.enabled", true);
+        style_config::set_pref!("layout.threads", -1);
+    });
+}
+
 /// The lock of all style data: one per process, so parsed sheets are shared between pages.
 static GUARD: std::sync::LazyLock<SharedRwLock> = std::sync::LazyLock::new(SharedRwLock::new);
 
@@ -181,6 +200,7 @@ impl Styler {
         base: &str,
         metrics: Box<dyn FontMetricsProvider>,
     ) -> Self {
+        prefs();
         let device = Device::new(
             MediaType::screen(),
             QuirksMode::NoQuirks,
@@ -213,7 +233,7 @@ impl Styler {
             defined: Vec::new(),
             shadows: std::collections::HashMap::new(),
         };
-        for css in [blitz_dom::DEFAULT_CSS, UA_CSS] {
+        for css in [HTML_CSS, UA_CSS] {
             let sheet = s.sheet(css, Origin::UserAgent);
             s.stylist.append_stylesheet(sheet, &s.guard.read());
         }
@@ -613,6 +633,11 @@ impl Styler {
         }
         dom.get(id)?;
         Some(slot.data.borrow().styles.clone())
+    }
+
+    /// The device styles are computed for (viewport, media type), for media queries.
+    pub fn device(&self) -> &Device {
+        self.stylist.device()
     }
 
     /// The style of an anonymous box (a block wrapping inline content) inside `parent`.
