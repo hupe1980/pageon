@@ -5,6 +5,7 @@
 #![allow(dead_code)]
 
 pub(crate) mod construct;
+pub(crate) mod paint;
 pub(crate) mod parley_style;
 pub(crate) mod replaced;
 pub(crate) mod resolved;

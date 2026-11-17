@@ -169,10 +169,25 @@ pub(crate) struct Node {
     pub(crate) list_item: Option<Box<ListItemLayout>>,
     pub(crate) layout: LayoutData,
     pub(crate) detailed_layout_info: taffy::DetailedLayoutInfo<style::Atom>,
+    // Paint
+    /// Children in paint order (set by the paint tree): layout children (and out-of-flow
+    /// boxes hoisted here) other than those lifted into a stacking context.
+    pub(crate) paint_children: RefCell<Option<Vec<BoxId>>>,
+    /// For a stacking-context root: the z-indexed boxes painted with it.
+    pub(crate) stacking_context: Option<Box<super::paint::StackingContext>>,
+    /// The resolved 2D transform (device px), if any.
+    pub(crate) transform: Option<kurbo::Affine>,
+    /// The border box united with the descendants' (transformed) overflow, relative to the
+    /// border box (device px).
+    pub(crate) scrollable_overflow: kurbo::Rect,
+    /// Decoded `background-image` layers (`None` for non-`url()` or unknown images).
+    pub(crate) background_images: Vec<Option<Arc<Decoded>>>,
+    /// Decoded `mask-image` layers (`None` for non-`url()` or unknown images).
+    pub(crate) mask_images: Vec<Option<Arc<Decoded>>>,
 }
 
 impl Node {
-    fn new(id: BoxId, kind: Kind, dom: Option<NodeId>) -> Self {
+    pub(crate) fn new(id: BoxId, kind: Kind, dom: Option<NodeId>) -> Self {
         Self {
             id,
             dom,
@@ -195,6 +210,12 @@ impl Node {
             list_item: None,
             layout: LayoutData::default(),
             detailed_layout_info: taffy::DetailedLayoutInfo::None,
+            paint_children: RefCell::new(None),
+            stacking_context: None,
+            transform: None,
+            scrollable_overflow: kurbo::Rect::ZERO,
+            background_images: Vec::new(),
+            mask_images: Vec::new(),
         }
     }
 
