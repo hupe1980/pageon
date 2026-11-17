@@ -6,6 +6,27 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `pageon bench URL…`: how fast pages open (first view, warm opens, CPU, memory, layouts,
+  tokens), recorded once and replayed offline; `--json` and `--against` for before and after.
+- A diverging replay names what differs: the URL, the HTML, the view or storage.
+
+### Changed
+
+- Pages that change and measure themselves are faster: a layout keeps its tree and restyles
+  only what changed, computed styles that do not depend on layout skip it, and
+  `IntersectionObserver` and `ResizeObserver` report once per frame. GitHub's home page takes
+  less than half the CPU of 0.4.1.
+- An element under `display: none` has an all-zero box, as in Chromium.
+
+### Fixed
+
+- Recordings redacted text in scripts that looked like credential parameters
+  (`;this.sessionX=function`), so replays of some sites (BBC) failed; scripts and styles are now
+  kept byte for byte.
+- An `<input>`'s children (added by a script) were laid out.
+
 ## [0.4.1] - 2026-11-16
 
 ### Fixed

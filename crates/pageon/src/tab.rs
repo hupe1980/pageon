@@ -1410,24 +1410,36 @@ impl<'s, E: Env> Tab<'s, E> {
         self.state().0
     }
 
-    fn state(&self) -> (String, String) {
+    /// The state hash, the agent view, and the hashes of the parts (`url`, `html`, `view`,
+    /// `storage`).
+    fn state(&self) -> (String, String, Vec<(String, String)>) {
         let view = self.view(
             crate::Dump::Ax,
             Viewport::default(),
             Budget::o200k(1_000_000),
         );
-        let mut text = format!("{}\n", self.doc.final_url);
+        let url = format!("{}\n", self.doc.final_url);
+        let mut html = String::new();
         for d in crate::capture::frame_documents(&self.doc)
             .into_iter()
             .flatten()
         {
-            text.push_str(&d.dump(crate::Dump::Html));
-            text.push('\n');
+            html.push_str(&d.dump(crate::Dump::Html));
+            html.push('\n');
         }
-        text.push_str(&view);
-        text.push('\n');
-        text.push_str(&serde_json::to_string(&self.session.storage_state()).unwrap_or_default());
-        (pageon_env::fnv64(&self.redact(text)), view)
+        let view_part = format!("{view}\n");
+        let storage = serde_json::to_string(&self.session.storage_state()).unwrap_or_default();
+        let text = format!("{url}{html}{view_part}{storage}");
+        let parts = [
+            ("url", url),
+            ("html", html),
+            ("view", view_part),
+            ("storage", storage),
+        ]
+        .into_iter()
+        .map(|(k, v)| (k.to_string(), pageon_env::fnv64(&self.redact(v))))
+        .collect();
+        (pageon_env::fnv64(&self.redact(text)), view, parts)
     }
 
     /// Reports the step that just ended to the session's recording, if it keeps steps.
@@ -1444,13 +1456,14 @@ impl<'s, E: Env> Tab<'s, E> {
         let Some(rec) = self.session.env().recorder() else {
             return;
         };
-        let (hash, view) = self.state();
+        let (hash, view, parts) = self.state();
         rec.step(pageon_env::Step {
             action: self.redact(action),
             input,
             at: pageon_env::Cursor::default(),
             observed,
             hash,
+            parts,
             view,
             target,
             checks: Vec::new(),

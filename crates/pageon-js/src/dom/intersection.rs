@@ -311,14 +311,55 @@ fn threshold_index(thresholds: &[f64], ratio: f64) -> i64 {
     i64::try_from(i).unwrap_or(i64::MAX)
 }
 
+/// The frame (1/60 s) of a virtual time in milliseconds (frame 0 is never a last update's).
+pub(crate) fn frame_of(now: f64) -> u64 {
+    (now * 60.0 / 1000.0) as u64 + 1
+}
+
+/// Whether observers that read the layout (intersection, resize) may run now: in the first
+/// update of a frame of the virtual clock, as browsers observe when they render (`now_anyway`:
+/// the event loop's update at the frame's end). Tasks later in the frame leave theirs due.
+pub(crate) fn rendering(cx: &Cx<'_, '_, '_>, now_anyway: bool) -> bool {
+    let sh = cx.realm.shared.borrow();
+    now_anyway || frame_of(sh.now) != sh.frame
+}
+
+/// Leaves this document's rendering update for the end of the frame.
+pub(crate) fn defer(cx: &Cx<'_, '_, '_>) {
+    let realm = cx.realm.id;
+    cx.realm.shared.borrow_mut().render_due.insert(realm);
+}
+
+/// Records a rendering update of this document in the current frame.
+pub(crate) fn rendered(cx: &Cx<'_, '_, '_>) {
+    let realm = cx.realm.id;
+    let mut sh = cx.realm.shared.borrow_mut();
+    sh.frame = frame_of(sh.now);
+    sh.render_due.remove(&realm);
+}
+
 /// Re-evaluates observers whose targets are new or whose layout or scroll changed, and calls
 /// back those with entries. Returns whether any callback ran.
-pub(crate) fn deliver(cx: &mut Cx<'_, '_, '_>) -> R<bool> {
+///
+/// Observations need a layout, so they are made only in a rendering update (`render`, see
+/// [`rendering`]); otherwise they are left due.
+pub(crate) fn deliver(cx: &mut Cx<'_, '_, '_>, render: bool) -> R<bool> {
     let (observers, now) = {
         let st = cx.realm.st.borrow();
         (st.intersections.clone(), (st.mutations, st.scroll.moves))
     };
     if observers.is_empty() {
+        return Ok(false);
+    }
+    // Nothing new to observe: no layout needed.
+    let work = observers
+        .iter()
+        .any(|&id| with_io(cx, id, |o| o.seen != now || !o.fresh.is_empty()).unwrap_or(false));
+    if !work {
+        return Ok(false);
+    }
+    if !render {
+        defer(cx);
         return Ok(false);
     }
     let time = {

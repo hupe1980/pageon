@@ -394,10 +394,22 @@ impl<E: Env> Recording<E> {
                     clean(h);
                 }
             }
-            for b in [&mut ex.body, &mut ex.request_body, &mut ex.error]
-                .into_iter()
-                .flatten()
-            {
+            // Scripts, styles and modules are code, not URL text: a replay runs them exactly as
+            // they came (secret values are still replaced).
+            let code = ex.headers.iter().any(|(k, v)| {
+                k.eq_ignore_ascii_case("content-type")
+                    && ["javascript", "ecmascript", "css", "wasm"]
+                        .iter()
+                        .any(|t| v.to_ascii_lowercase().contains(t))
+            });
+            if let Some(b) = &mut ex.body {
+                if code {
+                    secrets(b);
+                } else {
+                    clean(b);
+                }
+            }
+            for b in [&mut ex.request_body, &mut ex.error].into_iter().flatten() {
                 clean(b);
             }
         }
@@ -651,7 +663,19 @@ impl<E: Env> Recorder for Recording<E> {
                         ),
                     ))
                 } else if want.hash != step.hash {
-                    Some((Kind::Page, "the page differs".to_string()))
+                    // Which parts differ, when the recording has them.
+                    let parts: Vec<&str> = want
+                        .parts
+                        .iter()
+                        .filter(|(k, v)| step.parts.iter().any(|(k2, v2)| k2 == k && v2 != v))
+                        .map(|(k, _)| k.as_str())
+                        .collect();
+                    let detail = if parts.is_empty() {
+                        "the page differs".to_string()
+                    } else {
+                        format!("the page differs ({})", parts.join(", "))
+                    };
+                    Some((Kind::Page, detail))
                 } else {
                     None
                 };
@@ -924,6 +948,29 @@ mod steps_tests {
             "script-visible cookies stay: {saved}"
         );
         assert!(saved.contains("tok=pageon-redacted; HTTPONLY"), "{saved}");
+    }
+
+    /// Scripts and styles are recorded as they came (a replay runs them exactly); credential
+    /// parameters in a page's text are redacted.
+    #[test]
+    fn code_is_recorded_as_it_came() {
+        let js = "e7=1;this.initializeSessionAttributes=function(e){};u='/r?token=abcdef123456'";
+        let mut log = site();
+        log.exchanges[0].body = Some("<a href='/r?token=abcdef123456'>x</a>".into());
+        log.exchanges[1].body = Some(js.into());
+        log.exchanges[1].headers.push((
+            "Content-Type".into(),
+            "text/javascript; charset=utf-8".into(),
+        ));
+        let rec = Recording::new(crate::Replay::new(log));
+        let _ = rec.fetch(&Request::get("https://a.test/"));
+        let _ = rec.fetch(&Request::get("https://a.test/2"));
+        let saved = rec.log();
+        assert_eq!(
+            saved.exchanges[0].body.as_deref(),
+            Some("<a href='/r?token=[redacted]'>x</a>")
+        );
+        assert_eq!(saved.exchanges[1].body.as_deref(), Some(js));
     }
 
     /// An in-memory recording stops for good past its body limit.

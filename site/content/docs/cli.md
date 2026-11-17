@@ -16,6 +16,7 @@ One binary does everything. `pageon <command> --help` prints every option with e
 | `pageon audit URL` | Score how ready a page is for agents, with what to fix first ([audit](@/docs/audit.md)) |
 | `pageon mcp` | Serve a browser to an agent over MCP (stdio; `--http` for Streamable HTTP) |
 | `pageon cdp` (alias `pageon bidi`) | Serve Puppeteer, Playwright and WebDriver BiDi clients on one port |
+| `pageon bench URL…` | Measure how fast pages open: first view, warm opens, CPU, memory, layouts, tokens |
 | `pageon replay FILE` | Re-run a recorded session and check every step reaches the same page |
 | `pageon workflow compile/run` | Turn a recorded session into a workflow; run it without a model |
 | `pageon identity new/directory` | Create and publish a Web Bot Auth identity |
@@ -92,6 +93,29 @@ Screenshot options: `--screenshot FILE` (`.png`, `.jpg`), `--full-page`, `--mark
 | `mcp` | `--http [PORT]`, `--allow-origin`, `--otlp URL`, `--detail full\|compact`, `--allow-javascript-exec`, `--ui`, `--approve`, `--sign-in FILE` |
 | `cdp` | `--port`, `--allow-origin`, `--discovery` |
 
+## bench
+
+```sh
+pageon bench https://news.ycombinator.com https://github.com
+pageon bench ep.json --runs 10                     # a recording made with --record
+pageon bench https://example.com --json > before.json
+pageon bench https://example.com --against before.json
+```
+
+```text
+pageon 0.5.0 · macos aarch64 · 5 runs · offline replays (p50)
+
+page                     first view      warm       CPU    memory  layouts   tokens
+news.ycombinator.com        113 ms     22 ms    108 ms     96 MB        0     2664
+github.com                  1.83 s    1.58 s    1.82 s    282 MB       80     1709
+```
+
+A URL is recorded once (in `~/.cache/pageon/bench`; `--refresh` records it again) and every run
+replays it offline, so the network is not measured and runs agree. **First view** and **CPU**
+are separate `pageon fetch` processes, caged, as you run them; **warm** opens the page again in a
+started process; **memory** is the largest process's peak; **layouts** are those scripts forced
+while loading. `--against` adds the change per column. See [benchmarks](@/docs/benchmarks.md#loading-pages).
+
 ## Options shared by fetch, open, replay, mcp, cdp and workflow run
 
 | Option | |
@@ -123,7 +147,7 @@ Screenshot options: `--screenshot FILE` (`.png`, `.jpg`), `--full-page`, `--mark
 | --- | --- |
 | 0 | Done |
 | 2 | Usage or environment error (bad option, unreadable file, busy port, no such session) |
-| 3 | The load, an action or the sandbox failed; the message says what to do |
+| 3 | The load, an action or the sandbox failed (`bench`: a page did); the message says what to do |
 | 4 | The server answered with an error status (its page is printed) |
 | 5 | `replay`: a step diverged from the recording |
 | 6 | The site refused the agent (blocked, challenge, rate limited) |

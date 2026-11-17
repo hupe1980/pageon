@@ -1,6 +1,7 @@
 //! The `pageon` command line.
 
 #[cfg(unix)]
+mod bench;
 mod cli;
 
 use std::io::Write as _;
@@ -113,6 +114,39 @@ enum Command {
         fail_under: Option<u8>,
         #[command(flatten)]
         session: SessionArgs,
+    },
+    /// Measure how fast pages open: first view, warm opens, CPU, memory, layouts, tokens.
+    ///
+    /// Examples:
+    ///   pageon bench https://news.ycombinator.com https://github.com
+    ///   pageon bench ep.json --runs 10            (a recording made with --record)
+    ///   pageon bench https://example.com --json > before.json
+    ///   pageon bench https://example.com --against before.json
+    ///   pageon bench http://localhost:3000 -- --private-network allow
+    ///
+    /// A URL is recorded once (cached under ~/.cache/pageon/bench) and every run replays it
+    /// offline: the network is not measured and runs are reproducible. First view and CPU are
+    /// separate `pageon fetch` processes, caged; warm opens reuse one in-process session.
+    #[command(verbatim_doc_comment)]
+    Bench {
+        /// Pages: URLs, or recordings made with --record.
+        #[arg(required = true)]
+        pages: Vec<String>,
+        /// Runs per page.
+        #[arg(long, default_value_t = 5, value_parser = clap::value_parser!(u32).range(1..=1000))]
+        runs: u32,
+        /// Record the URLs again instead of using the cached recordings.
+        #[arg(long)]
+        refresh: bool,
+        /// Print the results as JSON.
+        #[arg(long)]
+        json: bool,
+        /// An earlier `--json` result: show the change per column.
+        #[arg(long, value_name = "FILE")]
+        against: Option<PathBuf>,
+        /// Session options for every run, after `--` (as for `pageon fetch`).
+        #[arg(last = true, value_name = "OPTIONS")]
+        options: Vec<String>,
     },
     /// Re-run a recorded session and check that every step reaches the same page.
     ///
@@ -607,6 +641,13 @@ fn ask(effect: &Effect) -> bool {
     let mut line = String::new();
     let _ = std::io::BufReader::new(tty).read_line(&mut line);
     matches!(line.trim(), "y" | "Y" | "yes")
+}
+
+/// The session flags alone, parsed from arguments (for `pageon bench`'s warm runs).
+#[derive(Parser)]
+struct Flags {
+    #[command(flatten)]
+    session: SessionArgs,
 }
 
 /// The session flags, checked: load options, the environment and the starting state.
@@ -1760,6 +1801,23 @@ fn main() -> ExitCode {
                 fail_under,
                 session,
             } => return audit(&target, json, fail_under, &session),
+            Command::Bench {
+                pages,
+                runs,
+                refresh,
+                json,
+                against,
+                options,
+            } => {
+                return bench::run(&bench::Ask {
+                    pages: &pages,
+                    runs,
+                    refresh,
+                    json,
+                    against: against.as_deref(),
+                    options: &options,
+                });
+            }
             Command::Fetch {
                 target,
                 dump,

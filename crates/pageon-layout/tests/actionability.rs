@@ -82,10 +82,7 @@ fn stylesheets_apply_and_layout_is_deterministic() {
         r#"<link id="css" rel="stylesheet" href="s.css"><p id="p">x</p>"#,
         ParseOptions::default(),
     );
-    let sheet = pageon_layout::Stylesheet {
-        link: find(&dom, "css"),
-        css: "#p { margin-left: 77px }".into(),
-    };
+    let sheet = pageon_layout::Stylesheet::new(find(&dom, "css"), "#p { margin-left: 77px }");
     let a = Layout::new(
         &dom,
         Viewport::default(),

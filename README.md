@@ -76,6 +76,7 @@ pageon fetch https://example.com --dump ax                      # what an agent 
 pageon fetch https://example.com --act "click e1" --dump ax     # act, then look again
 pageon fetch https://example.com --screenshot page.png --marks  # pixels, labelled with refs
 pageon audit https://example.com                                # how ready is it for agents?
+pageon bench https://example.com                                # how fast does it open?
 ```
 
 ## 🔌 Connect your agent
@@ -183,6 +184,7 @@ Engine figures from the test suite:
 | WPT roles / names | 100 % / 94.2 % |
 | Layout vs Chromium | 96.9 % of boxes within 2 px |
 | Click (caged) · screenshot · tool call | 2.2 ms · 1.7 ms · 0.07 ms |
+| First view vs Chromium headless shell, offline | about half the time, CPU and memory on documents and light apps; 2–3× slower on heavy script apps; less memory on every page ([numbers](https://hupe1980.github.io/pageon/docs/benchmarks/#loading-pages)) |
 | Puppeteer, Playwright, BiDi suites | pass, caged and in-process |
 
 The benchmark lives in [`bench/`](bench) and runs locally at no cost. Every cell is reported,

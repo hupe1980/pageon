@@ -359,6 +359,7 @@ impl Document {
             images: self.images.as_deref(),
             redact,
             scroll: &self.js.scroll.elements,
+            styles_only: false,
         };
         let mut l = Layout::with_options(
             &self.dom,

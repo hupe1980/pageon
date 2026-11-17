@@ -562,12 +562,22 @@ fn boxes(cx: &Cx<'_, '_, '_>, n: NodeId) -> ([f64; 4], (f64, f64)) {
 
 /// Delivers resize observations (at most `MAX_PASSES` per rendering step; then the browser's
 /// loop error). Returns whether a callback ran.
-pub(crate) fn deliver_resize(cx: &mut Cx<'_, '_, '_>, pass: u32) -> R<bool> {
+pub(crate) fn deliver_resize(cx: &mut Cx<'_, '_, '_>, pass: u32, render: bool) -> R<bool> {
     const MAX_PASSES: u32 = 2;
-    let observers = cx.st().resize_observers.clone();
-    if observers.is_empty() {
+    let (observers, now, seen) = {
+        let st = cx.st();
+        let now = (st.mutations, st.scroll.generation);
+        (st.resize_observers.clone(), now, st.resize_seen)
+    };
+    // Sizes change only with the layout: nothing to measure when it is the one last measured.
+    if observers.is_empty() || seen == Some(now) {
         return Ok(false);
     }
+    if !render {
+        crate::dom::intersection::defer(cx);
+        return Ok(false);
+    }
+    cx.st().resize_seen = Some(now);
     let mut ran = false;
     for id in observers {
         let Some(targets) = with_ro(cx, id, |o| o.targets.clone()) else {
@@ -668,6 +678,7 @@ pub mod resize_observer {
             o.targets.push((t, border_box, (0.0, 0.0)));
         });
         let mut st = cx.st();
+        st.resize_seen = None;
         if !st.resize_observers.contains(&id) {
             st.resize_observers.push(id);
         }

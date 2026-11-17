@@ -21,8 +21,9 @@ pageon mcp --record session.json         # every tool call becomes a step
 A recording is readable JSON: every response, realtime messages (WebSocket and server-sent
 events, with the virtual time each was delivered at, and the frames the page sent), the clock
 and random draws, and the agent's steps
-(the action, its target as the agent saw it, and a hash of the page after it). Secrets and
-signatures are never written.
+(the action, its target as the agent saw it, and hashes of the page after it). Secrets and
+signatures are never written; credential URL parameters (`?token=…`) are redacted in documents,
+headers and URLs, while scripts and styles are kept byte for byte, so they run again exactly.
 
 ## Replay
 
@@ -35,7 +36,7 @@ pageon replay ep.json --live --approve   # …and ask before re-sending each wri
 
 A replay re-runs every step offline and checks the page against the recording. When a step
 diverges, it says how: a request the recording does not have, an action that failed, or a page
-that differs, with a diff of the view.
+that differs, with what differs (`url`, `html`, `view`, `storage`) and a diff of the view.
 
 A live replay runs under your options, not the recording's: `--private-network`, `--robots`,
 `--identity` and `--profile` come from the command line. Recorded writes (a form post, an

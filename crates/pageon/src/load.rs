@@ -553,7 +553,7 @@ pub(crate) fn fetch_stylesheets(
                     .and_then(encoding::charset_param)
                     .unwrap_or("utf-8");
                 let (css, _) = encoding::decode(&r.body, Some(charset));
-                sheets.push(pageon_layout::Stylesheet { link: id, css });
+                sheets.push(pageon_layout::Stylesheet::new(id, css));
             }
             _ => failed += 1,
         }

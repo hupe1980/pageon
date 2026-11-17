@@ -397,3 +397,29 @@ document.body.appendChild(evil);
         });
     assert!(blocked, "{:#?}", tab.document().requests());
 }
+
+/// Computed styles: values that do not depend on layout come from styles alone, sizes from a
+/// layout, both after the page changed (styles-only and full layouts of the same tree).
+#[test]
+fn computed_styles_follow_changes() {
+    let page_html = r#"<!doctype html><div id=d style="width:100px">x</div><p id=out></p><script>
+const d = document.getElementById('d'), cs = getComputedStyle(d);
+const before = cs.display;
+d.style.width = '250px'; d.style.display = 'inline-block';
+const width = cs.width, display = cs.display, offset = d.offsetWidth;
+d.style.color = 'rgb(1, 2, 3)';
+const color = cs.color;
+d.style.width = '40px';
+document.getElementById('out').textContent = [before, width, display, offset, color, cs.width].join('|');
+</script>"#;
+    let env = Capture::new(site(vec![html("https://p.test/", page_html)]));
+    let s = Session::new(&env);
+    let mut tab = s
+        .open("https://p.test/", LoadOptions::default())
+        .unwrap_or_else(|e| panic!("{e}"));
+    let view = tab.observe_full();
+    assert!(
+        view.contains("block|250px|inline-block|250|rgb(1, 2, 3)|40px"),
+        "{view}"
+    );
+}

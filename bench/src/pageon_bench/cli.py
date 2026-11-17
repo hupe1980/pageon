@@ -306,6 +306,12 @@ def cmd_fidelity(args) -> int:
     return fidelity.main(args)
 
 
+def cmd_engines(args) -> int:
+    from . import engines
+
+    return engines.main(args)
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="pageon-bench", description="pageon's serializer proof (the serializer proof)")
     ap.add_argument("--version", action="version", version=__version__)
@@ -365,6 +371,13 @@ def main(argv: list[str] | None = None) -> int:
 
     c = sub.add_parser("fidelity", help="compare baseline reproductions with their references")
     c.set_defaults(fn=cmd_fidelity)
+
+    c = sub.add_parser("engines", help="pageon beside Chromium's headless shell on recorded pages, offline")
+    c.add_argument("recordings", nargs="+", help="pageon recordings (the `pageon bench` cache or --record files)")
+    c.add_argument("--runs", type=int, default=5)
+    c.add_argument("--pageon", help="the pageon binary (default: $PAGEON or `pageon` on PATH)")
+    c.add_argument("--json", action="store_true")
+    c.set_defaults(fn=cmd_engines)
 
     args = ap.parse_args(argv)
     try:

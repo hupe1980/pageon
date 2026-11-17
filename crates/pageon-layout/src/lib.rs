@@ -57,7 +57,7 @@ impl Default for Viewport {
 }
 
 /// A box in CSS pixels, document coordinates.
-#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Rect {
     /// Left.
     pub x: f32,
@@ -90,13 +90,28 @@ impl Rect {
     }
 }
 
-/// An author stylesheet supplied by the loader: the `<link>` node it belongs to and its text.
+/// An author stylesheet supplied by the loader: the `<link>` node it belongs to and its text
+/// (shared, and hashed once: layouts look a sheet up by it many times).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Stylesheet {
     /// The `<link rel=stylesheet>` element.
     pub link: NodeId,
-    /// CSS text.
-    pub css: String,
+    css: std::sync::Arc<str>,
+    hash: u64,
+}
+
+impl Stylesheet {
+    /// The sheet of a `<link>`.
+    pub fn new(link: NodeId, css: impl Into<std::sync::Arc<str>>) -> Self {
+        let css = css.into();
+        let hash = scope::fast_hash(&css);
+        Self { link, css, hash }
+    }
+
+    /// Its CSS text.
+    pub fn css(&self) -> &str {
+        &self.css
+    }
 }
 
 /// What a layout takes besides the document: the top layer, images and redactions.
@@ -113,6 +128,9 @@ pub struct LayoutOptions<'a> {
     /// Strings drawn as bullets wherever they appear in text or values (secrets typed into
     /// the page), so they never reach pixels.
     pub redact: &'a [String],
+    /// Compute styles only, no boxes: enough for computed style values that do not depend on
+    /// layout ([`Layout::style`]); boxes need a full layout ([`Layout::has_boxes`]).
+    pub styles_only: bool,
 }
 
 /// A laid-out document.
@@ -135,6 +153,8 @@ pub struct Layout {
         std::cell::OnceCell<std::collections::HashMap<blitz_dom::NodeId, actionability::Clip>>,
     error: Option<String>,
     images: Option<mirror::ImageUse>,
+    /// Laid out (not only styled).
+    boxes: bool,
 }
 
 impl std::fmt::Debug for Layout {
@@ -213,7 +233,7 @@ impl Layout {
                     && p.images.is_none()
                     && opts.images.is_none()
             })
-            .and_then(|p| p.sheets.map(|s| (p.doc, s)));
+            .and_then(|p| p.sheets.map(|s| (p.doc, s, p.map)));
         let built = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             // Shadow trees render as the composed (flat) tree, same ids, styles scoped.
             if dom.has_shadow() {
@@ -243,6 +263,7 @@ impl Layout {
                 scroll: std::cell::Cell::default(),
                 error: None,
                 images,
+                boxes: !opts.styles_only,
             },
             Err(e) => {
                 let why = e
@@ -261,9 +282,38 @@ impl Layout {
                     clippers: std::cell::OnceCell::new(),
                     error: Some(format!("layout engine failed: {why}")),
                     images: None,
+                    boxes: true,
                 }
             }
         }
+    }
+
+    /// Whether this layout has boxes (it was not made with [`LayoutOptions::styles_only`]).
+    pub fn has_boxes(&self) -> bool {
+        self.boxes
+    }
+
+    /// Whether a computed style value of `property` depends on layout (a used value: sizes,
+    /// margins, padding, insets, grid tracks, origins), so a styles-only layout cannot give it.
+    pub fn needs_boxes(property: &str) -> bool {
+        const USED: [&str; 12] = [
+            "width",
+            "height",
+            "margin",
+            "padding",
+            "inset",
+            "top",
+            "right",
+            "bottom",
+            "left",
+            "grid-template",
+            "transform-origin",
+            "perspective-origin",
+        ];
+        USED.iter().any(|p| property.starts_with(p))
+            || property.ends_with("-size")
+            || property.contains("width")
+            || property.contains("height")
     }
 
     /// Why layout is unavailable, if the layout engine failed on this document.
@@ -382,11 +432,24 @@ impl Layout {
             })
     }
 
+    /// Whether an ancestor element is not rendered (`display: none`, or never styled).
+    fn undisplayed_above(&self, node: &blitz_dom::Node) -> bool {
+        std::iter::successors(node.parent.and_then(|p| self.doc.get_node(p)), |n| {
+            n.parent.and_then(|p| self.doc.get_node(p))
+        })
+        .filter(|n| n.element_data().is_some())
+        .any(undisplayed)
+    }
+
     fn raw_box(&self, id: NodeId) -> Option<Rect> {
         let b = self.map.blitz(id)?;
         // Blitz keeps layout data on elements only (and panics when asked for anything else).
         let node = self.doc.get_node(b)?;
         node.element_data()?;
+        // Not rendered (`display: none` on it or above): no box, as in Chromium.
+        if undisplayed(node) || self.undisplayed_above(node) {
+            return Some(Rect::default());
+        }
         let r = self.doc.get_client_bounding_rect(b)?;
         // Blitz moves a scrolled element's own box by its scroll offset; only its content moves.
         let own = node.scroll_offset();
@@ -442,10 +505,20 @@ impl Layout {
         let b = self.map.blitz(id)?;
         let node = self.doc.get_node(b)?;
         node.element_data()?;
-        // No computed style means the node is inside an undisplayed subtree: never ask Blitz to
-        // resolve those (its fallback path is not supported with sequential styling).
+        // Inside an undisplayed subtree there is no computed style (a kept layout may still hold
+        // one from before): never ask Blitz to resolve those (its fallback path is not supported
+        // with sequential styling).
         node.primary_styles()?;
+        if self.undisplayed_above(node) {
+            return None;
+        }
         let v = self.doc.resolved_style_value(b, property);
         (!v.is_empty()).then_some(v)
     }
+}
+
+/// Whether an element is not rendered by its own style (`display: none`, or never styled).
+fn undisplayed(n: &blitz_dom::Node) -> bool {
+    n.primary_styles()
+        .is_none_or(|s| s.clone_display().is_none())
 }

@@ -638,6 +638,9 @@ pub struct State {
     pub media_viewport: Option<Viewport>,
     /// `ResizeObserver`s with targets (slab ids, creation order).
     pub resize_observers: Vec<u32>,
+    /// The layout (mutations, scroll generation) the resize observers last measured; `None`
+    /// after a target was added.
+    pub resize_seen: Option<(u64, u64)>,
     /// The document's `crypto` stream.
     pub crypto: crate::dom::platform::CryptoStream,
     /// The page's frame tree and this document's context in it (`None`: a document alone).
@@ -751,6 +754,11 @@ pub struct Shared {
     /// A timer set before the current action is running: timers it sets are not the
     /// action's.
     pub uncaused: bool,
+    /// The virtual frame (1/60 s) of the last intersection update: observations are made at
+    /// most once a frame, as browsers make them when they render.
+    pub frame: u64,
+    /// Realms whose intersection update waits for the next frame (or for the page to idle).
+    pub render_due: std::collections::BTreeSet<usize>,
     /// Next timer id.
     pub next_id: u32,
     /// Next WebMCP tool id (a new one per registration, imperative or declarative).
@@ -880,11 +888,22 @@ impl std::fmt::Debug for Realm {
 impl Realm {
     /// The current layout of the document (rebuilt after mutations).
     pub fn layout(&self) -> Rc<Layout> {
+        self.laid_out(false)
+    }
+
+    /// The document's current styles, without boxes unless a layout is at hand: for computed
+    /// style values that do not depend on layout ([`Layout::needs_boxes`]).
+    pub fn styles(&self) -> Rc<Layout> {
+        self.laid_out(true)
+    }
+
+    fn laid_out(&self, styles_only: bool) -> Rc<Layout> {
         let mut st = self.st.borrow_mut();
         let key = (st.mutations, st.scroll.generation);
         let (vx, vy) = st.scroll.viewport;
         if let Some((k, l)) = &st.layout
             && *k == key
+            && (styles_only || l.has_boxes())
         {
             let l = l.clone();
             l.set_viewport_scroll(vx as f32, vy as f32);
@@ -898,13 +917,16 @@ impl Realm {
             .iter()
             .map(|(&id, &(x, y))| (id, x, y))
             .collect();
-        st.layouts = st.layouts.saturating_add(1);
+        if !styles_only {
+            st.layouts = st.layouts.saturating_add(1);
+        }
         // The last layout, when nothing else holds it, is laid out again: its stylesheets stay
         // parsed (pages that change and measure themselves lay out many times).
         let prev = st.layout.take().and_then(|(_, l)| Rc::try_unwrap(l).ok());
         let opts = pageon_layout::LayoutOptions {
             modals: &st.modals,
             scroll: &offsets,
+            styles_only,
             ..pageon_layout::LayoutOptions::default()
         };
         let l = Rc::new(Layout::again(

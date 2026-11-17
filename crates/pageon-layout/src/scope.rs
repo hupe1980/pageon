@@ -64,7 +64,17 @@ mod memo {
         kind: u64,
         f: impl FnOnce(&str) -> Option<String>,
     ) -> Option<Rc<str>> {
-        let key = (fast_hash(css), css.len(), kind);
+        get_hashed(css, fast_hash(css), kind, f)
+    }
+
+    /// [`get`] for a text whose [`fast_hash`] is known.
+    pub(super) fn get_hashed(
+        css: &str,
+        hash: u64,
+        kind: u64,
+        f: impl FnOnce(&str) -> Option<String>,
+    ) -> Option<Rc<str>> {
+        let key = (hash, css.len(), kind);
         if let Some(v) = MEMO.with(|m| m.borrow().map.get(&key).cloned()) {
             return v;
         }
@@ -106,6 +116,11 @@ impl Tokens {
             self.fingerprint = Self::fingerprint(&self.classes, &self.ids);
         }
         self
+    }
+
+    /// What changes when a class or id is added.
+    pub(crate) fn fingerprint_of(&self) -> u64 {
+        self.fingerprint
     }
 
     fn fingerprint(
@@ -371,7 +386,12 @@ fn ident(s: &str, mut i: usize) -> (String, usize) {
 
 /// [`uses_pseudo`], remembered.
 pub fn uses_pseudo_memo(css: &str) -> bool {
-    memo::get(css, u64::MAX, |c| uses_pseudo(c).then(String::new)).is_some()
+    uses_pseudo_hashed(css, memo::fast_hash(css))
+}
+
+/// [`uses_pseudo_memo`] for a text whose [`fast_hash`] is known.
+pub(crate) fn uses_pseudo_hashed(css: &str, hash: u64) -> bool {
+    memo::get_hashed(css, hash, u64::MAX, |c| uses_pseudo(c).then(String::new)).is_some()
 }
 
 /// [`rewrite`], remembered.

@@ -11,6 +11,7 @@ dependencies = [
     "browsergym-miniwob>=0.13",
     "openai>=1.50",
     "numpy>=1.26",
+    "psutil>=5.9",
 ]
 
 [project.optional-dependencies]

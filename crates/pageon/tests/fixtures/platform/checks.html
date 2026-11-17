@@ -145,8 +145,8 @@ setTimeout(() => {
     setTimeout(() => {
       check('disconnect stops reports', seen.length === 2);
       $('out').textContent = JSON.stringify(results);
-    }, 0);
-  }, 0);
+    }, 20);
+  }, 20); // a frame: observers report when the page renders, as in browsers
 }, 10);
 </script>
 </body>

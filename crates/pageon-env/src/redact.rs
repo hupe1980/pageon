@@ -72,12 +72,21 @@ pub fn redact_params(text: &str) -> Cow<'_, str> {
         while start > 0 && name_byte(b[start - 1]) {
             start -= 1;
         }
-        let boundary = start == 0 || matches!(b[start - 1], b'?' | b'&' | b';');
+        // A parameter starts the text or follows `?`, `&` or `;` (a path parameter). Code is
+        // not a URL: `a && x=…`, `;this.x=…` (a dotted name) and `x=f(…)` are left alone.
+        let boundary = start == 0
+            || match b[start - 1] {
+                b'?' => true,
+                b'&' => start < 2 || b[start - 2] != b'&',
+                b';' => !b[start..eq].contains(&b'.'),
+                _ => false,
+            };
         let mut end = eq + 1;
         while end < b.len() && value_byte(b[end]) {
             end += 1;
         }
-        if boundary && end - (eq + 1) >= MIN_VALUE && is_credential(&b[start..eq]) {
+        let call = b.get(end) == Some(&b'(');
+        if boundary && !call && end - (eq + 1) >= MIN_VALUE && is_credential(&b[start..eq]) {
             let o = out.get_or_insert_with(|| String::with_capacity(text.len()));
             o.push_str(&text[copied..=eq]);
             o.push_str(REDACTED);
@@ -145,6 +154,9 @@ mod tests {
             "",
             "token=",
             "?token=[redacted]",
+            "e7=1;this.initializeSessionAttributes=function(e){}",
+            "a&&sessionToken=somefunction",
+            "?x=1&sessionToken=makeToken(x)",
         ] {
             assert!(matches!(redact_params(s), Cow::Borrowed(_)), "{s}");
         }

@@ -98,7 +98,7 @@ impl Run<'_> {
                         .and_then(encoding::charset_param)
                         .unwrap_or("utf-8");
                     let (css, _) = encoding::decode(&r.body, Some(charset));
-                    self.stylesheets.push(Stylesheet { link: id, css });
+                    self.stylesheets.push(Stylesheet::new(id, css));
                 }
                 _ => self.stylesheets_failed += 1,
             }

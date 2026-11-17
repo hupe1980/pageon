@@ -26,6 +26,8 @@ pub(crate) struct Map {
     to_pageon: HashMap<BId, NodeId>,
     /// Mirrored nodes in tree order.
     order: Vec<NodeId>,
+    /// Nodes given a scroll offset: a kept tree resets them before the next layout's.
+    scrolled: Vec<BId>,
 }
 
 impl Map {
@@ -96,33 +98,75 @@ pub(crate) struct ImageUse {
     pub(crate) applied: usize,
 }
 
-/// A stylesheet's text for the mirror: the rules that cannot match the document dropped
+/// A sheet as the mirror attaches it, with its hash: rules that cannot match left out
 /// (`tokens`), pseudo-classes rewritten to markers (`pseudo`), and selectors scoped to their
-/// tree (pages with shadow trees).
-fn sheet_css<'a>(
-    css: &'a str,
+/// tree (pages with shadow trees). Remembered by the text's hash (given, when known) and the
+/// rewrites, so a sheet is neither rewritten, copied nor hashed again at the next layout.
+fn sheet_css(
+    css: &str,
+    hash: Option<u64>,
     pseudo: bool,
     scope: Option<crate::scope::Scope>,
     tokens: Option<&crate::scope::Tokens>,
-) -> std::borrow::Cow<'a, str> {
+) -> Sheet {
+    type Memo = (HashMap<(u64, usize, u64), Sheet>, usize);
+    thread_local! {
+        static SHEETS: std::cell::RefCell<Memo> = std::cell::RefCell::default();
+    }
+    let hash = hash.unwrap_or_else(|| crate::scope::fast_hash(css));
+    let kind = {
+        let scope = match scope {
+            None => 0,
+            Some(crate::scope::Scope::Document) => 1,
+            Some(crate::scope::Scope::Shadow(n)) => 2 + u64::from(n),
+        };
+        let t = tokens.map_or(0, crate::scope::Tokens::fingerprint_of);
+        (t ^ scope.wrapping_mul(0x9e37_79b9_7f4a_7c15)).rotate_left(1) ^ u64::from(pseudo)
+    };
+    let key = (hash, css.len(), kind);
+    if let Some(s) = SHEETS.with(|m| m.borrow().0.get(&key).cloned()) {
+        return s;
+    }
     let pruned = tokens.and_then(|t| crate::scope::prune_memo(css, t));
     let text: &str = pruned.as_deref().unwrap_or(css);
     let marked = pseudo.then(|| crate::scope::pseudo_memo(text)).flatten();
     let text: &str = marked.as_deref().unwrap_or(text);
     let scoped = scope.map(|s| crate::scope::rewrite_memo(text, s));
-    match (scoped, marked, pruned) {
-        (Some(s), ..) => String::from(&*s).into(),
-        (None, Some(m), _) => String::from(&*m).into(),
-        (None, None, Some(p)) => String::from(&*p).into(),
+    let text: std::rc::Rc<str> = match (scoped, marked, pruned) {
+        (Some(s), ..) => s,
+        (None, Some(m), _) => m,
+        (None, None, Some(p)) => p,
         (None, None, None) => css.into(),
-    }
+    };
+    let sheet = Sheet {
+        hash: crate::scope::fast_hash(&text),
+        text,
+    };
+    SHEETS.with(|m| {
+        let mut m = m.borrow_mut();
+        // Past 64 MiB of sheets the memo starts over.
+        if m.1 + sheet.text.len() > 64 << 20 {
+            m.0.clear();
+            m.1 = 0;
+        }
+        m.1 += sheet.text.len();
+        m.0.insert(key, sheet.clone());
+    });
+    sheet
+}
+
+/// A sheet's text as attached, and its hash.
+#[derive(Clone)]
+struct Sheet {
+    text: std::rc::Rc<str>,
+    hash: u64,
 }
 
 /// Whether any stylesheet of the document uses a pseudo-class the mirror marks.
 fn uses_pseudo(dom: &Dom, stylesheets: &[Stylesheet]) -> bool {
     stylesheets
         .iter()
-        .any(|s| crate::scope::uses_pseudo_memo(&s.css))
+        .any(|s| crate::scope::uses_pseudo_hashed(s.css(), s.hash))
         || dom.traverse(dom.root()).any(|e| match e {
             Edge::Enter(id) => match dom.get(id).map(|n| &n.data) {
                 Some(NodeData::Text(t)) => {
@@ -293,7 +337,7 @@ pub(crate) fn build(
     base: &str,
     opts: &crate::LayoutOptions<'_>,
     composed: Option<&pageon_dom::Composed>,
-    prev: Option<(BaseDocument, Sheets)>,
+    prev: Option<(BaseDocument, Sheets, Map)>,
 ) -> (BaseDocument, Map, Option<ImageUse>, Sheets) {
     let (modals, images, secrets) = (opts.modals, opts.images, opts.redact);
     // Pseudo-classes Blitz does not match (`:invalid`, `:state()`) are rewritten to mirror-only
@@ -304,26 +348,27 @@ pub(crate) fn build(
     // closed `<details>`): their nodes are not mirrored.
     let mut skip_inside: Option<NodeId> = None;
     let recorder = images.map(|_| std::sync::Arc::new(Recorder::default()));
-    // The previous layout's document, when it can be laid out again: its sheets stay parsed
-    // and its cascade built; only its tree is made anew.
-    let reused = prev.is_some();
-    let (mut doc, mut sheets) = match prev {
-        Some(p) => p,
+    // The previous layout's document, when it can be laid out again: its sheets stay parsed,
+    // and its tree is updated in place (nodes that stay keep their styles and boxes), so
+    // Blitz restyles and lays out only what changed.
+    let (mut doc, mut sheets, old) = match prev {
+        Some((d, s, m)) => (d, s, Some(m)),
         None => {
             let mut d = BaseDocument::new(config(viewport, base, recorder.clone()));
             let s = Sheets::new(&mut d);
-            (d, s)
+            (d, s, None)
         }
     };
+    let old = old.as_ref();
+    // With a previous tree: each mirrored node's wanted children, placed after the walk.
+    let mut kids = Kids::default();
     // Every class and id the page has had: rules that need others are left out. The set only
     // grows, so the sheets' texts (and their parsed form) stay the same from layout to layout.
     let tokens = crate::scope::Tokens::of(dom).map(|t| sheets.seen(t));
     // The document's sheets in cascade order (style elements, links, then adopted sheets).
-    let mut ordered: Vec<String> = Vec::new();
-    let linked: std::collections::HashMap<NodeId, &str> = stylesheets
-        .iter()
-        .map(|s| (s.link, s.css.as_str()))
-        .collect();
+    let mut ordered: Vec<Sheet> = Vec::new();
+    let linked: std::collections::HashMap<NodeId, &Stylesheet> =
+        stylesheets.iter().map(|s| (s.link, s)).collect();
     // URLs the engine fetches that are not images: linked stylesheets (pageon loads those
     // itself) and frames.
     let mut not_images: Vec<String> = Vec::new();
@@ -333,9 +378,6 @@ pub(crate) fn build(
     map.insert(dom.root(), root);
     {
         let mut m = DocumentMutator::new(&mut doc);
-        if reused {
-            m.remove_and_drop_all_children(root);
-        }
         let mut stack: Vec<BId> = vec![root];
         for edge in dom.traverse(dom.root()) {
             match edge {
@@ -440,52 +482,94 @@ pub(crate) fn build(
                                 // A stylesheet's element: its rules go to the document's sheets
                                 // in cascade order, and the element is a placeholder (Blitz would
                                 // make a sheet of a `<style>` of its own at every layout).
-                                let sheet: Option<std::borrow::Cow<'_, str>> = match local {
-                                    "style" if node.is_html("style") => {
-                                        Some(dom.cssom_text(id).map_or_else(
-                                            || style_text(dom, id).into(),
-                                            std::borrow::Cow::Borrowed,
-                                        ))
-                                    }
-                                    "link" => dom
-                                        .cssom_text(id)
-                                        .or_else(|| linked.get(&id).copied())
-                                        .map(std::borrow::Cow::Borrowed),
-                                    _ => None,
-                                };
+                                // The text, and its hash when the loader has it.
+                                let sheet: Option<(std::borrow::Cow<'_, str>, Option<u64>)> =
+                                    match local {
+                                        "style" if node.is_html("style") => Some((
+                                            dom.cssom_text(id).map_or_else(
+                                                || style_text(dom, id).into(),
+                                                std::borrow::Cow::Borrowed,
+                                            ),
+                                            None,
+                                        )),
+                                        "link" => match dom.cssom_text(id) {
+                                            Some(t) => Some((t.into(), None)),
+                                            None => linked
+                                                .get(&id)
+                                                .map(|s| (s.css().into(), Some(s.hash))),
+                                        },
+                                        _ => None,
+                                    };
                                 let el = match &sheet {
                                     Some(css) => {
                                         let scope = composed.map(|c| match c.scope_of.get(&id) {
                                             Some(&n) => crate::scope::Scope::Shadow(n),
                                             None => crate::scope::Scope::Document,
                                         });
-                                        ordered.push(
-                                            sheet_css(css, pseudo, scope, tokens.as_ref())
-                                                .into_owned(),
-                                        );
+                                        ordered.push(sheet_css(
+                                            &css.0,
+                                            css.1,
+                                            pseudo,
+                                            scope,
+                                            tokens.as_ref(),
+                                        ));
                                         skip_inside = Some(id);
-                                        m.create_element(
-                                            html5ever::QualName::new(
-                                                None,
-                                                html5ever::ns!(html),
-                                                html5ever::LocalName::from(SHEET),
-                                            ),
-                                            Vec::new(),
-                                        )
+                                        let sheet = html5ever::QualName::new(
+                                            None,
+                                            html5ever::ns!(html),
+                                            html5ever::LocalName::from(SHEET),
+                                        );
+                                        reuse_element(&mut m, old, id, &sheet, &[])
+                                            .unwrap_or_else(|| m.create_element(sheet, Vec::new()))
                                     }
-                                    None => m.create_element(name.clone(), attrs),
+                                    None => reuse_element(&mut m, old, id, name, &attrs)
+                                        .unwrap_or_else(|| m.create_element(name.clone(), attrs)),
                                 };
+                                // An input's children (a script can add some) are not rendered.
+                                if local == "input" {
+                                    skip_inside = Some(id);
+                                }
                                 if local == "textarea"
                                     && let Some(v) = state.and_then(|c| c.value.as_ref())
                                 {
-                                    let t = m.create_text_node(&redact(v, secrets));
-                                    m.append_children(el, &[t]);
+                                    let v = redact(v, secrets);
+                                    // The value's text node is not a page node: the one already
+                                    // there is kept when it is the only child.
+                                    let only = m
+                                        .doc
+                                        .get_node(el)
+                                        .filter(|n| n.children.len() == 1)
+                                        .map(|n| n.children[0])
+                                        .filter(|&c| {
+                                            m.doc.get_node(c).is_some_and(|c| c.is_text_node())
+                                        });
+                                    let t = match only {
+                                        Some(t) if old.is_some() => {
+                                            m.set_node_text(t, &v);
+                                            t
+                                        }
+                                        _ => m.create_text_node(&v),
+                                    };
+                                    if old.is_some() {
+                                        kids.wanted(t, el);
+                                    } else {
+                                        m.append_children(el, &[t]);
+                                    }
                                     skip_inside = Some(id);
                                 }
                                 Some(el)
                             }
-                            NodeData::Text(t) => Some(m.create_text_node(&redact(t, secrets))),
-                            NodeData::Comment(t) => Some(m.create_comment_node(t)),
+                            NodeData::Text(t) => {
+                                let t = redact(t, secrets);
+                                Some(
+                                    reuse_text(&mut m, old, id, &t)
+                                        .unwrap_or_else(|| m.create_text_node(&t)),
+                                )
+                            }
+                            NodeData::Comment(t) => Some(
+                                reuse_comment(&m, old, id)
+                                    .unwrap_or_else(|| m.create_comment_node(t)),
+                            ),
                             _ => None,
                         }
                     };
@@ -505,7 +589,15 @@ pub(crate) fn build(
                                 stack.len().min(MAX_DEPTH)
                             };
                             if let Some(&parent) = stack.get(at - 1) {
-                                m.append_children(parent, &[b]);
+                                if old.is_some() {
+                                    kids.wanted(b, parent);
+                                } else {
+                                    m.append_children(parent, &[b]);
+                                }
+                            }
+                            // Blitz gives button-like inputs a text child of its own (their label).
+                            if old.is_some() && !node.is_html("input") {
+                                kids.node(b);
                             }
                             map.insert(id, b);
                             stack.push(b);
@@ -524,13 +616,40 @@ pub(crate) fn build(
                 }
             }
         }
+        if old.is_some() {
+            kids.node(root);
+            kids.place(&mut m);
+        }
     }
     // Adopted stylesheets: after every sheet of the document, scoped to their tree.
     for (scope, css) in adopted(dom, composed) {
-        ordered.push(sheet_css(&css, pseudo, scope, tokens.as_ref()).into_owned());
+        ordered.push(sheet_css(&css, None, pseudo, scope, tokens.as_ref()));
     }
-    sheets.attach(&mut doc, ordered);
-    doc.resolve(0.0);
+    let sheets_changed = sheets.attach(&mut doc, ordered);
+    if old.is_some() {
+        if sheets_changed {
+            // Stylo invalidates a sheet change only partly on a kept tree: the whole document
+            // is restyled, as in a fresh layout.
+            let root = doc.root_element().id;
+            if let Some(n) = doc.get_node_mut(root) {
+                n.set_restyle_hint(
+                    style::invalidation::element::restyle_hints::RestyleHint::restyle_subtree(),
+                );
+                n.mark_ancestors_dirty();
+            }
+        }
+        // Styles are kept and only what changed is restyled; boxes are built and laid out
+        // again in full (Blitz's incremental box layout keeps stale sizes in places).
+        doc.set_incremental_layout(false);
+    }
+    if opts.styles_only {
+        doc.resolve_stylist(0.0);
+    } else {
+        doc.resolve(0.0);
+        if old.is_some() {
+            stale_inline_roots(&mut doc, &map);
+        }
+    }
     let used = recorder.zip(images).map(|(rec, images)| {
         let mut used = ImageUse::default();
         for url in rec.urls() {
@@ -565,8 +684,174 @@ pub(crate) fn build(
         }
         used
     });
-    scroll(&mut doc, &map, opts.scroll);
+    if let Some(old) = old {
+        // A kept node scrolled before and not now (the page scrolled it back) is at 0.
+        let reset: Vec<(NodeId, f64, f64)> = old
+            .scrolled
+            .iter()
+            .filter_map(|&b| map.pageon(b))
+            .filter(|id| !opts.scroll.iter().any(|(s, ..)| s == id))
+            .map(|id| (id, 0.0, 0.0))
+            .collect();
+        scroll(&mut doc, &mut map, &reset);
+        map.scrolled.clear();
+    }
+    scroll(&mut doc, &mut map, opts.scroll);
     (doc, map, used, sheets)
+}
+
+/// The children each mirrored node should have, in order (laying out a previous tree again).
+#[derive(Default)]
+struct Kids {
+    of: Vec<(BId, Vec<BId>)>,
+    slot: HashMap<BId, usize>,
+}
+
+impl Kids {
+    /// A mirrored node: its children are exactly those [`Kids::wanted`] gives it.
+    fn node(&mut self, b: BId) {
+        if !self.slot.contains_key(&b) {
+            self.slot.insert(b, self.of.len());
+            self.of.push((b, Vec::new()));
+        }
+    }
+
+    fn wanted(&mut self, child: BId, parent: BId) {
+        self.node(parent);
+        let i = self.slot[&parent];
+        self.of[i].1.push(child);
+    }
+
+    /// Gives every node its wanted children: the part that differs from what it has (between a
+    /// common prefix and suffix) is replaced, and nodes no longer wanted anywhere are dropped.
+    fn place(self, m: &mut DocumentMutator<'_>) {
+        // Nodes wanted somewhere are moved, not removed and added again (which would run
+        // Blitz's insertion steps twice, such as a button input's label).
+        let wanted: std::collections::HashSet<BId> = self
+            .of
+            .iter()
+            .flat_map(|(_, w)| w.iter().copied())
+            .collect();
+        let mut removed: Vec<BId> = Vec::new();
+        for (parent, want) in &self.of {
+            let have = m.child_ids(*parent);
+            if have.as_slice() == want.as_slice() {
+                continue;
+            }
+            let pre = have.iter().zip(want).take_while(|(a, b)| a == b).count();
+            let room = have.len().min(want.len()) - pre;
+            let suf = have
+                .iter()
+                .rev()
+                .zip(want.iter().rev())
+                .take(room)
+                .take_while(|(a, b)| a == b)
+                .count();
+            for &c in &have[pre..have.len() - suf] {
+                if !wanted.contains(&c) {
+                    m.remove_node(c);
+                    removed.push(c);
+                }
+            }
+            let mid = &want[pre..want.len() - suf];
+            if mid.is_empty() {
+                continue;
+            }
+            // A moved node's layout parent is from its old place (an anonymous block that may
+            // be dropped); its new parent's layout sets it again, if it lays out children.
+            for &c in mid {
+                if let Some(n) = m.doc.get_node(c) {
+                    n.layout_parent.set(None);
+                }
+            }
+            match have
+                .len()
+                .checked_sub(suf)
+                .and_then(|i| have.get(i))
+                .filter(|_| suf > 0)
+            {
+                Some(&anchor) => m.insert_nodes_before(anchor, mid),
+                None => m.append_children(*parent, mid),
+            }
+        }
+        // What is no longer wanted is dropped, with what it still holds.
+        for b in removed {
+            m.remove_node_if_unparented(b);
+        }
+    }
+}
+
+/// Blitz clears an element's inline-root flag only when it builds that element's box: one that
+/// became plain inline on a kept tree (an `<a>` that was a flex item) keeps it, and with it its
+/// old box. Cleared after layout.
+fn stale_inline_roots(doc: &mut BaseDocument, map: &Map) {
+    let ids: Vec<BId> = map.blitz_ids().collect();
+    for b in ids {
+        let Some(n) = doc.get_node_mut(b) else {
+            continue;
+        };
+        if n.flags.is_inline_root() {
+            n.flags.reset_construction_flags();
+            if !n.is_non_atomic_inline() {
+                n.flags.insert(blitz_dom::node::NodeFlags::IS_INLINE_ROOT);
+            }
+        }
+    }
+}
+
+/// The previous layout's element for `id`, when it has this name, with its attributes made
+/// `attrs` (set and cleared as a page's script would, so only what changed is restyled).
+fn reuse_element(
+    m: &mut DocumentMutator<'_>,
+    old: Option<&Map>,
+    id: NodeId,
+    name: &html5ever::QualName,
+    attrs: &[blitz_dom::Attribute],
+) -> Option<BId> {
+    let b = old?.blitz(id)?;
+    let el = m.doc.get_node(b)?.element_data()?;
+    if el.name != *name {
+        return None;
+    }
+    let have = el.attrs();
+    let stale: Vec<html5ever::QualName> = have
+        .iter()
+        .filter(|a| !attrs.iter().any(|w| w.name == a.name))
+        .map(|a| a.name.clone())
+        .collect();
+    let changed: Vec<&blitz_dom::Attribute> = attrs
+        .iter()
+        .filter(|w| !have.iter().any(|a| a.name == w.name && a.value == w.value))
+        .collect();
+    for n in stale {
+        m.clear_attribute(b, n);
+    }
+    for w in changed {
+        m.set_attribute(b, w.name.clone(), &w.value);
+    }
+    Some(b)
+}
+
+/// The previous layout's text node for `id`, with its text made `text`.
+fn reuse_text(
+    m: &mut DocumentMutator<'_>,
+    old: Option<&Map>,
+    id: NodeId,
+    text: &str,
+) -> Option<BId> {
+    let b = old?.blitz(id)?;
+    m.doc.get_node(b).filter(|n| n.is_text_node())?;
+    m.set_node_text(b, text);
+    Some(b)
+}
+
+/// The previous layout's comment node for `id` (a comment's text does not affect layout).
+fn reuse_comment(m: &DocumentMutator<'_>, old: Option<&Map>, id: NodeId) -> Option<BId> {
+    let b = old?.blitz(id)?;
+    m.doc
+        .get_node(b)
+        .filter(|n| matches!(n.data, blitz_dom::node::NodeData::Comment { .. }))
+        .map(|_| b)
 }
 
 /// The element a stylesheet's element is mirrored as (`display: none` in the UA sheet).
@@ -632,22 +917,27 @@ impl Sheets {
         all
     }
 
-    /// Gives each holder its sheet; holders whose text is unchanged are left alone.
-    fn attach(&mut self, doc: &mut BaseDocument, mut ordered: Vec<String>) {
+    /// Gives each holder its sheet; holders whose text is unchanged are left alone. Whether any
+    /// changed.
+    fn attach(&mut self, doc: &mut BaseDocument, mut ordered: Vec<Sheet>) -> bool {
+        let mut changed = false;
         if ordered.len() > HOLDERS {
-            let rest = ordered.split_off(HOLDERS - 1).join("\n");
-            ordered.push(rest);
+            let rest: Vec<&str> = ordered[HOLDERS - 1..].iter().map(|s| &*s.text).collect();
+            let text: std::rc::Rc<str> = rest.join("\n").into();
+            ordered.truncate(HOLDERS - 1);
+            ordered.push(Sheet {
+                hash: crate::scope::fast_hash(&text),
+                text,
+            });
         }
         if self.parsed.len() > 4 * HOLDERS {
             self.parsed.clear();
         }
         for i in 0..HOLDERS {
-            let css = ordered.get(i).map_or("", String::as_str);
-            let hash = if css.is_empty() {
-                0
-            } else {
-                crate::scope::fast_hash(css) | 1
-            };
+            let (css, hash) = ordered
+                .get(i)
+                .filter(|s| !s.text.is_empty())
+                .map_or(("", 0), |s| (&*s.text, s.hash | 1));
             if self.texts[i] == hash {
                 continue;
             }
@@ -658,16 +948,20 @@ impl Sheets {
                 .clone();
             doc.add_stylesheet_for_node(sheet, self.holders[i]);
             self.texts[i] = hash;
+            changed = true;
         }
+        changed
     }
 }
 
 /// Applies element scroll offsets, each clamped to its element's range.
-fn scroll(doc: &mut BaseDocument, map: &Map, offsets: &[(NodeId, f64, f64)]) {
+fn scroll(doc: &mut BaseDocument, map: &mut Map, offsets: &[(NodeId, f64, f64)]) {
     for &(id, x, y) in offsets {
-        let Some(node) = map.blitz(id).and_then(|b| doc.get_node_mut(b)) else {
+        let Some(b) = map.blitz(id) else { continue };
+        let Some(node) = doc.get_node_mut(b) else {
             continue;
         };
+        map.scrolled.push(b);
         // A textarea scrolls its text, inside the editor.
         if let Some(max) = text_range(node) {
             if let Some(t) = node

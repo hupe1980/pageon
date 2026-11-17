@@ -1099,6 +1099,12 @@ impl Engine {
                     }
                 }
             }
+            // Intersection updates left for the frame's end: due once the next timer is in a
+            // later frame, or nothing else is due.
+            if self.render(deadline) {
+                tasks += 1;
+                continue;
+            }
             let next = {
                 let mut sh = self.shared.borrow_mut();
                 let Some((&key, _)) = sh.timers.first_key_value() else {
@@ -1147,6 +1153,42 @@ impl Engine {
             pending_requests: sh.requests.len(),
             virtual_ms: (sh.now - start).max(0.0) as u64,
         }
+    }
+
+    /// Makes the rendering updates left for the end of the current frame once nothing else is
+    /// due in it: the clock moves to the next frame (when within `deadline`), as a browser
+    /// renders at its next frame. Whether any ran.
+    fn render(&mut self, deadline: f64) -> bool {
+        use crate::dom::intersection::frame_of;
+        let due: Vec<usize> = {
+            let mut sh = self.shared.borrow_mut();
+            if sh.render_due.is_empty() {
+                return false;
+            }
+            let frame = frame_of(sh.now);
+            let this_frame = sh
+                .timers
+                .first_key_value()
+                .is_some_and(|(k, _)| frame_of(k.0 as f64 / 1000.0) == frame);
+            // The next frame starts at frame * 1000 / 60 ms (frames count from 1).
+            let next = frame as f64 * 1000.0 / 60.0;
+            if this_frame {
+                return false;
+            }
+            // Past the deadline the update still runs (observers fire before the loop
+            // returns), without moving the clock beyond it.
+            if next <= deadline {
+                sh.now = sh.now.max(next);
+            }
+            std::mem::take(&mut sh.render_due).into_iter().collect()
+        };
+        for realm in due {
+            let (_, fired) = self.guarded(|e| {
+                e.with_cx(realm, |cx| notify(cx, true));
+            });
+            self.terminated(fired, "intersection");
+        }
+        true
     }
 
     /// Performs one queued realtime operation (outside tasks; the page's events in tasks).
@@ -2079,7 +2121,13 @@ fn describe(
 /// Notifies mutation observers until no callback queues more records (bounded), with a
 /// microtask checkpoint after each round.
 fn notify_observers(cx: &mut Cx<'_, '_, '_>) {
+    notify(cx, false);
+}
+
+/// [`notify_observers`]; `render_now`: also the rendering update left for the frame's end.
+fn notify(cx: &mut Cx<'_, '_, '_>, render_now: bool) {
     crate::dom::sheets::sync(cx);
+    let render = crate::dom::intersection::rendering(cx, render_now);
     let mut resize_pass = 0;
     for _ in 0..100 {
         let _ = crate::dom::custom_elements::react(cx);
@@ -2087,9 +2135,9 @@ fn notify_observers(cx: &mut Cx<'_, '_, '_>) {
         // HTML's rendering update order: scroll events, then intersection observations.
         let slots = crate::dom::shadow::deliver_slotchange(cx);
         let scrolled = crate::dom::scroll::deliver(cx);
-        let intersections = crate::dom::intersection::deliver(cx);
+        let intersections = crate::dom::intersection::deliver(cx, render);
         let media = crate::dom::platform::deliver_media(cx);
-        let resized = crate::dom::platform::deliver_resize(cx, resize_pass);
+        let resized = crate::dom::platform::deliver_resize(cx, resize_pass, render);
         let timed = crate::dom::timing::deliver(cx);
         let frames = crate::frames::deliver_blank_frames(cx);
         let errors = crate::dom::deliver_page_errors(cx);
@@ -2111,6 +2159,10 @@ fn notify_observers(cx: &mut Cx<'_, '_, '_>) {
             break;
         }
         cx.scope.perform_microtask_checkpoint();
+    }
+    // This frame's rendering update ran: later tasks in the frame leave theirs due.
+    if render {
+        crate::dom::intersection::rendered(cx);
     }
 }
 
@@ -2336,6 +2388,7 @@ pub(crate) fn new_realm(
             media_lists: Vec::new(),
             media_viewport: None,
             resize_observers: Vec::new(),
+            resize_seen: None,
             crypto: crate::dom::platform::CryptoStream::new(cfg.crypto_key),
             frame: None,
             remote: Default::default(),

@@ -376,7 +376,10 @@ pub(crate) fn property(cx: &Cx<'_, '_, '_>, d: Decl, name: &str) -> String {
             .find(|(p, _, _)| p == name)
             .map(|(_, v, _)| v)
             .unwrap_or_default(),
-        Decl::Computed(n) => cx.realm.layout().style(n, name).unwrap_or_default(),
+        Decl::Computed(n) if pageon_layout::Layout::needs_boxes(name) => {
+            cx.realm.layout().style(n, name).unwrap_or_default()
+        }
+        Decl::Computed(n) => cx.realm.styles().style(n, name).unwrap_or_default(),
     }
 }
 

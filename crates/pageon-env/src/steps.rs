@@ -35,6 +35,10 @@ pub struct Step {
     pub observed: u32,
     /// The state hash after the step (16 hex digits).
     pub hash: String,
+    /// Hashes of the state's parts (`url`, `html`, `view`, `storage`): what changed when a
+    /// re-run differs. Absent in older recordings.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub parts: Vec<(String, String)>,
     /// The agent view after the step (stateless, unbudgeted, secrets redacted).
     pub view: String,
     /// The action's target as the agent saw it when it acted: what a workflow
