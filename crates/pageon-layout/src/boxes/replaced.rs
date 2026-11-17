@@ -118,17 +118,16 @@ pub fn compute_replaced_layout(
     };
 
     // Return early if both width and height are known
-    if run_mode == RunMode::ComputeSize {
-        if let Size {
+    if run_mode == RunMode::ComputeSize
+        && let Size {
             width: Some(width),
             height: Some(height),
         } = known_dimensions
-        {
-            return LayoutOutput::from_outer_size(Size {
-                width: width.max(pb_sum.width),
-                height: height.max(pb_sum.height),
-            });
-        }
+    {
+        return LayoutOutput::from_outer_size(Size {
+            width: width.max(pb_sum.width),
+            height: height.max(pb_sum.height),
+        });
     }
 
     // Use aspect_ratio from style, fall back to inherent aspect ratio (if any).

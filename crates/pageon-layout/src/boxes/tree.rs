@@ -347,8 +347,8 @@ pub(crate) struct Build<'a> {
 }
 
 /// Attributes layout reads.
-const ATTRS: [&str; 11] = [
-    "type", "rows", "cols", "width", "height", "start", "reversed", "value", "colspan",
+const ATTRS: [&str; 12] = [
+    "disabled", "type", "rows", "cols", "width", "height", "start", "reversed", "value", "colspan",
     "rowspan", "span",
 ];
 
